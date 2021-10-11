@@ -4,12 +4,15 @@ else
     arch="$1"
 fi
 
-conda env create -f $arch.yaml
-echo "Created env"
+conda env create --force -f $arch.yaml
 
-# eval "$(conda shell.bash hook)"
+eval "$(conda shell.bash hook)"
 
-# conda activate sfgen
+conda activate acmejax
+
+pip install --upgrade rlax==0.0.4
+pip install --no-cache-dir --upgrade 'dm-acme' 'dm-acme[jax]' 'dm-acme[launchpad]' 'dm-acme[envs]'
+
 
 # git clone https://github.com/wcarvalho/gym-minigrid.git _gym-minigrid
 # cd _gym-minigrid
@@ -30,10 +33,10 @@ echo "Created env"
 # cd ..
 
 
-# #setup lab
-# jupyter nbextension enable --py widgetsnbextension
-# jupyter labextension install @jupyter-widgets/jupyterlab-manager
+#setup lab
+jupyter nbextension enable --py widgetsnbextension
+jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 
-# # conda remove --name sfgen --all
+# # conda remove --name acmejax --all
 # # conda env update --file gpu.yaml

@@ -1,4 +1,4 @@
-name: sfgen
+name: acmejax
 channels:
   - defaults
   - conda-forge
@@ -9,13 +9,8 @@ dependencies:
     - jax[cpu]
     - pip
     - reverb
-    - setuptools 
+    - setuptools
     - wheel
-    - dm-acme
-    - dm-acme[jax]
-    - dm-acme[launchpad]
-    - dm-acme[envs]
-    - git+git://github.com/deepmind/rlax.git#egg=rlax
 
 
 
