@@ -1,0 +1,23 @@
+name: sfgen
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - pip
+  - python==3.7
+  - pip:
+    - jax[cpu]
+    - pip
+    - reverb
+    - setuptools 
+    - wheel
+    - dm-acme
+    - dm-acme[jax]
+    - dm-acme[launchpad]
+    - dm-acme[envs]
+    - git+git://github.com/deepmind/rlax.git#egg=rlax
+
+
+
+# conda env create -f cpu.yaml
+# conda remove --name sfgen --all
