@@ -6,7 +6,7 @@ dependencies:
   - pip
   - python==3.7
   - pip:
-    - jax
+    - jax[cuda102]
     - pip
     - reverb
     - setuptools

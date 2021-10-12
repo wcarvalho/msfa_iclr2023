@@ -4,6 +4,7 @@ eval "$(conda shell.bash hook)"
 
 conda activate acmejax
 
+python projects/starter/dqn_bsuite.py
 # pip install --no-cache-dir --upgrade rlax==0.0.4 'dm-acme' 'dm-acme[jax]' 'dm-acme[launchpad]' 'dm-acme[envs]'
 
 
