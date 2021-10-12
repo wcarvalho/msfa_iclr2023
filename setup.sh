@@ -1,17 +1,10 @@
-if [ -z $1 ]; then # empty
-    arch=gpu
-else
-    arch="$1"
-fi
-
-conda env create --force -f $arch.yaml
+conda env create --force -f gpu.yaml
 
 eval "$(conda shell.bash hook)"
 
 conda activate acmejax
 
-pip install --upgrade rlax==0.0.4
-pip install --no-cache-dir --upgrade 'dm-acme' 'dm-acme[jax]' 'dm-acme[launchpad]' 'dm-acme[envs]'
+# pip install --no-cache-dir --upgrade rlax==0.0.4 'dm-acme' 'dm-acme[jax]' 'dm-acme[launchpad]' 'dm-acme[envs]'
 
 
 # git clone https://github.com/wcarvalho/gym-minigrid.git _gym-minigrid
@@ -34,8 +27,8 @@ pip install --no-cache-dir --upgrade 'dm-acme' 'dm-acme[jax]' 'dm-acme[launchpad
 
 
 #setup lab
-jupyter nbextension enable --py widgetsnbextension
-jupyter labextension install @jupyter-widgets/jupyterlab-manager
+# jupyter nbextension enable --py widgetsnbextension
+# jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 
 # # conda remove --name acmejax --all
