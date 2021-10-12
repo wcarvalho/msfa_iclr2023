@@ -2,11 +2,11 @@
 ACME based experiments
 
 
-#Installation 
+# Installation 
 
 ```bash
 git clone https://github.com/wcarvalho/rljax.git --recursive
-bash setup.sh gpu
+conda env create --force -f gpu.yaml
 ```
 
 # Personal
