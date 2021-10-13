@@ -11,6 +11,12 @@ conda env create --force -f gpu.yaml
 
 # Personal
 
+##
+```bash
+gpustat -i
+
+```
+
 ## Brain
 ```bash
 
