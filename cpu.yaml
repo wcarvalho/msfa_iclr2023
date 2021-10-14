@@ -1,0 +1,23 @@
+name: acmejax
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - pip
+  - python==3.7
+  - pip:
+    - jax
+    - pip
+    - reverb
+    - setuptools
+    - wheel
+    - rlax==0.4
+    - tensorflow-probability==0.13
+    - 'dm-acme'
+    - 'dm-acme[jax]'
+    - 'dm-acme[envs]'
+
+
+
+# conda env create -f cpu.yaml
+# conda remove --name acmejax --all
