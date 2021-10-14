@@ -11,13 +11,23 @@ conda env create --force -f gpu.yaml
 
 # Personal
 
-##
 ```bash
+# GPU Usage
 gpustat -i
 
+# Updating
+git submodule foreach git pull origin main
+git pull
+
+# Adding modules
+git submodule add https://github.com/deepmind/acme libs/acme
 ```
 
-## Brain
+
+
+## Servers
+
+### Brain
 ```bash
 
 export PYTHONPATH=$PYTHONPATH:$HOME/projects/rljax/
@@ -27,7 +37,7 @@ sshfs deeplearn9:/home/wcarvalh/projects/rljax/ rlax-brain
 ```
 
 
-## RLDL
+### RLDL
 ```bash
 sshfs rldl4:/shared/home/wcarvalh/projects/rljax/ rlax-rldl
 ```
