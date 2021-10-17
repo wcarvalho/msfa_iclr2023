@@ -14,7 +14,8 @@ import haiku as hk
 import rlax
 from acme.jax import utils
 
-from r2d2.agents.jax import dqn
+from agents.r2d2.agent import R2D2
+from agents.r2d2.networks import R2D2Network
 
 # Bsuite flags
 flags.DEFINE_string('bsuite_id', 'catch/0', 'Bsuite id.')
@@ -23,30 +24,7 @@ flags.DEFINE_boolean('overwrite', True, 'Whether to overwrite csv results.')
 
 FLAGS = flags.FLAGS
 
-def make_network(
-    spec: specs.EnvironmentSpec) -> networks_lib.FeedForwardNetwork:
-  """Creates networks used by the agent."""
 
-  def actor_fn(obs, is_training=True, key=None):
-    # is_training and key allows to utilize train/test dependant modules
-    # like dropout.
-    del is_training
-    del key
-    mlp = hk.Sequential(
-        [hk.Flatten(),
-         hk.nets.MLP([50, 50, spec.actions.num_values])])
-    return mlp(obs)
-
-  policy = hk.without_apply_rng(hk.transform(actor_fn, apply_rng=True))
-
-  # Create dummy observations to create network parameters.
-  dummy_obs = utils.zeros_like(spec.observations)
-  dummy_obs = utils.add_batch_dim(dummy_obs)
-
-  network = networks_lib.FeedForwardNetwork(
-      lambda key: policy.init(key, dummy_obs), policy.apply)
-
-  return network
 
 def main(_):
 
@@ -58,16 +36,58 @@ def main(_):
   )
 
   environment = wrappers.SinglePrecisionWrapper(raw_environment)
-  environment_spec = specs.make_environment_spec(environment)
+  spec = specs.make_environment_spec(environment)
 
 
-  # Create the networks to optimize.
-  network = make_network(environment_spec)
+  # Create pure functions
+  def forward_fn(x, s):
+    model = networks_lib.R2D2AtariNetwork(spec.actions.num_values)
+    return model(x, s)
+
+  def initial_state_fn(batch_size: Optional[int] = None):
+    model = networks_lib.R2D2AtariNetwork(spec.actions.num_values)
+    return model.initial_state(batch_size)
+
+  def unroll_fn(inputs, state):
+    model = networks_lib.R2D2AtariNetwork(spec.actions.num_values)
+    return model.unroll(inputs, state)
+
+  # We pass pure, Haiku-agnostic functions to the agent.
+  forward_fn_hk = hk.without_apply_rng(hk.transform(
+      forward_fn,
+      apply_rng=True))
+  unroll_fn_hk = hk.without_apply_rng(hk.transform(
+      unroll_fn,
+      apply_rng=True))
+  initial_state_fn_hk = hk.without_apply_rng(hk.transform(
+      initial_state_fn,
+      apply_rng=True))
+
+  def init(key):
+    dummy_obs = utils.add_batch_dim(utils.zeros_like(spec.observations))
+    # TODO: params are not returned, only initial_params
+    # so currently don't support learning params for intialization
+    params = initial_state_fn_hk.init(key)
+    initial_state = initial_state_fn_hk.apply(params)
+    key, key_initial_state = jax.random.split(key)
+    initial_params = unroll_fn_hk.init(key, dummy_obs, initial_state)
+    return initial_params
+
+
+  network = R2D2Network(
+      init=init, # create params
+      apply=forward_fn_hk.apply, # call
+      unroll=unroll_fn_hk.apply, # unroll
+      initial_state=initial_state_fn_hk.apply, # initial_state
+  )
 
   # Create actor
-  actor = dqn.DQN(
-      environment_spec=environment_spec,
+  actor = R2D2(
+      environment_spec=spec,
       network=network,
+      burn_in_length=4,
+      trace_length=4,
+      replay_period=4,
   )
 
 
