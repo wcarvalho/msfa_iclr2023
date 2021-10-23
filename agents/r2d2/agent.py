@@ -15,23 +15,27 @@
 
 """DQN agent implementation."""
 
+from typing import Tuple
+
 from acme import specs
 from acme.agents import agent
 from acme.agents import replay
-from acme.agents.jax import actor_core as actor_core_lib
 from acme.agents.jax import actors
 from acme.agents.jax.dqn import learning_lib
+from acme.wrappers import observation_action_reward
 from acme.jax import networks as networks_lib
 from acme.jax import variable_utils
 from acme.jax import utils as jax_utils
 
 import jax
 import jax.numpy as jnp
+import haiku as hk
 import optax
 import rlax
 
 from agents.r2d2 import losses
 from agents.r2d2 import config
+from agents.r2d2 import actor_core as actor_core_lib
 from agents.r2d2.networks import R2D2Network
 
 class R2D2(agent.Agent):
@@ -96,13 +100,13 @@ class R2D2(agent.Agent):
         optax.clip_by_global_norm(max_gradient_norm),
         optax.adam(learning_rate),
     )
-    key_learner, key_actor = jax.random.split(jax.random.PRNGKey(config.seed))
+    key_learner, key_actor = jax.random.split(jax.random.PRNGKey(seed))
 
     # The learner updates the parameters (and initializes them).
     sequence_length = burn_in_length + trace_length + 1
     loss_fn = losses.R2D2Learning(
-        discount=config.discount,
-        importance_sampling_exponent=config.importance_sampling_exponent,
+        discount=discount,
+        importance_sampling_exponent=importance_sampling_exponent,
         burn_in_length=burn_in_length,
         sequence_length=sequence_length,
         max_replay_size=max_replay_size,
@@ -114,17 +118,34 @@ class R2D2(agent.Agent):
         loss_fn=loss_fn,
         data_iterator=reverb_replay.data_iterator,
         optimizer=optimizer,
-        target_update_period=config.target_update_period,
+        target_update_period=target_update_period,
         random_key=key_learner,
         replay_client=reverb_replay.client,
     )
 
+    # -----------------------
+    # define policy
+    # -----------------------
     # The actor selects actions according to the policy.
-    def policy(params: networks_lib.Params, key: jnp.ndarray,
-               observation: jnp.ndarray) -> jnp.ndarray:
-      action_values = network.apply(params, observation)
-      return rlax.epsilon_greedy(config.epsilon).sample(key, action_values)
-    actor_core = actor_core_lib.batched_feed_forward_to_actor_core(policy)
+    def policy(params: networks_lib.Params,
+               key: jnp.ndarray,
+               inputs: observation_action_reward.OAR,
+               state: hk.LSTMState) -> Tuple[jnp.ndarray, hk.LSTMState]:
+      action_values, next_state = network.apply(params, inputs, state)
+      actions = rlax.epsilon_greedy(epsilon).sample(key, action_values)
+      return actions, next_state
+
+    # -----------------------
+    # initialize actor
+    # -----------------------
+    rng = hk.PRNGSequence(key_actor)
+    params = learner._state.params
+    actor_batch_size = 1
+    initial_state = network.initial_state(params, actor_batch_size)
+    actor_core = actor_core_lib.batched_recurrent_to_actor_core(
+      policy,
+      initial_state,
+      extras_recurrent_state=store_lstm_state)
     variable_client = variable_utils.VariableClient(learner, '')
     actor = actors.GenericActor(
         actor_core, key_actor, variable_client, reverb_replay.adder)
@@ -132,8 +153,8 @@ class R2D2(agent.Agent):
     super().__init__(
         actor=actor,
         learner=learner,
-        min_observations=max(config.batch_size, config.min_replay_size),
-        observations_per_step=config.batch_size / config.samples_per_insert,
+        min_observations=max(batch_size, min_replay_size),
+        observations_per_step=batch_size / samples_per_insert,
     )
 
 

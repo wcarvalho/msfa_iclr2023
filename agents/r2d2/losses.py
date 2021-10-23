@@ -13,6 +13,9 @@ import reverb
 import rlax
 import tree
 
+
+from agents.r2d2.networks import R2D2Network
+
 @dataclasses.dataclass
 class R2D2Learning(learning_lib.LossFn):
   """R2D2 Learning."""
@@ -20,16 +23,18 @@ class R2D2Learning(learning_lib.LossFn):
   huber_loss_parameter: float = 1. # TODO: check
 
   # More than DQN
-  burn_in_length: int
-  sequence_length: int
   max_replay_size: int = 1_000_000
   store_lstm_state: bool = True
   max_priority_weight: float = 0.9
   n_step: int = 5
+  importance_sampling_exponent: float = 0.2
+
+  burn_in_length: int = None
+  sequence_length: int = None
 
   def __call__(
       self,
-      network: networks_lib.FeedForwardNetwork,
+      network: R2D2Network,
       params: networks_lib.Params,
       target_params: networks_lib.Params,
       batch: reverb.ReplaySample,
@@ -60,6 +65,7 @@ class R2D2Learning(learning_lib.LossFn):
       core_state = jax.tree_map(lambda x: x[0], extra['core_state'])
     else:
       core_state = network.initial_state(batch_size)
+      import ipdb; ipdb.set_trace()
 
 
     # Before training, optionally unroll the LSTM for a fixed warmup period.
