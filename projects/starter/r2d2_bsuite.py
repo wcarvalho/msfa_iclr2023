@@ -93,7 +93,7 @@ def main(_):
 
   # Run the environment loop.
   loop = acme.EnvironmentLoop(environment, actor)
-  loop.run(num_episodes=100*environment.bsuite_num_episodes)  # pytype: disable=attribute-error
+  loop.run(num_episodes=100*environment.bsuite_num_episodes) # pytype: disable=attribute-error
 
 
 if __name__ == '__main__':
