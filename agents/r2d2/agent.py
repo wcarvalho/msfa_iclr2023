@@ -34,9 +34,11 @@ import optax
 import rlax
 
 from agents.r2d2 import losses
-from agents.r2d2 import config
+# from agents.r2d2 import config
 from agents.r2d2 import actor_core as actor_core_lib
+# from agents.r2d2 import learning
 from agents.r2d2.networks import R2D2Network
+
 
 class R2D2(agent.Agent):
   """DQN agent.
@@ -51,15 +53,15 @@ class R2D2(agent.Agent):
       self,
       environment_spec: specs.EnvironmentSpec,
       network: R2D2Network,
-      burn_in_length: int,
-      trace_length: int,
-      replay_period: int,
-      batch_size: int = 256,
+      burn_in_length: int = 40,
+      trace_length: int = 80,
+      replay_period: int = 40,
+      batch_size: int = 16,
       prefetch_size: int = 4,
       target_update_period: int = 100,
       samples_per_insert: float = 0.5,
       min_replay_size: int = 1000,
-      max_replay_size: int = 1000000,
+      max_replay_size: int = 100000,
       importance_sampling_exponent: float = 0.2,
       priority_exponent: float = 0.6,
       max_gradient_norm: float = 40, # TODO: doublecheck
@@ -84,6 +86,7 @@ class R2D2(agent.Agent):
     reverb_replay = replay.make_reverb_prioritized_sequence_replay(
         environment_spec=environment_spec,
         extra_spec=extra_spec,
+        prefetch_size=prefetch_size,
         batch_size=batch_size,
         max_replay_size=max_replay_size,
         min_replay_size=min_replay_size,

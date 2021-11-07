@@ -1,14 +1,21 @@
 """Runs DQN on bsuite locally."""
 
-import numpy as np
-from functools import partial
 from absl import app
 from absl import flags
+
+import jax
+import numpy as np
+import jax.numpy as jnp
+from typing import Optional, Tuple
+
+
 import acme
+from acme.wrappers import observation_action_reward
 from acme.agents.jax import actor_core as actor_core_lib
 from acme import specs
 from acme import wrappers
 from acme.jax import networks as networks_lib
+from acme.jax.networks import base
 import bsuite
 import haiku as hk
 import rlax
@@ -24,7 +31,41 @@ flags.DEFINE_boolean('overwrite', True, 'Whether to overwrite csv results.')
 
 FLAGS = flags.FLAGS
 
+class SimpleRecurrentQNetwork(hk.RNNCore):
 
+  def __init__(self, num_actions: int):
+    super().__init__(name='r2d2_atari_network')
+    self._embed = hk.Sequential(
+        [hk.Flatten(),
+         hk.nets.MLP([50, 50])])
+    self._core = hk.LSTM(20)
+    self._head = hk.nets.MLP([num_actions])
+    self._num_actions = num_actions
+
+  def __call__(
+      self,
+      inputs: jnp.ndarray,  # [B, ...]
+      state: hk.LSTMState  # [B, ...]
+  ) -> Tuple[base.QValues, hk.LSTMState]:
+    embeddings = self._embed(inputs)  # [B, D+A+1]
+    core_outputs, new_state = self._core(embeddings, state)
+    q_values = self._head(core_outputs)
+    return q_values, new_state
+
+  def initial_state(self, batch_size: int, **unused_kwargs) -> hk.LSTMState:
+    return self._core.initial_state(batch_size)
+
+  def unroll(
+      self,
+      inputs: jnp.ndarray,  # [T, B, ...]
+      state: hk.LSTMState  # [T, ...]
+  ) -> Tuple[base.QValues, hk.LSTMState]:
+    """Efficient unroll that applies torso, core, and duelling mlp in one pass."""
+
+    embeddings = hk.BatchApply(self._embed)(inputs)  # [T, B, D+A+1]
+    core_outputs, new_states = hk.static_unroll(self._core, embeddings, state)
+    q_values = hk.BatchApply(self._head)(core_outputs)  # [T, B, A]
+    return q_values, new_states
 
 def main(_):
 
@@ -40,16 +81,16 @@ def main(_):
 
 
   # Create pure functions
-  def forward_fn(x, s):
-    model = networks_lib.R2D2AtariNetwork(spec.actions.num_values)
+  def forward_fn(x : jnp.ndarray, s : hk.LSTMState):
+    model = SimpleRecurrentQNetwork(spec.actions.num_values)
     return model(x, s)
 
   def initial_state_fn(batch_size: Optional[int] = None):
-    model = networks_lib.R2D2AtariNetwork(spec.actions.num_values)
+    model = SimpleRecurrentQNetwork(spec.actions.num_values)
     return model.initial_state(batch_size)
 
-  def unroll_fn(inputs, state):
-    model = networks_lib.R2D2AtariNetwork(spec.actions.num_values)
+  def unroll_fn(inputs : jnp.ndarray, state : hk.LSTMState):
+    model = SimpleRecurrentQNetwork(spec.actions.num_values)
     return model.unroll(inputs, state)
 
   # We pass pure, Haiku-agnostic functions to the agent.
@@ -65,10 +106,14 @@ def main(_):
 
   def init(key):
     dummy_obs = utils.add_batch_dim(utils.zeros_like(spec.observations))
+    # for time
+    dummy_obs = utils.add_batch_dim(dummy_obs)
+    # dummy_obs = add_time(dummy_obs)
     # TODO: params are not returned, only initial_params
     # so currently don't support learning params for intialization
     params = initial_state_fn_hk.init(key)
-    initial_state = initial_state_fn_hk.apply(params)
+    batch_size = 1
+    initial_state = initial_state_fn_hk.apply(params, batch_size)
     key, key_initial_state = jax.random.split(key)
     initial_params = unroll_fn_hk.init(key, dummy_obs, initial_state)
     return initial_params
@@ -85,9 +130,12 @@ def main(_):
   actor = R2D2(
       environment_spec=spec,
       network=network,
-      burn_in_length=4,
-      trace_length=4,
+      min_replay_size=100,
+      max_replay_size=10000,
+      # batch_size=2,
       replay_period=4,
+      trace_length=4,
+      burn_in_length=4,
   )
 
 

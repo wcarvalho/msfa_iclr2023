@@ -4,20 +4,61 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - python==3.7
+  - python==3.9
   - pip:
     - pip
-    - reverb
+    - gpustat
     - setuptools
+    - ipdb
     - wheel
-    - rlax
+    - numpy
+    # near-nightly TF required for launchpad (GH-18)
+    # TODO: Clean up version after stable releases.
+    # - tf-nightly==2.8.0.dev20211102
+    - dm-reverb-nightly==0.5.0.dev20211102
+    - chex
+
+    # custom
     - tensorflow-probability==0.13
-    - 'dm-acme'
-    - 'dm-acme[jax]'
-    - 'dm-launchpad'
-    - 'dm-acme[envs]'
+
+    # copied from acme
+    - trfl==1.2.0
+    - tfp-nightly==0.14.0.dev20210818
+    - absl-py==0.12.0
+    - atari-py==0.2.9
+    - bsuite==0.3.5
+    - dm-control==0.0.364896371
+    - dm-env==1.5
+    - dm-haiku==0.0.4
+    - dm-launchpad-nightly==0.3.0.dev20210818
+    - dm-reverb==0.4.0
+    - dm-sonnet==2.0.0
+    - dm-tree==0.1.6
+    - flax==0.3.5
+    - jax==0.2.19
+    - jaxlib==0.1.70
+    - keras==2.6.0
+    - optax==0.0.9
+    - Pillow==8.3.2
+    - pytype==2021.8.11
+    - pytest-xdist==2.3.0
+    - rlax==0.0.4
+    - tensorflow-datasets==4.4.0
+    - tensorflow-estimator==2.6.0
+    - tensorflow==2.6.0
+    # JAX: see README.md
+
+
+    # - tensorflow-probability
+    # - 'dm-acme'
+    # - 'dm-acme[jax]'
+    # - 'dm-acme[tensorflow]'
+    # - 'dm-acme[launchpad]'
+    # # - 'dm-launchpad'
+    # - 'dm-acme[envs]'
 
 
 
-# conda env create -f cpu.yaml
+# conda env create -f gpu.yaml
+# conda env update --file gpu.yaml --prune
 # conda remove --name acmejax --all

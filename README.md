@@ -34,6 +34,12 @@ export PYTHONPATH=$PYTHONPATH:$HOME/projects/rljax/
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/
 
 sshfs deeplearn9:/home/wcarvalh/projects/rljax/ rlax-brain
+
+tmux kill-session -t launchpad
+
+
+--lp_launch_type=local_mp
+
 ```
 
 

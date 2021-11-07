@@ -21,7 +21,7 @@ RecurrentStateInitFn = Callable[[networks.PRNGKey], networks.Params]
 
 
 @dataclasses.dataclass
-class R2D2Network:
+class R2D2Network(networks.FeedForwardNetwork):
   """Pure functions representing R2D2's recurrent network components.
 
   Attributes:

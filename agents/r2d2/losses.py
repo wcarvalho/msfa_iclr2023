@@ -7,6 +7,8 @@ from acme.agents.jax.dqn import learning_lib
 from acme.jax import networks as networks_lib
 from acme.jax import utils as jax_utils
 
+import functools
+import haiku as hk
 import jax
 import jax.numpy as jnp
 import reverb
@@ -32,6 +34,7 @@ class R2D2Learning(learning_lib.LossFn):
   burn_in_length: int = None
   sequence_length: int = None
 
+
   def __call__(
       self,
       network: R2D2Network,
@@ -42,14 +45,11 @@ class R2D2Learning(learning_lib.LossFn):
   ) -> Tuple[jnp.DeviceArray, learning_lib.LossExtra]:
     """Calculate a loss on a single batch of data."""
     del key
-
-
+    import ipdb; ipdb.set_trace()
     # ======================================================
-    # process data
+    # load data
     # ======================================================
     data = jax_utils.batch_to_sequence(batch.data)
-    keys, probs, *_ = batch.info
-
 
     observations, actions, rewards, discounts, extra = (data.observation,
                                                         data.action,
@@ -59,62 +59,79 @@ class R2D2Learning(learning_lib.LossFn):
     unused_sequence_length, batch_size = actions.shape
 
     # Get initial state for the LSTM, either from replay or simply use zeros.
-    if self._store_lstm_state:
+    if self.store_lstm_state:
       import ipdb; ipdb.set_trace()
-      # core_state = tree.map_structure(lambda x: x[0], extra['core_state'])
       core_state = jax.tree_map(lambda x: x[0], extra['core_state'])
     else:
-      core_state = network.initial_state(batch_size)
-      import ipdb; ipdb.set_trace()
+      core_state = network.initial_state(params, batch_size)
+    target_core_state = core_state
 
-
+    # ======================================================
+    # Apply Networks
+    # ======================================================
     # Before training, optionally unroll the LSTM for a fixed warmup period.
-    burn_in_obs = jax.tree_map(lambda x: x[:self._burn_in_length],
+    burn_in_obs = jax.tree_map(lambda x: x[:self.burn_in_length],
                                      observations)
-    burn_in_fn = lambda o, s: network.unroll(o, s, self.burn_in_length)
-    _, core_state = burn_in_fn(burn_in_obs, core_state)
-    _, target_core_state = burn_in_fn(burn_in_obs, target_core_state)
+    _, core_state = network.unroll(params, burn_in_obs, core_state)
+    _, target_core_state = network.unroll(target_params, burn_in_obs, target_core_state)
 
     # Don't train on the warmup period.
     observations, actions, rewards, discounts, extra = jax.tree_map(
-        lambda x: x[self._burn_in_length:],
+        lambda x: x[self.burn_in_length:],
         (observations, actions, rewards, discounts, extra))
 
-    # ======================================================
-    # same as gradient tape
-    # ======================================================
+
     # Forward pass.
     # Unroll the online and target Q-networks on the sequences.
-    q_values, _ = self._network.unroll(observations, core_state,
-                                       self._sequence_length)
-    target_q_values, _ = self._target_network.unroll(observations,
-                                                     target_core_state,
-                                                     self._sequence_length)
+    q_values, _ = network.unroll(params, observations, core_state)
+    target_q_values, _ = network.unroll(target_params, observations, target_core_state)
 
-    q_tm1 = network.apply(params, transitions.observation)
-    q_t_value = network.apply(target_params, transitions.next_observation)
-    q_t_selector = network.apply(params, transitions.next_observation)
 
-    # Cast and clip rewards.
-    d_t = (transitions.discount * self.discount).astype(jnp.float32)
-    r_t = jnp.clip(transitions.reward, -self.max_abs_reward,
-                   self.max_abs_reward).astype(jnp.float32)
+    # ======================================================
+    # Prepare and align time-series data
+    # ======================================================
+    rewards = jax.tree_map(lambda x: x[:-1], rewards)
+    discounts = jax.tree_map(lambda x: x[:-1], discounts)
+    a_tm1 = jax.tree_map(lambda x: x[:-1], actions)
+    a_t = jax.tree_map(lambda x: x[1:], actions)
+    q_tm1 = jax.tree_map(lambda x: x[:-1], q_values)
+    target_q_t=jax.tree_map(lambda x: x[1:], target_q_values)
 
-    # Compute double Q-learning n-step TD-error.
-    batch_error = jax.vmap(rlax.double_q_learning)
-    td_error = batch_error(q_tm1, transitions.action, r_t, d_t, q_t_value,
-                           q_t_selector)
-    batch_loss = rlax.huber_loss(td_error, self.huber_loss_parameter)
 
-    # Importance weighting.
-    sample_info = sample.info
-    importance_weights = (1. / probs).astype(jnp.float32)
+    # ======================================================
+    # Compute the transformed n-step loss.
+    # ======================================================
+    batch_error = jax.vmap(functools.partial(
+            rlax.transformed_n_step_q_learning,
+            n=self.n_step,
+            tx_pair=rlax.SIGNED_HYPERBOLIC_PAIR))
+
+    td_error = batch_error(
+        q_tm1=q_tm1,
+        a_tm1=a_tm1,
+        target_q_t=target_q_t,
+        a_t=a_t,
+        r_t=rewards,
+        discount_t=discounts,
+    )
+
+
+    # Sum over time dimension.
+    batch_loss = 0.5 * jnp.sum(jnp.square(td_error), axis=0)
+
+
+    # Calculate importance weights and use them to scale the loss.
+    keys, probs, *_ = batch.info
+    importance_weights = 1. / (self.max_replay_size * probs)  # [T, B]
+    importance_weights = importance_weights.astype(jnp.float32)
     importance_weights **= self.importance_sampling_exponent
     importance_weights /= jnp.max(importance_weights)
-
     # Reweight.
-    loss = jnp.mean(importance_weights * batch_loss)  # []
+    loss = jnp.mean(batch_loss*importance_weights)  # []
+
+    import ipdb; ipdb.set_trace()
     reverb_update = learning_lib.ReverbUpdate(
         keys=keys, priorities=jnp.abs(td_error).astype(jnp.float64))
     extra = learning_lib.LossExtra(metrics={}, reverb_update=reverb_update)
+    import ipdb; ipdb.set_trace()
     return loss, extra

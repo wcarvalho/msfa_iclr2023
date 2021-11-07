@@ -8,17 +8,14 @@ else
 fi
 
 conda env create --force -f $arch.yaml
-
 eval "$(conda shell.bash hook)"
-
 conda activate acmejax
 
 # CHANGE
-jax_cuda=jax[cuda102]
+pip install jax[cuda11_cudnn82] -f https://storage.googleapis.com/jax-releases/jax_releases.html
 
-if [[ $arch = 'gpu' ]]; then
-  pip install --upgrade $jax_cuda -f https://storage.googleapis.com/jax-releases/jax_releases.html
-fi
+pip install dm-acme
+pip install dm-acme[envs]
 
 # TEST
 python projects/starter/dqn_bsuite.py
