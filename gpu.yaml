@@ -12,13 +12,13 @@ dependencies:
     - ipdb
     - wheel
     - numpy
+    - gym[atari]
     # near-nightly TF required for launchpad (GH-18)
     # TODO: Clean up version after stable releases.
     # - tf-nightly==2.8.0.dev20211102
     - dm-reverb-nightly==0.5.0.dev20211102
     - chex
 
-    # custom
     - tensorflow-probability==0.13
 
     # copied from acme
@@ -47,15 +47,6 @@ dependencies:
     - tensorflow-estimator==2.6.0
     - tensorflow==2.6.0
     # JAX: see README.md
-
-
-    # - tensorflow-probability
-    # - 'dm-acme'
-    # - 'dm-acme[jax]'
-    # - 'dm-acme[tensorflow]'
-    # - 'dm-acme[launchpad]'
-    # # - 'dm-launchpad'
-    # - 'dm-acme[envs]'
 
 
 

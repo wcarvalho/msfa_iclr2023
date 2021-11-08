@@ -27,6 +27,10 @@ git submodule add https://github.com/deepmind/acme libs/acme
 
 ## Servers
 
+For multiple GPUS, use `XLA_PYTHON_CLIENT_PREALLOCATE=false` or `XLA_PYTHON_CLIENT_MEM_FRACTION=0.24`
+
+
+
 ### Brain
 ```bash
 

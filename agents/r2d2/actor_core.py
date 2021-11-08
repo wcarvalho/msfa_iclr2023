@@ -49,8 +49,8 @@ def batched_recurrent_to_actor_core(
     recurrent_policy: RecurrentPolicy,
     initial_core_state: RecurrentState,
     extras_recurrent_state: bool = True,
-) -> ActorCore[SimpleActorCoreRecurrentState[RecurrentState], Mapping[
-    str, jnp.ndarray]]:
+  ) -> ActorCore[SimpleActorCoreRecurrentState[RecurrentState],
+                 Mapping[str, jnp.ndarray]]:
   """Returns ActorCore for a recurrent policy."""
   def select_action(params: networks_lib.Params,
                     observation: networks_lib.Observation,
@@ -70,7 +70,7 @@ def batched_recurrent_to_actor_core(
 
   def get_extras(
       state: SimpleActorCoreRecurrentState[RecurrentState]
-  ) -> Mapping[str, jnp.ndarray]:
+    ) -> Mapping[str, jnp.ndarray]:
     if extras_recurrent_state:
       return {'core_state': state.recurrent_state}
     else:

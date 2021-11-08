@@ -106,12 +106,10 @@ class R2D2(agent.Agent):
     key_learner, key_actor = jax.random.split(jax.random.PRNGKey(seed))
 
     # The learner updates the parameters (and initializes them).
-    sequence_length = burn_in_length + trace_length + 1
     loss_fn = losses.R2D2Learning(
         discount=discount,
         importance_sampling_exponent=importance_sampling_exponent,
         burn_in_length=burn_in_length,
-        sequence_length=sequence_length,
         max_replay_size=max_replay_size,
         store_lstm_state=store_lstm_state,
         max_priority_weight=max_priority_weight,

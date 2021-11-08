@@ -32,7 +32,6 @@ class R2D2Learning(learning_lib.LossFn):
   importance_sampling_exponent: float = 0.2
 
   burn_in_length: int = None
-  sequence_length: int = None
 
 
   def __call__(
@@ -45,7 +44,6 @@ class R2D2Learning(learning_lib.LossFn):
   ) -> Tuple[jnp.DeviceArray, learning_lib.LossExtra]:
     """Calculate a loss on a single batch of data."""
     del key
-    import ipdb; ipdb.set_trace()
     # ======================================================
     # load data
     # ======================================================
@@ -60,7 +58,6 @@ class R2D2Learning(learning_lib.LossFn):
 
     # Get initial state for the LSTM, either from replay or simply use zeros.
     if self.store_lstm_state:
-      import ipdb; ipdb.set_trace()
       core_state = jax.tree_map(lambda x: x[0], extra['core_state'])
     else:
       core_state = network.initial_state(params, batch_size)
@@ -129,9 +126,7 @@ class R2D2Learning(learning_lib.LossFn):
     # Reweight.
     loss = jnp.mean(batch_loss*importance_weights)  # []
 
-    import ipdb; ipdb.set_trace()
     reverb_update = learning_lib.ReverbUpdate(
         keys=keys, priorities=jnp.abs(td_error).astype(jnp.float64))
     extra = learning_lib.LossExtra(metrics={}, reverb_update=reverb_update)
-    import ipdb; ipdb.set_trace()
     return loss, extra

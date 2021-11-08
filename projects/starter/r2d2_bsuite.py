@@ -21,8 +21,8 @@ import haiku as hk
 import rlax
 from acme.jax import utils
 
+from agents import r2d2
 from agents.r2d2.agent import R2D2
-from agents.r2d2.networks import R2D2Network
 
 # Bsuite flags
 flags.DEFINE_string('bsuite_id', 'catch/0', 'Bsuite id.')
@@ -79,63 +79,18 @@ def main(_):
   environment = wrappers.SinglePrecisionWrapper(raw_environment)
   spec = specs.make_environment_spec(environment)
 
-
-  # Create pure functions
-  def forward_fn(x : jnp.ndarray, s : hk.LSTMState):
-    model = SimpleRecurrentQNetwork(spec.actions.num_values)
-    return model(x, s)
-
-  def initial_state_fn(batch_size: Optional[int] = None):
-    model = SimpleRecurrentQNetwork(spec.actions.num_values)
-    return model.initial_state(batch_size)
-
-  def unroll_fn(inputs : jnp.ndarray, state : hk.LSTMState):
-    model = SimpleRecurrentQNetwork(spec.actions.num_values)
-    return model.unroll(inputs, state)
-
-  # We pass pure, Haiku-agnostic functions to the agent.
-  forward_fn_hk = hk.without_apply_rng(hk.transform(
-      forward_fn,
-      apply_rng=True))
-  unroll_fn_hk = hk.without_apply_rng(hk.transform(
-      unroll_fn,
-      apply_rng=True))
-  initial_state_fn_hk = hk.without_apply_rng(hk.transform(
-      initial_state_fn,
-      apply_rng=True))
-
-  def init(key):
-    dummy_obs = utils.add_batch_dim(utils.zeros_like(spec.observations))
-    # for time
-    dummy_obs = utils.add_batch_dim(dummy_obs)
-    # dummy_obs = add_time(dummy_obs)
-    # TODO: params are not returned, only initial_params
-    # so currently don't support learning params for intialization
-    params = initial_state_fn_hk.init(key)
-    batch_size = 1
-    initial_state = initial_state_fn_hk.apply(params, batch_size)
-    key, key_initial_state = jax.random.split(key)
-    initial_params = unroll_fn_hk.init(key, dummy_obs, initial_state)
-    return initial_params
-
-
-  network = R2D2Network(
-      init=init, # create params
-      apply=forward_fn_hk.apply, # call
-      unroll=unroll_fn_hk.apply, # unroll
-      initial_state=initial_state_fn_hk.apply, # initial_state
-  )
+  network = r2d2.make_network(spec, SimpleRecurrentQNetwork)
 
   # Create actor
   actor = R2D2(
       environment_spec=spec,
       network=network,
-      min_replay_size=100,
+      min_replay_size=1,
       max_replay_size=10000,
       # batch_size=2,
-      replay_period=4,
-      trace_length=4,
-      burn_in_length=4,
+      # replay_period=4,
+      # trace_length=4,
+      burn_in_length=10,
   )
 
 
