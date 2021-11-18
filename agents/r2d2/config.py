@@ -31,20 +31,20 @@ class R2D2Config:
 
   # Learning rule
   learning_rate: float = 1e-3  # Learning rate for Adam optimizer.
-  discount: float = 0.99  # Discount rate applied to value per timestep.
+  discount: float = 0.997  # Discount rate applied to value per timestep.
   n_step: int = 5  # N-step TD learning.
   target_update_period: int = 100  # Update target network every period.
-  max_gradient_norm: float = np.inf  # For gradient clipping.
+  max_gradient_norm: float = 80.0  # For gradient clipping.
 
   # Replay options
-  batch_size: int = 256  # Number of transitions per batch.
+  batch_size: int = 32  # Number of transitions per batch.
   min_replay_size: int = 1_000  # Minimum replay size.
   max_replay_size: int = 1_000_000  # Maximum replay size.
   replay_table_name: str = adders_reverb.DEFAULT_PRIORITY_TABLE
   importance_sampling_exponent: float = 0.2  # Importance sampling for replay.
   priority_exponent: float = 0.6  # Priority exponent for replay.
   prefetch_size: int = 4  # Prefetch size for reverb replay performance.
-  samples_per_insert: float = 0.5  # Ratio of learning samples to insert.
+  samples_per_insert: float = 32.0  # Ratio of learning samples to insert.
   # Rate to be used for the SampleToInsertRatio rate limitter tolerance.
   # See a formula in make_replay_tables for more details.
   samples_per_insert_tolerance_rate: float = 0.1
@@ -55,8 +55,8 @@ class R2D2Config:
   # -----------------------
   # R2D2 specific (as opposed to DQN)
   # -----------------------
-  burn_in_length: int = 40
-  trace_length: int = 80
+  burn_in_length: int = 40  # warm-up
+  trace_length: int = 80  # length in batch
   replay_period: int = 40
-  store_lstm_state: bool = False
+  store_lstm_state: bool = True
   max_priority_weight: float = 0.9

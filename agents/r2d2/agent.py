@@ -89,7 +89,7 @@ class R2D2(agent.Agent):
         prefetch_size=prefetch_size,
         batch_size=batch_size,
         max_replay_size=max_replay_size,
-        min_replay_size=min_replay_size,
+        min_replay_size=1,
         priority_exponent=priority_exponent,
         # discount=discount,
         burn_in_length=burn_in_length,
@@ -151,11 +151,18 @@ class R2D2(agent.Agent):
     actor = actors.GenericActor(
         actor_core, key_actor, variable_client, reverb_replay.adder)
 
+    # -----------------------
+    # settings
+    # -----------------------
+    min_observations = replay_period * max(batch_size, min_replay_size)
+    observations_per_step = (
+        float(replay_period * batch_size) / samples_per_insert)
+
     super().__init__(
         actor=actor,
         learner=learner,
-        min_observations=max(batch_size, min_replay_size),
-        observations_per_step=batch_size / samples_per_insert,
+        min_observations=min_observations,
+        observations_per_step=observations_per_step,
     )
 
 

@@ -15,10 +15,12 @@ import haiku as hk
 import numpy as np
 import jax
 import jax.numpy as jnp
+import rlax
 
 
 # Only simple observations & discrete action spaces for now.
 Observation = jnp.ndarray
+Action = int
 
 # initializations
 RecurrentStateInitFn = Callable[[networks.PRNGKey], networks.Params]
@@ -56,12 +58,13 @@ def apply_policy_and_sample(
   """Returns the recurrent policy with epsilon-greedy exploration."""
   def apply_and_sample(params: networks.Params,
                        key: networks.PRNGKey,
-                       observation: networks.Observation
+                       observation: networks.Observation,
+                       state: hk.LSTMState
                        ) -> networks.Action:
     """Returns an action for the given observation."""
-    action_values = network.apply(params, observation)
+    action_values, next_state = network.apply(params, observation, state)
     actions = rlax.epsilon_greedy(epsilon).sample(key, action_values)
-    return actions.astype(jnp.int32)
+    return actions.astype(jnp.int32), next_state
 
   return apply_and_sample
 
@@ -71,14 +74,16 @@ def make_network(
     archCls : hk.RNNCore) -> R2D2Network:
   """Creates networks used by the agent."""
 
-  num_dimensions = np.prod(spec.actions.shape, dtype=int)
+  num_dimensions = spec.actions.num_values
 
   # -----------------------
   # Pure functions
   # -----------------------
   def apply_fn(x : jnp.ndarray, s : hk.LSTMState):
     model = archCls(num_dimensions)
-    return model(x, s)
+    action = model(utils.add_batch_dim(x),
+                 utils.add_batch_dim(s))
+    return jax.tree_map(lambda a: a[0], action)
 
   def initial_state_fn(batch_size: Optional[int] = None):
     model = archCls(num_dimensions)

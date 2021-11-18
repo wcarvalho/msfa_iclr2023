@@ -26,7 +26,7 @@ from acme.jax.layouts import local_layout
 from acme.utils import counting
 from acme.utils import loggers
 import dm_env
-
+import jax
 
 from agents.r2d2 import builder
 from agents.r2d2 import networks
@@ -49,22 +49,26 @@ class DistributedR2D2(distributed_layout.DistributedLayout):
       max_number_of_steps: Optional[int] = None,
       log_to_bigtable: bool = False,
       log_every: float = 10.0,
-      normalize_input: bool = True,
+      normalize_input: bool = False,
   ):
     logger_fn = functools.partial(loggers.make_default_logger,
                                   'learner', log_to_bigtable,
                                   time_delta=log_every, asynchronous=True,
                                   serialize_fn=utils.fetch_devicearray,
                                   steps_key='learner_steps')
-    r2d2_builder = builder.R2D2Builder(config, logger_fn=logger_fn)
+    r2d2_builder = builder.R2D2Builder(
+      config=config,
+      core_state_spec=get_core_state_spec(network, config.seed),
+      logger_fn=logger_fn)
     if normalize_input:
+      raise RuntimeError("Never got it working with time-series")
       environment_spec = specs.make_environment_spec(environment_factory(False))
       # One batch dimension: [batch_size, ...]
       batch_dims = (0,)
       r2d2_builder = normalization.NormalizationBuilder(
           r2d2_builder,
           environment_spec,
-          is_sequence_based=False,
+          is_sequence_based=True,
           batch_dims=batch_dims)
     eval_policy_factory = (
         lambda net: networks.apply_policy_and_sample(net, config.eval_epsilon))
@@ -73,7 +77,7 @@ class DistributedR2D2(distributed_layout.DistributedLayout):
         environment_factory=lambda: environment_factory(False),
         network_factory=network_factory,
         builder=r2d2_builder,
-        policy_network=networks.apply_policy_and_sample,
+        policy_network=network,
         evaluator_factories=[
             distributed_layout.default_evaluator(
                 environment_factory=lambda: environment_factory(True),
@@ -101,7 +105,7 @@ class R2D2(local_layout.LocalLayout):
       network: networks.R2D2Network,
       config: r2d2_config.R2D2Config,
       seed: int,
-      normalize_input: bool = True,
+      normalize_input: bool = False,
       counter: Optional[counting.Counter] = None,
   ):
     min_replay_size = config.min_replay_size
@@ -112,22 +116,38 @@ class R2D2(local_layout.LocalLayout):
     # by the following two lines.
     config.samples_per_insert_tolerance_rate = float('inf')
     config.min_replay_size = 1
-    r2d2_builder = builder.R2D2Builder(config)
+    r2d2_builder = builder.R2D2Builder(
+      config=config,
+      core_state_spec=get_core_state_spec(network, config.seed),
+      )
     if normalize_input:
+      raise RuntimeError("Never got it working with time-series")
       # One batch dimension: [batch_size, ...]
       batch_dims = (0,)
       r2d2_builder = normalization.NormalizationBuilder(
-          r2d2_builder, spec, is_sequence_based=False, batch_dims=batch_dims)
+          r2d2_builder, spec, is_sequence_based=True, batch_dims=batch_dims)
     self.builder = r2d2_builder
     super().__init__(
         seed=seed,
         environment_spec=spec,
         builder=r2d2_builder,
-        networks=network,
-        policy_network=networks.apply_policy_and_sample(network),
+        networks=network, # for learner
+        policy_network=network, # for actor
         batch_size=config.batch_size,
         samples_per_insert=config.samples_per_insert,
         min_replay_size=min_replay_size,
         num_sgd_steps_per_step=config.num_sgd_steps_per_step,
         counter=counter,
     )
+
+
+def get_core_state_spec(network : networks.R2D2Network, seed : int):
+  """Get spec to be used for replay buffer.
+    parameters will be thrown away.
+  """
+  key, key_initial_state = jax.random.split(
+    jax.random.PRNGKey(seed))
+  params = network.init_initial_state(key_initial_state)
+  return {
+      'core_state': network.initial_state(params),
+  }

@@ -68,7 +68,7 @@ def main(_):
   actor = dqn.DQN(
       environment_spec=environment_spec,
       network=network,
-      batch_size=8,
+      # batch_size=8,
   )
 
 

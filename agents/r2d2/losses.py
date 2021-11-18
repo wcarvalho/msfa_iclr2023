@@ -22,7 +22,6 @@ from agents.r2d2.networks import R2D2Network
 class R2D2Learning(learning_lib.LossFn):
   """R2D2 Learning."""
   discount: float = 0.99
-  huber_loss_parameter: float = 1. # TODO: check
 
   # More than DQN
   max_replay_size: int = 1_000_000
@@ -67,10 +66,11 @@ class R2D2Learning(learning_lib.LossFn):
     # Apply Networks
     # ======================================================
     # Before training, optionally unroll the LSTM for a fixed warmup period.
-    burn_in_obs = jax.tree_map(lambda x: x[:self.burn_in_length],
-                                     observations)
-    _, core_state = network.unroll(params, burn_in_obs, core_state)
-    _, target_core_state = network.unroll(target_params, burn_in_obs, target_core_state)
+    if self.burn_in_length:
+      burn_in_obs = jax.tree_map(lambda x: x[:self.burn_in_length],
+                                       observations)
+      _, core_state = network.unroll(params, burn_in_obs, core_state)
+      _, target_core_state = network.unroll(target_params, burn_in_obs, target_core_state)
 
     # Don't train on the warmup period.
     observations, actions, rewards, discounts, extra = jax.tree_map(
@@ -109,9 +109,11 @@ class R2D2Learning(learning_lib.LossFn):
         target_q_t=target_q_t,
         a_t=a_t,
         r_t=rewards,
-        discount_t=discounts,
+        discount_t=discounts*self.discount,
     )
-
+    # tx/inv_tx may result in numerical instabilities so mask any NaNs.
+    finite_mask = jnp.isfinite(td_error)
+    td_error = jnp.where(finite_mask, td_error, jnp.zeros_like(td_error))
 
     # Sum over time dimension.
     batch_loss = 0.5 * jnp.sum(jnp.square(td_error), axis=0)
@@ -123,10 +125,24 @@ class R2D2Learning(learning_lib.LossFn):
     importance_weights = importance_weights.astype(jnp.float32)
     importance_weights **= self.importance_sampling_exponent
     importance_weights /= jnp.max(importance_weights)
+
     # Reweight.
     loss = jnp.mean(batch_loss*importance_weights)  # []
 
     reverb_update = learning_lib.ReverbUpdate(
-        keys=keys, priorities=jnp.abs(td_error).astype(jnp.float64))
+        keys=keys,
+        priorities=compute_priority(
+          errors=td_error,
+          alpha=self.max_priority_weight).astype(jnp.float64)
+        )
     extra = learning_lib.LossExtra(metrics={}, reverb_update=reverb_update)
     return loss, extra
+
+
+def compute_priority(errors: jnp.ndarray, alpha: float):
+  """Compute priority as mixture of max and mean sequence errors."""
+  abs_errors = jnp.abs(errors)
+  mean_priority = jnp.mean(abs_errors, axis=0)
+  max_priority = jnp.max(abs_errors, axis=0)
+
+  return alpha * max_priority + (1 - alpha) * mean_priority
