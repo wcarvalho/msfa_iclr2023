@@ -2,34 +2,33 @@ import ipdb
 import cv2
 import numpy as np
 from envs.babyai_kitchen.levelgen import KitchenLevel
-from gym_minigrid.wrappers import RGBImgPartialObsWrapper
+from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, RGBImgFullyObsWrapper
 import gym_minigrid.window
 
 
 def main():
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--level', help='BabyAI level', default='GoToLocal')
     parser.add_argument('--num-missions', help='# of unique missions', default=10)
     parser.add_argument('--num-distractors', type=int, default=0)
     parser.add_argument('--room-size', type=int, default=8)
-    parser.add_argument('--agent-view-size', type=int, default=3)
+    parser.add_argument('--agent-view-size', type=int, default=8)
     parser.add_argument('--render-mode', type=str, default='human')
-    parser.add_argument('--task-kinds', type=str, default=['cook', 'clean', 'slice'], nargs="+")
+    parser.add_argument('--task-kinds', type=str, default=[
+      'cook', 'clean', 'slice'], nargs="+")
 
     parser.add_argument('--objects', type=str, default=[], nargs="+")
-    parser.add_argument('--random-object-state', type=int, default=1)
-    parser.add_argument('--state-yaml', type=str, default=None)
+    parser.add_argument('--random-object-state', type=int, default=0)
     parser.add_argument('--num-rows', type=int, default=1)
     parser.add_argument('--tile-size', type=int, default=12)
     parser.add_argument('--steps', type=int, default=1)
+    parser.add_argument('--partial-obs', type=int, default=1)
     parser.add_argument('--show-both', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
     parser.add_argument('--check', type=int, default=1)
     parser.add_argument('--verbosity', type=int, default=2)
     args = parser.parse_args()
 
-    # env_class = getattr(iclr19_levels, "Level_%s" % args.level)
 
     kwargs={}
 
@@ -50,7 +49,10 @@ def main():
         seed=args.seed,
         **kwargs)
     # mimic settings during training
-    env = RGBImgPartialObsWrapper(env, tile_size=args.tile_size)
+    if args.partial_obs:
+      env = RGBImgPartialObsWrapper(env, tile_size=args.tile_size)
+    else:
+      env = RGBImgFullyObsWrapper(env, tile_size=args.tile_size)
     render_kwargs = {'tile_size' : env.tile_size}
 
     window = gym_minigrid.window.Window('kitchen')
