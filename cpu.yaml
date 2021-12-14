@@ -5,6 +5,7 @@ channels:
 dependencies:
   - pip
   - python==3.7
+  - opencv
   - pip:
     - jax
     - pip
@@ -16,6 +17,7 @@ dependencies:
     - 'dm-acme'
     - 'dm-acme[jax]'
     - 'dm-acme[envs]'
+    - pyyaml
 
 
 
