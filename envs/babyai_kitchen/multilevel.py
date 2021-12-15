@@ -39,7 +39,7 @@ class KitchenMultiLevel(object):
             )
         return getattr(self.current_level, name)
 
-    def __init__(self, all_level_kwargs, **kwargs):
+    def __init__(self, all_level_kwargs, LevelCls=KitchenLevel, **kwargs):
 
         # ======================================================
         # initialize levels
@@ -47,7 +47,7 @@ class KitchenMultiLevel(object):
         self.levels = dict()
         for key, level_kwargs in all_level_kwargs.items():
             level_kwargs.update(kwargs)
-            self.levels[key] = KitchenLevel(**level_kwargs)
+            self.levels[key] = LevelCls(**level_kwargs)
         self.levelnames = list(self.levels.keys())
 
 
