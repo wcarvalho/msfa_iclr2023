@@ -14,11 +14,8 @@ ICONPATH='envs/babyai_kitchen/icons'
 
 def open_image(image, rendering_scale):
     if rendering_scale == 0: return None
-    # image = imread(image)
     image = Image.open(image)
-    # return transform.resize(image, (self.rendering_scale,self.rendering_scale), mode='symmetric', preserve_range=True)
     arr = np.array(image.resize((rendering_scale, rendering_scale)))
-    # arr[arr[...,-1]==0] = [255,255,255,0]
     return arr
 
 class KitchenObject(WorldObj):

@@ -308,9 +308,6 @@ class Kitchen(object):
                     can_contain=['pot', 'pan'],
                     pickupable=False,
                     toggle_prop={'temp': 'hot'},
-                    # toggle_heats=True,
-                    # can_heat_contained=True,
-                    # can_heat=True,
                 ),
                 KitchenContainer(
                     name="fridge",

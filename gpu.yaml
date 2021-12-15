@@ -5,12 +5,16 @@ channels:
 dependencies:
   - pip
   - python==3.9
+  - opencv
   - pip:
     - pip
     - gpustat
     - setuptools
     - ipdb
     - wheel
+    - sklearn
+    - Pillow
+    - matplotlib
     - numpy
     - gym[atari]
     # near-nightly TF required for launchpad (GH-18)

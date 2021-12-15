@@ -19,10 +19,24 @@ git checkout bfab931c67569ee2f796eccb5d094e266767e981 -b compatible
 pip install --editable .
 cd ..
 
+
+git clone https://github.com/maximecb/gym-minigrid.git _gym-minigrid
+cd _gym-minigrid
+pip install --editable .
+cd ..
+
+git clone https://github.com/mila-iqia/babyai.git _babyai
+cd _babyai
+pip install --editable .
+cd ..
+
+
 if [[ $arch = 'gpu' ]]; then
   # TODO: remove 0.2.20 once other libs (tensorflow probability) stop relying on jax.partial
   pip install --upgrade jax[cuda102]==0.2.20 -f https://storage.googleapis.com/jax-releases/jax_releases.html
 fi
 
-# TEST
-python projects/starter/dqn_bsuite.py
+# # TEST
+# python projects/starter/dqn_bsuite.py
+
+

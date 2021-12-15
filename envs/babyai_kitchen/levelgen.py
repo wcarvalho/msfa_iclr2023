@@ -25,6 +25,7 @@ class KitchenLevel(RoomGridLevel):
         num_dists=8,
         # locked_room_prob=0,
         unblocking=False,
+        kitchen=None,
         random_object_state=False,
         objects = [],
         actions = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice'],
@@ -82,7 +83,7 @@ class KitchenLevel(RoomGridLevel):
         # ======================================================
         # define the dynamics of the objects with kitchen
 
-        self.kitchen = Kitchen(objects=objects, tile_size=tile_size, rootdir=rootdir, verbosity=verbosity)
+        self.kitchen = kitchen or Kitchen(objects=objects, tile_size=tile_size, rootdir=rootdir, verbosity=verbosity)
         self.check_task_actions = False
 
         # to avoid checking task during reset of initialization
@@ -397,6 +398,7 @@ class KitchenLevel(RoomGridLevel):
         self.max_steps = num_navs * nav_time_maze
 
         return obs
+
 
     def step(self, action):
         """Copied from: 

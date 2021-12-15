@@ -4,22 +4,27 @@ channels:
   - conda-forge
 dependencies:
   - pip
-  - python==3.7
+  - python==3.9
   - opencv
   - pip:
     - jax
+    - ipdb
     - pip
     - reverb
     - setuptools
     - wheel
-    - rlax==0.4
-    - tensorflow-probability==0.13
-    - 'dm-acme'
-    - 'dm-acme[jax]'
-    - 'dm-acme[envs]'
+    - gym
+    - sklearn
+    - Pillow
+    - matplotlib
+    # - rlax==0.0.4
+    # - tensorflow-probability==0.13
+    # - 'dm-acme'
+    # - 'dm-acme[jax]'
+    # - 'dm-acme[envs]'
     - pyyaml
+    - chex
 
-
-
-# conda env create -f cpu.yaml
+# conda env create -f cpu.yaml --force
+# conda env update --file cpu.yaml --prune
 # conda remove --name acmejax --all
