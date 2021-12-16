@@ -2,6 +2,7 @@
 
 """
 
+from gym import spaces
 
 import numpy as np
 import copy
@@ -21,6 +22,7 @@ class GotoAvoidEnv(KitchenLevel):
 
         self.object2reward = object2reward
         objects = object2reward.keys()
+        self.object2idx = {o:idx for idx, o in enumerate(objects)}
         self.nobjects = nobjects
         kitchen = Kitchen(
             objects=objects,
@@ -40,6 +42,19 @@ class GotoAvoidEnv(KitchenLevel):
             verbosity=verbosity,
             objects=objects,
             **kwargs)
+
+        self.observation_space.spaces['mission'] = spaces.Box(
+            low=0,
+            high=10,
+            shape=(len(self.object2reward),),
+            dtype='float32'
+        )
+        self.observation_space.spaces['pickup'] = spaces.Box(
+            low=0,
+            high=10,
+            shape=(len(self.object2reward),),
+            dtype='float32'
+        )
 
 
     def reset_task(self):
@@ -77,6 +92,7 @@ class GotoAvoidEnv(KitchenLevel):
         self.step_count += 1
 
         reward = 0
+        pickup = np.array(len(self.object2reward))
         done = False
 
         # Get the position in front of the agent
@@ -101,6 +117,7 @@ class GotoAvoidEnv(KitchenLevel):
         elif action == self.actions.get('forward', -1):
             if object_infront == None or object_infront.can_overlap():
                 self.agent_pos = fwd_pos
+        # pickup
         else:
             if object_infront:
                 # get reward
@@ -110,8 +127,8 @@ class GotoAvoidEnv(KitchenLevel):
                     # move object
                     self.place_in_room(0, 0, object_infront)
 
-            else:
-                pass
+                    oidx = self.object2idx[object_infront.type]
+                    pickup[oidx] = 1
 
         # ======================================================
         # copied from RoomGridLevel
@@ -124,6 +141,9 @@ class GotoAvoidEnv(KitchenLevel):
         obs = self.gen_obs()
 
         obs['mission'] = np.array(self.object2reward.values())
+        obs['pickup'] = pickup
+
+
 
         return obs, reward, done, info
 
