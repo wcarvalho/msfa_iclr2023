@@ -19,8 +19,9 @@ from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper
 
 
 from utils.wrappers import ObservationRemapWrapper
-from networks.usfa import USFANetwork
-from networks.utils import make_r2d2_networks
+from agents import usfa
+# from agents.usfa.networks import USFANetwork
+# from agents.usfa.utils import make_usfa_networks
 
 
 # -----------------------
@@ -85,22 +86,23 @@ def main(_):
   env = make_environment()
   env_spec = acme.make_environment_spec(env)
 
-  config = r2d2.R2D2Config(
+  config = usfa.Config(
       batch_size=16,
       trace_length=20,
+      # prefetch_size=1,
       burn_in_length=10,
       sequence_period=10)
 
-  agent = r2d2.R2D2(
+  agent = usfa.USFA(
       env_spec,
-      networks=make_r2d2_networks(
+      networks=usfa.make_usfa_networks(
         batch_size=config.batch_size,
         env_spec=env_spec,
-        NetworkCls=USFANetwork,
+        NetworkCls=usfa.USFANetwork,
         NetKwargs=dict(
             num_actions=env_spec.actions.num_values,
             lstm_size=256,
-            hidden_size=256,
+            hidden_size=128,
             )
         ),
       config=config,

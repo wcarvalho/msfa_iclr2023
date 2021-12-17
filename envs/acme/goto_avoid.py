@@ -14,16 +14,31 @@
 # limitations under the License.
 # ============================================================================
 """Catch reinforcement learning environment."""
+from typing import NamedTuple
 
 import dm_env
 from dm_env import specs
+
+from acme import types
 from acme.wrappers import GymWrapper
+
 import numpy as np
 
 _ACTIONS = (0, 1, 3, 4)  # Left, right, forward, pickup
 
 from envs.babyai_kitchen.multilevel import MultiLevel
 from envs.babyai_kitchen.goto_avoid import GotoAvoidEnv
+
+class GotoObs(NamedTuple):
+  """Container for (Observation, Action, Reward) tuples."""
+  image: types.Nest
+  pickup: types.Nest
+  mission: types.Nest
+
+def convert_rawobs(obs):
+    obs.pop('mission_idx')
+    obs['image'] = obs['image'] / 255.0
+    return GotoObs(**obs)
 
 class GoToAvoid(dm_env.Environment):
   """
@@ -63,40 +78,39 @@ class GoToAvoid(dm_env.Environment):
     self.ex_rewards = next(iter(obj2rew.values()))
     self.ntasks = len(obj2rew)
 
+
   def reset(self) -> dm_env.TimeStep:
     """Returns the first `TimeStep` of a new episode."""
-    # self._reset_next_step = False
-    # self._ball_x = self._rng.randint(self._columns)
-    # self._ball_y = 0
-    # self._paddle_x = self._columns // 2
-    # return dm_env.restart(self._observation())
-    import ipdb; ipdb.set_trace()
+    obs = self.env.reset()
+    obs = convert_rawobs(obs)
+    timestep = dm_env.restart(obs)
+
+    return timestep
 
   def step(self, action: int) -> dm_env.TimeStep:
     """Updates the environment according to the action."""
-    import ipdb; ipdb.set_trace()
-    # if self._reset_next_step:
-    #   return self.reset()
+    obs, reward, done, info = self.env.step(action)
+    obs = convert_rawobs(obs)
 
-    # # Move the paddle.
-    # dx = _ACTIONS[action]
-    # self._paddle_x = np.clip(self._paddle_x + dx, 0, self._columns - 1)
+    if done:
+      return dm_env.termination(reward=reward, observation=obs)
+    else:
+      return dm_env.transition(reward=reward, observation=obs)
 
-    # # Drop the ball.
-    # self._ball_y += 1
-
-    # # Check for termination.
-    # if self._ball_y == self._paddle_y:
-    #   reward = 1. if self._paddle_x == self._ball_x else -1.
-    #   self._reset_next_step = True
-    #   return dm_env.termination(reward=reward, observation=self._observation())
-    # else:
-    #   return dm_env.transition(reward=0., observation=self._observation())
-
-  def observation_spec(self) -> specs.BoundedArray:
-    """Returns the observation spec."""
-    return self.default_env.observation_spec()
 
   def action_spec(self) -> specs.DiscreteArray:
     """Returns the action spec."""
     return self.default_env.action_spec()
+
+  def observation_spec(self):
+    default = self.default_env.observation_spec()
+    return GotoObs(
+        image=specs.BoundedArray(
+            shape=default['image'].shape,
+            dtype=np.float32,
+            name="image",
+            minimum=0,
+            maximum=1,
+        ),
+        mission=default['mission'],
+        pickup=default['pickup'])

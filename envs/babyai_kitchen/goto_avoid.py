@@ -21,6 +21,10 @@ class GotoAvoidEnv(KitchenLevel):
         **kwargs):
 
         self.object2reward = object2reward
+        self.mission_arr = np.array(
+            list(self.object2reward.values()),
+            dtype=np.float32,
+            )
         objects = object2reward.keys()
         self.object2idx = {o:idx for idx, o in enumerate(objects)}
         self.nobjects = nobjects
@@ -78,7 +82,12 @@ class GotoAvoidEnv(KitchenLevel):
                 continue
             break
 
-
+    def reset(self):
+        obs = super().reset()
+        assert self.carrying is None
+        obs['pickup'] = np.zeros(len(self.object2reward))
+        obs['mission'] = self.mission_arr
+        return obs
 
     def step(self, action):
         """Copied from: 
@@ -91,8 +100,8 @@ class GotoAvoidEnv(KitchenLevel):
         # ======================================================
         self.step_count += 1
 
-        reward = 0
-        pickup = np.array(len(self.object2reward))
+        reward = 0.0
+        pickup = np.zeros(len(self.object2reward))
         done = False
 
         # Get the position in front of the agent
@@ -122,7 +131,7 @@ class GotoAvoidEnv(KitchenLevel):
             if object_infront:
                 # get reward
                 if object_infront.type in self.object2reward:
-                    reward = self.object2reward[object_infront.type]
+                    reward = float(self.object2reward[object_infront.type])
                     self.grid.set(*fwd_pos, None)
                     # move object
                     self.place_in_room(0, 0, object_infront)
@@ -140,7 +149,7 @@ class GotoAvoidEnv(KitchenLevel):
 
         obs = self.gen_obs()
 
-        obs['mission'] = np.array(self.object2reward.values())
+        obs['mission'] = self.mission_arr
         obs['pickup'] = pickup
 
 
