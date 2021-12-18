@@ -134,8 +134,8 @@ class R2D2Learning(learning_lib.LossFn):
 
 
     reverb_update = learning_lib.ReverbUpdate(
-        keys=keys,
+        keys=batch.info.key,
         priorities=priorities
         )
     extra = learning_lib.LossExtra(metrics={}, reverb_update=reverb_update)
-    return loss, extra
+    return mean_loss, extra
