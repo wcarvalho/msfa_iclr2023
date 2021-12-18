@@ -17,7 +17,6 @@ from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper
 
 
 
-
 from utils.wrappers import ObservationRemapWrapper
 from agents import td_agent
 
@@ -97,9 +96,12 @@ def main(_):
       lstm_size=256,
       hidden_size=128,
       )
-    PolicyConstructor=td_agent.make_behavior_policy
-    LossFn=td_agent.R2D2Learning
-    LossFnKwargs=td_agent.r2d2_loss_kwargs(config)
+
+    builder=functools.partial(
+      td_agent.TDBuilder,
+      LossFn=td_agent.R2D2Learning,
+      LossFnKwargs=td_agent.r2d2_loss_kwargs(config)
+    )
 
   elif FLAGS.agent == "usfa": # Universal Successor Features
     NetworkCls=td_agent.USFANetwork
@@ -108,8 +110,6 @@ def main(_):
       lstm_size=256,
       hidden_size=128,
       )
-    PolicyConstructor=functools.partial(
-      td_agent.make_behavior_policy)
     NotImplementedError(FLAGS.agent)
   elif FLAGS.agent == "msf": # Modular Successor Features
     NotImplementedError(FLAGS.agent)
@@ -119,14 +119,15 @@ def main(_):
 
   agent = td_agent.TDAgent(
       env_spec,
-      behavior_policy_constructor=PolicyConstructor,
       networks=td_agent.make_networks(
         batch_size=config.batch_size,
         env_spec=env_spec,
         NetworkCls=NetworkCls,
         NetKwargs=NetKwargs),
+      builder=builder,
       config=config,
-      seed=FLAGS.seed)
+      seed=FLAGS.seed,
+      )
 
   loop = acme.EnvironmentLoop(env, agent)
   loop.run(FLAGS.num_episodes)

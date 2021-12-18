@@ -159,8 +159,13 @@ NetworkFactory = Callable[[specs.EnvironmentSpec], r2d2_networks.R2D2Networks]
 #     )
 
 
-class TDAgent(local_layout.LocalLayout):
-  """Local TD-based learning agent.
+class USFA(local_layout.LocalLayout):
+  """Local agent for r2d2.
+
+  This implements a single-process R2D2 agent. This is a simple Q-learning
+  algorithm that generates data via a (epsilon-greedy) behavior policy, inserts
+  trajectories into a replay buffer, and periodically updates its policy by
+  sampling these transitions using prioritization.
   """
 
   def __init__(
@@ -168,7 +173,6 @@ class TDAgent(local_layout.LocalLayout):
       spec: specs.EnvironmentSpec,
       networks: r2d2_networks.R2D2Networks,
       config: usfa_config.Config,
-      behavior_policy_constructor, 
       seed: int,
       workdir: Optional[str] = '~/acme',
       counter: Optional[counting.Counter] = None,
