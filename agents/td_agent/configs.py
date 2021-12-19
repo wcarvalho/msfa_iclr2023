@@ -62,6 +62,10 @@ class USFAConfig:
   bootstrap_n: int = 5
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
+  max_gradient_norm: float = 80.0  # For gradient clipping.
+
+  # How many gradient updates to perform per learner step.
+  num_sgd_steps_per_step: int = 1
 
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
@@ -70,6 +74,7 @@ class USFAConfig:
   max_replay_size: int = 100_000
   batch_size: int = 64
   prefetch_size: int = 2
+  store_lstm_state: bool = True
   num_parallel_calls: int = 16
   replay_table_name: str = adders_reverb.DEFAULT_PRIORITY_TABLE
 

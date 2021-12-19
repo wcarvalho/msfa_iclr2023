@@ -104,12 +104,27 @@ def main(_):
     )
 
   elif FLAGS.agent == "usfa": # Universal Successor Features
+    config = td_agent.USFAConfig(
+      batch_size=16,
+      trace_length=20,
+      burn_in_length=10,
+      sequence_period=10)
+
     NetworkCls=td_agent.USFANetwork
+    dim_state = env_spec.observations.observation.state_features.shape[0]
     NetKwargs=dict(
       num_actions=env_spec.actions.num_values,
+      dim_state=dim_state,
       lstm_size=256,
       hidden_size=128,
       )
+
+    builder=functools.partial(
+      td_agent.TDBuilder,
+      LossFn=td_agent.USFALearning,
+      LossFnKwargs=td_agent.usfa_loss_kwargs(config)
+    )
+
     NotImplementedError(FLAGS.agent)
   elif FLAGS.agent == "msf": # Modular Successor Features
     NotImplementedError(FLAGS.agent)

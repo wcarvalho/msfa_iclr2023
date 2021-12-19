@@ -1,6 +1,6 @@
 import dataclasses
 
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple, NamedTuple
 
 from acme import types
 from acme.jax import networks as networks_lib
@@ -29,6 +29,11 @@ RecurrentStateFn = Callable[[networks_lib.Params], hk.LSTMState]
 ValueFn = Callable[[networks_lib.Params, Observation, hk.LSTMState],
                          networks_lib.Value]
 
+
+def add_batch(nest, batch_size: Optional[int]):
+  """Adds a batch dimension at axis 0 to the leaves of a nested structure."""
+  broadcast = lambda x: jnp.broadcast_to(x, (batch_size,) + x.shape)
+  return jax.tree_map(broadcast, nest)
 
 @dataclasses.dataclass
 class TDNetworkFns:
@@ -111,6 +116,18 @@ class R2D2Network(hk.RNNCore):
 
 
 
+
+class USFAState(NamedTuple):
+  """An LSTM core state consists of hidden and cell vectors.
+  Attributes:
+    hidden: Hidden state.
+    cell: Cell state.
+  """
+  memory: hk.LSTMState
+  sf: jnp.ndarray
+  policy_zeds: jnp.ndarray
+
+
 class USFANetwork(hk.RNNCore):
   """Universal Successor Feature Approximators
 
@@ -119,6 +136,7 @@ class USFANetwork(hk.RNNCore):
 
   def __init__(self,
         num_actions: int,
+        dim_state: int,
         lstm_size : int = 256,
         hidden_size : int=128,
         policy_size : int=32,
@@ -128,6 +146,7 @@ class USFANetwork(hk.RNNCore):
     super().__init__(name='usfa_network')
     self.var = variance
     self.nsamples = nsamples
+    self.dim_state = dim_state
     self.num_actions = num_actions
     self.policy_size = policy_size
     self.hidden_size = hidden_size
@@ -141,12 +160,37 @@ class USFANetwork(hk.RNNCore):
     self.policyfn = hk.nets.MLP(
         [policy_size, policy_size])
 
+    self.successorfn = hk.nets.MLP([
+        self.policy_size+self.hidden_size,
+        self.num_actions*self.dim_state
+        ])
 
 
-  def usfa(self, state, task, state_feat, key, nbatchdims):
+  def usfa(self, mem_outputs, mem_state, task, state_feat, nbatchdims):
+    """
+    1. Sample K policy embeddings according to state features
+    2. Compute corresponding successor features
+    3. compute policy and do GPI
+
+    Args:
+        mem_outputs (TYPE): e.g. LSTM hidden
+        mem_state (TYPE): e.g. full LSTM state
+        task (TYPE): task vectors
+        state_feat (TYPE): state features
+        nbatchdims (TYPE): number of dimensions before data. E.g. [T,B]=2
+    
+    Returns:
+        TYPE: Description
+    """
     batchdims = [1]*nbatchdims
     policy_axis = nbatchdims
 
+    if nbatchdims == 1:
+      batch_apply = lambda x:x
+    else:
+      batch_apply = hk.BatchApply
+
+    state = batch_apply(self.statefn)(mem_outputs)
     # -----------------------
     # add dim for K=nsamples of policy params
     # tile along that dimension
@@ -154,15 +198,16 @@ class USFANetwork(hk.RNNCore):
     state = jnp.expand_dims(state, axis=policy_axis)
     task_sampling = jnp.expand_dims(task, axis=policy_axis)
     # add one extra for action
-    task_action = jnp.expand_dims(task, axis=(policy_axis,policy_axis+1))
+    policy_zeds = jnp.expand_dims(task, axis=(policy_axis,policy_axis+1))
     state = jnp.tile(state, [*batchdims,self.nsamples,1])
     task_sampling = jnp.tile(task_sampling, [*batchdims,self.nsamples,1])
-    task_action = jnp.tile(task_action, [*batchdims,self.nsamples, self.num_actions, 1])
+    policy_zeds = jnp.tile(policy_zeds, [*batchdims,self.nsamples, self.num_actions, 1])
 
     # -----------------------
     # policy conditioning
     # -----------------------
     # gaussian (mean=task, var=.1I)
+    key = hk.next_rng_key()
     policies =  task_sampling + jnp.sqrt(self.var) * jax.random.normal(key, task_sampling.shape)
     policies = hk.BatchApply(self.policyfn)(policies)
 
@@ -172,49 +217,61 @@ class USFANetwork(hk.RNNCore):
     # -----------------------
     # compute successor features
     # -----------------------
-    self.successorfn = hk.nets.MLP([
-        self.policy_size+self.hidden_size,
-        self.num_actions*state_feat.shape[-1]
-        ])
 
     sf = hk.BatchApply(self.successorfn)(sf_input)
-    sf = jnp.reshape(sf, [*sf.shape[:-1], self.num_actions, state_feat.shape[-1]])
+    sf = jnp.reshape(sf, [*sf.shape[:-1], self.num_actions, self.dim_state])
 
     # -----------------------
     # compute Q values
     # -----------------------
-    q_values = jnp.sum(sf*task_action, axis=-1)
+    q_values = jnp.sum(sf*policy_zeds, axis=-1)
 
     # -----------------------
     # GPI, best policy
     # -----------------------
-    return jnp.max(q_values, axis=policy_axis)
+    q_values = jnp.max(q_values, axis=policy_axis)
+
+    usf_state = USFAState(
+      sf=sf,
+      policy_zeds=policy_zeds,
+      memory=mem_state)
+
+    return q_values, usf_state
+
+  def initial_state(self, batch_size: int, **unused_kwargs) -> hk.LSTMState:
+    memory = self.memory.initial_state(None)
+    sf=jnp.zeros(
+      (self.nsamples, self.num_actions, self.dim_state),
+      dtype=memory.hidden.dtype)
+    policy_zeds=jnp.zeros(
+      (self.nsamples, self.num_actions, self.dim_state),
+      dtype=memory.hidden.dtype)
+    state = USFAState(
+      sf=sf,
+      policy_zeds=policy_zeds,
+      memory=memory)
+    if batch_size is not None:
+      state = add_batch(state, batch_size)
+    return state
 
 
   def __call__(
       self,
       inputs: observation_action_reward.OAR,  # [B, ...]
-      state: hk.LSTMState,  # [B, ...]
+      state: USFAState,  # [B, ...]
   ) -> Tuple[base.QValues, hk.LSTMState]:
 
-    key = hk.next_rng_key()
     image, task, state_feat, last_action, last_reward = process_inputs(inputs)
     # -----------------------
     # compute state
     # -----------------------
     conv = self.conv(image)
     mem_inputs = jnp.concatenate((conv, last_action, last_reward), axis=-1)
-    mem_outputs, mem_state = self.memory(mem_inputs, state)
-    state = self.statefn(mem_outputs)
+    mem_outputs, mem_state = self.memory(mem_inputs, state.memory)
 
 
-    start = [1]
-    q_values = self.usfa(state, task, state_feat, key, nbatchdims=1)
+    return self.usfa(mem_outputs, mem_state, task, state_feat, nbatchdims=1)
 
-    return q_values, mem_state
-
-  def initial_state(self, batch_size: int, **unused_kwargs) -> hk.LSTMState:
-    return self.memory.initial_state(batch_size)
 
   def unroll(
       self,
@@ -222,7 +279,6 @@ class USFANetwork(hk.RNNCore):
       mem_state: hk.LSTMState,  # [T, ...]
   ) -> Tuple[base.QValues, hk.LSTMState]:
     """Efficient unroll that applies torso, core, and duelling mlp in one pass."""
-    key = hk.next_rng_key()
     image, task, state_feat, last_action, last_reward = process_inputs(inputs)
 
     # -----------------------
@@ -230,12 +286,13 @@ class USFANetwork(hk.RNNCore):
     # -----------------------
     conv = hk.BatchApply(self.conv)(image)  # [T, B, D+A+1]
     mem_inputs = jnp.concatenate((conv, last_action, last_reward), axis=2)
-    mem_outputs, new_mem_state = hk.static_unroll(self.memory, mem_inputs, mem_state)
-    state = hk.BatchApply(self.statefn)(mem_outputs)
+    mem_outputs, new_mem_state = hk.static_unroll(
+      self.memory,
+      mem_inputs,
+      mem_state.memory)
 
-    q_values = self.usfa(state, task, state_feat, key, nbatchdims=2)
+    return self.usfa(mem_outputs, new_mem_state, task, state_feat, nbatchdims=2)
 
-    return q_values, new_mem_state
 
     # # -----------------------
     # # policy conditioning
