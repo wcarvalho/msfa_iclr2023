@@ -17,7 +17,7 @@ import tree
 
 
 from agents.td_agent.networks import TDNetworkFns
-from agents.td_agent import td
+from utils import td
 
 
 @dataclasses.dataclass
@@ -155,65 +155,54 @@ class R2D2Learning(RecurrentTDLearning):
     return batch_td_error, batch_loss
 
 
-
-def usfa_loss_kwargs(config):
-  return dict(
-      discount=config.discount,
-      importance_sampling_exponent=config.importance_sampling_exponent,
-      burn_in_length=config.burn_in_length,
-      max_replay_size=config.max_replay_size,
-      store_lstm_state=config.store_lstm_state,
-      max_priority_weight=config.max_priority_weight,
-      tx_pair=config.tx_pair,
-      bootstrap_n=config.bootstrap_n,
-      clip_rewards=config.clip_rewards,
-  )
-
-
 @dataclasses.dataclass
 class USFALearning(RecurrentTDLearning):
   def error(self, data, online_q, online_state, target_q, target_state):
 
-    # all are [T, B, N, A, D], N = num policies, A = actions, D = dim state
+    # all are [T, B, N, A, C], N = num policies, A = actions, C = cumulant dim
     online_sf = online_state.sf 
     online_z = online_state.policy_zeds
     target_sf = target_state.sf
     target_z = target_state.policy_zeds
     npolicies = online_sf.shape[2]
 
+
     # Get value-selector actions from online Q-values for double Q-learning.
-    # wil do average over [T, B, D]
+    # wil do average over [T, B, C]
     new_q =  (online_sf*online_z).sum(axis=-1) # overwrite, [T, B, N, A]
     target_actions = jnp.argmax(new_q, axis=-1) # [T, B, N]
 
     # Preprocess discounts & rewards.
     discounts = (data.discount * self.discount).astype(new_q.dtype)
-    cumulants = data.observation.observation.state_features # [T, B, D]
+    discounts = jnp.expand_dims(discounts, axis=2)
+    discounts = jnp.tile(discounts, [1,1, npolicies]) # [T, B, N]
+    cumulants = data.observation.observation.state_features # [T, B, C]
     cumulants = jnp.expand_dims(cumulants, axis=2)
-    cumulants = jnp.tile(cumulants, [1,1, npolicies, 1]) # [T, B, N, D]
+    cumulants = jnp.tile(cumulants, [1,1, npolicies, 1]) # [T, B, N, C]
 
     # actions used for online_sf
     online_actions = jnp.expand_dims(data.action, axis=2)
-    online_actions = jnp.tile(online_actions, [1,1, npolicies]) # [T, B, N, D]
-    # # Get N-step transformed TD error and loss.
-    # batch_td_error_fn = jax.vmap(
-    #     functools.partial(
-    #         td.n_step_td_learning,
-    #         n=self.bootstrap_n),
-    #     in_axes=1, out_axes=1) # batch axis
+    online_actions = jnp.tile(online_actions, [1,1, npolicies]) # [T, B, N, C]
 
-    batch_td_error_fn = functools.partial(
-            td.n_step_td_learning,
-            n=self.bootstrap_n)
 
-    # [T, B, N, D]
+    # Get N-step transformed TD error and loss.
+    batch_td_error_fn = jax.vmap(
+      functools.partial(
+          td.n_step_td_learning,
+          n=self.bootstrap_n),
+      in_axes=1, out_axes=1) # batch axis
+
+    batch_td_error_fn = jax.vmap(
+      batch_td_error_fn,
+      in_axes=1, out_axes=1) # policy axis
+
     batch_td_error = batch_td_error_fn(
-        online_sf[:-1],
-        online_actions[:-1],
-        target_sf[1:],
-        target_actions[1:],
-        cumulants[:-1],
-        discounts[:-1]) 
+        online_sf[:-1],      # [T, B, N, A, C]
+        online_actions[:-1], # [T, B, N]
+        target_sf[1:],       # [T, B, N, A, C]
+        target_actions[1:],  # [T, B, N]
+        cumulants[:-1],      # [T, B, N, A, C]
+        discounts[:-1])      # [T, B, N]
 
 
     batch_loss = 0.5 * jnp.square(batch_td_error).sum(axis=(0, 2, 3))

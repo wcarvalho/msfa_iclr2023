@@ -122,7 +122,8 @@ def main(_):
     builder=functools.partial(
       td_agent.TDBuilder,
       LossFn=td_agent.USFALearning,
-      LossFnKwargs=td_agent.usfa_loss_kwargs(config)
+      # use same kwargs for loss
+      LossFnKwargs=td_agent.r2d2_loss_kwargs(config)
     )
 
     NotImplementedError(FLAGS.agent)

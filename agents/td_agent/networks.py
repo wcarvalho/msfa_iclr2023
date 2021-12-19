@@ -118,10 +118,11 @@ class R2D2Network(hk.RNNCore):
 
 
 class USFAState(NamedTuple):
-  """An LSTM core state consists of hidden and cell vectors.
+  """
   Attributes:
-    hidden: Hidden state.
-    cell: Cell state.
+    memory: LSTM state
+    sf: successor features
+    policy_zeds: policy embeddings
   """
   memory: hk.LSTMState
   sf: jnp.ndarray
@@ -292,39 +293,3 @@ class USFANetwork(hk.RNNCore):
       mem_state.memory)
 
     return self.usfa(mem_outputs, new_mem_state, task, state_feat, nbatchdims=2)
-
-
-    # # -----------------------
-    # # policy conditioning
-    # # -----------------------
-    # # gaussian (mean=task, var=.1I)
-    # task_samples = jnp.tile(jnp.expand_dims(task, axis=2), [1,1,self.nsamples,1])
-    # policies =  task_samples + jnp.sqrt(self.var) * jax.random.normal(key, task_samples.shape)
-    # policies = hk.BatchApply(self.policyfn)(policies)
-
-    # # input for SF
-    # state = jnp.tile(jnp.expand_dims(state, axis=2), [1,1, self.nsamples, 1])
-    # sf_input = jnp.concatenate((state, policies), axis=3)
-
-    # # -----------------------
-    # # compute successor features
-    # # -----------------------
-    # self.successorfn = hk.nets.MLP([
-    #     self.policy_size+self.hidden_size,
-    #     self.num_actions*state_feat.shape[-1]
-    #     ])
-
-    # sf = hk.BatchApply(self.successorfn)(sf_input)
-    # sf = jnp.reshape(sf, [*sf.shape[:-1], self.num_actions, state_feat.shape[-1]])
-
-    # # -----------------------
-    # # compute Q values
-    # # -----------------------
-    # task_expand = jnp.tile(jnp.expand_dims(task, axis=(2,3)), [1,1,self.nsamples, self.num_actions, 1])
-    # q_values = jnp.sum(sf*task_expand, axis=-1)
-
-    # # -----------------------
-    # # GPI
-    # # -----------------------
-    # # best policy
-    # q_values = jnp.max(q_values, axis=2)
