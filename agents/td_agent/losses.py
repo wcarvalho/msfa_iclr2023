@@ -159,7 +159,8 @@ class R2D2Learning(RecurrentTDLearning):
 class USFALearning(RecurrentTDLearning):
   def error(self, data, online_q, online_state, target_q, target_state):
 
-    # all are [T, B, N, A, C], N = num policies, A = actions, C = cumulant dim
+    # all are [T, B, N, A, C]
+    # N = num policies, A = actions, C = cumulant dim
     online_sf = online_state.sf 
     online_z = online_state.policy_zeds
     target_sf = target_state.sf
@@ -169,7 +170,7 @@ class USFALearning(RecurrentTDLearning):
 
     # Get value-selector actions from online Q-values for double Q-learning.
     # wil do average over [T, B, C]
-    new_q =  (online_sf*online_z).sum(axis=-1) # overwrite, [T, B, N, A]
+    new_q =  (online_sf*online_z).sum(axis=-1) # [T, B, N, A]
     target_actions = jnp.argmax(new_q, axis=-1) # [T, B, N]
 
     # Preprocess discounts & rewards.
@@ -182,7 +183,7 @@ class USFALearning(RecurrentTDLearning):
 
     # actions used for online_sf
     online_actions = jnp.expand_dims(data.action, axis=2)
-    online_actions = jnp.tile(online_actions, [1,1, npolicies]) # [T, B, N, C]
+    online_actions = jnp.tile(online_actions, [1,1, npolicies]) # [T, B, N]
 
 
     # Get N-step transformed TD error and loss.
@@ -204,6 +205,6 @@ class USFALearning(RecurrentTDLearning):
         cumulants[:-1],      # [T, B, N, A, C]
         discounts[:-1])      # [T, B, N]
 
-
+    # average over all policies + cumulants
     batch_loss = 0.5 * jnp.square(batch_td_error).sum(axis=(0, 2, 3))
     return batch_td_error, batch_loss

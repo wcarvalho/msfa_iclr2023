@@ -126,9 +126,7 @@ def main(_):
       LossFnKwargs=td_agent.r2d2_loss_kwargs(config)
     )
 
-    NotImplementedError(FLAGS.agent)
-  elif FLAGS.agent == "msf": # Modular Successor Features
-    NotImplementedError(FLAGS.agent)
+  # elif FLAGS.agent == "msf": # Modular Successor Features
   else:
     raise NotImplementedError(FLAGS.agent)
 

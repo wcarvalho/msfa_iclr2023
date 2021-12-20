@@ -93,8 +93,10 @@ class R2D2Network(hk.RNNCore):
   ) -> Tuple[base.QValues, hk.LSTMState]:
     image, task, state_feat, _, _ = process_inputs(inputs)
     embeddings = self._embed(inputs._replace(observation=image))  # [B, D+A+1]
-    embeddings = jnp.concatenate([embeddings, task, state_feat], axis=-1)
+    embeddings = jnp.concatenate([embeddings, state_feat], axis=-1)
     core_outputs, new_state = self._core(embeddings, state)
+    # "UVFA"
+    core_outputs = jnp.concatenate((core_outputs, task), axis=-1)
     q_values = self._duelling_head(core_outputs)
     return q_values, new_state
 
@@ -109,8 +111,10 @@ class R2D2Network(hk.RNNCore):
     """Efficient unroll that applies torso, core, and duelling mlp in one pass."""
     image, task, state_feat, _, _ = process_inputs(inputs)
     embeddings = hk.BatchApply(self._embed)(inputs._replace(observation=image))  # [T, B, D+A+1]
-    embeddings = jnp.concatenate([embeddings, task, state_feat], axis=-1)
+    embeddings = jnp.concatenate([embeddings, state_feat], axis=-1)
     core_outputs, new_states = hk.static_unroll(self._core, embeddings, state)
+    # "UVFA"
+    core_outputs = jnp.concatenate((core_outputs, task), axis=-1)
     q_values = hk.BatchApply(self._duelling_head)(core_outputs)  # [T, B, A]
     return q_values, new_states
 
