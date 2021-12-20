@@ -36,6 +36,66 @@ from agents.td_agent.utils import make_behavior_policy
 from agents.td_agent.networks import TDNetworkFns
 
 
+NetworkFactory = Callable[[specs.EnvironmentSpec], TDNetworkFns]
+
+
+class DistributedTDAgent(distributed_layout.DistributedLayout):
+  """Distributed R2D2 agents from config."""
+
+  def __init__(
+      self,
+      environment_factory: Callable[[bool], dm_env.Environment],
+      environment_spec: specs.EnvironmentSpec,
+      network_factory: NetworkFactory,
+      config: configs.R2D1Config,
+      seed: int,
+      num_actors: int,
+      builder = builder.TDBuilder,
+      behavior_policy_constructor=make_behavior_policy,
+      max_number_of_steps: Optional[int] = None,
+      workdir: Optional[str] = '~/acme',
+      device_prefetch: bool = False,
+      log_to_bigtable: bool = True,
+      log_every: float = 10.0,
+  ):
+    logger_fn = functools.partial(loggers.make_default_logger,
+                                  'learner', log_to_bigtable,
+                                  time_delta=log_every, asynchronous=True,
+                                  serialize_fn=utils.fetch_devicearray,
+                                  steps_key='learner_steps')
+    td_builder = builder(
+        networks=network_factory(environment_spec),
+        config=config,
+        logger_fn=logger_fn)
+    policy_network_factory = (
+        lambda n: make_behavior_policy(n, config))
+    evaluator_policy_network_factory = (
+        lambda n: make_behavior_policy(n, config, True))
+    super().__init__(
+        seed=seed,
+        environment_factory=lambda: environment_factory(False),
+        network_factory=network_factory,
+        builder=td_builder,
+        policy_network=policy_network_factory,
+        evaluator_factories=[
+            distributed_layout.default_evaluator(
+                environment_factory=lambda: environment_factory(True),
+                network_factory=network_factory,
+                builder=td_builder,
+                policy_factory=evaluator_policy_network_factory,
+                log_to_bigtable=log_to_bigtable)
+        ],
+        num_actors=num_actors,
+        max_number_of_steps=max_number_of_steps,
+        environment_spec=environment_spec,
+        device_prefetch=device_prefetch,
+        log_to_bigtable=log_to_bigtable,
+        actor_logger_fn=distributed_layout.get_default_logger_fn(
+            log_to_bigtable, log_every),
+        prefetch_size=config.prefetch_size,
+        workdir=workdir)
+
+
 class TDAgent(local_layout.LocalLayout):
   """Local TD-based learning agent.
   """

@@ -1,7 +1,6 @@
 """Implementation of Recurrent TD agents. Primarily for GVF based methods (e.g. USFA)."""
 
-# from acme.agents.jax.r2d2.agents import DistributedRecurrentTDAgent
-# from acme.agents.jax.r2d2.agents import DistributedR2D2FromConfig
+from agents.td_agent.agents import DistributedTDAgent
 from agents.td_agent.agents import TDAgent
 from agents.td_agent.builder import TDBuilder
 from agents.td_agent.configs import R2D1Config, USFAConfig
