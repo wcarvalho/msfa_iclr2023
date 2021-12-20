@@ -53,6 +53,7 @@ class USFAConfig:
   evaluation_epsilon: float = 0.
   num_epsilons: int = 256
   variable_update_period: int = 400
+  npolicies: int = 10 # number of policies to sample
 
   # Learner options
   burn_in_length: int = 40

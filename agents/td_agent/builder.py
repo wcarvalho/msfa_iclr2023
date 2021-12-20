@@ -42,11 +42,7 @@ import reverb
 from agents.td_agent.losses import R2D2Learning
 
 class TDBuilder(r2d2.R2D2Builder):
-  """R2D2 Builder.
-
-  This is constructs all of the components for Recurrent Experience Replay in
-  Distributed Reinforcement Learning (Kapturowski et al.)
-  https://openreview.net/pdf?id=r1lyTjAqYX.
+  """TD agent Builder. Agent is derivative of R2D2 but may use different network/loss function
   """
   def __init__(self,
                networks: r2d2_networks.R2D2Networks,

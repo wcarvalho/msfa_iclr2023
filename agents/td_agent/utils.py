@@ -19,17 +19,17 @@ def make_networks(batch_size, env_spec, NetworkCls, NetKwargs):
   # ======================================================
   # Functions for use
   # ======================================================
-  def forward_fn(x, s):
+  def forward_fn(x, s, k: Optional[int]=None):
     model = NetworkCls(**NetKwargs)
-    return model(x, s)
+    return model(x, s, k)
 
   def initial_state_fn(batch_size: Optional[int] = None):
     model = NetworkCls(**NetKwargs)
     return model.initial_state(batch_size)
 
-  def unroll_fn(inputs, state):
+  def unroll_fn(inputs, state, key: Optional[int]=None):
     model = NetworkCls(**NetKwargs)
-    return model.unroll(inputs, state)
+    return model.unroll(inputs, state, key)
 
   # Make networks purely functional.
   forward_hk = hk.transform(forward_fn)
@@ -46,7 +46,8 @@ def make_networks(batch_size, env_spec, NetworkCls, NetKwargs):
   dummy_obs_sequence = utils.add_batch_dim(dummy_obs_batch)
 
   def unroll_init_fn(rng, initial_state):
-    return unroll_hk.init(rng, dummy_obs_sequence, initial_state)
+    rng, rng_init = jax.random.split(rng)
+    return unroll_hk.init(rng, dummy_obs_sequence, initial_state, rng_init)
 
 
   # Make FeedForwardNetworks.
@@ -98,10 +99,11 @@ def make_behavior_policy(
                       observation: types.NestedArray,
                       core_state: types.NestedArray,
                       epsilon):
+    key, key_net, key_sample = jax.random.split(key, 3)
     q_values, core_state = networks.forward.apply(
-        params, key, observation, core_state)
+        params, key_net, observation, core_state, key_sample)
     epsilon = config.evaluation_epsilon if evaluation else epsilon
-    return rlax.epsilon_greedy(epsilon).sample(key, q_values), core_state
+    return rlax.epsilon_greedy(epsilon).sample(key_net, q_values), core_state
 
   return behavior_policy
 

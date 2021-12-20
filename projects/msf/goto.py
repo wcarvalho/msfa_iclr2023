@@ -83,6 +83,9 @@ def main(_):
   env = make_environment()
   env_spec = acme.make_environment_spec(env)
 
+  print("="*50)
+  print(FLAGS.agent)
+  print("="*50)
   if FLAGS.agent == "r2d1": # Recurretn DQN
     config = td_agent.R2D1Config(
       batch_size=16,
@@ -111,12 +114,13 @@ def main(_):
       sequence_period=10)
 
     NetworkCls=td_agent.USFANetwork
-    dim_state = env_spec.observations.observation.state_features.shape[0]
+    state_dim = env_spec.observations.observation.state_features.shape[0]
     NetKwargs=dict(
       num_actions=env_spec.actions.num_values,
-      dim_state=dim_state,
+      state_dim=state_dim,
       lstm_size=256,
       hidden_size=128,
+      nsamples=config.npolicies,
       )
 
     builder=functools.partial(

@@ -89,8 +89,10 @@ class R2D2Network(hk.RNNCore):
   def __call__(
       self,
       inputs: observation_action_reward.OAR,  # [B, ...]
-      state: hk.LSTMState  # [B, ...]
+      state: hk.LSTMState,  # [B, ...]
+      key: networks_lib.PRNGKey,
   ) -> Tuple[base.QValues, hk.LSTMState]:
+    del key
     image, task, state_feat, _, _ = process_inputs(inputs)
     embeddings = self._embed(inputs._replace(observation=image))  # [B, D+A+1]
     embeddings = jnp.concatenate([embeddings, state_feat], axis=-1)
@@ -106,8 +108,10 @@ class R2D2Network(hk.RNNCore):
   def unroll(
       self,
       inputs: observation_action_reward.OAR,  # [T, B, ...]
-      state: hk.LSTMState  # [T, ...]
+      state: hk.LSTMState,  # [T, ...]
+      key: networks_lib.PRNGKey,
   ) -> Tuple[base.QValues, hk.LSTMState]:
+    del key
     """Efficient unroll that applies torso, core, and duelling mlp in one pass."""
     image, task, state_feat, _, _ = process_inputs(inputs)
     embeddings = hk.BatchApply(self._embed)(inputs._replace(observation=image))  # [T, B, D+A+1]
@@ -141,7 +145,7 @@ class USFANetwork(hk.RNNCore):
 
   def __init__(self,
         num_actions: int,
-        dim_state: int,
+        state_dim: int,
         lstm_size : int = 256,
         hidden_size : int=128,
         policy_size : int=32,
@@ -151,7 +155,7 @@ class USFANetwork(hk.RNNCore):
     super().__init__(name='usfa_network')
     self.var = variance
     self.nsamples = nsamples
-    self.dim_state = dim_state
+    self.state_dim = state_dim
     self.num_actions = num_actions
     self.policy_size = policy_size
     self.hidden_size = hidden_size
@@ -167,11 +171,11 @@ class USFANetwork(hk.RNNCore):
 
     self.successorfn = hk.nets.MLP([
         self.policy_size+self.hidden_size,
-        self.num_actions*self.dim_state
+        self.num_actions*self.state_dim
         ])
 
 
-  def usfa(self, mem_outputs, mem_state, task, state_feat, nbatchdims):
+  def usfa(self, mem_outputs, mem_state, task, state_feat, key, nbatchdims):
     """
     1. Sample K policy embeddings according to state features
     2. Compute corresponding successor features
@@ -187,6 +191,7 @@ class USFANetwork(hk.RNNCore):
     Returns:
         TYPE: Description
     """
+    dtype = mem_outputs.dtype
     batchdims = [1]*nbatchdims
     policy_axis = nbatchdims
 
@@ -194,6 +199,8 @@ class USFANetwork(hk.RNNCore):
       batch_apply = lambda x:x
     else:
       batch_apply = hk.BatchApply
+    num_dims = nbatchdims + 1 # for policy axis
+
 
     state = batch_apply(self.statefn)(mem_outputs)
     # -----------------------
@@ -212,9 +219,11 @@ class USFANetwork(hk.RNNCore):
     # policy conditioning
     # -----------------------
     # gaussian (mean=task, var=.1I)
-    key = hk.next_rng_key()
-    policies =  task_sampling + jnp.sqrt(self.var) * jax.random.normal(key, task_sampling.shape)
-    policies = hk.BatchApply(self.policyfn)(policies)
+    # key = hk.next_rng_key()
+    pshape = task_sampling.shape # [?, B, N, D]
+    policies =  task_sampling + jnp.sqrt(self.var) * jax.random.normal(key, pshape)
+    policies = policies.astype(dtype)
+    policies = hk.BatchApply(self.policyfn, num_dims=num_dims)(policies)
 
     # input for SF
     sf_input = jnp.concatenate((state, policies), axis=-1)
@@ -223,8 +232,8 @@ class USFANetwork(hk.RNNCore):
     # compute successor features
     # -----------------------
 
-    sf = hk.BatchApply(self.successorfn)(sf_input)
-    sf = jnp.reshape(sf, [*sf.shape[:-1], self.num_actions, self.dim_state])
+    sf = hk.BatchApply(self.successorfn, num_dims=num_dims)(sf_input)
+    sf = jnp.reshape(sf, [*sf.shape[:-1], self.num_actions, self.state_dim])
 
     # -----------------------
     # compute Q values
@@ -246,10 +255,10 @@ class USFANetwork(hk.RNNCore):
   def initial_state(self, batch_size: int, **unused_kwargs) -> hk.LSTMState:
     memory = self.memory.initial_state(None)
     sf=jnp.zeros(
-      (self.nsamples, self.num_actions, self.dim_state),
+      (self.nsamples, self.num_actions, self.state_dim),
       dtype=memory.hidden.dtype)
     policy_zeds=jnp.zeros(
-      (self.nsamples, self.num_actions, self.dim_state),
+      (self.nsamples, self.num_actions, self.state_dim),
       dtype=memory.hidden.dtype)
     state = USFAState(
       sf=sf,
@@ -264,6 +273,7 @@ class USFANetwork(hk.RNNCore):
       self,
       inputs: observation_action_reward.OAR,  # [B, ...]
       state: USFAState,  # [B, ...]
+      key: networks_lib.PRNGKey,
   ) -> Tuple[base.QValues, hk.LSTMState]:
 
     image, task, state_feat, last_action, last_reward = process_inputs(inputs)
@@ -275,13 +285,14 @@ class USFANetwork(hk.RNNCore):
     mem_outputs, mem_state = self.memory(mem_inputs, state.memory)
 
 
-    return self.usfa(mem_outputs, mem_state, task, state_feat, nbatchdims=1)
+    return self.usfa(mem_outputs, mem_state, task, state_feat, key, nbatchdims=1)
 
 
   def unroll(
       self,
       inputs: observation_action_reward.OAR,  # [T, B, ...]
       mem_state: hk.LSTMState,  # [T, ...]
+      key: networks_lib.PRNGKey,
   ) -> Tuple[base.QValues, hk.LSTMState]:
     """Efficient unroll that applies torso, core, and duelling mlp in one pass."""
     image, task, state_feat, last_action, last_reward = process_inputs(inputs)
@@ -296,4 +307,4 @@ class USFANetwork(hk.RNNCore):
       mem_inputs,
       mem_state.memory)
 
-    return self.usfa(mem_outputs, new_mem_state, task, state_feat, nbatchdims=2)
+    return self.usfa(mem_outputs, new_mem_state, task, state_feat, key, nbatchdims=2)

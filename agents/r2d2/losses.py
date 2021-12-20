@@ -42,7 +42,6 @@ class R2D2Learning(learning_lib.LossFn):
       key: networks_lib.PRNGKey,
   ) -> Tuple[jnp.DeviceArray, learning_lib.LossExtra]:
     """Calculate a loss on a single batch of data."""
-    del key
     # ======================================================
     # load data
     # ======================================================

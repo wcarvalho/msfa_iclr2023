@@ -70,19 +70,21 @@ class RecurrentTDLearning(learning_lib.LossFn):
     if burn_in_length:
       burn_obs = jax.tree_map(lambda x: x[:burn_in_length], data.observation)
       key_grad, key1, key2 = jax.random.split(key_grad, 3)
-      _, online_state = unroll.apply(params, key1, burn_obs, online_state)
-      _, target_state = unroll.apply(target_params, key2, burn_obs,
-                                     target_state)
+      _, online_state = unroll.apply(params, key1, burn_obs, online_state, key2)
+      key_grad, key1, key2 = jax.random.split(key_grad, 3)
+      _, target_state = unroll.apply(target_params, key1, burn_obs,
+                                     target_state, key2)
 
     # Only get data to learn on from after the end of the burn in period.
     data = jax.tree_map(lambda seq: seq[burn_in_length:], data)
 
     # Unroll on sequences to get online and target Q-Values.
-    key1, key2 = jax.random.split(key_grad)
 
-    online_q, online_state = unroll.apply(params, key1, data.observation, online_state)
-    target_q, target_state = unroll.apply(target_params, key2, data.observation,
-                               target_state)
+    key_grad, key1, key2 = jax.random.split(key_grad, 3)
+    online_q, online_state = unroll.apply(params, key1, data.observation, online_state, key2)
+    key_grad, key1, key2 = jax.random.split(key_grad, 3)
+    target_q, target_state = unroll.apply(target_params, key1, data.observation,
+                               target_state, key2)
 
     batch_td_error, batch_loss = self.error(data, online_q, online_state, target_q, target_state)
 
@@ -98,7 +100,6 @@ class RecurrentTDLearning(learning_lib.LossFn):
     max_priority = self.max_priority_weight * jnp.max(abs_td_error, axis=0)
     mean_priority = (1 - self.max_priority_weight) * jnp.mean(abs_td_error, axis=0)
     priorities = (max_priority + mean_priority)
-
 
     reverb_update = learning_lib.ReverbUpdate(
         keys=batch.info.key,
@@ -206,5 +207,6 @@ class USFALearning(RecurrentTDLearning):
         discounts[:-1])      # [T, B, N]
 
     # average over all policies + cumulants
-    batch_loss = 0.5 * jnp.square(batch_td_error).sum(axis=(0, 2, 3))
+    batch_loss = 0.5 * jnp.square(batch_td_error).sum(axis=(0, 2, 3)) # [B]
+    batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
     return batch_td_error, batch_loss
