@@ -50,7 +50,7 @@ def default_evaluator(
   builder: builders.GenericActorLearnerBuilder,
   policy_factory: distributed_layout.PolicyFactory,
   log_to_bigtable: bool = False,
-  env_loop = environment_loop.EnvironmentLoop,
+  EnvLoopCls = environment_loop.EnvironmentLoop,
   logger_fn=None) -> types.EvaluatorFactory:
   """Returns a default evaluator process."""
   def evaluator(
@@ -76,7 +76,7 @@ def default_evaluator(
         'evaluator', log_to_bigtable, steps_key='actor_steps')
 
     # Create the run loop and return it.
-    return env_loop(environment, actor, counter, logger)
+    return EnvLoopCls(environment, actor, counter, logger)
   return evaluator
 
 
@@ -98,13 +98,13 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       logger_fn = None,
       actor_logger_fn = None,
       evaluator_logger_fn = None,
-      env_loop = environment_loop.EnvironmentLoop,
+      EnvLoopCls = environment_loop.EnvironmentLoop,
       workdir: Optional[str] = '~/acme',
       device_prefetch: bool = False,
       log_to_bigtable: bool = True,
       log_every: float = 10.0,
   ):
-    self.env_loop = env_loop
+    self.EnvLoopCls = EnvLoopCls
 
     # -----------------------
     # logger fns
@@ -146,7 +146,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
                 network_factory=network_factory,
                 builder=td_builder,
                 policy_factory=evaluator_policy_network_factory,
-                env_loop=env_loop,
+                EnvLoopCls=EnvLoopCls,
                 log_to_bigtable=log_to_bigtable,
                 logger_fn=evaluator_logger_fn)
         ],
@@ -179,7 +179,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
     logger = self._actor_logger_fn(actor_id)
     # Create the loop to connect environment and agent.
     # only change from original is below
-    return self.env_loop(environment, actor, counter, logger)
+    return self.EnvLoopCls(environment, actor, counter, logger)
 
 
 class TDAgent(local_layout.LocalLayout):

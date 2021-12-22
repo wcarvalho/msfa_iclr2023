@@ -49,9 +49,11 @@ class GoToAvoid(dm_env.Environment):
     room_size=10,
     partial=True,
     agent_view_size=5,
+    path='.',
     tile_size=12,
     wrappers=None,
-    nobjects=10):
+    nobjects=10,
+    **kwargs):
     """Initializes a new Catch environment.
     Args:
       rows: number of rows.
@@ -71,7 +73,9 @@ class GoToAvoid(dm_env.Environment):
     self.env = MultiLevel(
         LevelCls=GotoAvoidEnv,
         wrappers=wrappers,
-        all_level_kwargs=all_level_kwargs)
+        path=path,
+        all_level_kwargs=all_level_kwargs,
+        **kwargs)
 
 
     self.default_env = GymWrapper(self.env.env)

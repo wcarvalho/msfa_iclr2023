@@ -18,6 +18,7 @@ class GotoAvoidEnv(KitchenLevel):
         rootdir='.',
         verbosity=0,
         nobjects=12,
+        kitchen=None,
         **kwargs):
 
         self.object2reward = object2reward
@@ -28,7 +29,7 @@ class GotoAvoidEnv(KitchenLevel):
         objects = object2reward.keys()
         self.object2idx = {o:idx for idx, o in enumerate(objects)}
         self.nobjects = nobjects
-        kitchen = Kitchen(
+        kitchen = kitchen or Kitchen(
             objects=objects,
             tile_size=tile_size,
             rootdir=rootdir,

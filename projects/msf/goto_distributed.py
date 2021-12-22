@@ -34,11 +34,14 @@ flags.DEFINE_integer('num_actors', 10, 'Number of actors.')
 
 FLAGS = flags.FLAGS
 
-def main(_):
+def train(agent, num_actors, config_kwargs=None,
+  path='.', log_path='results/msf/distributed',
+  hourminute=True):
   # -----------------------
   # load env stuff
   # -----------------------
-  environment_factory = lambda is_eval: helpers.make_environment(is_eval)
+  environment_factory = lambda is_eval: helpers.make_environment(
+    evaluation=is_eval, path=path)
   env = environment_factory(False)
   env_spec = acme.make_environment_spec(env)
   del env
@@ -46,7 +49,7 @@ def main(_):
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings(FLAGS.agent, env_spec)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings(agent, env_spec, config_kwargs)
 
   def network_factory(spec):
     return td_agent.make_networks(
@@ -63,21 +66,20 @@ def main(_):
   # -----------------------
   # loggers
   # -----------------------
-  agent = str(FLAGS.agent)
+  agent = str(agent)
   log_dir = gen_log_dir(
-    base_dir="results/msf/distributed",
+    base_dir=f"{path}/{log_path}",
+    hourminute=hourminute,
     agent=agent)
   logger_fn = lambda : make_logger(
-        log_dir=log_dir, label=agent, asynchronous=True,
-        )
+        log_dir=log_dir, label=agent, asynchronous=True)
 
   actor_logger_fn = lambda actor_id: make_logger(
                   log_dir=log_dir, label='actor',
                   save_data=actor_id == 0,
                   )
   evaluator_logger_fn = lambda : make_logger(
-                  log_dir=log_dir, label='evaluator',
-                  )
+                  log_dir=log_dir, label='evaluator')
 
   # -----------------------
   # build program and run
@@ -90,14 +92,17 @@ def main(_):
       logger_fn=logger_fn,
       actor_logger_fn=actor_logger_fn,
       evaluator_logger_fn=evaluator_logger_fn,
+      EnvLoopCls=EnvironmentLoop,
       config=config,
       workdir=log_dir,
-      seed=FLAGS.seed,
-      num_actors=FLAGS.num_actors).build()
+      seed=config.seed,
+      num_actors=num_actors).build()
 
   # Launch experiment.
   lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING)
 
+def main(_):
+  train(FLAGS.agent, FLAGS.num_actors)
 
 if __name__ == '__main__':
   app.run(main)

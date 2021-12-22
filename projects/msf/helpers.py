@@ -15,6 +15,7 @@ from projects.msf import networks as msf_networks
 
 def make_environment(evaluation: bool = False,
                      tile_size=8,
+                     path='.',
                      ) -> dm_env.Environment:
   """Loads environments."""
   if evaluation:
@@ -75,6 +76,7 @@ def make_environment(evaluation: bool = False,
   env = GoToAvoid(
     tile_size=tile_size,
     obj2rew=obj2rew,
+    path=path,
     wrappers=[functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size)]
     )
 
@@ -91,17 +93,14 @@ def make_environment(evaluation: bool = False,
   return wrappers.wrap_all(env, wrapper_list)
 
 
-def load_agent_settings(agent, env_spec):
+def load_agent_settings(agent, env_spec, config_kwargs=None):
+  config_kwargs = config_kwargs or dict()
 
   print("="*50)
   print(agent)
   print("="*50)
   if agent == "r2d1": # Recurrent DQN
-    config = td_agent.R2D1Config(
-      batch_size=16,
-      trace_length=20,
-      burn_in_length=10,
-      sequence_period=10)
+    config = td_agent.R2D1Config(**config_kwargs)
 
     NetworkCls=msf_networks.R2D2Network
     NetKwargs=dict(
@@ -115,11 +114,7 @@ def load_agent_settings(agent, env_spec):
 
 
   elif agent == "usfa": # Universal Successor Features
-    config = td_agent.USFAConfig(
-      batch_size=16,
-      trace_length=20,
-      burn_in_length=10,
-      sequence_period=10)
+    config = td_agent.USFAConfig(**config_kwargs)
 
     NetworkCls=msf_networks.USFANetwork
     state_dim = env_spec.observations.observation.state_features.shape[0]

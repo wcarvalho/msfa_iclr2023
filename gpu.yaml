@@ -10,6 +10,8 @@ dependencies:
     - pip
     - gpustat
     - setuptools
+    - hyperopt
+    - ray[tune]
     - ipdb
     - wheel
     - sklearn

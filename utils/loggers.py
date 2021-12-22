@@ -12,11 +12,14 @@ try:
 except ImportError:
   rich_print = None
 
-def gen_log_dir(base_dir="results/", **kwargs):
-    job_name = datetime.datetime.now().strftime('%Y.%m.%d-%H.%M')
-    kwpath = ','.join([f'{key}={value}' for key, value in kwargs.items()])
-    path = Path(base_dir).joinpath(job_name).joinpath(kwpath)
-    return str(path)
+def gen_log_dir(base_dir="results/", hourminute=True, **kwargs):
+  strkey = '%Y.%m.%d-'
+  if hourminute:
+    strkey += '-%H.%M'
+  job_name = datetime.datetime.now().strftime('%Y.%m.%d-%H.%M')
+  kwpath = ','.join([f'{key}={value}' for key, value in kwargs.items()])
+  path = Path(base_dir).joinpath(job_name).joinpath(kwpath)
+  return str(path)
 
 
 def make_logger(

@@ -38,6 +38,7 @@ class MultiLevel(object):
         kitchen : Kitchen=None,
         levelname2idx=dict(),
         LevelCls=KitchenLevel,
+        path='.',
         wrappers=[],
         **kwargs):
       """Summary
@@ -75,7 +76,7 @@ class MultiLevel(object):
         self.kitchen = Kitchen(
           objects=kitchen_kwargs.get('objects', []),
           tile_size=kitchen_kwargs.get('tile_size', 8),
-          rootdir=kitchen_kwargs.get('root_dir', "."),
+          rootdir=kitchen_kwargs.get('root_dir', path),
           verbosity=kitchen_kwargs.get('verbosity', 0)
         )
 

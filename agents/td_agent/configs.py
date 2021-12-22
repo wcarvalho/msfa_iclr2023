@@ -21,6 +21,7 @@ class R2D1Config:
   sequence_period: int = 40
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
+  seed: int = 1
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
