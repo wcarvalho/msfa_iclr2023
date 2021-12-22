@@ -8,6 +8,6 @@ from agents.td_agent.losses import R2D2Learning, r2d2_loss_kwargs
 from agents.td_agent.losses import USFALearning
 from agents.td_agent.utils import make_networks
 from agents.td_agent.utils import make_behavior_policy
-from agents.td_agent.networks import TDNetworkFns, R2D2Network, USFANetwork
+from agents.td_agent.types import TDNetworkFns
 
 

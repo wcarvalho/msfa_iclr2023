@@ -1,20 +1,25 @@
 """Run Successor Feature based agents and baselines on 
    BabyAI derivative environments."""
 
+# Do not preallocate GPU memory for JAX.
+import os
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+
 from absl import app
 from absl import flags
 import acme
 import functools
+
 from agents import td_agent
-
 from projects.msf import helpers
-
+from projects.msf.environment_loop import EnvironmentLoop
+from utils import make_logger, gen_log_dir
 
 # -----------------------
 # flags
 # -----------------------
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
-flags.DEFINE_integer('num_episodes', 1000, 'Number of episodes to train for.')
+flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 
 FLAGS = flags.FLAGS
@@ -26,11 +31,22 @@ def main(_):
 
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings(FLAGS.agent, env_spec)
 
+  # -----------------------
+  # logger
+  # -----------------------
+  log_dir = gen_log_dir(
+    base_dir="results/msf/local",
+    agent=FLAGS.agent)
+  logger_fn = lambda : make_logger(
+        log_dir=log_dir, label=f'{FLAGS.agent}')
+
+
+  # -----------------------
+  # agent
+  # -----------------------
   builder=functools.partial(td_agent.TDBuilder,
       LossFn=LossFn, LossFnKwargs=LossFnKwargs,
-    )
-
-
+      logger_fn=logger_fn)
   agent = td_agent.TDAgent(
       env_spec,
       networks=td_agent.make_networks(
@@ -39,11 +55,19 @@ def main(_):
         NetworkCls=NetworkCls,
         NetKwargs=NetKwargs),
       builder=builder,
+      workdir=log_dir,
       config=config,
       seed=FLAGS.seed,
       )
 
-  loop = acme.EnvironmentLoop(env, agent)
+  # -----------------------
+  # make env + run
+  # -----------------------
+  env_logger = make_logger(
+    log_dir=log_dir,
+    label='environment_loop')
+
+  loop = EnvironmentLoop(env, agent, logger=env_logger)
   loop.run(FLAGS.num_episodes)
 
 

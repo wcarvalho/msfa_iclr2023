@@ -10,7 +10,7 @@ import haiku as hk
 import jax
 import rlax
 
-from agents.td_agent.networks import TDNetworkFns
+from agents.td_agent.types import TDNetworkFns
 from agents.td_agent.configs import R2D1Config
 
 def make_networks(batch_size, env_spec, NetworkCls, NetKwargs):

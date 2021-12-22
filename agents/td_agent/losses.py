@@ -16,7 +16,7 @@ import rlax
 import tree
 
 
-from agents.td_agent.networks import TDNetworkFns
+from agents.td_agent.types import TDNetworkFns
 from utils import td
 
 

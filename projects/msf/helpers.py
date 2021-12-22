@@ -8,8 +8,9 @@ from envs.acme.goto_avoid import GoToAvoid
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper
 
 from utils.wrappers import ObservationRemapWrapper
-from agents import td_agent
 
+from agents import td_agent
+from projects.msf import networks as msf_networks
 
 
 def make_environment(evaluation: bool = False,
@@ -102,7 +103,7 @@ def load_agent_settings(agent, env_spec):
       burn_in_length=10,
       sequence_period=10)
 
-    NetworkCls=td_agent.R2D2Network
+    NetworkCls=msf_networks.R2D2Network
     NetKwargs=dict(
       num_actions=env_spec.actions.num_values,
       lstm_size=256,
@@ -120,7 +121,7 @@ def load_agent_settings(agent, env_spec):
       burn_in_length=10,
       sequence_period=10)
 
-    NetworkCls=td_agent.USFANetwork
+    NetworkCls=msf_networks.USFANetwork
     state_dim = env_spec.observations.observation.state_features.shape[0]
     NetKwargs=dict(
       num_actions=env_spec.actions.num_values,
