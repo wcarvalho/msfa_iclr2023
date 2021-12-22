@@ -134,6 +134,7 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt 
     import cv2
 
+    tile_size=16
     env = GotoAvoidEnv(
         room_size=10,
         agent_view_size=5,
@@ -143,10 +144,10 @@ if __name__ == '__main__':
             "fork" : 0,
             "knife" : 0,
             },
-        tile_size=12,
+        tile_size=tile_size,
         nobjects=12,
         )
-    env = RGBImgPartialObsWrapper(env, tile_size=12)
+    env = RGBImgPartialObsWrapper(env, tile_size=tile_size)
 
     def combine(full, partial):
         full_small = cv2.resize(full, dsize=partial.shape[:2], interpolation=cv2.INTER_CUBIC)
@@ -157,11 +158,13 @@ if __name__ == '__main__':
 
 
     obs = env.reset()
-    full = env.render('rgb_array', tile_size=12, highlight=True)
+    full = env.render('rgb_array', tile_size=tile_size, highlight=True)
     window.set_caption(obs['mission'])
     window.show_img(combine(full, obs['image']))
 
     for step in range(100):
         obs, reward, done, info = env.step(env.action_space.sample())
-        full = env.render('rgb_array', tile_size=12, highlight=True)
+        full = env.render('rgb_array', tile_size=tile_size, highlight=True)
         window.show_img(combine(full, obs['image']))
+
+    import ipdb; ipdb.set_trace()
