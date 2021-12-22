@@ -164,7 +164,7 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt 
     import cv2
 
-    tile_size=16
+    tile_size=20
     env = GotoAvoidEnv(
         room_size=10,
         agent_view_size=5,
@@ -175,7 +175,7 @@ if __name__ == '__main__':
             "knife" : 0,
             },
         tile_size=tile_size,
-        nobjects=12,
+        nobjects=4,
         )
     env = RGBImgPartialObsWrapper(env, tile_size=tile_size)
 
@@ -186,14 +186,20 @@ if __name__ == '__main__':
     window = gym_minigrid.window.Window('kitchen')
     window.show(block=False)
 
+    def move(action : str):
+      # idx2action = {idx:action for action, idx in env.actions.items()}
+      obs, reward, done, info = env.step(env.actions[action])
+      full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+      window.show_img(combine(full, obs['image']))
 
     obs = env.reset()
     full = env.render('rgb_array', tile_size=tile_size, highlight=True)
     window.set_caption(obs['mission'])
     window.show_img(combine(full, obs['image']))
 
-    for step in range(100):
+    for step in range(5):
         obs, reward, done, info = env.step(env.action_space.sample())
+        obs, reward, done, info = env.step(0)
         full = env.render('rgb_array', tile_size=tile_size, highlight=True)
         window.show_img(combine(full, obs['image']))
 
