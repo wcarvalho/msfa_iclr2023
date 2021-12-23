@@ -1,6 +1,12 @@
 import numpy as np
 from babyai.levels.verifier import Instr
 from envs.babyai_kitchen.world import Kitchen
+from envs.babyai_kitchen.types import ActionsSubgoal
+
+from babyai.bot import Bot, GoNextToSubgoal
+from babyai.levels.verifier import (ObjDesc, pos_next_to,
+                            GoToInstr, OpenInstr, PickupInstr, PutNextInstr, BeforeInstr, AndInstr, AfterInstr)
+
 
 def get_matching_objects(env, object_types=None, matchfn=None):
     """Get objects matching conditions
@@ -169,6 +175,13 @@ class CleanTask(KitchenTask):
 
         return self.abstract_rep.replace('x', self.object_to_clean.name)
 
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.object_to_clean, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.sink, actions=['place', 'toggle'])
+      ]
     @property
     def num_navs(self): return 2
 
@@ -207,6 +220,14 @@ class SliceTask(KitchenTask):
 
         return reward, done
 
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.knife, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.object_to_slice, actions=['slice'])
+      ]
+
     @staticmethod
     def task_actions():
         return [
@@ -214,6 +235,7 @@ class SliceTask(KitchenTask):
             'pickup_and',
             'place'
             ]
+
 
 class ChillTask(KitchenTask):
     """docstring for CookTask"""
@@ -275,6 +297,13 @@ class PickupCleanedTask(CleanTask):
 
         return reward, done
 
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.object_to_clean, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.sink, actions=['place', 'toggle', 'pickup_contents'])
+      ]
 class PickupSlicedTask(SliceTask):
     """docstring for SliceTask"""
 

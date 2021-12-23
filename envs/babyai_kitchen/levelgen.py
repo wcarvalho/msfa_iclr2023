@@ -1,5 +1,5 @@
 import numpy as np
-
+import collections
 from gym import spaces
 
 
@@ -103,10 +103,22 @@ class KitchenLevel(RoomGridLevel):
         if load_actions_from_tasks:
             raise RuntimeError("Always use those set by __init__.")
             actions = self.load_actions_from_tasks(task_kinds)
-        self.actions = {action:idx for idx, action in enumerate(actions, start=0)}
+        self.actiondict = {action:idx for idx, action in enumerate(actions, start=0)}
+
+        # for backward compatibility
+        ActionCls = collections.namedtuple('Action', actions+['pickup', 'drop', 'done'])
+        backwards = {
+          'pickup': self.actiondict['pickup_contents'],
+          'drop': self.actiondict['place'],
+          'done': -1
+          }
+
+        backwards_action_dict = {**self.actiondict, **backwards}
+        self.actions = ActionCls(**backwards_action_dict)
+
         self.idx2action = {idx:action for idx, action in enumerate(actions, start=0)}
         self.action_names = actions
-        self.action_space = spaces.Discrete(len(self.actions))
+        self.action_space = spaces.Discrete(len(self.actiondict))
 
         # ======================================================
         # observation space
@@ -346,6 +358,7 @@ class KitchenLevel(RoomGridLevel):
         if self.task is not None:
             self.surface = self.task.surface(self)
             self.mission = self.surface
+            self.instrs = self.task
 
             reward, done = self.task.check_status()
             if done:
@@ -399,6 +412,8 @@ class KitchenLevel(RoomGridLevel):
 
         return obs
 
+    def straction(self, action : str):
+      return self.actiondict[action]
 
     def step(self, action):
         """Copied from: 
@@ -424,17 +439,17 @@ class KitchenLevel(RoomGridLevel):
         # Rotate left
         action_info = None
         interaction = False
-        if action == self.actions.get('left', -1):
+        if action == self.actiondict.get('left', -1):
             self.agent_dir -= 1
             if self.agent_dir < 0:
                 self.agent_dir += 4
 
         # Rotate right
-        elif action == self.actions.get('right', -1):
+        elif action == self.actiondict.get('right', -1):
             self.agent_dir = (self.agent_dir + 1) % 4
 
         # Move forward
-        elif action == self.actions.get('forward', -1):
+        elif action == self.actiondict.get('forward', -1):
             if object_infront == None or object_infront.can_overlap():
                 self.agent_pos = fwd_pos
             # if object_infront != None and object_infront.type == 'goal':
@@ -530,3 +545,53 @@ class KitchenLevel(RoomGridLevel):
         )
 
         return img
+
+
+
+if __name__ == '__main__':
+    import gym_minigrid.window
+    import time
+    from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, RGBImgFullyObsWrapper
+    import matplotlib.pyplot as plt 
+    import cv2
+
+    tile_size=20
+    env = GotoAvoidEnv(
+        room_size=10,
+        agent_view_size=5,
+        object2reward={
+            "pan" : 1,
+            "plates" : 0,
+            "fork" : 0,
+            "knife" : 0,
+            },
+        tile_size=tile_size,
+        nobjects=4,
+        )
+    env = RGBImgPartialObsWrapper(env, tile_size=tile_size)
+
+    def combine(full, partial):
+        full_small = cv2.resize(full, dsize=partial.shape[:2], interpolation=cv2.INTER_CUBIC)
+        return np.concatenate((full_small, partial), axis=1)
+
+    window = gym_minigrid.window.Window('kitchen')
+    window.show(block=False)
+
+    def move(action : str):
+      # idx2action = {idx:action for action, idx in env.actions.items()}
+      obs, reward, done, info = env.step(env.actions[action])
+      full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+      window.show_img(combine(full, obs['image']))
+
+    obs = env.reset()
+    full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+    window.set_caption(obs['mission'])
+    window.show_img(combine(full, obs['image']))
+
+    for step in range(5):
+        obs, reward, done, info = env.step(env.action_space.sample())
+        obs, reward, done, info = env.step(0)
+        full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+        window.show_img(combine(full, obs['image']))
+
+    import ipdb; ipdb.set_trace()

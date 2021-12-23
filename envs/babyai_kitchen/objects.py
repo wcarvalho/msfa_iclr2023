@@ -362,6 +362,7 @@ class Food(KitchenObject):
         super(Food, self).__init__(
             name=name,
             properties=properties,
+            visible_properties=visible_properties,
             object_type='food',
              **kwargs)
 
