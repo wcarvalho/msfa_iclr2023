@@ -11,7 +11,7 @@ import gym_minigrid.window
 def main():
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--num-missions', help='# of unique missions', default=10)
+    parser.add_argument('--missions', help='# of unique missions', default=10)
     parser.add_argument('--num-distractors', type=int, default=0)
     parser.add_argument('--room-size', type=int, default=5)
     parser.add_argument('--agent-view-size', type=int, default=8)
@@ -23,10 +23,10 @@ def main():
     parser.add_argument('--random-object-state', type=int, default=0)
     parser.add_argument('--num-rows', type=int, default=1)
     parser.add_argument('--tile-size', type=int, default=16)
-    parser.add_argument('--steps', type=int, default=1000)
     parser.add_argument('--partial-obs', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
-    parser.add_argument('--check', type=int, default=1)
+    parser.add_argument('--check', type=int, default=0)
+    parser.add_argument('--check-end', type=int, default=1)
     parser.add_argument('--verbosity', type=int, default=2)
     args = parser.parse_args()
 
@@ -75,12 +75,12 @@ def main():
       window.set_caption(obs['mission'])
       window.show_img(combine(full, obs['image']))
       if int(args.check):
-        ipdb.set_trace()
+        import ipdb; ipdb.set_trace()
       else:
-        time.sleep(.1)
+        time.sleep(.05)
 
 
-    for mission_indx in range(int(args.num_missions)):
+    for mission_indx in range(int(args.missions)):
         env.seed(mission_indx)
         obs = env.reset()
         print("="*50)
@@ -96,7 +96,8 @@ def main():
 
         bot = KitchenBot(env)
         traj = bot.generate_traj(plot_fn=show)
-
+        if args.check_end:
+          import ipdb; ipdb.set_trace()
 
 
 

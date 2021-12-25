@@ -352,6 +352,7 @@ class Kitchen(object):
                     rootdir=rootdir,
                     can_contain=['lettuce', 'potato', 'tomato', 'onion'],
                     properties=['dirty'],
+                    visible_properties=['dirty'],
                 ),
 
                 KitchenObject(
@@ -359,7 +360,8 @@ class Kitchen(object):
                     object_type='utensil',
                     rendering_scale=rendering_scale,
                     rootdir=rootdir,
-                    properties=['dirty']
+                    properties=['dirty'],
+                    visible_properties=['dirty'],
                 ),
                 KitchenObject(
                     name="knife",

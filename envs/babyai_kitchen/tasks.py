@@ -112,6 +112,12 @@ class PickupTask(KitchenTask):
         return reward, done
 
 
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.pickup_object, actions=['pickup_contents'])
+      ]
+
 # ======================================================
 # Length = 2
 # ======================================================
@@ -151,6 +157,14 @@ class HeatTask(KitchenTask):
         done = reward = self.object_to_heat.state['temp'] == 'hot'
         return reward, done
 
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.object_to_heat, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.stove, actions=['place', 'toggle'])
+      ]
+
 class CleanTask(KitchenTask):
 
     @property
@@ -163,6 +177,7 @@ class CleanTask(KitchenTask):
             objects_to_clean = self.env.objects_by_type(x_options)
         else:
             objects_to_clean = self.env.objects_with_property(['dirty'])
+            objects_to_clean = [o for o in objects_to_clean if o.type != 'sink']
 
         self.object_to_clean = np.random.choice(objects_to_clean)
         self.object_to_clean.set_prop('dirty', True)
@@ -182,6 +197,7 @@ class CleanTask(KitchenTask):
         ActionsSubgoal(
           goto=self.sink, actions=['place', 'toggle'])
       ]
+
     @property
     def num_navs(self): return 2
 
@@ -275,6 +291,14 @@ class ChillTask(KitchenTask):
 
         return reward, done
 
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.object_to_chill, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.fridge, actions=['place', 'toggle'])
+      ]
+
 class PickupCleanedTask(CleanTask):
     """docstring for CleanTask"""
 
@@ -304,6 +328,7 @@ class PickupCleanedTask(CleanTask):
         ActionsSubgoal(
           goto=self.sink, actions=['place', 'toggle', 'pickup_contents'])
       ]
+
 class PickupSlicedTask(SliceTask):
     """docstring for SliceTask"""
 
@@ -337,6 +362,15 @@ class PickupSlicedTask(SliceTask):
             'place'
             ]
 
+    def subgoals(self):
+      import ipdb; ipdb.set_trace()
+      return [
+        ActionsSubgoal(
+          goto=self.knife, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.object_to_slice, actions=['slice', 'left', 'place', 'right', 'pickup_contents'])
+      ]
+
 class PickupChilledTask(ChillTask):
     """docstring for CookTask"""
 
@@ -361,6 +395,13 @@ class PickupChilledTask(ChillTask):
 
         return reward, done
 
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.object_to_chill, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.fridge, actions=['place', 'toggle', 'pickup_contents'])
+      ]
 
 class PlaceTask(KitchenTask):
 
@@ -448,6 +489,16 @@ class PlaceTask(KitchenTask):
             'place'
             ]
 
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.to_place, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.container, actions=['place'])
+      ]
+
+
+
 # ======================================================
 # length = 3
 # ======================================================
@@ -500,6 +551,50 @@ class CookTask(KitchenTask):
 
         return reward, done
 
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.object_to_cook, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.object_to_cook_with, actions=['place', 'pickup_container']),
+        ActionsSubgoal(
+          goto=self.object_to_cook_on, actions=['place', 'toggle'])
+      ]
+
+class PickupCookedTask(CookTask):
+
+
+    @property
+    def abstract_rep(self):
+        return 'pickup cooked x'
+
+
+    @property
+    def num_navs(self): return 3
+
+    def check_status(self):
+        _, done = super().check_status()
+        if self.env.carrying:
+            picked_up = self.env.carrying.type == self.object_to_cook.type
+            reward = done = done and picked_up
+        else:
+            done = reward = False
+
+        return reward, done
+
+
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.object_to_cook, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.object_to_cook_with, actions=['place', 'pickup_container']),
+        ActionsSubgoal(
+          goto=self.object_to_cook_on, actions=['place', 'toggle', 'pickup_contents'])
+      ]
+
+
+
 
 TASKS=dict(
     pickup=PickupTask,
@@ -512,4 +607,5 @@ TASKS=dict(
     pickup_sliced=PickupSlicedTask,
     pickup_chilled=PickupChilledTask,
     cook=CookTask,
+    pickup_cooked=PickupCookedTask,
 )
