@@ -32,12 +32,22 @@ class KitchenBot(Bot):
     self.bfs_step_counter = 0
 
 
-  def generate_traj(self, action_taken=None, plot_fn=lambda x:x):
+  def generate_traj(self, action_taken=None, plot_fn=lambda x:x, epsilon=0):
 
     original_size = steps_left = len(self.stack)
     env = self.mission
 
     all_obs = []
+    all_action = []
+    all_reward = []
+
+    def step_update(action):
+      obs, reward, done, info = env.step(action)
+      all_obs.append(obs)
+      all_action.append(action)
+      all_reward.append(reward)
+      return obs, reward, done, info
+
     idx = 0
     while self.stack:
       idx += 1
@@ -45,17 +55,22 @@ class KitchenBot(Bot):
         raise RuntimeError("Taking too long")
 
       action = self.replan(action_taken)
+
+      if epsilon:
+        sample = np.random.uniform(0, 1)
+        if sample < epsilon:
+          action = np.random.randint(env.action_space.n)
       # -----------------------
       # done??
       # -----------------------
       if action == env.actions.done:
-        return all_obs
+        return all_obs, all_action, all_reward
 
       # -----------------------
       # take actions
       # -----------------------
-      obs, reward, done, info = env.step(action)
-      all_obs.append(obs)
+      obs, reward, done, info = step_update(action)
+
       plot_fn(obs)
 
 
@@ -71,8 +86,14 @@ class KitchenBot(Bot):
 
       if object_infront and object_infront.type == subgoal.goto.type:
         for action_str in subgoal.actions:
-          obs, reward, done, info = env.step(env.actiondict[action_str])
-          all_obs.append(obs)
+          action = env.actiondict[action_str]
+
+          if epsilon:
+            raise RuntimeError("Not trivial to include random actions here")
+            sample = np.random.uniform(0, 1)
+
+          obs, reward, done, info = step_update(action)
+
           plot_fn(obs)
 
       # -----------------------

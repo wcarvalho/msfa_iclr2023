@@ -10,9 +10,6 @@ class Kitchen(object):
         self.carrying = None
         self.verbosity = verbosity
 
-        print("="*50)
-        print('rootdir', rootdir)
-        print("="*50)
         self._objects = self._default_objects(rendering_scale=tile_size*3, rootdir=rootdir)
 
         # restrict objects

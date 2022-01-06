@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""Catch reinforcement learning environment."""
+"""Kitchen reinforcement learning environment."""
 from typing import NamedTuple
 
 import dm_env
@@ -25,50 +25,49 @@ from acme.wrappers import GymWrapper
 import numpy as np
 
 from envs.babyai_kitchen.multilevel import MultiLevel
-from envs.babyai_kitchen.goto_avoid import GotoAvoidEnv
+from envs.babyai_kitchen.levelgen import KitchenLevel
 
-class GotoObs(NamedTuple):
+class Observation(NamedTuple):
   """Container for (Observation, Action, Reward) tuples."""
   image: types.Nest
-  pickup: types.Nest
   mission: types.Nest
 
 def convert_rawobs(obs):
     obs.pop('mission_idx')
     obs['image'] = obs['image'] / 255.0
-    return GotoObs(**obs)
+    return Observation(**obs)
 
-class GoToAvoid(dm_env.Environment):
+class MultitaskKitchen(dm_env.Environment):
   """
   """
 
   def __init__(self,
-    obj2rew: dict, 
+    tasks: list,
     room_size=10,
     agent_view_size=5,
     path='.',
     tile_size=12,
     wrappers=None,
-    nobjects=10,
+    num_dists=0,
     **kwargs):
-    """Initializes a new Catch environment.
+    """Initializes a new Kitchen environment.
     Args:
       rows: number of rows.
       columns: number of columns.
       seed: random seed for the RNG.
     """
     all_level_kwargs = dict()
-    for key, o2r in obj2rew.items():
-        all_level_kwargs[key]=dict(
+    for task in tasks:
+        all_level_kwargs[task]=dict(
             room_size=room_size,
             agent_view_size=agent_view_size,
-            object2reward=o2r,
+            task_kinds=[task],
             tile_size=tile_size,
-            nobjects=nobjects,
+            num_dists=num_dists,
         )
 
     self.env = MultiLevel(
-        LevelCls=GotoAvoidEnv,
+        LevelCls=KitchenLevel,
         wrappers=wrappers,
         path=path,
         all_level_kwargs=all_level_kwargs,
@@ -103,7 +102,7 @@ class GoToAvoid(dm_env.Environment):
 
   def observation_spec(self):
     default = self.default_env.observation_spec()
-    return GotoObs(
+    return Observation(
         image=specs.BoundedArray(
             shape=default['image'].shape,
             dtype=np.float32,
@@ -111,5 +110,4 @@ class GoToAvoid(dm_env.Environment):
             minimum=0,
             maximum=1,
         ),
-        mission=default['mission'],
-        pickup=default['pickup'])
+        mission=default['mission'])

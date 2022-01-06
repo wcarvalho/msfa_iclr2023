@@ -162,7 +162,9 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
   def actor(self, random_key: networks_lib.PRNGKey, replay: reverb.Client,
             variable_source: core.VariableSource, counter: counting.Counter,
             actor_id: int) -> environment_loop.EnvironmentLoop:
-    """The actor process."""
+
+    """The actor process. 
+       Only change from original is to use custom EnvLoopCls."""
     adder = self._builder.make_adder(replay)
 
     # Create environment and policy core.
@@ -178,7 +180,6 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
     # Only actor #0 will write to bigtable in order not to spam it too much.
     logger = self._actor_logger_fn(actor_id)
     # Create the loop to connect environment and agent.
-    # only change from original is below
     return self.EnvLoopCls(environment, actor, counter, logger)
 
 
