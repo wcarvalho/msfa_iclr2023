@@ -363,12 +363,12 @@ class PickupSlicedTask(SliceTask):
             ]
 
     def subgoals(self):
-      import ipdb; ipdb.set_trace()
+      # TODO: rotate and try to place is a hack that should be replaced
       return [
         ActionsSubgoal(
           goto=self.knife, actions=['pickup_contents']),
         ActionsSubgoal(
-          goto=self.object_to_slice, actions=['slice', 'left', 'place', 'right', 'pickup_contents'])
+          goto=self.object_to_slice, actions=['slice', *(['left', 'place']*4), 'pickup_contents'])
       ]
 
 class PickupChilledTask(ChillTask):
