@@ -493,6 +493,7 @@ class KitchenLevel(RoomGridLevel):
         info = {'success': False}
         if self.task is not None:
             reward, done = self.task.check_status()
+            reward = float(reward)
 
             if done:
                 info['success'] = True

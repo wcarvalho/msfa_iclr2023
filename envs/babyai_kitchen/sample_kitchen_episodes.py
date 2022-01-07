@@ -95,7 +95,7 @@ def main():
         window.show_img(combine(full, obs['image']))
 
         bot = KitchenBot(env)
-        traj = bot.generate_traj(plot_fn=show)
+        obss, actions, rewards, dones = bot.generate_traj(plot_fn=show)
         if args.check_end:
           import ipdb; ipdb.set_trace()
 

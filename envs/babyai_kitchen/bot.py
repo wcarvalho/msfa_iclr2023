@@ -33,7 +33,7 @@ class KitchenBot(Bot):
     self.bfs_step_counter = 0
 
 
-  def generate_traj(self, action_taken=None, plot_fn=lambda x:x, epsilon=0):
+  def generate_traj(self, action_taken=None, plot_fn=lambda x:x):
 
     steps_left = len(self.stack)
     env = self.mission
@@ -43,13 +43,13 @@ class KitchenBot(Bot):
     all_reward = []
     all_done = []
 
-    def step_update(action):
-      obs, reward, done, info = env.step(action)
-      all_obs.append(obs)
-      all_action.append(action)
-      all_reward.append(reward)
-      all_done.append(done)
-      return obs, reward, done, info
+    def step_update(_action):
+      _obs, _reward, _done, _info = env.step(_action)
+      all_obs.append(_obs)
+      all_action.append(_action)
+      all_reward.append(_reward)
+      all_done.append(_done)
+      return _obs, _reward, _done, _info
 
     idx = 0
     while self.stack:
@@ -59,10 +59,6 @@ class KitchenBot(Bot):
 
       action = self.replan(action_taken)
 
-      if epsilon:
-        sample = np.random.uniform(0, 1)
-        if sample < epsilon:
-          action = np.random.randint(env.action_space.n)
       # -----------------------
       # done??
       # -----------------------
@@ -87,13 +83,8 @@ class KitchenBot(Bot):
 
       if object_infront and object_infront.type == subgoal.goto.type:
         for action_str in subgoal.actions:
-          action = env.actiondict[action_str]
-
-          if epsilon:
-            raise RuntimeError("Not trivial to include random actions here")
-            sample = np.random.uniform(0, 1)
-
-          obs, reward, done, info = step_update(action)
+          interaction = env.actiondict[action_str]
+          obs, reward, done, info = step_update(interaction)
 
           plot_fn(obs)
 
@@ -105,6 +96,6 @@ class KitchenBot(Bot):
 
 
 
-  def _check_erroneous_box_opening(self, action): 
+  def _check_erroneous_box_opening(self, action):
     # ignore this
     pass
