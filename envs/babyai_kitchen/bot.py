@@ -24,7 +24,6 @@ class KitchenBot(Bot):
     self.stack = [GoNextToSubgoal(self, tuple(subgoal.goto.cur_pos)) for subgoal in subgoals]
     self.stack.reverse()
 
-    self.original_size = len(self.stack)
     # How many BFS searches this bot has performed
     self.bfs_counter = 0
 
@@ -52,6 +51,9 @@ class KitchenBot(Bot):
       return _obs, _reward, _done, _info
 
     idx = 0
+
+    subgoals = iter(self.subgoals)
+    current_subgoal = next(subgoals)
     while self.stack:
       idx += 1
       if idx > 1000:
@@ -75,23 +77,24 @@ class KitchenBot(Bot):
       # -----------------------
       # subgoal object in front? do actions
       # -----------------------
-      subgoal_idx = self.original_size - steps_left
-      subgoal = self.subgoals[subgoal_idx]
-      subgoal_object = subgoal.goto
       object_infront = env.grid.get(*env.front_pos)
-
-
-      if object_infront and object_infront.type == subgoal.goto.type:
-        for action_str in subgoal.actions:
+      if object_infront and object_infront.type == current_subgoal.goto.type:
+        for action_str in current_subgoal.actions:
           interaction = env.actiondict[action_str]
           obs, reward, done, info = step_update(interaction)
 
           plot_fn(obs)
 
+        try:
+          current_subgoal = next(subgoals)
+        except:
+          pass
+
       # -----------------------
       # book-keeping
       # -----------------------
       steps_left = len(self.stack)
+
       action_taken = action
 
 

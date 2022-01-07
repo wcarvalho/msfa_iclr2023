@@ -24,6 +24,7 @@ from acme.wrappers import GymWrapper
 
 import numpy as np
 
+from envs.babyai_kitchen import babyai_utils
 from envs.babyai_kitchen.multilevel import MultiLevel
 from envs.babyai_kitchen.levelgen import KitchenLevel
 
@@ -42,8 +43,10 @@ class MultitaskKitchen(dm_env.Environment):
   """
 
   def __init__(self,
-    tasks: list,
+    task_dicts: dict=None,
+    task_kinds: list=None,
     room_size=10,
+    sets: str=None,
     agent_view_size=5,
     path='.',
     tile_size=12,
@@ -56,25 +59,53 @@ class MultitaskKitchen(dm_env.Environment):
       columns: number of columns.
       seed: random seed for the RNG.
     """
-    all_level_kwargs = dict()
-    for task in tasks:
-        all_level_kwargs[task]=dict(
-            room_size=room_size,
-            agent_view_size=agent_view_size,
-            task_kinds=[task],
-            tile_size=tile_size,
-            num_dists=num_dists,
-        )
+    level_kwargs = dict(
+      room_size=room_size,
+      agent_view_size=agent_view_size,
+      tile_size=tile_size,
+      num_dists=num_dists,
+    )
+    # -----------------------
+    # load sets to load from
+    # -----------------------
+    if sets is None:
+      sets = os.path.join(path, "envs/babyai_kitchen/tasks/default_sets.yaml")
+    with open(sets, 'r') as f:
+      sets = yaml.load(f, Loader=yaml.SafeLoader)
 
+    # -----------------------
+    # load level kwargs
+    # -----------------------
+    if task_dicts and task_kinds: raise RuntimeError
+    if not (task_dicts or task_kinds): raise RuntimeError
+    if tasks_dict is not None:
+      all_level_kwargs = babyai_utils.constuct_kitchenmultilevel_kwargs(
+        task_dicts=task_dicts,
+        level_kwargs=level_kwargs,
+        sets=sets)
+    else:
+      all_level_kwargs = dict()
+      for task in task_kinds:
+          all_level_kwargs[task]=dict(
+              task_kinds=[task],
+              **level_kwargs
+          )
+
+    # -----------------------
+    # load env
+    # -----------------------
     self.env = MultiLevel(
-        LevelCls=KitchenLevel,
-        wrappers=wrappers,
-        path=path,
         all_level_kwargs=all_level_kwargs,
+        LevelCls=KitchenLevel,
+        # wrappers=wrappers,
+        path=path,
         **kwargs)
 
+    for wrapper in wrapps:
+      self.env = wrapper(self.env)
 
     self.default_env = GymWrapper(self.env.env)
+
 
 
   def reset(self) -> dm_env.TimeStep:
