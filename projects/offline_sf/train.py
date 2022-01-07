@@ -43,9 +43,12 @@ def main(_):
   env = helpers.make_environment()
   env_spec = acme.make_environment_spec(env)
 
+  import ipdb; ipdb.set_trace()
+  print("add ability to set num episodes to make")
+  print("add ability save and load data (maybe)")
   dataset = helpers.make_demonstrations(env, FLAGS.batch_size)
   dataset = dataset.as_numpy_iterator()
-  import ipdb; ipdb.set_trace()
+  print("big chance that data isn't in format expected by learner")
 
   # -----------------------
   # network
@@ -87,6 +90,7 @@ def main(_):
   # # -----------------------
   # # evaluator
   # # -----------------------
+  print("create evaluator")
   # evaluator_network = (
   #       lambda n: td_agent.make_behavior_policy(n, config, True))
 
@@ -123,6 +127,7 @@ def main(_):
       actor=evaluator,
       logger=env_logger)
 
+  print("check training loop")
   # Run the environment loop.
   while True:
     # K updates
