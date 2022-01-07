@@ -59,7 +59,7 @@ def make_environment(tile_size=8,
   tasks = tasks or [
     'pickup',
     'place',
-    'heat',
+    # 'heat',
     'pickup_cleaned',
     'pickup_sliced',
     'pickup_chilled',

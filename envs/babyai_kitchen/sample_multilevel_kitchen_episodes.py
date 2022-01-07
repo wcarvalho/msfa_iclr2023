@@ -2,9 +2,12 @@ import yaml
 import ipdb
 import cv2
 import numpy as np
-from envs.babyaikitchen import babyai_utils
-from envs.babyaikitchen.multilevel import KitchenMultiLevel
-from envs.babyaikitchen.wrappers import RGBImgPartialObsWrapper
+import time
+from envs.babyai_kitchen import babyai_utils
+from envs.babyai_kitchen.bot import KitchenBot
+
+from envs.babyai_kitchen.multilevel import MultiLevel
+from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper
 import gym_minigrid.window
 
 
@@ -12,10 +15,11 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--tasks', help='tasks file', default='tasks/babyai_kitchen/unseen_arg/length=3_cook.yaml')
+    parser.add_argument('--tasks', help='tasks file', 
+      default='envs/babyai_kitchen/tasks/unseen_arg/length=3_cook.yaml')
     parser.add_argument('--sets', help='sets file',
-        default="tasks/babyai_kitchen/default_sets.yaml")
-    parser.add_argument('--num-missions', help='# of unique missions',
+        default="envs/babyai_kitchen/tasks/default_sets.yaml")
+    parser.add_argument('--missions', help='# of unique missions',
         default=10)
     parser.add_argument('--room-size', type=int, default=8)
     parser.add_argument('--agent-view-size', type=int, default=7)
@@ -30,7 +34,8 @@ def main():
     parser.add_argument('--steps', type=int, default=1)
     parser.add_argument('--show-both', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
-    parser.add_argument('--check', type=int, default=1)
+    parser.add_argument('--check', type=int, default=0)
+    parser.add_argument('--check-end', type=int, default=1)
     parser.add_argument('--verbosity', type=int, default=2)
     args = parser.parse_args()
 
@@ -66,7 +71,7 @@ def main():
         sets=sets)
 
 
-    env = KitchenMultiLevel(level_kwargs)
+    env = MultiLevel(level_kwargs)
     # mimic settings during training
     env = RGBImgPartialObsWrapper(env, tile_size=args.tile_size)
     render_kwargs = {'tile_size' : env.tile_size}

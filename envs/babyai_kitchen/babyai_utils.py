@@ -4,7 +4,7 @@ import yaml
 import babyai.utils
 import babyai.levels.iclr19_levels as iclr19_levels
 from envs.babyai_kitchen.levelgen import KitchenLevel
-from envs.babyai_kitchen.multilevel import KitchenMultiLevel
+from envs.babyai_kitchen.multilevel import MultiLevel
 
 def load_babyai_env(default_env_kwargs, rootdir='.'):
     # vocab/tasks paths
@@ -85,7 +85,7 @@ def load_babyai_kitchen_env(default_env_kwargs, rootdir='.'):
         sets=sets)
 
     # level_kwargs = next(iter(env_kwargs['level_kwargs'].values()))
-    env = KitchenMultiLevel(env_kwargs['level_kwargs'])
+    env = MultiLevel(env_kwargs['level_kwargs'])
     import ipdb; ipdb.set_trace()
     return env_kwargs, eval_env_kwargs
 
