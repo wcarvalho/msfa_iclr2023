@@ -24,6 +24,7 @@ class KitchenBot(Bot):
     self.stack = [GoNextToSubgoal(self, tuple(subgoal.goto.cur_pos)) for subgoal in subgoals]
     self.stack.reverse()
 
+    self.original_size = len(self.stack)
     # How many BFS searches this bot has performed
     self.bfs_counter = 0
 
@@ -34,18 +35,20 @@ class KitchenBot(Bot):
 
   def generate_traj(self, action_taken=None, plot_fn=lambda x:x, epsilon=0):
 
-    original_size = steps_left = len(self.stack)
+    steps_left = len(self.stack)
     env = self.mission
 
     all_obs = []
     all_action = []
     all_reward = []
+    all_done = []
 
     def step_update(action):
       obs, reward, done, info = env.step(action)
       all_obs.append(obs)
       all_action.append(action)
       all_reward.append(reward)
+      all_done.append(done)
       return obs, reward, done, info
 
     idx = 0
@@ -64,7 +67,7 @@ class KitchenBot(Bot):
       # done??
       # -----------------------
       if action == env.actions.done:
-        return all_obs, all_action, all_reward
+        return all_obs, all_action, all_reward, all_done
 
       # -----------------------
       # take actions
@@ -73,12 +76,10 @@ class KitchenBot(Bot):
 
       plot_fn(obs)
 
-
-
       # -----------------------
       # subgoal object in front? do actions
       # -----------------------
-      subgoal_idx = original_size - steps_left
+      subgoal_idx = self.original_size - steps_left
       subgoal = self.subgoals[subgoal_idx]
       subgoal_object = subgoal.goto
       object_infront = env.grid.get(*env.front_pos)
@@ -101,6 +102,7 @@ class KitchenBot(Bot):
       # -----------------------
       steps_left = len(self.stack)
       action_taken = action
+
 
 
   def _check_erroneous_box_opening(self, action): 

@@ -6,6 +6,7 @@ from acme import wrappers
 from acme.agents.tf.dqfd import bsuite_demonstrations
 # import babyai.utils
 import dm_env
+import jax
 import json
 import tensorflow as tf
 import re
@@ -16,6 +17,7 @@ from envs.babyai_kitchen.bot import KitchenBot
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, RGBImgFullyObsWrapper, MissionIntegerWrapper
 
 from utils.wrappers import ObservationRemapWrapper
+from utils import data
 
 from agents import td_agent
 from projects.msf import networks as msf_networks
@@ -114,13 +116,22 @@ def _make_dataset(environment, num_optimal : int=10000, num_random : int=3000):
 
   env = environment.env
 
-
+  episodes = []
+  # def add_episode(obss, actions, rewards, done):
+    
   for _ in range(num_optimal):
     obs = env.reset()
     bot = KitchenBot(env)
-    obss, actions, rewards = bot.generate_traj()
+    obss, actions, rewards, dones = bot.generate_traj()
     obss = [obs]+obss
-    obss = np.array(obss)
+    obss = data.consolidate_dict_list(obss)
+    obss = data.dictop(obss, np.array)
+    actions, rewards, dones = [np.array(y) for y in [actions, rewards, dones]]
+    # obss, actions, rewards, dones = jax.tree_map(lambda *x: np.array(x),
+      # [obss, actions, rewards, dones])
+    # jax.tree_map(lambda i: i.shape, [actions, rewards, dones])
+
+
 
     import ipdb; ipdb.set_trace()
 
@@ -130,6 +141,7 @@ def _make_dataset(environment, num_optimal : int=10000, num_random : int=3000):
     obs, reward, done, info = env.step(action)
 
     obss = [obs]+obss
+
     import ipdb; ipdb.set_trace()
 
   # successes_saved = 0
