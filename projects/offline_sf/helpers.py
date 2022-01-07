@@ -9,6 +9,7 @@ import dm_env
 import jax
 import json
 import tensorflow as tf
+import tree
 import re
 import numpy as np
 
@@ -51,12 +52,12 @@ class InstructionsPreprocessor(object):
 
 def make_environment(tile_size=8,
                      path='.',
-                     tasks=None,
+                     task_kinds=None,
                      room_size=7,
                      partial_obs=False,
                      ) -> dm_env.Environment:
   """Loads environments."""
-  tasks = tasks or [
+  task_kinds = task_kinds or [
     'pickup',
     'place',
     # 'heat',
@@ -74,7 +75,7 @@ def make_environment(tile_size=8,
     path="data/babyai_kitchen/vocab.json")
 
   env = MultitaskKitchen(
-    tasks=tasks,
+    task_kinds=task_kinds,
     tile_size=tile_size,
     path=path,
     room_size=room_size,
@@ -95,31 +96,11 @@ def make_environment(tile_size=8,
 
   return wrappers.wrap_all(env, wrapper_list)
 
-# def collect_episode(
-#   environment,
-#   recorder: DemonstrationRecorder,
-#   epsilon=0,
-#   ):
-#   timestep = environment.reset()
-#   while timestep.step_type is not dm_env.StepType.LAST:
-#     action = _optimal_deep_sea_policy(environment, timestep)
-#     recorder.step(timestep, action)
-#     timestep = environment.step(action)
-#   recorder.step(timestep, np.zeros_like(action))
-
-# def _nested_stack(sequence: List[Any]):
-#   """Stack nested elements in a sequence."""
-#   return tree.map_structure(lambda *x: np.stack(x), *sequence)
-
-def _make_dataset(environment, num_optimal : int=2, num_random : int=2):
-  """Make stochastic demonstration dataset."""
-
+def collect_optimal_episodes(environment, num_episodes):
   env = environment.env
 
   episodes = []
-  # def add_episode(obss, actions, rewards, done):
-    
-  for ep in range(num_optimal):
+  for ep in range(num_episodes):
     obs = env.reset()
     bot = KitchenBot(env)
     obss, actions, rewards, dones = bot.generate_traj()
@@ -137,53 +118,61 @@ def _make_dataset(environment, num_optimal : int=2, num_random : int=2):
 
     episodes.append((obss, actions, rewards, dones))
 
-  types = tree.map_structure(lambda x: x.dtype, episodes[0])
-  shapes = tree.map_structure(lambda x: x.shape, episodes[0])
-  ds = tf.data.Dataset.from_generator(lambda: episodes, types, shapes)
+  return episodes
 
-  import ipdb; ipdb.set_trace()
+def collect_random_episodes(environment, num_episodes, episode_length=50):
+  env = environment.env
 
-
-
-  for ep in range(num_random):
+  episodes = []
+  for ep in range(num_episodes):
     obs = env.reset()
-    action = env.action_space.sample()
-    obs, reward, done, info = env.step(action)
+    done = False
 
-    obss = [obs]+obss
+    obss = [obs]
+    rewards = []
+    actions = []
+    dones = []
+    # collect episode
+    for _ in range(episode_length):
+      action = env.action_space.sample()
+      obs, reward, done, info = env.step(action)
+      obss.append(obs)
+      actions.append(action)
+      rewards.append(reward)
+      dones.append(done)
 
-    import ipdb; ipdb.set_trace()
+      if done:
+        break
 
-  # successes_saved = 0
-  # failures_saved = 0
-  # while (successes_saved < num_successes) or (failures_saved < num_failures):
-  #   # collect_episode(environment, recorder)
+    # make into numpy arrays
+    obss = data.consolidate_dict_list(obss)
+    obss = data.dictop(obss, np.array)
+    actions, rewards, dones = [np.array(y) for y in [actions, rewards, dones]]
 
-  #   if recorder.episode_reward > 0 and successes_saved < num_successes:
-  #     recorder.record_episode()
-  #     successes_saved += 1
-  #   elif recorder.episode_reward <= 0 and failures_saved < num_failures:
-  #     recorder.record_episode()
-  #     failures_saved += 1
-  #   else:
-  #     recorder.discard_episode()
+    episodes.append((obss, actions, rewards, dones))
 
-  # return recorder.make_tf_dataset()
+  return episodes
+
+def _make_dataset(environment, num_optimal : int=2, num_random : int=2):
+  """Make demonstration dataset."""
+
+  episodes = collect_optimal_episodes(environment, num_optimal)
+  episodes += collect_random_episodes(environment, num_random)
+
+
+  types = tree.map_structure(lambda x: x.dtype, episodes[0])
+  shapes = tree.map_structure(lambda x: tf.TensorShape([None, *x.shape[1:]]), episodes[0])
+  dataset = tf.data.Dataset.from_generator(lambda: episodes, types, shapes)
+  return dataset
+
 
 def make_demonstrations(env: dm_env.Environment,
                         batch_size: int,
-                        num_optimal : int=15, num_random : int=2) -> tf.data.Dataset:
+                        num_optimal : int=30, num_random : int=2) -> tf.data.Dataset:
   """Prepare the dataset of demonstrations."""
 
-  _make_dataset(env, num_optimal=num_optimal, num_random=num_random)
-
-  # recorder = bsuite_demonstrations.DemonstrationRecorder()
-  # batch_dataset = bsuite_demonstrations.make_dataset(env, stochastic=False)
-  # Combine with demonstration dataset.
-  # transition = functools.partial(
-  #     _n_step_transition_from_episode, n_step=1, additional_discount=1.)
-
-  dataset = batch_dataset.map(transition)
+  dataset = _make_dataset(env, num_optimal=num_optimal, num_random=num_random)
+  dataset = dataset.unbatch()
 
   # Batch and prefetch.
   dataset = dataset.batch(batch_size, drop_remainder=True)

@@ -40,13 +40,12 @@ def main(_):
   # -----------------------
   # environment
   # -----------------------
-  # TODO
   env = helpers.make_environment()
   env_spec = acme.make_environment_spec(env)
 
-  # TODO
   dataset = helpers.make_demonstrations(env, FLAGS.batch_size)
-
+  dataset = dataset.as_numpy_iterator()
+  import ipdb; ipdb.set_trace()
 
   # -----------------------
   # network

@@ -15,6 +15,7 @@
 # ============================================================================
 """Kitchen reinforcement learning environment."""
 from typing import NamedTuple
+import os.path
 
 import dm_env
 from dm_env import specs
@@ -65,20 +66,20 @@ class MultitaskKitchen(dm_env.Environment):
       tile_size=tile_size,
       num_dists=num_dists,
     )
-    # -----------------------
-    # load sets to load from
-    # -----------------------
-    if sets is None:
-      sets = os.path.join(path, "envs/babyai_kitchen/tasks/default_sets.yaml")
-    with open(sets, 'r') as f:
-      sets = yaml.load(f, Loader=yaml.SafeLoader)
 
     # -----------------------
     # load level kwargs
     # -----------------------
     if task_dicts and task_kinds: raise RuntimeError
     if not (task_dicts or task_kinds): raise RuntimeError
-    if tasks_dict is not None:
+
+    if task_dicts is not None:
+      # load sets of objects to use
+      if sets is None:
+        sets = os.path.join(path, "envs/babyai_kitchen/tasks/default_sets.yaml")
+      with open(sets, 'r') as f:
+        sets = yaml.load(f, Loader=yaml.SafeLoader)
+      # load all kwargs for all levels
       all_level_kwargs = babyai_utils.constuct_kitchenmultilevel_kwargs(
         task_dicts=task_dicts,
         level_kwargs=level_kwargs,
@@ -101,7 +102,7 @@ class MultitaskKitchen(dm_env.Environment):
         path=path,
         **kwargs)
 
-    for wrapper in wrapps:
+    for wrapper in wrappers:
       self.env = wrapper(self.env)
 
     self.default_env = GymWrapper(self.env.env)
