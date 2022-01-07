@@ -360,10 +360,6 @@ class KitchenLevel(RoomGridLevel):
             self.mission = self.surface
             self.instrs = self.task
 
-            reward, done = self.task.check_status()
-            if done:
-                raise RuntimeError(f"`{self.mission}` started off as done")
-
             # make sure all task objects are on grid
             for obj in self.task.task_objects:
                 assert obj.init_pos is not None
@@ -396,6 +392,11 @@ class KitchenLevel(RoomGridLevel):
         # ======================================================
         # copied from babyai.levels.levelgen:RoomGridLevel.reset
         # ======================================================
+        if self.task is not None:
+            reward, done = self.task.check_status()
+            if done:
+                raise RuntimeError(f"`{self.mission}` started off as done")
+
         # # Recreate the verifier
         # if self.task:
         #     import ipdb; ipdb.set_trace()

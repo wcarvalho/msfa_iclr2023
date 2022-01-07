@@ -111,7 +111,7 @@ def make_environment(tile_size=8,
 #   """Stack nested elements in a sequence."""
 #   return tree.map_structure(lambda *x: np.stack(x), *sequence)
 
-def _make_dataset(environment, num_optimal : int=10000, num_random : int=3000):
+def _make_dataset(environment, num_optimal : int=2, num_random : int=2):
   """Make stochastic demonstration dataset."""
 
   env = environment.env
@@ -119,23 +119,33 @@ def _make_dataset(environment, num_optimal : int=10000, num_random : int=3000):
   episodes = []
   # def add_episode(obss, actions, rewards, done):
     
-  for _ in range(num_optimal):
+  for ep in range(num_optimal):
     obs = env.reset()
     bot = KitchenBot(env)
     obss, actions, rewards, dones = bot.generate_traj()
+
+    # make all same length
     obss = [obs]+obss
+    actions.append(0)
+    rewards.append(0.)
+    dones.append(True)
+
+    # make into numpy arrays
     obss = data.consolidate_dict_list(obss)
     obss = data.dictop(obss, np.array)
     actions, rewards, dones = [np.array(y) for y in [actions, rewards, dones]]
-    # obss, actions, rewards, dones = jax.tree_map(lambda *x: np.array(x),
-      # [obss, actions, rewards, dones])
-    # jax.tree_map(lambda i: i.shape, [actions, rewards, dones])
+
+    episodes.append((obss, actions, rewards, dones))
+
+  types = tree.map_structure(lambda x: x.dtype, episodes[0])
+  shapes = tree.map_structure(lambda x: x.shape, episodes[0])
+  ds = tf.data.Dataset.from_generator(lambda: episodes, types, shapes)
+
+  import ipdb; ipdb.set_trace()
 
 
 
-    import ipdb; ipdb.set_trace()
-
-  for _ in range(num_random):
+  for ep in range(num_random):
     obs = env.reset()
     action = env.action_space.sample()
     obs, reward, done, info = env.step(action)
@@ -161,10 +171,11 @@ def _make_dataset(environment, num_optimal : int=10000, num_random : int=3000):
   # return recorder.make_tf_dataset()
 
 def make_demonstrations(env: dm_env.Environment,
-                        batch_size: int) -> tf.data.Dataset:
+                        batch_size: int,
+                        num_optimal : int=15, num_random : int=2) -> tf.data.Dataset:
   """Prepare the dataset of demonstrations."""
 
-  _make_dataset(env, 10000)
+  _make_dataset(env, num_optimal=num_optimal, num_random=num_random)
 
   # recorder = bsuite_demonstrations.DemonstrationRecorder()
   # batch_dataset = bsuite_demonstrations.make_dataset(env, stochastic=False)

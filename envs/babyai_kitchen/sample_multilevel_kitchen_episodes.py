@@ -75,34 +75,32 @@ def main():
     window.show(block=False)
 
     def combine(full, partial):
-        if args.show_both:
-            full_small = cv2.resize(full, dsize=partial.shape[:2], 
-                interpolation=cv2.INTER_CUBIC)
-            return np.concatenate((full_small, partial), axis=1)
-        else:
-            return full
+      full_small = cv2.resize(full, dsize=partial.shape[:2], interpolation=cv2.INTER_CUBIC)
+      return np.concatenate((full_small, partial), axis=1)
 
 
-    def forward():
-        obs, _, _, _ = env.step(2); 
-        full = env.render('rgb_array')
-        window.show_img(combine(full, obs['image']))
-    def left():
-        obs, _, _, _ = env.step(0); 
-        full = env.render('rgb_array')
-        window.show_img(combine(full, obs['image']))
-    def right():
-        obs, _, _, _ = env.step(1); 
-        full = env.render('rgb_array')
-        window.show_img(combine(full, obs['image']))
+    def move(action : str):
+      # idx2action = {idx:action for action, idx in env.actions.items()}
+      obs, reward, done, info = env.step(env.actiondict[action])
+      full = env.render('rgb_array', tile_size=env.tile_size, highlight=True)
+      window.show_img(combine(full, obs['image']))
 
-    for mission_indx in range(int(args.num_missions)):
+    def show(obs):
+      full = env.render('rgb_array', **render_kwargs)
+      window.set_caption(obs['mission'])
+      window.show_img(combine(full, obs['image']))
+      if int(args.check):
+        import ipdb; ipdb.set_trace()
+      else:
+        time.sleep(.05)
+
+
+    for mission_indx in range(int(args.missions)):
         env.seed(mission_indx)
         obs = env.reset()
         print("="*50)
         print("Reset")
         print("="*50)
-        print("Level:", obs['level'])
         print("Task:", obs['mission'])
         print("Image Shape:", obs['image'].shape)
 
@@ -111,23 +109,10 @@ def main():
         window.set_caption(obs['mission'])
         window.show_img(combine(full, obs['image']))
 
-        for step in range(args.steps):
-            obs, reward, done, info = env.step(env.action_space.sample())
-
-
-            full = env.render('rgb_array', **render_kwargs)
-            window.set_caption(obs['mission'])
-            window.show_img(combine(full, obs['image']))
-
-            if done:
-                print(f"Complete! Reward: {reward}")
-                print(f"info: {str(info)}")
-                print(f"Episode length: {step+1}")
-                break
-        if int(args.check):
-            print("print 'c' to contnue")
-            ipdb.set_trace()
-
+        bot = KitchenBot(env)
+        obss, actions, rewards, dones = bot.generate_traj(plot_fn=show)
+        if args.check_end:
+          import ipdb; ipdb.set_trace()
 
 if __name__ == "__main__":
     main()
