@@ -105,17 +105,29 @@ class KitchenLevel(RoomGridLevel):
             actions = self.load_actions_from_tasks(task_kinds)
         self.actiondict = {action:idx for idx, action in enumerate(actions, start=0)}
 
+        # -----------------------
         # for backward compatibility
-        ActionCls = collections.namedtuple('Action', actions+['pickup', 'drop', 'done'])
+        # below is used by parent classes
+        # -----------------------
         backwards = {
           'pickup': self.actiondict['pickup_contents'],
-          'drop': self.actiondict['place'],
           'done': -1
           }
+        candrop = 'place' in self.actiondict
+        if candrop:
+          backwards['drop'] =  self.actiondict['place']
+
+        
+        ActionCls = collections.namedtuple('Action', actions 
+          + ['pickup', 'done'] 
+          + (['drop'] if candrop else []))
 
         backwards_action_dict = {**self.actiondict, **backwards}
         self.actions = ActionCls(**backwards_action_dict)
 
+        # -----------------------
+        # below is used by this class
+        # -----------------------
         self.idx2action = {idx:action for idx, action in enumerate(actions, start=0)}
         self.action_names = actions
         self.action_space = spaces.Discrete(len(self.actiondict))

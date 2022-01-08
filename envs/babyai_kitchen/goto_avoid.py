@@ -114,17 +114,17 @@ class GotoAvoidEnv(KitchenLevel):
 
         # Rotate left
         action_info = None
-        if action == self.actions.get('left', -1):
+        if action == self.actiondict.get('left', -1):
             self.agent_dir -= 1
             if self.agent_dir < 0:
                 self.agent_dir += 4
 
         # Rotate right
-        elif action == self.actions.get('right', -1):
+        elif action == self.actiondict.get('right', -1):
             self.agent_dir = (self.agent_dir + 1) % 4
 
         # Move forward
-        elif action == self.actions.get('forward', -1):
+        elif action == self.actiondict.get('forward', -1):
             if object_infront == None or object_infront.can_overlap():
                 self.agent_pos = fwd_pos
         # pickup
