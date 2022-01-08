@@ -34,7 +34,7 @@ flags.DEFINE_integer('num_actors', 10, 'Number of actors.')
 
 FLAGS = flags.FLAGS
 
-def train(agent, num_actors, config_kwargs=None,
+def build_program(agent, num_actors, config_kwargs=None,
   path='.', log_path='results/msf/distributed',
   hourminute=True):
   # -----------------------
@@ -82,9 +82,9 @@ def train(agent, num_actors, config_kwargs=None,
                   log_dir=log_dir, label='evaluator')
 
   # -----------------------
-  # build program and run
+  # build program
   # -----------------------
-  program = td_agent.DistributedTDAgent(
+  return td_agent.DistributedTDAgent(
       environment_factory=environment_factory,
       environment_spec=env_spec,
       network_factory=network_factory,
@@ -98,11 +98,11 @@ def train(agent, num_actors, config_kwargs=None,
       seed=config.seed,
       num_actors=num_actors).build()
 
-  # Launch experiment.
-  lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING)
 
 def main(_):
-  train(FLAGS.agent, FLAGS.num_actors)
+  program = build_program(FLAGS.agent, FLAGS.num_actors)
+  # Launch experiment.
+  lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING, terminal='current_terminal')
 
 if __name__ == '__main__':
   app.run(main)
