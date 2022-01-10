@@ -21,6 +21,9 @@ git pull
 
 # Adding modules
 git submodule add https://github.com/deepmind/acme libs/acme
+
+# killing processed by tune
+kill -9 $(pgrep process_entry)
 ```
 
 

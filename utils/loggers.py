@@ -1,8 +1,10 @@
 """Loggeres."""
 
 from acme.utils import loggers
-from acme.utils.loggers import tf_summary
+# from acme.utils.loggers import tf_summary
 from acme.utils.loggers import asynchronous as async_logger
+
+from utils.tf_summary import TFSummaryLogger
 
 import datetime
 from pathlib import Path
@@ -13,10 +15,10 @@ except ImportError:
   rich_print = None
 
 def gen_log_dir(base_dir="results/", hourminute=True, **kwargs):
-  strkey = '%Y.%m.%d-'
+  strkey = '%Y.%m.%d'
   if hourminute:
     strkey += '-%H.%M'
-  job_name = datetime.datetime.now().strftime('%Y.%m.%d-%H.%M')
+  job_name = datetime.datetime.now().strftime(strkey)
   kwpath = ','.join([f'{key}={value}' for key, value in kwargs.items()])
   path = Path(base_dir).joinpath(job_name).joinpath(kwpath)
   return str(path)
@@ -42,7 +44,7 @@ def make_logger(
     _loggers.append(loggers.CSVLogger(log_dir, label=label, add_uid=False))
   
   _loggers.append(
-    tf_summary.TFSummaryLogger(log_dir, label=label, steps_key=steps_key))
+    TFSummaryLogger(log_dir, label=label, steps_key=steps_key))
 
   # Dispatch to all writers and filter Nones.
   logger = loggers.Dispatcher(_loggers, loggers.to_numpy)  # type: ignore
@@ -53,5 +55,7 @@ def make_logger(
 
   # filter by time: Print logs almost every 10 seconds.
   logger = loggers.TimeFilter(logger, time_delta=10.0)
+
+
   return logger
 

@@ -7,7 +7,8 @@ import dm_env
 from envs.acme.goto_avoid import GoToAvoid
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper
 
-from utils.wrappers import ObservationRemapWrapper
+from utils import ObservationRemapWrapper
+
 
 from agents import td_agent
 from projects.msf import networks as msf_networks
@@ -96,9 +97,6 @@ def make_environment(evaluation: bool = False,
 def load_agent_settings(agent, env_spec, config_kwargs=None):
   config_kwargs = config_kwargs or dict()
 
-  print("="*50)
-  print(agent)
-  print("="*50)
   if agent == "r2d1": # Recurrent DQN
     config = td_agent.R2D1Config(**config_kwargs)
 

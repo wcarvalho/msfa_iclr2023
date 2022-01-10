@@ -35,7 +35,7 @@ flags.DEFINE_integer('num_actors', 10, 'Number of actors.')
 FLAGS = flags.FLAGS
 
 def build_program(agent, num_actors, config_kwargs=None,
-  path='.', log_path='results/msf/distributed',
+  path='.', log_dir=None,
   hourminute=True):
   # -----------------------
   # load env stuff
@@ -67,19 +67,25 @@ def build_program(agent, num_actors, config_kwargs=None,
   # loggers
   # -----------------------
   agent = str(agent)
-  log_dir = gen_log_dir(
-    base_dir=f"{path}/{log_path}",
+  log_dir = log_dir or gen_log_dir(
+    base_dir=f"{path}/results/msf/distributed",
     hourminute=hourminute,
-    agent=agent)
+    agent=agent,
+    seed=config.seed)
   logger_fn = lambda : make_logger(
-        log_dir=log_dir, label=agent, asynchronous=True)
+        log_dir=log_dir, label=agent, asynchronous=True,
+        steps_key="actor_steps")
 
   actor_logger_fn = lambda actor_id: make_logger(
                   log_dir=log_dir, label='actor',
                   save_data=actor_id == 0,
+                  steps_key="actor_steps",
                   )
   evaluator_logger_fn = lambda : make_logger(
-                  log_dir=log_dir, label='evaluator')
+                  log_dir=log_dir,
+                  label='evaluator',
+                  steps_key="actor_steps",
+                  )
 
   # -----------------------
   # build program

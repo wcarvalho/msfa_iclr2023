@@ -36,7 +36,8 @@ def main(_):
   # -----------------------
   log_dir = gen_log_dir(
     base_dir="results/msf/local",
-    agent=FLAGS.agent)
+    agent=FLAGS.agent,
+    seed=config.seed)
   logger_fn = lambda : make_logger(
         log_dir=log_dir, label=f'{FLAGS.agent}')
 
@@ -65,7 +66,8 @@ def main(_):
   # -----------------------
   env_logger = make_logger(
     log_dir=log_dir,
-    label='environment_loop')
+    label='actor',
+    steps_key="steps")
 
   loop = EnvironmentLoop(env, agent, logger=env_logger)
   loop.run(FLAGS.num_episodes)
