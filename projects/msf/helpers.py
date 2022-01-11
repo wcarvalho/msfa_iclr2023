@@ -111,6 +111,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
     # Replay options
     batch_size=32,
     min_replay_size=10_000,
+    max_replay_size=250_000,
     num_parallel_calls=1,
     prefetch_size=0,
     )

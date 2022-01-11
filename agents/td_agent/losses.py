@@ -181,6 +181,7 @@ class USFALearning(RecurrentTDLearning):
     cumulants = data.observation.observation.state_features # [T, B, C]
     cumulants = jnp.expand_dims(cumulants, axis=2)
     cumulants = jnp.tile(cumulants, [1,1, npolicies, 1]) # [T, B, N, C]
+    cumulants = cumulants.astype(discounts.dtype)
 
     # actions used for online_sf
     online_actions = jnp.expand_dims(data.action, axis=2)
