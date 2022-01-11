@@ -113,8 +113,8 @@ def main(_):
   program = build_program(FLAGS.agent, FLAGS.num_actors)
   # Launch experiment.
   resources = {
-    'actor': lp.PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
-    'evaluator': lp.PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
+    # 'actor': lp.PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
+    # 'evaluator': lp.PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
   }
   lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
     local_resources=resources,

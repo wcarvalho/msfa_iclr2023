@@ -34,7 +34,7 @@ class R2D1Config:
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 0.0 # 0.0=single process
   min_replay_size: int = 50_000
-  max_replay_size: int = 100_000
+  max_replay_size: int = 500_000
   batch_size: int = 64
   prefetch_size: int = 2
   store_lstm_state: bool = True

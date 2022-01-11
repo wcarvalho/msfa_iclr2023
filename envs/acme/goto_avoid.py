@@ -105,13 +105,13 @@ class GoToAvoid(dm_env.Environment):
 
   def observation_spec(self):
     default = self.default_env.observation_spec()
-    return GotoObs(
-        image=specs.BoundedArray(
-            shape=default['image'].shape,
-            dtype=np.float32,
-            name="image",
-            minimum=0,
-            maximum=1,
-        ),
-        mission=default['mission'],
-        pickup=default['pickup'])
+    return GotoObs(**default)
+        # image=specs.BoundedArray(
+        #     shape=default['image'].shape,
+        #     dtype=np.float32,
+        #     name="image",
+        #     minimum=0,
+        #     maximum=1,
+        # ),
+        # mission=default['mission'],
+        # pickup=default['pickup'])

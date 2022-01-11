@@ -22,11 +22,9 @@ def main(_):
 
   space = {
       # "seed": tune.grid_search([1, 2, 3]),
-      # "agent": tune.grid_search(['r2d1', 'usfa']),
+      "agent": tune.grid_search(['r2d1', 'usfa']),
       "seed": tune.grid_search([1, 2, 3]),
-      "agent": tune.grid_search(['r2d1']),
-      "max_replay_size": tune.grid_search([10_000]),
-      "min_replay_size": tune.grid_search([1_000]),
+      # "agent": tune.grid_search(['r2d1']),
   }
   num_cpus = 1
   num_gpus = .5
@@ -50,11 +48,7 @@ def main(_):
       agent=agent,
       **config)
     print("="*50)
-    if os.path.exists(log_dir):
-      print(f"SKIPPING\n{log_dir}")
-      return
-    else:
-      print(f"RUNNING\n{log_dir}")
+    print(f"RUNNING\n{log_dir}")
     print("="*50)
 
     # launch experiment
