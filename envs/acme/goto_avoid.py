@@ -35,7 +35,7 @@ class GotoObs(NamedTuple):
 
 def convert_rawobs(obs):
     obs.pop('mission_idx')
-    obs['image'] = obs['image'] / 255.0
+    # obs['image'] = obs['image'] / 255.0
     return GotoObs(**obs)
 
 class GoToAvoid(dm_env.Environment):
@@ -92,9 +92,11 @@ class GoToAvoid(dm_env.Environment):
     obs = convert_rawobs(obs)
 
     if done:
-      return dm_env.termination(reward=reward, observation=obs)
+      timestep = dm_env.termination(reward=reward, observation=obs)
     else:
-      return dm_env.transition(reward=reward, observation=obs)
+      timestep = dm_env.transition(reward=reward, observation=obs)
+
+    return timestep
 
 
   def action_spec(self) -> specs.DiscreteArray:

@@ -34,8 +34,11 @@ flags.DEFINE_integer('num_actors', 10, 'Number of actors.')
 
 FLAGS = flags.FLAGS
 
-def build_program(agent, num_actors, config_kwargs=None,
-  path='.', log_dir=None,
+def build_program(agent, num_actors, 
+  log_every=30.0, # how often to log
+  config_kwargs=None, # config
+  path='.', # path that's being run from
+  log_dir=None,
   hourminute=True):
   # -----------------------
   # load env stuff
@@ -73,8 +76,7 @@ def build_program(agent, num_actors, config_kwargs=None,
     agent=agent,
     seed=config.seed)
   logger_fn = lambda : make_logger(
-        log_dir=log_dir, label=agent, asynchronous=True,
-        steps_key="actor_steps")
+        log_dir=log_dir, label=agent, asynchronous=True)
 
   actor_logger_fn = lambda actor_id: make_logger(
                   log_dir=log_dir, label='actor',
@@ -102,13 +104,21 @@ def build_program(agent, num_actors, config_kwargs=None,
       config=config,
       workdir=log_dir,
       seed=config.seed,
-      num_actors=num_actors).build()
+      num_actors=num_actors,
+      max_number_of_steps=config.max_number_of_steps,
+      log_every=log_every).build()
 
 
 def main(_):
   program = build_program(FLAGS.agent, FLAGS.num_actors)
   # Launch experiment.
-  lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING, terminal='current_terminal')
+  resources = {
+    'actor': lp.PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
+    'evaluator': lp.PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
+  }
+  lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
+    local_resources=resources,
+    terminal='current_terminal')
 
 if __name__ == '__main__':
   app.run(main)

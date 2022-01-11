@@ -95,10 +95,29 @@ def make_environment(evaluation: bool = False,
 
 
 def load_agent_settings(agent, env_spec, config_kwargs=None):
-  config_kwargs = config_kwargs or dict()
+  default_config = dict(
+    # network
+    discount=0.99,
+    target_update_period=2500,
+
+    # Learner options
+    trace_length=40,
+    learning_rate=5e-5,
+    max_number_of_steps=50_000_000, # 5M takes 1hr
+
+    # How many gradient updates to perform per learner step.
+    num_sgd_steps_per_step=4,
+
+    # Replay options
+    batch_size=32,
+    min_replay_size=10_000,
+    num_parallel_calls=1,
+    prefetch_size=0,
+    )
+  default_config.update(config_kwargs or {})
 
   if agent == "r2d1": # Recurrent DQN
-    config = td_agent.R2D1Config(**config_kwargs)
+    config = td_agent.R2D1Config(**default_config)
 
     NetworkCls=msf_networks.R2D2Network
     NetKwargs=dict(
@@ -106,13 +125,12 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
       lstm_size=256,
       hidden_size=128,
       )
-
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
 
   elif agent == "usfa": # Universal Successor Features
-    config = td_agent.USFAConfig(**config_kwargs)
+    config = td_agent.USFAConfig(**default_config)
 
     NetworkCls=msf_networks.USFANetwork
     state_dim = env_spec.observations.observation.state_features.shape[0]

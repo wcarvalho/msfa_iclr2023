@@ -13,15 +13,16 @@ class R2D1Config:
   target_update_period: int = 2500
   evaluation_epsilon: float = 0.
   num_epsilons: int = 256
-  variable_update_period: int = 400
+  variable_update_period: int = 400 # how often to update actor
 
   # Learner options
-  burn_in_length: int = 40
-  trace_length: int = 80
-  sequence_period: int = 40
+  burn_in_length: int = 40  # burn in during learning
+  trace_length: int = 80  # how long training should be
+  sequence_period: int = 40  # how often to add
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
   seed: int = 1
+  max_number_of_steps: int = 10_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -31,7 +32,7 @@ class R2D1Config:
 
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
-  samples_per_insert: float = 4.0
+  samples_per_insert: float = 0.0 # 0.0=single process
   min_replay_size: int = 50_000
   max_replay_size: int = 100_000
   batch_size: int = 64

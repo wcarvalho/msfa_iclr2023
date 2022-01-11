@@ -25,9 +25,11 @@ def process_inputs(inputs):
   last_reward = inputs.reward
   observation = inputs.observation
 
-  image = observation.image
-  task = observation.task
-  state_feat = observation.state_features
+
+  dtype = last_reward.dtype
+  image = observation.image.astype(dtype)/255.0
+  task = observation.task.astype(dtype)
+  state_feat = observation.state_features.astype(dtype)
 
 
   last_action = jnp.expand_dims(last_action, -1)
@@ -35,6 +37,33 @@ def process_inputs(inputs):
 
   return image, task, state_feat, last_action, last_reward
 
+Images = jnp.ndarray
+class VisionTorso(base.Module):
+  """Simple convolutional stack commonly used for Atari."""
+
+  def __init__(self):
+    super().__init__(name='atari_torso')
+    self._network = hk.Sequential([
+        hk.Conv2D(32, [8, 8], 4),
+        jax.nn.relu,
+        hk.Conv2D(64, [4, 4], 2),
+        jax.nn.relu,
+        hk.Conv2D(64, [3, 3], 1),
+        jax.nn.relu,
+        hk.Conv2D(16, [1, 1], 1)
+    ])
+
+  def __call__(self, inputs: Images) -> jnp.ndarray:
+    inputs_rank = jnp.ndim(inputs)
+    batched_inputs = inputs_rank == 4
+    if inputs_rank < 3 or inputs_rank > 4:
+      raise ValueError('Expected input BHWC or HWC. Got rank %d' % inputs_rank)
+
+    outputs = self._network(inputs)
+
+    if batched_inputs:
+      return jnp.reshape(outputs, [outputs.shape[0], -1])  # [B, D]
+    return jnp.reshape(outputs, [-1])  # [D]
 
 class R2D2Network(hk.RNNCore):
   """A duelling recurrent network.
@@ -47,7 +76,9 @@ class R2D2Network(hk.RNNCore):
       lstm_size : int = 256,
       hidden_size : int=128,):
     super().__init__(name='r2d2_network')
-    self._embed = embedding.OAREmbedding(networks_lib.AtariTorso(), num_actions)
+    self._embed = embedding.OAREmbedding(
+      VisionTorso(),
+      num_actions)
     self._core = hk.LSTM(lstm_size)
     self._duelling_head = duelling.DuellingMLP(num_actions, hidden_sizes=[hidden_size])
     self._num_actions = num_actions
@@ -62,6 +93,7 @@ class R2D2Network(hk.RNNCore):
     image, task, state_feat, _, _ = process_inputs(inputs)
     embeddings = self._embed(inputs._replace(observation=image))  # [B, D+A+1]
     embeddings = jnp.concatenate([embeddings, state_feat], axis=-1)
+
     core_outputs, new_state = self._core(embeddings, state)
     # "UVFA"
     core_outputs = jnp.concatenate((core_outputs, task), axis=-1)
@@ -124,7 +156,7 @@ class USFANetwork(hk.RNNCore):
     self.policy_size = policy_size
     self.hidden_size = hidden_size
 
-    self.conv = networks_lib.AtariTorso()
+    self.conv = VisionTorso()
     self.memory = hk.LSTM(lstm_size)
     self.statefn = hk.nets.MLP(
         [hidden_size],
