@@ -51,3 +51,4 @@ class R2D1Config:
 class USFAConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
   npolicies: int = 10 # number of policies to sample
+  variance: float = 0.1

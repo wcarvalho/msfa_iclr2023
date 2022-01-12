@@ -28,6 +28,7 @@ from utils import make_logger, gen_log_dir
 # -----------------------
 # flags
 # -----------------------
+flags.DEFINE_string('experiment', None, 'experiment_name.')
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 10, 'Number of actors.')
@@ -70,11 +71,14 @@ def build_program(agent, num_actors,
   # loggers
   # -----------------------
   agent = str(agent)
+  extra = dict(seed=config.seed)
+  if FLAGS.experiment:
+    extra['exp']=FLAGS.experiment
   log_dir = log_dir or gen_log_dir(
     base_dir=f"{path}/results/msf/distributed",
     hourminute=hourminute,
     agent=agent,
-    seed=config.seed)
+    **extra)
   logger_fn = lambda : make_logger(
         log_dir=log_dir, label=agent, asynchronous=True)
 

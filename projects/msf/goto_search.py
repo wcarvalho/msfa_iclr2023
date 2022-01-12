@@ -23,11 +23,11 @@ def main(_):
   space = {
       # "seed": tune.grid_search([1, 2, 3]),
       "agent": tune.grid_search(['r2d1', 'usfa']),
-      "seed": tune.grid_search([1, 2, 3]),
+      "seed": tune.grid_search([1, 2]),
       # "agent": tune.grid_search(['r2d1']),
   }
   num_cpus = 1
-  num_gpus = .5
+  num_gpus = 1
 
   # root_path is needed to tell program absolute path
   # this is used for BabyAI

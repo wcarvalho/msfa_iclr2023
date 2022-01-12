@@ -141,6 +141,25 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
       lstm_size=256,
       hidden_size=128,
       nsamples=config.npolicies,
+      variance=config.variance,
+      )
+
+    LossFn = td_agent.USFALearning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+
+  elif agent == "usfa_reward":
+    # Universal Successor Features which learns cumulants by predicting reward
+    config = td_agent.USFAConfig(**default_config)
+
+    NetworkCls=msf_networks.USFANetwork
+    state_dim = env_spec.observations.observation.state_features.shape[0]
+    NetKwargs=dict(
+      num_actions=env_spec.actions.num_values,
+      state_dim=state_dim,
+      lstm_size=256,
+      hidden_size=128,
+      nsamples=config.npolicies,
+      variance=config.variance,
       )
 
     LossFn = td_agent.USFALearning

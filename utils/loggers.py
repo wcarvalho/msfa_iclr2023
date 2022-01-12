@@ -14,13 +14,15 @@ try:
 except ImportError:
   rich_print = None
 
-def gen_log_dir(base_dir="results/", hourminute=True, **kwargs):
+def gen_log_dir(base_dir="results/", hourminute=True, seed=None, **kwargs):
   strkey = '%Y.%m.%d'
   if hourminute:
     strkey += '-%H.%M'
   job_name = datetime.datetime.now().strftime(strkey)
   kwpath = ','.join([f'{key}={value}' for key, value in kwargs.items()])
   path = Path(base_dir).joinpath(job_name).joinpath(kwpath)
+  if seed is not None:
+    path = path.joinpath(f'seed={seed}')
   return str(path)
 
 
@@ -29,6 +31,7 @@ def make_logger(
   label: str,
   save_data: bool = True,
   asynchronous: bool = False,
+  tensorboard=True,
   steps_key: str=None) -> loggers.Logger:
   """Creates ACME loggers as we wish.
   Features:
@@ -42,9 +45,10 @@ def make_logger(
   ]
   if save_data:
     _loggers.append(loggers.CSVLogger(log_dir, label=label, add_uid=False))
-  
-  _loggers.append(
-    TFSummaryLogger(log_dir, label=label, steps_key=steps_key))
+
+  if tensorboard:
+    _loggers.append(
+      TFSummaryLogger(log_dir, label=label, steps_key=steps_key))
 
   # Dispatch to all writers and filter Nones.
   logger = loggers.Dispatcher(_loggers, loggers.to_numpy)  # type: ignore
