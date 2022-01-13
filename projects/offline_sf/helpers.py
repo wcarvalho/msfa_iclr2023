@@ -81,7 +81,8 @@ def make_environment(tile_size=8,
     room_size=room_size,
     wrappers=[
       obs_wrapper,
-      functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc)],
+      functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc,
+        max_length=30)],
     )
 
   wrapper_list = [

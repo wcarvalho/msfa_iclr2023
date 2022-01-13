@@ -1,14 +1,16 @@
 import gym
+import numpy as np
 
 class MissionIntegerWrapper(gym.core.ObservationWrapper):
     """
     Wrapper to convert mission to integers.
     """
 
-    def __init__(self, env, instr_preproc):
+    def __init__(self, env, instr_preproc, max_length=30):
         super().__init__(env)
 
         self.instr_preproc = instr_preproc
+        self.max_length = max_length
 
         self.observation_space.spaces['mission'] = gym.spaces.Box(
             low=0,
@@ -19,7 +21,8 @@ class MissionIntegerWrapper(gym.core.ObservationWrapper):
 
     def observation(self, obs):
         mission = self.instr_preproc(obs['mission'])
-        obs['mission'] = mission
+        obs['mission'] = np.zeros(self.max_length, dtype=np.uint8)
+        obs['mission'][:len(mission)] = mission
         return obs
 
 class RGBImgFullyObsWrapper(gym.core.ObservationWrapper):

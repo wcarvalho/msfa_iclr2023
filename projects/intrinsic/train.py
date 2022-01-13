@@ -1,4 +1,9 @@
-"""Simple intrinsic reward on BabyAI derivative environment."""
+"""Simple intrinsic reward on BabyAI derivative environment.
+
+CUDA_VISIBLE_DEVICES=0 \
+  BABYAI_STORAGE='data/' \
+  python projects/intrinsic/train.py
+"""
 
 # Do not preallocate GPU memory for JAX.
 import os
@@ -49,6 +54,8 @@ from acme.jax import utils as jax_utils
 from acme.jax import variable_utils
 from acme.jax.layouts import local_layout
 from acme.jax.networks import base
+from acme.jax.networks import embedding
+from acme.jax.networks import duelling
 from acme.utils import counting
 from acme.utils import loggers
 from acme.wrappers import observation_action_reward
@@ -56,6 +63,7 @@ from acme.wrappers import observation_action_reward
 
 from agents import td_agent
 from projects.offline_sf import helpers
+from projects.msf import networks as msf_networks
 from utils import make_logger, gen_log_dir
 
 # -----------------------
@@ -127,8 +135,8 @@ class LossFn_with_RND(learning_lib.LossFn):
   def rnd_error(self, y1, y2):
     y2 = jax.lax.stop_gradient(y2)
     error = y1 - y2
-    import ipdb; ipdb.set_trace()
-    return error
+
+    return error.mean(-1)
 
   def __call__(
       self,
@@ -176,10 +184,14 @@ class LossFn_with_RND(learning_lib.LossFn):
     target_q, _, _, target_state = unroll.apply(target_params, key1, data.observation,
                                target_state)
 
-    batch_td_error, batch_loss = self.td_error(data, online_q, online_state, target_q, target_state)
     rnd_error = self.rnd_error(online_y1, online_y2)
 
-    import ipdb; ipdb.set_trace()
+    # add intrinsic reward
+    data._replace(reward=data.reward + rnd_error)
+
+    batch_td_error, batch_loss = self.td_error(data, online_q, online_state, target_q, target_state)
+
+
 
     # Importance weighting.
     probs = batch.info.probability
@@ -198,7 +210,7 @@ class LossFn_with_RND(learning_lib.LossFn):
         keys=batch.info.key,
         priorities=priorities
         )
-    extra = learning_lib.LossExtra(metrics={}, reverb_update=reverb_update)
+    extra = learning_lib.LossExtra(metrics={'rnd': rnd_error.mean()}, reverb_update=reverb_update)
     return mean_loss, extra
 
 # ======================================================
@@ -214,7 +226,7 @@ class RND_QNetwork(hk.RNNCore):
       hidden_size : int=128,):
     super().__init__(name='r2d2_network')
     self._embed = embedding.OAREmbedding(
-      VisionTorso(),
+      msf_networks.VisionTorso(),
       num_actions)
     self._core = hk.LSTM(lstm_size)
     self._duelling_head = duelling.DuellingMLP(num_actions, hidden_sizes=[hidden_size])
@@ -230,7 +242,8 @@ class RND_QNetwork(hk.RNNCore):
       key: networks_lib.PRNGKey,
     ) -> Tuple[base.QValues, hk.LSTMState]:
     del key
-    embeddings = self._embed(inputs)  # [B, D+A+1]
+
+    embeddings = self._embed(inputs._replace(observation=inputs.observation.image))  # [B, D+A+1]
 
     # -----------------------
     # RND computations
@@ -244,7 +257,6 @@ class RND_QNetwork(hk.RNNCore):
     # -----------------------
     core_outputs, new_state = self._core(embeddings, state)
     # "UVFA"
-    core_outputs = jnp.concatenate((core_outputs, task), axis=-1)
     q_values = self._duelling_head(core_outputs)
     return q_values, y1, y2, new_state
 
@@ -259,8 +271,8 @@ class RND_QNetwork(hk.RNNCore):
   ) -> Tuple[base.QValues, hk.LSTMState]:
     del key
     """Efficient unroll that applies torso, core, and duelling mlp in one pass."""
-    image, task, state_feat, _, _ = process_inputs(inputs)
-    embeddings = hk.BatchApply(self._embed)(inputs._replace(observation=image))  # [T, B, D+A+1]
+
+    embeddings = hk.BatchApply(self._embed)(inputs._replace(observation=inputs.observation.image))  # [T, B, D+A+1]
 
     # -----------------------
     # RND computations
@@ -273,9 +285,44 @@ class RND_QNetwork(hk.RNNCore):
     # -----------------------
     core_outputs, new_states = hk.static_unroll(self._core, embeddings, state)
     # "UVFA"
-    core_outputs = jnp.concatenate((core_outputs, task), axis=-1)
     q_values = hk.BatchApply(self._duelling_head)(core_outputs)  # [T, B, A]
     return q_values, y1, y2, new_states
+
+# ======================================================
+# Custom Behavior policy constructor.
+# ======================================================
+def make_behavior_policy(
+    networks: td_agent.TDNetworkFns,
+    config: td_agent.R2D1Config,
+    evaluation: bool = False,
+    ) -> r2d2_networks.EpsilonRecurrentPolicy:
+  """Selects action according to the policy.
+  
+  Args:
+      networks (td_agent.TDNetworkFns): Network functions
+      config (R2D1Config): Config
+      evaluation (bool, optional): whether evaluation policy
+      network_samples (bool, optional): whether network is random
+  
+  Returns:
+      r2d2_networks_lib.EpsilonRecurrentPolicy: epsilon-greedy policy
+  """
+
+  def behavior_policy(
+                      params: networks_lib.Params,
+                      key: networks_lib.PRNGKey,
+                      observation,
+                      core_state,
+                      epsilon):
+    key, key_net, key_sample = jax.random.split(key, 3)
+    q_values, y1, y2, core_state = networks.forward.apply(
+        params, key_net, observation, core_state, key_sample)
+    epsilon = config.evaluation_epsilon if evaluation else epsilon
+    return rlax.epsilon_greedy(epsilon).sample(key_net, q_values), core_state
+
+  return behavior_policy
+
+
 
 def main(_):
   # -----------------------
@@ -292,7 +339,8 @@ def main(_):
   # environment
   # -----------------------
   env = helpers.make_environment(
-    task_kinds=['place'])
+    task_kinds=['place'],
+    partial_obs=True)
   env_spec = acme.make_environment_spec(env)
 
   # -----------------------
@@ -329,6 +377,7 @@ def main(_):
       logger_fn=logger_fn)
   agent = td_agent.TDAgent(
       env_spec,
+      behavior_policy_constructor=make_behavior_policy,
       networks=td_agent.make_networks(
         batch_size=config.batch_size,
         env_spec=env_spec,
@@ -348,7 +397,7 @@ def main(_):
     label='actor',
     steps_key="steps")
 
-  loop = EnvironmentLoop(env, agent, logger=env_logger)
+  loop = acme.EnvironmentLoop(env, agent, logger=env_logger)
   loop.run(FLAGS.num_episodes)
 
 
