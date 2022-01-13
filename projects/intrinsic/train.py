@@ -187,7 +187,7 @@ class LossFn_with_RND(learning_lib.LossFn):
     rnd_error = self.rnd_error(online_y1, online_y2)
 
     # add intrinsic reward
-    data._replace(reward=data.reward + rnd_error)
+    data._replace(reward=data.reward + jax.lax.stop_gradient(rnd_error))
 
     batch_td_error, batch_loss = self.td_error(data, online_q, online_state, target_q, target_state)
 
@@ -199,6 +199,9 @@ class LossFn_with_RND(learning_lib.LossFn):
     importance_weights **= self.importance_sampling_exponent
     importance_weights /= jnp.max(importance_weights)
     mean_loss = jnp.mean(importance_weights * batch_loss)
+
+    # loss adter intrinsic
+    mean_loss = mean_loss + 1e-3*rnd_error.mean()
 
     # Calculate priorities as a mixture of max and mean sequence errors.
     abs_td_error = jnp.abs(batch_td_error).astype(online_q.dtype)
