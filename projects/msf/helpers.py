@@ -11,6 +11,8 @@ from utils import ObservationRemapWrapper
 
 
 from agents import td_agent
+from agents.td_agent import aux_tasks
+from agents.td_agent import losses
 from projects.msf import networks as msf_networks
 
 
@@ -129,13 +131,14 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
+    loss_label = 'r2d1'
 
   elif agent == "usfa": # Universal Successor Features
     config = td_agent.USFAConfig(**default_config)
 
-    NetworkCls=msf_networks.USFANetwork
+    NetworkCls = msf_networks.USFANetwork
     state_dim = env_spec.observations.observation.state_features.shape[0]
-    NetKwargs=dict(
+    NetKwargs = dict(
       num_actions=env_spec.actions.num_values,
       state_dim=state_dim,
       lstm_size=256,
@@ -146,12 +149,14 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
 
     LossFn = td_agent.USFALearning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+
+    loss_label = 'usfa'
 
   elif agent == "usfa_reward":
     # Universal Successor Features which learns cumulants by predicting reward
-    config = td_agent.USFAConfig(**default_config)
+    config = td_agent.USFARewardConfig(**default_config)
 
-    NetworkCls=msf_networks.USFANetwork
+    NetworkCls =  msf_networks.USFARewardNetwork
     state_dim = env_spec.observations.observation.state_features.shape[0]
     NetKwargs=dict(
       num_actions=env_spec.actions.num_values,
@@ -163,10 +168,20 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
       )
 
     LossFn = td_agent.USFALearning
+
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      extract_cumulant=losses.cumulants_from_preds,
+      # auxilliary task as argument
+      aux_tasks=functools.partial(
+        aux_tasks.cumulant_from_reward,
+          coeff=config.aux_coeff))
+
+    loss_label = 'usfa'
+
 
   # elif agent == "msf": # Modular Successor Features
   else:
     raise NotImplementedError(agent)
 
-  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs
+  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label

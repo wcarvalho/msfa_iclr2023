@@ -8,13 +8,35 @@ from acme.jax.networks import base
 from acme.jax.networks import embedding
 from acme.jax.networks import duelling
 from acme.wrappers import observation_action_reward
-
+import functools
 
 import haiku as hk
 import jax
 import jax.numpy as jnp
 
+from agents.td_agent.types import Predictions
 
+
+# ======================================================
+# TYpes
+# ======================================================
+Images = jnp.ndarray
+
+class USFAPredictions(NamedTuple):
+  q: jnp.ndarray
+  sf: jnp.ndarray
+  policy_zeds: jnp.ndarray
+
+
+class USFARewardPredictions(NamedTuple):
+  q: jnp.ndarray
+  sf: jnp.ndarray
+  policy_zeds: jnp.ndarray
+  cumulants: jnp.ndarray
+
+# ======================================================
+# small utils
+# ======================================================
 def add_batch(nest, batch_size: Optional[int]):
   """Adds a batch dimension at axis 0 to the leaves of a nested structure."""
   broadcast = lambda x: jnp.broadcast_to(x, (batch_size,) + x.shape)
@@ -37,7 +59,10 @@ def process_inputs(inputs):
 
   return image, task, state_feat, last_action, last_reward
 
-Images = jnp.ndarray
+
+# ======================================================
+# Networks
+# ======================================================
 class VisionTorso(base.Module):
   """Simple convolutional stack commonly used for Atari."""
 
@@ -88,7 +113,7 @@ class R2D2Network(hk.RNNCore):
       inputs: observation_action_reward.OAR,  # [B, ...]
       state: hk.LSTMState,  # [B, ...]
       key: networks_lib.PRNGKey,
-  ) -> Tuple[base.QValues, hk.LSTMState]:
+  ) -> Tuple[Predictions, hk.LSTMState]:
     del key
     image, task, state_feat, _, _ = process_inputs(inputs)
     embeddings = self._embed(inputs._replace(observation=image))  # [B, D+A+1]
@@ -108,7 +133,7 @@ class R2D2Network(hk.RNNCore):
       inputs: observation_action_reward.OAR,  # [T, B, ...]
       state: hk.LSTMState,  # [T, ...]
       key: networks_lib.PRNGKey,
-  ) -> Tuple[base.QValues, hk.LSTMState]:
+  ) -> Tuple[Predictions, hk.LSTMState]:
     del key
     """Efficient unroll that applies torso, core, and duelling mlp in one pass."""
     image, task, state_feat, _, _ = process_inputs(inputs)
@@ -119,19 +144,6 @@ class R2D2Network(hk.RNNCore):
     core_outputs = jnp.concatenate((core_outputs, task), axis=-1)
     q_values = hk.BatchApply(self._duelling_head)(core_outputs)  # [T, B, A]
     return q_values, new_states
-
-
-class USFAState(NamedTuple):
-  """
-  Attributes:
-    memory: LSTM state
-    sf: successor features
-    policy_zeds: policy embeddings
-  """
-  memory: hk.LSTMState
-  sf: jnp.ndarray
-  policy_zeds: jnp.ndarray
-
 
 class USFANetwork(hk.RNNCore):
   """Universal Successor Feature Approximators
@@ -241,36 +253,21 @@ class USFANetwork(hk.RNNCore):
     # -----------------------
     q_values = jnp.max(q_values, axis=policy_axis)
 
-    usf_state = USFAState(
+    return USFAPredictions(
       sf=sf,
       policy_zeds=policy_zeds,
-      memory=mem_state)
+      q=q_values)
 
-    return q_values, usf_state
 
   def initial_state(self, batch_size: int, **unused_kwargs) -> hk.LSTMState:
-    memory = self.memory.initial_state(None)
-    sf=jnp.zeros(
-      (self.nsamples, self.num_actions, self.state_dim),
-      dtype=memory.hidden.dtype)
-    policy_zeds=jnp.zeros(
-      (self.nsamples, self.num_actions, self.state_dim),
-      dtype=memory.hidden.dtype)
-    state = USFAState(
-      sf=sf,
-      policy_zeds=policy_zeds,
-      memory=memory)
-    if batch_size is not None:
-      state = add_batch(state, batch_size)
-    return state
-
+    return self.memory.initial_state(batch_size)
 
   def __call__(
       self,
       inputs: observation_action_reward.OAR,  # [B, ...]
-      state: USFAState,  # [B, ...]
+      state: hk.LSTMState,  # [B, ...]
       key: networks_lib.PRNGKey,
-  ) -> Tuple[base.QValues, hk.LSTMState]:
+    ) -> Tuple[Predictions, hk.LSTMState]:
 
     image, task, state_feat, last_action, last_reward = process_inputs(inputs)
     # -----------------------
@@ -278,18 +275,18 @@ class USFANetwork(hk.RNNCore):
     # -----------------------
     conv = self.conv(image)
     mem_inputs = jnp.concatenate((conv, last_action, last_reward), axis=-1)
-    mem_outputs, mem_state = self.memory(mem_inputs, state.memory)
+    mem_outputs, mem_state = self.memory(mem_inputs, state)
 
+    preds = self.usfa(mem_outputs, mem_state, task, state_feat, key, nbatchdims=1)
 
-    return self.usfa(mem_outputs, mem_state, task, state_feat, key, nbatchdims=1)
-
+    return preds, mem_state
 
   def unroll(
       self,
       inputs: observation_action_reward.OAR,  # [T, B, ...]
       mem_state: hk.LSTMState,  # [T, ...]
       key: networks_lib.PRNGKey,
-  ) -> Tuple[base.QValues, hk.LSTMState]:
+    ) -> Tuple[Predictions, hk.LSTMState]:
     """Efficient unroll that applies torso, core, and duelling mlp in one pass."""
     image, task, state_feat, last_action, last_reward = process_inputs(inputs)
 
@@ -301,6 +298,34 @@ class USFANetwork(hk.RNNCore):
     mem_outputs, new_mem_state = hk.static_unroll(
       self.memory,
       mem_inputs,
-      mem_state.memory)
+      mem_state)
 
-    return self.usfa(mem_outputs, new_mem_state, task, state_feat, key, nbatchdims=2)
+    preds = self.usfa(mem_outputs, new_mem_state, task, state_feat, key, nbatchdims=2)
+
+    return preds, new_mem_state
+
+
+
+class USFARewardNetwork(USFANetwork):
+  """Universal Successor Feature Approximators
+
+  See https://arxiv.org/abs/1812.07626 for more information.
+  """
+  def usfa(self, mem_outputs, mem_state, task, state_feat, key, nbatchdims):
+
+    preds = super().usfa(mem_outputs, mem_state, task, state_feat, key, nbatchdims)
+
+    if nbatchdims == 1:
+      batch_apply = lambda x:x
+    else:
+      batch_apply = hk.BatchApply
+    num_dims = nbatchdims + 1 # for policy axis
+
+    cumfn = hk.nets.MLP(
+        [self.hidden_size, self.state_dim],
+        activate_final=True,
+        activation=jax.nn.sigmoid)
+
+    cumulants = cumfn(mem_outputs)
+
+    return USFARewardPredictions(**preds._asdict(), cumulants=cumulants)

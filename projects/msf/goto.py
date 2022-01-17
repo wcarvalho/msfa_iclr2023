@@ -29,7 +29,7 @@ def main(_):
   env = helpers.make_environment()
   env_spec = acme.make_environment_spec(env)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings(FLAGS.agent, env_spec)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label = helpers.load_agent_settings(FLAGS.agent, env_spec)
 
   # -----------------------
   # logger
@@ -39,7 +39,7 @@ def main(_):
     agent=FLAGS.agent,
     seed=config.seed)
   logger_fn = lambda : make_logger(
-        log_dir=log_dir, label=f'{FLAGS.agent}')
+        log_dir=log_dir, label=loss_label)
 
 
   # -----------------------

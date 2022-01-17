@@ -44,7 +44,7 @@ from agents.td_agent.types import TDNetworkFns
 
 NetworkFactory = Callable[[specs.EnvironmentSpec], TDNetworkFns]
 
-def default_evaluator(
+def evaluator_custom_env_loop(
   environment_factory: distributed_layout.EnvironmentFactory,
   network_factory: distributed_layout.NetworkFactory,
   builder: builders.GenericActorLearnerBuilder,
@@ -141,7 +141,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
         builder=td_builder,
         policy_network=policy_network_factory,
         evaluator_factories=[
-            default_evaluator(
+            evaluator_custom_env_loop(
                 environment_factory=lambda: environment_factory(True),
                 network_factory=network_factory,
                 builder=td_builder,

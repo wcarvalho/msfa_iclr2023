@@ -1,6 +1,6 @@
 """R2D2 loss."""
 import dataclasses
-from typing import Tuple
+from typing import Tuple, Sequence, List, Union, Callable
 
 from acme import types
 from acme.agents.jax.dqn import learning_lib
@@ -16,7 +16,7 @@ import rlax
 import tree
 
 
-from agents.td_agent.types import TDNetworkFns
+from agents.td_agent.types import TDNetworkFns, Predictions
 from utils import td
 
 
@@ -37,7 +37,27 @@ class RecurrentTDLearning(learning_lib.LossFn):
   clip_rewards : bool = False
   max_abs_reward: float = 1.
 
-  def error(self):
+  # auxilliary tasks
+  aux_tasks: Union[Callable, Sequence[Callable]]=None
+
+  def error(self,
+      data,
+      online_preds : Predictions,
+      online_state,
+      target_preds : Predictions,
+      target_state):
+    """Summary
+    
+    Args:
+        data (TYPE): Description
+        online_preds (Predictions): Description
+        online_state (TYPE): Description
+        target_preds (Predictions): Description
+        target_state (TYPE): Description
+
+    Raises:
+        NotImplementedError: Description
+    """
     raise NotImplementedError
 
   def __call__(
@@ -81,31 +101,52 @@ class RecurrentTDLearning(learning_lib.LossFn):
     # Unroll on sequences to get online and target Q-Values.
 
     key_grad, key1, key2 = jax.random.split(key_grad, 3)
-    online_q, online_state = unroll.apply(params, key1, data.observation, online_state, key2)
+    online_preds, online_state = unroll.apply(params, key1, data.observation, online_state, key2)
     key_grad, key1, key2 = jax.random.split(key_grad, 3)
-    target_q, target_state = unroll.apply(target_params, key1, data.observation,
+    target_preds, target_state = unroll.apply(target_params, key1, data.observation,
                                target_state, key2)
 
-    batch_td_error, batch_loss = self.error(data, online_q, online_state, target_q, target_state)
+    # -----------------------
+    # main loss
+    # -----------------------
+    batch_td_error, batch_loss = self.error(data, online_preds, online_state, target_preds, target_state)
 
     # Importance weighting.
     probs = batch.info.probability
-    importance_weights = (1. / (probs + 1e-6)).astype(online_q.dtype)
+    importance_weights = (1. / (probs + 1e-6)).astype(online_preds.q.dtype)
     importance_weights **= self.importance_sampling_exponent
     importance_weights /= jnp.max(importance_weights)
     mean_loss = jnp.mean(importance_weights * batch_loss)
+    metrics = dict(main=mean_loss,
+                   main_no_weight=batch_loss.mean())
 
     # Calculate priorities as a mixture of max and mean sequence errors.
-    abs_td_error = jnp.abs(batch_td_error).astype(online_q.dtype)
+    abs_td_error = jnp.abs(batch_td_error).astype(online_preds.q.dtype)
     max_priority = self.max_priority_weight * jnp.max(abs_td_error, axis=0)
     mean_priority = (1 - self.max_priority_weight) * jnp.mean(abs_td_error, axis=0)
     priorities = (max_priority + mean_priority)
+
+
+    # -----------------------
+    # auxilliary tasks
+    # -----------------------
+    if self.aux_tasks:
+      aux_tasks = self.aux_tasks
+      if not isinstance(aux_tasks, list): aux_tasks = [aux_tasks]
+
+      for aux_task in aux_tasks:
+        aux_loss, aux_metrics = aux_task(
+          data, online_preds, online_state, target_preds, target_state)
+
+        metrics.update(aux_metrics)
+        mean_loss = mean_loss + aux_loss
+
 
     reverb_update = learning_lib.ReverbUpdate(
         keys=batch.info.key,
         priorities=priorities
         )
-    extra = learning_lib.LossExtra(metrics={}, reverb_update=reverb_update)
+    extra = learning_lib.LossExtra(metrics=metrics, reverb_update=reverb_update)
     return mean_loss, extra
 
 
@@ -125,15 +166,17 @@ def r2d2_loss_kwargs(config):
 
 @dataclasses.dataclass
 class R2D2Learning(RecurrentTDLearning):
-  def error(self, data, online_q, online_state, target_q, target_state):
+  def error(self, data, online_preds, online_state, target_preds, target_state):
+    """R2D2 learning
+    """
     # Get value-selector actions from online Q-values for double Q-learning.
-    selector_actions = jnp.argmax(online_q, axis=-1)
+    selector_actions = jnp.argmax(online_preds.q, axis=-1)
     # Preprocess discounts & rewards.
-    discounts = (data.discount * self.discount).astype(online_q.dtype)
+    discounts = (data.discount * self.discount).astype(online_preds.q.dtype)
     rewards = data.reward
     if self.clip_rewards:
       rewards = jnp.clip(rewards, -max_abs_reward, max_abs_reward)
-    rewards = rewards.astype(online_q.dtype)
+    rewards = rewards.astype(online_preds.q.dtype)
 
     # Get N-step transformed TD error and loss.
     batch_td_error_fn = jax.vmap(
@@ -146,26 +189,41 @@ class R2D2Learning(RecurrentTDLearning):
     # TODO(b/183945808): when this bug is fixed, truncations of actions,
     # rewards, and discounts will no longer be necessary.
     batch_td_error = batch_td_error_fn(
-        online_q[:-1],
+        online_preds.q[:-1],
         data.action[:-1],
-        target_q[1:],
+        target_preds.q[1:],
         selector_actions[1:],
         rewards[:-1],
         discounts[:-1])
     batch_loss = 0.5 * jnp.square(batch_td_error).sum(axis=0)
-    return batch_td_error, batch_loss
 
+    return batch_td_error, batch_loss # [T-1, B], [B]
+
+
+def cumulants_from_env(data, online_preds, online_state, target_preds, target_state):
+  return data.observation.observation.state_features # [T, B, C]
+
+def cumulants_from_preds(data, online_preds, online_state, target_preds, target_state,
+  stop_grad=True):
+  if stop_grad:
+    return jax.lax.stop_gradient(online_preds.cumulants) # [T, B, C]
+  else:
+    return online_preds.cumulants # [T, B, C]
 
 @dataclasses.dataclass
 class USFALearning(RecurrentTDLearning):
-  def error(self, data, online_q, online_state, target_q, target_state):
+
+  # auxilliary tasks
+  extract_cumulant: Callable = cumulants_from_env
+
+  def error(self, data, online_preds, online_state, target_preds, target_state):
 
     # all are [T, B, N, A, C]
     # N = num policies, A = actions, C = cumulant dim
-    online_sf = online_state.sf 
-    online_z = online_state.policy_zeds
-    target_sf = target_state.sf
-    target_z = target_state.policy_zeds
+    online_sf = online_preds.sf 
+    online_z = online_preds.policy_zeds
+    target_sf = target_preds.sf
+    target_z = target_preds.policy_zeds
     npolicies = online_sf.shape[2]
 
 
@@ -178,7 +236,8 @@ class USFALearning(RecurrentTDLearning):
     discounts = (data.discount * self.discount).astype(new_q.dtype)
     discounts = jnp.expand_dims(discounts, axis=2)
     discounts = jnp.tile(discounts, [1,1, npolicies]) # [T, B, N]
-    cumulants = data.observation.observation.state_features # [T, B, C]
+    cumulants = self.extract_cumulant(data, online_preds, online_state,
+      target_preds, target_state)
     cumulants = jnp.expand_dims(cumulants, axis=2)
     cumulants = jnp.tile(cumulants, [1,1, npolicies, 1]) # [T, B, N, C]
     cumulants = cumulants.astype(discounts.dtype)
@@ -210,4 +269,4 @@ class USFALearning(RecurrentTDLearning):
     # average over all policies + cumulants
     batch_loss = 0.5 * jnp.square(batch_td_error).sum(axis=(0, 2, 3)) # [B]
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
-    return batch_td_error, batch_loss
+    return batch_td_error, batch_loss # [T, B], [B]

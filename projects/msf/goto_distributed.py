@@ -53,7 +53,7 @@ def build_program(agent, num_actors,
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings(agent, env_spec, config_kwargs)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label = helpers.load_agent_settings(agent, env_spec, config_kwargs)
 
   def network_factory(spec):
     return td_agent.make_networks(
@@ -80,7 +80,7 @@ def build_program(agent, num_actors,
     agent=agent,
     **extra)
   logger_fn = lambda : make_logger(
-        log_dir=log_dir, label=agent, asynchronous=True)
+        log_dir=log_dir, label=loss_label, asynchronous=True)
 
   actor_logger_fn = lambda actor_id: make_logger(
                   log_dir=log_dir, label='actor',

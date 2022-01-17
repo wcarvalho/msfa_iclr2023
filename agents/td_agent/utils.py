@@ -10,7 +10,7 @@ import haiku as hk
 import jax
 import rlax
 
-from agents.td_agent.types import TDNetworkFns
+from agents.td_agent.types import TDNetworkFns, Predictions
 from agents.td_agent.configs import R2D1Config
 
 def make_networks(batch_size, env_spec, NetworkCls, NetKwargs):
@@ -100,10 +100,10 @@ def make_behavior_policy(
                       core_state: types.NestedArray,
                       epsilon):
     key, key_net, key_sample = jax.random.split(key, 3)
-    q_values, core_state = networks.forward.apply(
+    preds, core_state = networks.forward.apply(
         params, key_net, observation, core_state, key_sample)
     epsilon = config.evaluation_epsilon if evaluation else epsilon
-    return rlax.epsilon_greedy(epsilon).sample(key_net, q_values), core_state
+    return rlax.epsilon_greedy(epsilon).sample(key_net, preds.q),core_state
 
   return behavior_policy
 

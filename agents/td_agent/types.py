@@ -45,3 +45,11 @@ class TDNetworkFns:
   forward: ValueFn
   unroll: ValueFn
   initial_state: RecurrentStateFn
+
+
+class Predictions(NamedTuple):
+  """
+  Attributes:
+    q: Q values
+  """
+  q: jnp.ndarray
