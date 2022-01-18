@@ -84,6 +84,7 @@ class VisionTorso(base.Module):
     if inputs_rank < 3 or inputs_rank > 4:
       raise ValueError('Expected input BHWC or HWC. Got rank %d' % inputs_rank)
 
+
     outputs = self._network(inputs)
 
     if batched_inputs:
@@ -123,7 +124,7 @@ class R2D2Network(hk.RNNCore):
     # "UVFA"
     core_outputs = jnp.concatenate((core_outputs, task), axis=-1)
     q_values = self._duelling_head(core_outputs)
-    return q_values, new_state
+    return Predictions(q=q_values), new_state
 
   def initial_state(self, batch_size: int, **unused_kwargs) -> hk.LSTMState:
     return self._core.initial_state(batch_size)
@@ -143,7 +144,7 @@ class R2D2Network(hk.RNNCore):
     # "UVFA"
     core_outputs = jnp.concatenate((core_outputs, task), axis=-1)
     q_values = hk.BatchApply(self._duelling_head)(core_outputs)  # [T, B, A]
-    return q_values, new_states
+    return Predictions(q=q_values), new_states
 
 class USFANetwork(hk.RNNCore):
   """Universal Successor Feature Approximators

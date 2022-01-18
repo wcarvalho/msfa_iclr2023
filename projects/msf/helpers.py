@@ -175,7 +175,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
       # auxilliary task as argument
       aux_tasks=functools.partial(
         aux_tasks.cumulant_from_reward,
-          coeff=config.aux_coeff))
+          coeff=config.reward_coeff))
 
     loss_label = 'usfa'
 

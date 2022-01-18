@@ -13,6 +13,7 @@ os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 
 
 import launchpad as lp
+from launchpad.nodes.python.local_multi_processing import PythonProcess
 
 from absl import app
 from absl import flags
@@ -35,7 +36,8 @@ flags.DEFINE_integer('num_actors', 10, 'Number of actors.')
 
 FLAGS = flags.FLAGS
 
-def build_program(agent, num_actors, 
+def build_program(agent, num_actors,
+  experiment=None,
   log_every=30.0, # how often to log
   config_kwargs=None, # config
   path='.', # path that's being run from
@@ -72,8 +74,8 @@ def build_program(agent, num_actors,
   # -----------------------
   agent = str(agent)
   extra = dict(seed=config.seed)
-  if FLAGS.experiment:
-    extra['exp']=FLAGS.experiment
+  if experiment:
+    extra['exp'] = experiment
   log_dir = log_dir or gen_log_dir(
     base_dir=f"{path}/results/msf/distributed",
     hourminute=hourminute,
@@ -114,15 +116,16 @@ def build_program(agent, num_actors,
 
 
 def main(_):
-  program = build_program(FLAGS.agent, FLAGS.num_actors)
+  program = build_program(FLAGS.agent, FLAGS.num_actors, FLAGS.experiment)
   # Launch experiment.
-  resources = {
-    # 'actor': lp.PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
-    # 'evaluator': lp.PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
-  }
   lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
-    local_resources=resources,
-    terminal='current_terminal')
+    terminal='current_terminal',
+    local_resources = {
+      'actor':
+          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
+      'evaluator':
+          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
+  })
 
 if __name__ == '__main__':
   app.run(main)

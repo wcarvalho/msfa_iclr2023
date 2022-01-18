@@ -6,6 +6,7 @@ dependencies:
   - pip
   - python==3.9
   - opencv
+  - cudnn==8.2.1
   - pip:
     - pip
     - gpustat
@@ -20,11 +21,11 @@ dependencies:
     - numpy
     - gym[atari]
 
-    - tensorflow-probability==0.13
+    - tensorflow-probability
 
     #### copied from acme
     - chex
-    - jax==0.2.19
+    - jax==0.2.21
     - trfl # new
     # - tfp-nightly==0.14.0.dev20210818
     - absl-py

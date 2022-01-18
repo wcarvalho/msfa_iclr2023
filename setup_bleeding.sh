@@ -15,7 +15,6 @@ conda activate acmejax
 
 git clone https://github.com/deepmind/acme.git _acme
 cd _acme
-git checkout bfab931c67569ee2f796eccb5d094e266767e981 -b compatible
 pip install --editable .
 cd ..
 
@@ -32,8 +31,11 @@ cd ..
 
 
 if [[ $arch = 'gpu' ]]; then
-  # TODO: remove 0.2.20 once other libs (tensorflow probability) stop relying on jax.partial
-  pip install --upgrade jax[cuda102]==0.2.20 -f https://storage.googleapis.com/jax-releases/jax_releases.html
+  pip install --upgrade jax[cuda] -f https://storage.googleapis.com/jax-releases/jax_releases.html
+  # errors for jax-0.2.26
+  # 1. rlax 0.1.1 requires <=0.2.21
+  # 2. distrax 0.1.0 requires jax<=0.2.21,
+
 fi
 
 # # TEST

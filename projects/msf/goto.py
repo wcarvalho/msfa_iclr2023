@@ -4,6 +4,7 @@
 # Do not preallocate GPU memory for JAX.
 import os
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true' # https://github.com/google/jax/issues/8302
 
 from absl import app
 from absl import flags

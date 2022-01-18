@@ -56,5 +56,5 @@ class USFAConfig(R2D1Config):
 @dataclasses.dataclass
 class USFARewardConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
-  aux_coeff: float = 0.1 # coefficient for loss
+  reward_coeff: float = 0.1 # coefficient for loss
 

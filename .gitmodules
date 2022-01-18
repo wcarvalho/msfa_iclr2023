@@ -1,6 +1,0 @@
-[submodule "envs/babyaikitchen"]
-	path = envs/babyaikitchen
-	url = https://github.com/wcarvalho/babyai_kitchen
-[submodule "libs/acme"]
-	path = libs/acme
-	url = https://github.com/deepmind/acme

@@ -3,17 +3,19 @@ from absl import flags
 from pathlib import Path
 from hyperopt import hp
 import launchpad as lp
-from ray.tune.suggest.hyperopt import HyperOptSearch
+from launchpad.nodes.python.local_multi_processing import PythonProcess
+# from ray.tune.suggest.hyperopt import HyperOptSearch
+from sklearn.model_selection import ParameterGrid
 from ray import tune
 import multiprocessing as mp
-
+import jax
 
 from utils import gen_log_dir
 import os
 
 from projects.msf.goto_distributed import build_program
 
-flags.DEFINE_string('experiment', 'experiment', 'experiment_name.')
+flags.DEFINE_string('set_name', 'set', 'set_name.')
 
 FLAGS = flags.FLAGS
 
@@ -21,18 +23,21 @@ def main(_):
   mp.set_start_method('spawn')
 
   space = {
-      # "seed": tune.grid_search([1, 2, 3]),
-      "agent": tune.grid_search(['r2d1', 'usfa']),
-      "seed": tune.grid_search([1, 2]),
-      # "agent": tune.grid_search(['r2d1']),
+      "seed": tune.grid_search([1]),
+      "agent": tune.grid_search(['usfa_reward']),
+      "reward_coeff": tune.grid_search([1, .01]),
   }
+  # space = ParameterGrid(space.values())
+  # space = [p for p in space]
+  # space = jax.tree_map(lambda x: tune.grid_search([x]), space)
+
   num_cpus = 1
   num_gpus = 1
 
   # root_path is needed to tell program absolute path
   # this is used for BabyAI
   root_path = str(Path().absolute()) 
-  experiment_name=FLAGS.experiment
+  set_name=FLAGS.set_name
 
   def create_and_run_program(config):
     """Create and run launchpad program
@@ -43,7 +48,7 @@ def main(_):
 
     # get log dir for experiment
     log_dir = gen_log_dir(
-      base_dir=f"{root_path}/results/msf/search",
+      base_dir=f"{root_path}/results/msf/{set_name}",
       hourminute=False,
       agent=agent,
       **config)
@@ -56,13 +61,20 @@ def main(_):
       config_kwargs=config, 
       path=root_path,
       log_dir=log_dir)
-    lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING, terminal='current_terminal')
+    lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING, terminal='current_terminal', 
+      local_resources = { # minimize GPU footprint
+      'actor':
+          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
+      'evaluator':
+          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
+    })
 
 
 
   def train_function(config):
     """Run inside threads and creates new process.
     """
+
     p = mp.Process(
       target=create_and_run_program, 
       args=(config,))
