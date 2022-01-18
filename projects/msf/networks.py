@@ -324,8 +324,7 @@ class USFARewardNetwork(USFANetwork):
 
     cumfn = hk.nets.MLP(
         [self.hidden_size, self.state_dim],
-        activate_final=True,
-        activation=jax.nn.sigmoid)
+        activate_final=False)
 
     cumulants = cumfn(mem_outputs)
 

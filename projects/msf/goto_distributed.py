@@ -2,9 +2,14 @@
 Run Successor Feature based agents and baselines on 
   BabyAI derivative environments.
 
-To run:
-  CUDA_VISIBLE_DEVICES=0 python projects/msf/goto_distributed.py --agent r2d1
-
+Comand I run:
+  PYTHONPATH=$PYTHONPATH:$HOME/projects/rljax/ \
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
+    CUDA_VISIBLE_DEVICES=0 \
+    XLA_PYTHON_CLIENT_PREALLOCATE=false \
+    TF_FORCE_GPU_ALLOW_GROWTH=true \
+    python projects/msf/goto_distributed.py \
+    --agent usfa
 """
 
 # Do not preallocate GPU memory for JAX.
@@ -92,7 +97,7 @@ def build_program(agent, num_actors,
   evaluator_logger_fn = lambda : make_logger(
                   log_dir=log_dir,
                   label='evaluator',
-                  steps_key="actor_steps",
+                  steps_key="evaluator_steps",
                   )
 
   # -----------------------
@@ -124,8 +129,8 @@ def main(_):
       'actor':
           PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
       'evaluator':
-          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
-  })
+          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))}
+  )
 
 if __name__ == '__main__':
   app.run(main)

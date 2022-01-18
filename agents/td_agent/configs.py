@@ -57,4 +57,5 @@ class USFAConfig(R2D1Config):
 class USFARewardConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 0.1 # coefficient for loss
+  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
 

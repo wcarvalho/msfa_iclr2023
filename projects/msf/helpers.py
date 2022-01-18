@@ -22,32 +22,32 @@ def make_environment(evaluation: bool = False,
                      ) -> dm_env.Environment:
   """Loads environments."""
   if evaluation:
-    obj2rew=dict(
-        pan_plates={
+    obj2rew={
+        'pan_plates':{
             "pan" : 1,
             "plates" :1,
             "fork" : 0,
             "knife" : 0,
             },
-        all={
+        'all':{
             "pan" : 1,
             "plates" : 1,
             "fork" : 1,
             "knife" : 1,
             },
-        mix1={
+        'mix1':{
             "pan" : -1,
             "plates" : 1,
             "fork" : -1,
             "knife" : 1,
             },
-        mix2={
+        'mix2':{
             "pan" : -1,
             "plates" : 1,
             "fork" : 0,
             "knife" : 1,
             },
-    )
+    }
   else:
     obj2rew=dict(
         pan={
@@ -175,7 +175,8 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
       # auxilliary task as argument
       aux_tasks=functools.partial(
         aux_tasks.cumulant_from_reward,
-          coeff=config.reward_coeff))
+          coeff=config.reward_coeff,  # coefficient for loss
+          loss=config.reward_loss))   # type of loss for reward
 
     loss_label = 'usfa'
 

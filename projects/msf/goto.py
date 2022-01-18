@@ -1,5 +1,15 @@
 """Run Successor Feature based agents and baselines on 
-   BabyAI derivative environments."""
+   BabyAI derivative environments.
+
+Comand I run:
+  PYTHONPATH=$PYTHONPATH:$HOME/projects/rljax/ \
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
+    CUDA_VISIBLE_DEVICES=0 \
+    XLA_PYTHON_CLIENT_PREALLOCATE=false \
+    TF_FORCE_GPU_ALLOW_GROWTH=true \
+    python -m ipdb -c continue projects/msf/goto.py \
+    --agent usfa
+"""
 
 # Do not preallocate GPU memory for JAX.
 import os
