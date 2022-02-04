@@ -57,3 +57,16 @@ def dictop(dictionary: dict, op, skip=[], verbose=False):
             print(e)
         return None
   return {k: dictop(v, op, verbose=verbose) if (not (k is None or k in skip)) else v for k,v in dictionary.items()}
+
+
+
+# ======================================================
+# handling tensors
+# ======================================================
+def expand_tile_dim(x, dim, size):
+  """E.g. shape=[1,128] --> [1,10,128] if dim=1, size=10
+  """
+  ndims = len(x.shape)
+  x = jnp.expand_dims(x, dim)
+  tiling = [1]*dim + [size] + [1]*(ndims-dim)
+  return jnp.tile(x, tiling)
