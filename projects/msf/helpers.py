@@ -181,7 +181,33 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
     loss_label = 'usfa'
 
 
-  # elif agent == "msf": # Modular Successor Features
+  elif agent == "r2d2_farm":
+    # Universal Successor Features which learns cumulants by predicting reward
+    config = td_agent.USFARewardConfig(**default_config)
+
+    NetworkCls =  msf_networks.UsfaFarmMixture
+    state_dim = env_spec.observations.observation.state_features.shape[0]
+    NetKwargs=dict(
+      num_actions=env_spec.actions.num_values,
+      state_dim=state_dim,
+      lstm_size=128,
+      hidden_size=128,
+      nsamples=config.npolicies,
+      variance=config.variance,
+      )
+
+    LossFn = td_agent.USFALearning
+
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      extract_cumulant=losses.cumulants_from_preds,
+      # auxilliary task as argument
+      aux_tasks=functools.partial(
+        aux_tasks.cumulant_from_reward,
+          coeff=config.reward_coeff,  # coefficient for loss
+          loss=config.reward_loss))   # type of loss for reward
+
+    loss_label = 'usfa'
   else:
     raise NotImplementedError(agent)
 

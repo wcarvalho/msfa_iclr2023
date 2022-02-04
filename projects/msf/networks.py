@@ -16,19 +16,21 @@ import jax.numpy as jnp
 
 from agents.td_agent.types import Predictions
 
+from modules.farm import StructuredLSTM, FARM, FarmInputs
+
 
 # ======================================================
-# TYpes
+# Types
 # ======================================================
 Images = jnp.ndarray
 
-class USFAPredictions(NamedTuple):
+class USFAPreds(NamedTuple):
   q: jnp.ndarray
   sf: jnp.ndarray
   policy_zeds: jnp.ndarray
 
 
-class USFARewardPredictions(NamedTuple):
+class USFAUnsupPreds(NamedTuple):
   q: jnp.ndarray
   sf: jnp.ndarray
   policy_zeds: jnp.ndarray
@@ -41,6 +43,14 @@ def add_batch(nest, batch_size: Optional[int]):
   """Adds a batch dimension at axis 0 to the leaves of a nested structure."""
   broadcast = lambda x: jnp.broadcast_to(x, (batch_size,) + x.shape)
   return jax.tree_map(broadcast, nest)
+
+def expand_tile_dim(x, dim, size):
+  """E.g. shape=[1,128] --> [1,10,128] if dim=1, size=10
+  """
+  ndims = len(x.shape)
+  x = jnp.expand_dims(x, dim)
+  tiling = [1]*dim + [size] + [1]*(ndims-dim)
+  return jnp.tile(x, tiling)
 
 def process_inputs(inputs):
   last_action = inputs.action
@@ -61,12 +71,114 @@ def process_inputs(inputs):
 
 
 # ======================================================
+# USFA
+# ======================================================
+
+def sample_gauss(mean, var, key, nsamples, samples_axis):
+  # gaussian (mean=mean, var=.1I)
+  samples = expand_tile_dim(mean, dim=samples_axis, size=nsamples)
+  dims = samples.shape # [?, B, N, D]
+  samples =  samples + jnp.sqrt(var) * jax.random.normal(key, dims)
+  return samples.astype(mean.dtype)
+
+
+def usfa(memory_out,
+        task,
+        statefn,
+        policyfn,
+        successorfn,
+        num_actions,
+        nsamples,
+        state_dim,
+        var,
+        key,
+        nbatchdims):
+  """
+  1. Sample K policy embeddings according to state features
+  2. Compute corresponding successor features
+  3. compute policy and do GPI
+  
+  Args:
+      memory_out (TYPE): e.g. LSTM hidden
+      task (TYPE): task vectors
+      statefn (TYPE): net for memory to get state rep
+      policyfn (TYPE): net for task to get policy rep
+      successorfn (TYPE): net for [state, policy]
+      num_actions (TYPE): number of actions
+      nsamples (TYPE): number of policies to sample
+      state_dim (TYPE): state dim of cumulant
+      var (TYPE): variance for policy sampling
+      key (TYPE): rng key
+      nbatchdims (TYPE): number of dimensions before data. E.g. [T,B]=2
+  
+  Returns:
+      TYPE: Description
+  """
+  dtype = memory_out.dtype
+  batchdims = [1]*nbatchdims
+  policy_axis = nbatchdims
+
+  if nbatchdims == 1:
+    batch_apply = lambda x:x
+  else:
+    batch_apply = hk.BatchApply
+  num_dims = nbatchdims + 1 # for policy axis
+
+
+  state = batch_apply(statefn)(memory_out)
+  # -----------------------
+  # add dim for K=nsamples of policy params
+  # tile along that dimension
+  # -----------------------
+  state = jnp.expand_dims(state, axis=policy_axis)
+  task_sampling = jnp.expand_dims(task, axis=policy_axis)
+  # add one extra for action
+  policy_zeds = jnp.expand_dims(task, axis=(policy_axis,policy_axis+1))
+  state = jnp.tile(state, [*batchdims,nsamples,1])
+  task_sampling = jnp.tile(task_sampling, [*batchdims,nsamples,1])
+  policy_zeds = jnp.tile(policy_zeds, [*batchdims,nsamples, num_actions, 1])
+
+  # -----------------------
+  # policy conditioning
+  # -----------------------
+  # gaussian (mean=task, var=.1I)
+  pshape = task_sampling.shape # [?, B, N, D]
+  policies =  task_sampling + jnp.sqrt(var) * jax.random.normal(key, pshape)
+  policies = policies.astype(dtype)
+  policies = hk.BatchApply(policyfn, num_dims=num_dims)(policies)
+
+  # input for SF
+  sf_input = jnp.concatenate((state, policies), axis=-1)
+
+  # -----------------------
+  # compute successor features
+  # -----------------------
+
+  sf = hk.BatchApply(successorfn, num_dims=num_dims)(sf_input)
+  sf = jnp.reshape(sf, [*sf.shape[:-1], num_actions, state_dim])
+
+  # -----------------------
+  # compute Q values
+  # -----------------------
+  q_values = jnp.sum(sf*policy_zeds, axis=-1)
+
+  # -----------------------
+  # GPI, best policy
+  # -----------------------
+  q_values = jnp.max(q_values, axis=policy_axis)
+
+  return dict(
+    sf=sf,
+    policy_zeds=policy_zeds,
+    q=q_values)
+
+# ======================================================
 # Networks
 # ======================================================
 class VisionTorso(base.Module):
   """Simple convolutional stack commonly used for Atari."""
 
-  def __init__(self):
+  def __init__(self, flatten=True):
     super().__init__(name='atari_torso')
     self._network = hk.Sequential([
         hk.Conv2D(32, [8, 8], 4),
@@ -78,6 +190,8 @@ class VisionTorso(base.Module):
         hk.Conv2D(16, [1, 1], 1)
     ])
 
+    self.flatten = flatten
+
   def __call__(self, inputs: Images) -> jnp.ndarray:
     inputs_rank = jnp.ndim(inputs)
     batched_inputs = inputs_rank == 4
@@ -86,6 +200,8 @@ class VisionTorso(base.Module):
 
 
     outputs = self._network(inputs)
+    if not self.flatten:
+      return outputs
 
     if batched_inputs:
       return jnp.reshape(outputs, [outputs.shape[0], -1])  # [B, D]
@@ -184,14 +300,14 @@ class USFANetwork(hk.RNNCore):
         ])
 
 
-  def usfa(self, mem_outputs, mem_state, task, state_feat, key, nbatchdims):
+  def usfa(self, memory_out, mem_state, task, state_feat, key, nbatchdims):
     """
     1. Sample K policy embeddings according to state features
     2. Compute corresponding successor features
     3. compute policy and do GPI
 
     Args:
-        mem_outputs (TYPE): e.g. LSTM hidden
+        memory_out (TYPE): e.g. LSTM hidden
         mem_state (TYPE): e.g. full LSTM state
         task (TYPE): task vectors
         state_feat (TYPE): state features
@@ -200,7 +316,7 @@ class USFANetwork(hk.RNNCore):
     Returns:
         TYPE: Description
     """
-    dtype = mem_outputs.dtype
+    dtype = memory_out.dtype
     batchdims = [1]*nbatchdims
     policy_axis = nbatchdims
 
@@ -211,7 +327,7 @@ class USFANetwork(hk.RNNCore):
     num_dims = nbatchdims + 1 # for policy axis
 
 
-    state = batch_apply(self.statefn)(mem_outputs)
+    state = batch_apply(self.statefn)(memory_out)
     # -----------------------
     # add dim for K=nsamples of policy params
     # tile along that dimension
@@ -254,7 +370,7 @@ class USFANetwork(hk.RNNCore):
     # -----------------------
     q_values = jnp.max(q_values, axis=policy_axis)
 
-    return USFAPredictions(
+    return USFAPreds(
       sf=sf,
       policy_zeds=policy_zeds,
       q=q_values)
@@ -276,9 +392,9 @@ class USFANetwork(hk.RNNCore):
     # -----------------------
     conv = self.conv(image)
     mem_inputs = jnp.concatenate((conv, last_action, last_reward), axis=-1)
-    mem_outputs, mem_state = self.memory(mem_inputs, state)
+    memory_out, mem_state = self.memory(mem_inputs, state)
 
-    preds = self.usfa(mem_outputs, mem_state, task, state_feat, key, nbatchdims=1)
+    preds = self.usfa(memory_out, mem_state, task, state_feat, key, nbatchdims=1)
 
     return preds, mem_state
 
@@ -296,15 +412,14 @@ class USFANetwork(hk.RNNCore):
     # -----------------------
     conv = hk.BatchApply(self.conv)(image)  # [T, B, D+A+1]
     mem_inputs = jnp.concatenate((conv, last_action, last_reward), axis=2)
-    mem_outputs, new_mem_state = hk.static_unroll(
+    memory_out, new_mem_state = hk.static_unroll(
       self.memory,
       mem_inputs,
       mem_state)
 
-    preds = self.usfa(mem_outputs, new_mem_state, task, state_feat, key, nbatchdims=2)
+    preds = self.usfa(memory_out, new_mem_state, task, state_feat, key, nbatchdims=2)
 
     return preds, new_mem_state
-
 
 
 class USFARewardNetwork(USFANetwork):
@@ -312,9 +427,9 @@ class USFARewardNetwork(USFANetwork):
 
   See https://arxiv.org/abs/1812.07626 for more information.
   """
-  def usfa(self, mem_outputs, mem_state, task, state_feat, key, nbatchdims):
+  def usfa(self, memory_out, mem_state, task, state_feat, key, nbatchdims):
 
-    preds = super().usfa(mem_outputs, mem_state, task, state_feat, key, nbatchdims)
+    preds = super().usfa(memory_out, mem_state, task, state_feat, key, nbatchdims)
 
     if nbatchdims == 1:
       batch_apply = lambda x:x
@@ -326,6 +441,131 @@ class USFARewardNetwork(USFANetwork):
         [self.hidden_size, self.state_dim],
         activate_final=False)
 
-    cumulants = cumfn(mem_outputs)
+    cumulants = cumfn(memory_out)
 
-    return USFARewardPredictions(**preds._asdict(), cumulants=cumulants)
+    return USFAUnsupPreds(**preds._asdict(), cumulants=cumulants)
+
+
+
+
+class UsfaFarmMixture(hk.RNNCore):
+  """Universal Successor Feature Approximators + Feature Attending Recurrent Modules
+
+  See https://arxiv.org/abs/1812.07626 for more information.
+  """
+
+  def __init__(self,
+        num_actions: int,
+        state_dim: int,
+        lstm_size : int = 128,
+        hidden_size : int=128,
+        policy_size : int=32,
+        variance: float=0.1,
+        nsamples: int=30,
+        nmodules: int=4,
+    ):
+    super().__init__(name='usfa_farm_network')
+    self.var = variance
+    self.nsamples = nsamples
+    self.state_dim = state_dim
+    self.num_actions = num_actions
+    self.policy_size = policy_size
+    self.hidden_size = hidden_size
+
+    self.conv = VisionTorso(flatten=False)
+    self.memory = FARM(lstm_size, nmodules)
+    self.statefn = hk.nets.MLP(
+        [hidden_size],
+        activate_final=True)
+
+    self.policynet = hk.nets.MLP(
+        [policy_size, policy_size])
+
+    self.successorfn = hk.nets.MLP([
+        self.policy_size+self.hidden_size,
+        self.num_actions*self.state_dim
+        ])
+
+  def initial_state(self, batch_size: int, **unused_kwargs) -> hk.LSTMState:
+    return self.memory.initial_state(batch_size)
+
+  def __call__(
+      self,
+      inputs: observation_action_reward.OAR,  # [B, ...]
+      state: hk.LSTMState,  # [B, ...]
+      key: networks_lib.PRNGKey,
+    ) -> Tuple[Predictions, hk.LSTMState]:
+
+    image, task, state_feat, last_action, last_reward = process_inputs(inputs)
+    # -----------------------
+    # compute state
+    # -----------------------
+    conv = self.conv(image)
+    mem_inputs = jnp.concatenate((conv, last_action, last_reward), axis=-1)
+    memory_out, mem_state = self.memory(mem_inputs, state)
+
+    preds = self.usfa(memory_out, mem_state, task, state_feat, key, nbatchdims=1)
+
+    return preds, mem_state
+
+  def unroll(
+      self,
+      inputs: observation_action_reward.OAR,  # [T, B, ...]
+      mem_state: hk.LSTMState,  # [T, ...]
+      key: networks_lib.PRNGKey,
+    ) -> Tuple[Predictions, hk.LSTMState]:
+    """Efficient unroll that applies torso, core, and duelling mlp in one pass."""
+    image, task, state_feat, last_action, last_reward = process_inputs(inputs)
+
+    # -----------------------
+    # compute state
+    # -----------------------
+    conv = hk.BatchApply(self.conv)(image)  # [T, B, H, W, C]
+    mem_inputs = FarmInputs(
+      image=conv,
+      vector=jnp.concatenate((last_action, last_reward), axis=2)
+      )
+
+    # [T, B, N_H, D]
+    memory_out, new_mem_state = hk.static_unroll(
+      self.memory,
+      mem_inputs,
+      mem_state)
+
+    # -----------------------
+    # compute policy embeddings
+    # -----------------------
+    nbatchdims = 2
+    policy_zs = sample_gauss(
+      mean=task, var=self.var, nsamples=self.nsamples,
+      key=key, samples_axis=nbatchdims)
+    # num_dims=policy_axis+1 indicates [?, B, N_P]
+    policies = hk.BatchApply(self.policynet, num_dims=nbatchdims+1)(policy_zs)
+
+    # -----------------------
+    # compute SF inputs
+    # -----------------------
+    # mixture
+    mem_weights = hk.Linear(self.memory.nmodules, with_bias=False)(policies) # [T, B, N, N_H]
+
+    import ipdb; ipdb.set_trace()
+    # jnp.dot(mem_weights, memory_out.transpose(0,1,3,2))
+    # mem_sf = mem_weights
+
+
+
+    preds = usfa(memory_out,
+        task=task,
+        statefn=self.statefn,
+        policyfn=self.policynet,
+        successorfn=self.successorfn,
+        num_actions=self.num_actions,
+        nsamples=self.nsamples,
+        state_dim=self.state_dim,
+        var=self.var,
+        key=key,
+        nbatchdims=nbatchdims)
+
+
+
+    return preds, new_mem_state
