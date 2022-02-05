@@ -39,15 +39,13 @@ class USFAUnsupPreds(NamedTuple):
 # ======================================================
 # small utils
 # ======================================================
-def add_batch(nest, batch_size: Optional[int]):
-  """Adds a batch dimension at axis 0 to the leaves of a nested structure."""
-  broadcast = lambda x: jnp.broadcast_to(x, (batch_size,) + x.shape)
-  return jax.tree_map(broadcast, nest)
 
 def expand_tile_dim(x, dim, size):
   """E.g. shape=[1,128] --> [1,10,128] if dim=1, size=10
   """
   ndims = len(x.shape)
+  dim = dim % ndims # to account for negative
+
   x = jnp.expand_dims(x, dim)
   tiling = [1]*dim + [size] + [1]*(ndims-dim)
   return jnp.tile(x, tiling)

@@ -9,6 +9,7 @@ from acme.jax import utils
 import haiku as hk
 import jax
 import rlax
+import numpy as np
 
 from agents.td_agent.types import TDNetworkFns, Predictions
 from agents.td_agent.configs import R2D1Config
@@ -65,6 +66,12 @@ def make_networks(batch_size, env_spec, NetworkCls, NetKwargs):
     initial_mem_state = initial_state.apply(initial_state_params, key_initial_2, batch_size)
     random_key, key_init = jax.random.split(random_key)
     initial_params = unroll.init(key_init, initial_mem_state)
+
+    nparams = sum(x.size for x in jax.tree_leaves(initial_params))
+    print("="*25)
+    print(f"Number of params: {nparams:,}")
+    print("="*25)
+
     return initial_params
 
   # this conforms to both R2D2 & DQN APIs

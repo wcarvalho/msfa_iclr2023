@@ -1,6 +1,6 @@
 import collections
 import jax
-
+import jax.numpy as jnp
 def flatten_dict(d, parent_key='', sep='_'):
   items = []
   for k, v in d.items():
@@ -59,14 +59,29 @@ def dictop(dictionary: dict, op, skip=[], verbose=False):
   return {k: dictop(v, op, verbose=verbose) if (not (k is None or k in skip)) else v for k,v in dictionary.items()}
 
 
+# ======================================================
+# configs
+# ======================================================
+
+def expand_config_named(config, new):
+  config = config.__dict__
+  config.update(new)
+  # original_fields = set(config.keys()).add(new.keys())
+
+  Config = collections.namedtuple('Config', config.keys())
+  return Config(**config)
 
 # ======================================================
 # handling tensors
 # ======================================================
-def expand_tile_dim(x, dim, size):
+def expand_tile_dim(x, axis, size):
   """E.g. shape=[1,128] --> [1,10,128] if dim=1, size=10
   """
   ndims = len(x.shape)
-  x = jnp.expand_dims(x, dim)
-  tiling = [1]*dim + [size] + [1]*(ndims-dim)
+  if axis < 0: # go AFTER -axis dims, e.g. x=[1,128], axis=-2 --> [1,10,128]
+    axis += 1
+    _axis = axis % ndims # to account for negative
+
+  x = jnp.expand_dims(x, _axis)
+  tiling = [1]*_axis + [size] + [1]*(ndims-_axis)
   return jnp.tile(x, tiling)

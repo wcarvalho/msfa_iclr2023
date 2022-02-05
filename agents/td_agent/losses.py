@@ -221,9 +221,9 @@ class USFALearning(RecurrentTDLearning):
     # all are [T, B, N, A, C]
     # N = num policies, A = actions, C = cumulant dim
     online_sf = online_preds.sf 
-    online_z = online_preds.policy_zeds
+    online_z = online_preds.z
     target_sf = target_preds.sf
-    target_z = target_preds.policy_zeds
+    target_z = target_preds.z
     npolicies = online_sf.shape[2]
 
 
