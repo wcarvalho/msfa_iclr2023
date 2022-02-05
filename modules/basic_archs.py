@@ -47,7 +47,7 @@ class BasicRecurrent(hk.Module):
       vision_input = self.vision_prep_fn(inputs=inputs)
     else:
       vision_input = inputs
-    obs = self.vision(vision_input)  # [B, D+A+1]
+    obs = self.vision(vision_input)
 
     if self.memory_prep_fn:
       memory_input = self.memory_prep_fn(inputs=inputs, obs=obs)
@@ -83,7 +83,7 @@ class BasicRecurrent(hk.Module):
       vision_input = self.vision_prep_fn(inputs=inputs)
     else:
       vision_input = inputs
-    obs = hk.BatchApply(self.vision)(vision_input)  # [B, D+A+1]
+    obs = hk.BatchApply(self.vision)(vision_input)
 
     if self.memory_prep_fn:
       memory_input = self.memory_prep_fn(inputs=inputs, obs=obs)

@@ -5,7 +5,7 @@ ACME based experiments
 # Installation 
 
 ```bash
-git clone https://github.com/wcarvalho/rljax.git --recursive
+git clone https://github.com/wcarvalho/rljax.git
 conda env create --force -f gpu.yaml
 ```
 
@@ -14,13 +14,6 @@ conda env create --force -f gpu.yaml
 ```bash
 # GPU Usage
 gpustat -i
-
-# Updating
-git submodule foreach git pull origin main
-git pull
-
-# Adding modules
-git submodule add https://github.com/deepmind/acme libs/acme
 
 # killing processed by tune
 kill -9 $(pgrep process_entry)

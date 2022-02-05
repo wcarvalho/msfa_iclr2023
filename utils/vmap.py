@@ -22,8 +22,11 @@ def multihead(fn, x, N):
         raise RuntimeError("Don't know how to handle anything except single array input. Can do multiple outputs.")
     assert x.shape[0]==N, "make sure `x` & `N` fn are correct"
 
-    functions = [fn() for i in range(N)]
-    index = jnp.arange(len(functions))
+    functions = [fn() for i in jnp.arange(N)]
+    index = jnp.arange(N)
+
+    # functions = jax.lax.scan(fn,(), jnp.arange(N))
+
 
     if hk.running_init():
         # during initialization, just create functions
@@ -32,10 +35,11 @@ def multihead(fn, x, N):
         x = [f(example) for f in functions]
 
         # combine all outputs at leaf jnp.ndarray level
-        return jax.tree_map(lambda *arrays: jnp.stack(arrays), *x)
+        # return jax.tree_map(lambda *arrays: jnp.stack(arrays), *x)
+        return jnp.stack(x)
     else:
       # during apply, apply functions in parallel
-      vmap_functions = hk.vmap(lambda i, x: hk.switch(i, functions, x))
+      vmap_functions = hk.vmap(lambda i, x: hk.switch(i, functions, x), split_rng=True)
       x = vmap_functions(index, x)
 
     return x

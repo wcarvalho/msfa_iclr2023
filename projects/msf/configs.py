@@ -56,8 +56,8 @@ class R2D1FarmConfig(R2D1Config):
   """Extra configuration options for FARM module."""
 
   # Network hps
-  module_size = int: 128
-  nmodules = int: 4
+  module_size: int = 128
+  nmodules: int = 4
 
 
 @dataclasses.dataclass

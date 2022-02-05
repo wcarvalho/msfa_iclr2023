@@ -111,7 +111,7 @@ class FeatureAttention(hk.Module):
   def __call__(
       self,
       queries: jnp.ndarray, # [B, N, D]
-      image: jnp.ndarray, # [B, ?, H, W, C]
+      image: jnp.ndarray, # [B, N, H, W, C]
   ) -> jnp.ndarray:
 
     B, N, D = queries.shape
@@ -121,7 +121,6 @@ class FeatureAttention(hk.Module):
       pass
     else:
       raise ValueError("image input must be rank-5 or rank-6.")
-
 
     # ======================================================
     # compute coefficients
@@ -176,7 +175,7 @@ class FARM(hk.RNNCore):
 
   def __call__(
       self,
-      inputs: FarmInputs, # [B, D]
+      inputs: FarmInputs,
       prev_state: LSTMState, # [B, N, D]
   ) -> Tuple[jnp.ndarray, LSTMState]:
 

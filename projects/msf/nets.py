@@ -81,6 +81,20 @@ def make_r2d1(config, env_spec):
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
+# -----------------------
+# R2D1 + FARM
+# -----------------------
+def make_r2d1_farm_prep_fn(num_actions):
+  """
+  Return farm inputs, (1) obs features (2) [action, reward] vector
+  """
+  embedder = OAREmbedding(num_actions=num_actions, observation=False)
+  def prep(inputs, obs):
+    return FarmInputs(
+      image=obs, vector=embedder(inputs))
+
+  return prep
+
 def make_r2d1_farm(config, env_spec):
   num_actions = env_spec.actions.num_values
 
@@ -88,7 +102,7 @@ def make_r2d1_farm(config, env_spec):
     inputs_prep_fn=make_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),
-    memory_prep_fn=farm_prep_fn,
+    memory_prep_fn=make_r2d1_farm_prep_fn(num_actions),
     memory=FARM(config.module_size, config.nmodules),
     prediction_prep_fn=flatten_structured_memory,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])

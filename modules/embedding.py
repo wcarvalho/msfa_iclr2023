@@ -21,7 +21,7 @@ class OAREmbedding(hk.Module):
 
 
   def __call__(self,
-    inputs: observation_action_reward.OAR, obs: jnp.array) -> jnp.ndarray:
+    inputs: observation_action_reward.OAR, obs: jnp.array=None) -> jnp.ndarray:
     """Embed each of the (observation, action, reward) inputs & concatenate."""
 
     # Do a one-hot embedding of the actions.
@@ -39,6 +39,7 @@ class OAREmbedding(hk.Module):
     items = [action, reward]
 
     if self.observation:
+      assert obs is not None, "provide observation"
       items.append(obs)
 
     if self.concat:
