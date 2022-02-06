@@ -91,3 +91,15 @@ class UsfaHead(hk.Module):
       sf=sf,
       z=z,
       q=q_values)
+
+
+class RewardAuxTask(hk.Module):
+  """docstring for RewardAuxTask"""
+  def __init__(self, hidden_size, state_dim):
+    super(RewardAuxTask, self).__init__()
+    self.cumulant_fn = hk.nets.MLP(
+        [hidden_size, state_dim],
+        activate_final=False)
+
+  def __call__(self, memory_out, **kwargs):
+    return {'cumulants' : self.cumulant_fn(memory_out)}

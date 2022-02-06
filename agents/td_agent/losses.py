@@ -136,7 +136,11 @@ class RecurrentTDLearning(learning_lib.LossFn):
 
       for aux_task in aux_tasks:
         aux_loss, aux_metrics = aux_task(
-          data, online_preds, online_state, target_preds, target_state)
+          data=data,
+          online_preds=online_preds,
+          online_state=online_state,
+          target_preds=target_preds,
+          target_state=target_state)
 
         metrics.update(aux_metrics)
         mean_loss = mean_loss + aux_loss

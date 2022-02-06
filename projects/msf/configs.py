@@ -70,6 +70,14 @@ class USFAConfig(R2D1Config):
   policy_size = 32
 
 @dataclasses.dataclass
+class USFAFarmConfig(USFAConfig):
+  """Extra configuration options for FARM module."""
+
+  # Network hps
+  module_size: int = 128
+  nmodules: int = 4
+
+@dataclasses.dataclass
 class USFARewardConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 0.1 # coefficient for loss

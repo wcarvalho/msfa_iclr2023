@@ -1,10 +1,13 @@
-from typing import Any, Callable, Optional, Tuple, NamedTuple
+from typing import Any, Callable, Optional, Tuple, Sequence, NamedTuple, Union
 
 from acme.jax import networks as networks_lib
 
+import collections
 import functools
 import jax
 import haiku as hk
+
+from utils import data as data_utils
 
 
 class BasicRecurrent(hk.Module):
@@ -13,6 +16,7 @@ class BasicRecurrent(hk.Module):
     vision : hk.Module,
     memory : hk.Module,
     prediction : hk.Module,
+    aux_tasks: Union[Callable, Sequence[Callable]]=None,
     inputs_prep_fn : Callable=None,
     vision_prep_fn : Callable=None,
     memory_prep_fn : Callable=None,
@@ -27,6 +31,14 @@ class BasicRecurrent(hk.Module):
     self.vision_prep_fn = vision_prep_fn
     self.memory_prep_fn = memory_prep_fn
     self.prediction_prep_fn = prediction_prep_fn
+
+    # -----------------------
+    # auxilliary tasks
+    # -----------------------
+    # if have auxiliary tasks and only 1, make into list
+    if aux_tasks is not None: 
+      if not isinstance(aux_tasks, list): aux_tasks = [aux_tasks]
+    self.aux_tasks = aux_tasks
 
   def __call__(
       self,
@@ -60,9 +72,17 @@ class BasicRecurrent(hk.Module):
         inputs=inputs, obs=obs, memory_out=memory_out)
     else:
       prediction_input = memory_out
-    prediction = self.prediction(prediction_input, key=key)
+    predictions = self.prediction(prediction_input, key=key)
 
-    return prediction, new_state
+    if self.aux_tasks:
+      predictions = self.auxilliary_tasks(
+        inputs=inputs,
+        obs=obs,
+        memory_out=memory_out,
+        predictions=predictions,
+        batchapply=False)
+
+    return predictions, new_state
 
   def initial_state(self, batch_size: int, **unused_kwargs) -> hk.LSTMState:
     return self.memory.initial_state(batch_size)
@@ -98,6 +118,42 @@ class BasicRecurrent(hk.Module):
       prediction_input = memory_out
 
     pred_fun = functools.partial(self.prediction, key=key)
-    prediction = hk.BatchApply(pred_fun)(prediction_input)
+    predictions = hk.BatchApply(pred_fun)(prediction_input)
 
-    return prediction, new_states
+    if self.aux_tasks:
+      predictions = self.auxilliary_tasks(
+        inputs=inputs,
+        obs=obs,
+        memory_out=memory_out,
+        predictions=predictions,
+        batchapply=True)
+    return predictions, new_states
+
+  def auxilliary_tasks(self,
+    inputs,
+    obs,
+    memory_out,
+    predictions : NamedTuple,
+    batchapply=True):
+    all_preds = predictions._asdict()
+
+    batchfn = hk.BatchApply if batchapply else lambda x:x
+    for aux_task in self.aux_tasks:
+      aux_pred = batchfn(aux_task)(
+        inputs=inputs,
+        obs=obs,
+        memory_out=memory_out,
+        predictions=predictions
+        )
+      overlapping_keys = set(aux_pred.keys()).intersection(all_preds.keys())
+      assert len(overlapping_keys) == 0, "replacing values?"
+      all_preds.update(aux_pred)
+
+    Predictions = collections.namedtuple('Predictions', all_preds.keys())
+    predictions = Predictions(**all_preds)
+    print(jax.tree_map(lambda x:x.shape, predictions))
+    import ipdb; ipdb.set_trace()
+
+    return predictions
+
+
