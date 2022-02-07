@@ -20,6 +20,7 @@ class BasicRecurrent(hk.Module):
     inputs_prep_fn : Callable=None,
     vision_prep_fn : Callable=None,
     memory_prep_fn : Callable=None,
+    memory_proc_fn : Callable=None,
     prediction_prep_fn : Callable=None,
     ):
     super(BasicRecurrent, self).__init__()
@@ -30,6 +31,7 @@ class BasicRecurrent(hk.Module):
     self.inputs_prep_fn = inputs_prep_fn
     self.vision_prep_fn = vision_prep_fn
     self.memory_prep_fn = memory_prep_fn
+    self.memory_proc_fn = memory_proc_fn
     self.prediction_prep_fn = prediction_prep_fn
 
     # -----------------------
@@ -55,18 +57,29 @@ class BasicRecurrent(hk.Module):
     if self.inputs_prep_fn:
       inputs = self.inputs_prep_fn(inputs)
 
+    # ======================================================
+    # Vision
+    # ======================================================
     if self.vision_prep_fn:
       vision_input = self.vision_prep_fn(inputs=inputs)
     else:
       vision_input = inputs
     obs = self.vision(vision_input)
 
+    # ======================================================
+    # Memory
+    # ======================================================
     if self.memory_prep_fn:
       memory_input = self.memory_prep_fn(inputs=inputs, obs=obs)
     else:
       memory_input = obs
     memory_out, new_state = self.memory(memory_input, state)
+    if self.memory_proc_fn:
+      memory_out = self.memory_proc_fn(memory_out)
 
+    # ======================================================
+    # Predictions
+    # ======================================================
     if self.prediction_prep_fn:
       prediction_input = self.prediction_prep_fn(
         inputs=inputs, obs=obs, memory_out=memory_out)
@@ -74,6 +87,9 @@ class BasicRecurrent(hk.Module):
       prediction_input = memory_out
     predictions = self.prediction(prediction_input, key=key)
 
+    # ======================================================
+    # Auxiliary Tasks
+    # ======================================================
     if self.aux_tasks:
       predictions = self.auxilliary_tasks(
         inputs=inputs,
@@ -99,18 +115,29 @@ class BasicRecurrent(hk.Module):
     if self.inputs_prep_fn:
       inputs = self.inputs_prep_fn(inputs)
 
+    # ======================================================
+    # Vision
+    # ======================================================
     if self.vision_prep_fn:
       vision_input = self.vision_prep_fn(inputs=inputs)
     else:
       vision_input = inputs
     obs = hk.BatchApply(self.vision)(vision_input)
 
+    # ======================================================
+    # Memory
+    # ======================================================
     if self.memory_prep_fn:
       memory_input = self.memory_prep_fn(inputs=inputs, obs=obs)
     else:
       memory_input = obs
     memory_out, new_states = hk.static_unroll(self.memory, memory_input, state)
+    if self.memory_proc_fn:
+      memory_out = self.memory_proc_fn(memory_out)
 
+    # ======================================================
+    # Predictions
+    # ======================================================
     if self.prediction_prep_fn:
       prediction_input = self.prediction_prep_fn(
         inputs=inputs, obs=obs, memory_out=memory_out)
@@ -120,6 +147,9 @@ class BasicRecurrent(hk.Module):
     pred_fun = functools.partial(self.prediction, key=key)
     predictions = hk.BatchApply(pred_fun)(prediction_input)
 
+    # ======================================================
+    # Auxiliary Tasks
+    # ======================================================
     if self.aux_tasks:
       predictions = self.auxilliary_tasks(
         inputs=inputs,
@@ -151,8 +181,6 @@ class BasicRecurrent(hk.Module):
 
     Predictions = collections.namedtuple('Predictions', all_preds.keys())
     predictions = Predictions(**all_preds)
-    print(jax.tree_map(lambda x:x.shape, predictions))
-    import ipdb; ipdb.set_trace()
 
     return predictions
 

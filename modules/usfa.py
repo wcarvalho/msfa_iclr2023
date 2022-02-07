@@ -25,6 +25,9 @@ def sample_gauss(mean, var, key, nsamples, axis):
   return samples.astype(mean.dtype)
 
 
+# ======================================================
+# Architectures
+# ======================================================
 class UsfaHead(hk.Module):
   """Page 17."""
   def __init__(self,
@@ -95,11 +98,18 @@ class UsfaHead(hk.Module):
 
 class RewardAuxTask(hk.Module):
   """docstring for RewardAuxTask"""
-  def __init__(self, hidden_size, state_dim):
+  def __init__(self, *args, **kwargs):
     super(RewardAuxTask, self).__init__()
-    self.cumulant_fn = hk.nets.MLP(
-        [hidden_size, state_dim],
-        activate_final=False)
+    self.cumulant_fn = hk.nets.MLP(*args, **kwargs)
 
   def __call__(self, memory_out, **kwargs):
     return {'cumulants' : self.cumulant_fn(memory_out)}
+
+class ValueAuxTask(hk.Module):
+  """docstring for ValueAuxTask"""
+  def __init__(self, *args, **kwargs):
+    super(ValueAuxTask, self).__init__()
+    self.value_fn = hk.nets.MLP(*args, **kwargs)
+
+  def __call__(self, memory_out, **kwargs):
+    return {'value' : self.value_fn(memory_out)}

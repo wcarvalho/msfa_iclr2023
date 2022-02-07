@@ -11,14 +11,17 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 
+from agents import td_agent
 from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding
 from modules.farm import FARM, FarmInputs
 from modules.vision import AtariVisionTorso
-from modules.usfa import UsfaHead, USFAInputs, RewardAuxTask
-from modules.vae import Encoder as VaeEncoder
-from modules.vae import Decoder as VaeDecoder
+from modules.usfa import UsfaHead, USFAInputs, RewardAuxTask, ValueAuxTask
+# from modules.vae import Encoder as VaeEncoder
+# from modules.vae import Decoder as VaeDecoder
+
+
 from utils import data as data_utils
 
 class DuellingMLP(duelling.DuellingMLP):
@@ -31,16 +34,22 @@ class DuellingMLP(duelling.DuellingMLP):
 # Processing functions
 # ======================================================
 
-def make_floats(inputs):
+def convert_floats(inputs):
   return jax.tree_map(lambda x: x.astype(jnp.float32), inputs)
 
 def get_image_from_inputs(inputs : observation_action_reward.OAR):
   return inputs.observation.image/255.0
 
-def farm_prep_fn(inputs, obs):
-  raise RuntimeError("state features if R2D1, not if USFA")
-  return FarmInputs(
-    image=obs, vector=oar_flatten(inputs, obs, observation=False))
+def make_farm_prep_fn(num_actions):
+  """
+  Return farm inputs, (1) obs features (2) [action, reward] vector
+  """
+  embedder = OAREmbedding(num_actions=num_actions, observation=False)
+  def prep(inputs, obs):
+    return FarmInputs(
+      image=obs, vector=embedder(inputs))
+
+  return prep
 
 def flatten_structured_memory(memory_out, **kwargs):
   return memory_out.reshape(*memory_out.shape[:-2], -1)
@@ -70,11 +79,11 @@ def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
   task = inputs.observation.task
   return jnp.concatenate((memory_out, task), axis=-1)
 
-def make_r2d1(config, env_spec):
+def r2d1(config, env_spec):
   num_actions = env_spec.actions.num_values
 
   return BasicRecurrent(
-    inputs_prep_fn=make_floats,
+    inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=True),
     memory_prep_fn=make_r2d1_lstm_prep_fn(num_actions),
@@ -83,28 +92,16 @@ def make_r2d1(config, env_spec):
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
-# -----------------------
-# R2D1 + FARM
-# -----------------------
-def make_r2d1_farm_prep_fn(num_actions):
-  """
-  Return farm inputs, (1) obs features (2) [action, reward] vector
-  """
-  embedder = OAREmbedding(num_actions=num_actions, observation=False)
-  def prep(inputs, obs):
-    return FarmInputs(
-      image=obs, vector=embedder(inputs))
 
-  return prep
 
-def make_r2d1_farm(config, env_spec):
+def r2d1_farm(config, env_spec):
   num_actions = env_spec.actions.num_values
 
   return BasicRecurrent(
-    inputs_prep_fn=make_floats,
+    inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),
-    memory_prep_fn=make_r2d1_farm_prep_fn(num_actions),
+    memory_prep_fn=make_farm_prep_fn(num_actions),
     memory=FARM(config.module_size, config.nmodules),
     prediction_prep_fn=flatten_structured_memory,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
@@ -119,18 +116,18 @@ def usfa_prep_fn(inputs, memory_out, *args, **kwargs):
     memory_out=memory_out,
     )
 
-def usfa_farm_prep_fn(inputs, memory_out, *args, **kwargs):
+def usfa_farm_prediction_prep_fn(inputs, memory_out, *args, **kwargs):
   return USFAInputs(
     w=inputs.observation.task,
-    memory_out=flatten_structured_memory(memory_out=memory_out),
+    memory_out=memory_out,
     )
 
-def make_usfa(config, env_spec):
+def usfa(config, env_spec):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
   return BasicRecurrent(
-    inputs_prep_fn=make_floats,
+    inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=True),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
@@ -146,59 +143,7 @@ def make_usfa(config, env_spec):
       )
   )
 
-def usfa_farm_flat(config, env_spec):
-  num_actions = env_spec.actions.num_values
-  state_dim = env_spec.observations.observation.state_features.shape[0]
-
-  import ipdb; ipdb.set_trace()
-  return BasicRecurrent(
-    inputs_prep_fn=make_floats,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=False),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
-    memory=FARM(config.module_size, config.nmodules),
-    prediction_prep_fn=usfa_farm_prep_fn,
-    prediction=UsfaHead(
-      num_actions=num_actions,
-      state_dim=state_dim,
-      hidden_size=config.out_hidden_size,
-      policy_size=config.policy_size,
-      variance=config.variance,
-      nsamples=config.npolicies,
-      )
-  )
-
-
-def make_usfa_reward(config, env_spec):
-  num_actions = env_spec.actions.num_values
-  state_dim = env_spec.observations.observation.state_features.shape[0]
-  prediction = UsfaHead(
-      num_actions=num_actions,
-      state_dim=state_dim,
-      hidden_size=config.out_hidden_size,
-      policy_size=config.policy_size,
-      variance=config.variance,
-      nsamples=config.npolicies,
-      )
-
-  aux_tasks = RewardAuxTask(
-    hidden_size=config.out_hidden_size,
-    state_dim=state_dim,
-  )
-
-  return BasicRecurrent(
-    inputs_prep_fn=make_floats,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
-    memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=usfa_prep_fn,
-    prediction=prediction,
-    aux_tasks=aux_tasks,
-  )
-
-
-def make_usfa_reward_vae(config, env_spec):
+def usfa_reward(config, env_spec):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
   prediction = UsfaHead(
@@ -211,16 +156,15 @@ def make_usfa_reward_vae(config, env_spec):
       )
 
   aux_tasks = [
-    VaeDecoder(),
-    RewardAuxTask(
-      hidden_size=config.out_hidden_size,
-      state_dim=state_dim,
-    )]
+    ValueAuxTask([config.out_hidden_size, 1]),
+    RewardAuxTask([config.out_hidden_size, state_dim])
+  ]
+
 
   return BasicRecurrent(
-    inputs_prep_fn=make_floats,
+    inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=VaeEncoder(),
+    vision=AtariVisionTorso(flatten=True),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=usfa_prep_fn,
@@ -228,3 +172,29 @@ def make_usfa_reward_vae(config, env_spec):
     aux_tasks=aux_tasks,
   )
 
+def usfa_farmflat_reward(config, env_spec):
+  num_actions = env_spec.actions.num_values
+  state_dim = env_spec.observations.observation.state_features.shape[0]
+
+  aux_tasks = [
+    ValueAuxTask([config.out_hidden_size, 1]),
+    RewardAuxTask([config.out_hidden_size, state_dim])
+  ]
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=False),
+    memory_prep_fn=make_farm_prep_fn(num_actions),
+    memory=FARM(config.module_size, config.nmodules),
+    memory_proc_fn=flatten_structured_memory,
+    prediction_prep_fn=usfa_farm_prediction_prep_fn,
+    prediction=UsfaHead(
+      num_actions=num_actions,
+      state_dim=state_dim,
+      hidden_size=config.out_hidden_size,
+      policy_size=config.policy_size,
+      variance=config.variance,
+      nsamples=config.npolicies,
+      ),
+    aux_tasks=aux_tasks,
+  )

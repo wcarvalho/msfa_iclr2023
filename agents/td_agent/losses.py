@@ -174,7 +174,7 @@ class R2D2Learning(RecurrentTDLearning):
     """R2D2 learning
     """
     # Get value-selector actions from online Q-values for double Q-learning.
-    selector_actions = jnp.argmax(online_preds.q, axis=-1)
+    selector_actions = jnp.argmax(online_preds.q, axis=-1) # [T, B]
     # Preprocess discounts & rewards.
     discounts = (data.discount * self.discount).astype(online_preds.q.dtype)
     rewards = data.reward
@@ -270,7 +270,7 @@ class USFALearning(RecurrentTDLearning):
         cumulants[:-1],      # [T, B, N, A, C]
         discounts[:-1])      # [T, B, N]
 
-    # average over all policies + cumulants
+    # average over all policies(2) + cumulants(3)
     batch_loss = 0.5 * jnp.square(batch_td_error).sum(axis=(0, 2, 3)) # [B]
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
     return batch_td_error, batch_loss # [T, B], [B]

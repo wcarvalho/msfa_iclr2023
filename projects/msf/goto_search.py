@@ -38,13 +38,15 @@ def main(_):
   space = {
       "seed": tune.grid_search([1]),
       "agent": tune.grid_search(
-        ['usfa', 'r2d1', 'r2d1_farm']),
+        # ['usfa', 'r2d1', 'r2d1_farm']),
+        ['usfa_farmflat_reward_value', 'usfa_reward_value']),
+      "value_coeff": tune.grid_search( [1e-3, 1e-4, 1e-5]),
   }
   # space = {
   #     "seed": tune.grid_search([1]),
   #     "agent": tune.grid_search(['usfa']),
   # }
-  experiment='refactor'
+  experiment='reward'
   # space = ParameterGrid(space.values())
   # space = [p for p in space]
   # space = jax.tree_map(lambda x: tune.grid_search([x]), space)
@@ -69,6 +71,7 @@ def main(_):
       base_dir=f"{root_path}/results/msf/{folder}",
       hourminute=False,
       agent=agent,
+      **({'exp': experiment} if experiment else {}),
       **config)
     print("="*50)
     print(f"RUNNING\n{log_dir}")
@@ -76,7 +79,6 @@ def main(_):
 
     # launch experiment
     program = build_program(agent, num_actors,
-      experiment=experiment,
       config_kwargs=config, 
       path=root_path,
       log_dir=log_dir)
