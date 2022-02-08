@@ -18,9 +18,7 @@ from modules.embedding import OAREmbedding
 from modules.farm import FARM, FarmInputs
 from modules.vision import AtariVisionTorso
 from modules.usfa import UsfaHead, USFAInputs, RewardAuxTask, ValueAuxTask
-# from modules.vae import Encoder as VaeEncoder
-# from modules.vae import Decoder as VaeDecoder
-
+from modules.vae import VAE
 
 from utils import data as data_utils
 
@@ -54,23 +52,24 @@ def make_farm_prep_fn(num_actions):
 def flatten_structured_memory(memory_out, **kwargs):
   return memory_out.reshape(*memory_out.shape[:-2], -1)
 
+def memory_prep_fn(num_actions, extract_fn):
+  """Combine vae samples w/ action + reward"""
+  embedder = OAREmbedding(
+    num_actions=num_actions,
+    observation=False,
+    concat=False)
+  def prep(inputs, obs):
+    items = [extract_fn(inputs, obs)]
+    items.extend(embedder(inputs))
+
+    return jnp.concatenate(items, axis=-1)
+
+  return prep
 
 # ======================================================
 # R2D1
 # ======================================================
 
-def make_r2d1_lstm_prep_fn(num_actions):
-  """
-  Creat function to concat [obs, action, reward] from `oar_prep` with state features (phi).
-  """
-  embedder = OAREmbedding(num_actions=num_actions, concat=False)
-  def prep(inputs, obs):
-    items = [inputs.observation.state_features]
-    items.extend(embedder(inputs, obs))
-
-    return jnp.concatenate(items, axis=-1)
-
-  return prep
 
 def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
   """
@@ -86,13 +85,35 @@ def r2d1(config, env_spec):
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=True),
-    memory_prep_fn=make_r2d1_lstm_prep_fn(num_actions),
+    memory_prep_fn=memory_prep_fn(
+      num_actions=num_actions,
+      extract_fn=lambda inputs, obs: inputs.observation.state_features),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=r2d1_prediction_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
+def r2d1_vae(config, env_spec):
+  num_actions = env_spec.actions.num_values
 
+  prediction = DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+  vae = VAE(
+    latent_dim=config.latent_dim,
+    latent_source=config.latent_source)
+  aux_tasks = vae.aux_task
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=vae,
+    memory_prep_fn=memory_prep_fn(
+      num_actions=num_actions,
+      extract_fn=lambda inputs, obs: obs.samples),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=r2d1_prediction_prep_fn,
+    prediction=prediction,
+    aux_tasks=aux_tasks,
+  )
 
 def r2d1_farm(config, env_spec):
   num_actions = env_spec.actions.num_values
@@ -143,7 +164,7 @@ def usfa(config, env_spec):
       )
   )
 
-def usfa_reward(config, env_spec):
+def usfa_reward_vae(config, env_spec):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
   prediction = UsfaHead(
@@ -155,17 +176,20 @@ def usfa_reward(config, env_spec):
       nsamples=config.npolicies,
       )
 
-  aux_tasks = [
-    ValueAuxTask([config.out_hidden_size, 1]),
-    RewardAuxTask([config.out_hidden_size, state_dim])
-  ]
+  vae = VAE(latent_dim=config.latent_dim)
 
+  aux_tasks = [
+    vae.aux_task,
+    RewardAuxTask([state_dim])
+  ]
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    vision=vae,
+    memory_prep_fn=memory_prep_fn(
+      num_actions=num_actions,
+      extract_fn=lambda inputs, obs: obs.samples),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=usfa_prep_fn,
     prediction=prediction,

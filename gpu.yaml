@@ -6,7 +6,6 @@ dependencies:
   - pip
   - python==3.9
   - opencv
-  - cudnn==8.2.1
   - pip:
     - pip
     - gpustat

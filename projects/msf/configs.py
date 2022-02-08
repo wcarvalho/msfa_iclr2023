@@ -84,15 +84,10 @@ class USFARewardConfig(USFAConfig):
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
 
 
-@dataclasses.dataclass
-class USFARewardValueConfig(USFARewardConfig):
-  """Extra configuration options for USFA agent."""
-  value_coeff: float = 1 # coefficient for loss
-  reward_coeff: float = 1 # coefficient for loss
 
 @dataclasses.dataclass
-class USFAFarmRewardValueConfig(USFAFarmConfig):
+class VAEConfig:
   """Extra configuration options for USFA agent."""
-  value_coeff: float = 1 # coefficient for loss
-  reward_coeff: float = 1 # coefficient for loss
-  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
+  vae_coeff: float = 1e-4 # coefficient for loss
+  latent_source: str = "samples" # coefficient for loss
+  latent_dim: int = 128 # latent dim for compression

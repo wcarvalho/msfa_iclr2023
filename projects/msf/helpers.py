@@ -15,6 +15,7 @@ from agents.td_agent import aux_tasks
 from agents.td_agent import losses
 
 from losses.usfa import ValueAuxLoss
+from losses.vae import VaeAuxLoss
 
 from projects.msf import nets
 from projects.msf import networks as msf_networks
@@ -134,6 +135,33 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
 
     loss_label = 'r2d1'
 
+  elif agent == "r2d1_farm":
+
+    config = configs.R2D1FarmConfig(**default_config)
+    NetworkCls=nets.r2d1_farm # default: 1.5M params
+    NetKwargs=dict(config=config,env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+
+    loss_label = 'r2d1'
+
+  elif agent == "r2d1_vae":
+    # R2D1 + VAE
+    config = data_utils.merge_configs(
+      dataclass_configs=[configs.R2D1Config(), configs.VAEConfig()],
+      dict_configs=default_config
+      )
+
+    NetworkCls =  nets.r2d1_vae # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      aux_tasks=[VaeAuxLoss(coeff=config.vae_coeff)])
+
+    loss_label = 'r2d1'
+
   elif agent == "usfa": # Universal Successor Features
     state_dim = env_spec.observations.observation.state_features.shape[0]
 
@@ -149,39 +177,11 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
 
     loss_label = 'usfa'
 
-  elif agent == "r2d1_farm":
-
-    config = configs.R2D1FarmConfig(**default_config)
-    NetworkCls=nets.r2d1_farm # default: 1.5M params
-    NetKwargs=dict(config=config,env_spec=env_spec)
-    LossFn = td_agent.R2D2Learning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-
-    loss_label = 'r2d1'
-
-  elif agent == "usfa_reward":
+  elif agent == "usfa_reward_vae":
     # Universal Successor Features which learns cumulants by predicting reward
-    config = configs.USFARewardConfig(**default_config)
+    config = configs.USFARewardVAEConfig(**default_config)
 
-    NetworkCls =  nets.usfa_reward # default: 2.1M params
-    NetKwargs=dict(config=config,env_spec=env_spec)
-    LossFn = td_agent.USFALearning
-
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(
-      extract_cumulant=losses.cumulants_from_preds,
-      # auxilliary task as argument
-      aux_tasks=functools.partial(aux_tasks.cumulant_from_reward,
-        coeff=config.reward_coeff,  # coefficient for loss
-        loss=config.reward_loss))   # type of loss for reward
-
-    loss_label = 'usfa'
-
-  elif agent == "usfa_reward_value":
-    # Universal Successor Features which learns cumulants by predicting reward
-    config = configs.USFARewardValueConfig(**default_config)
-
-    NetworkCls =  nets.usfa_reward # default: 2M params
+    NetworkCls =  nets.usfa_reward_vae # default: 2M params
     NetKwargs=dict(config=config,env_spec=env_spec)
     LossFn = td_agent.USFALearning
 
@@ -190,7 +190,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
       extract_cumulant=losses.cumulants_from_preds,
       # auxilliary task as argument
       aux_tasks=[
-        ValueAuxLoss(coeff=config.value_coeff, discount=config.discount),
+        VaeAuxLoss(coeff=config.vae_coeff),
         functools.partial(aux_tasks.cumulant_from_reward,
               coeff=config.reward_coeff,  # coefficient for loss
               loss=config.reward_loss)
@@ -199,26 +199,6 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
     loss_label = 'usfa'
 
 
-  elif agent == "usfa_farmflat_reward_value":
-    # Universal Successor Features which learns cumulants by predicting reward
-    config = configs.USFAFarmRewardValueConfig(**default_config)
-
-    NetworkCls =  nets.usfa_farmflat_reward # default: 2M params
-    NetKwargs=dict(config=config,env_spec=env_spec)
-    LossFn = td_agent.USFALearning
-
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(
-      extract_cumulant=losses.cumulants_from_preds,
-      # auxilliary task as argument
-      aux_tasks=[
-        ValueAuxLoss(coeff=config.value_coeff, discount=config.discount),
-        functools.partial(aux_tasks.cumulant_from_reward,
-              coeff=config.reward_coeff,  # coefficient for loss
-              loss=config.reward_loss)
-              ])   # type of loss for reward
-
-    loss_label = 'usfa'
 
   # ======================================================
   # Unchecked

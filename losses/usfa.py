@@ -44,9 +44,6 @@ class ValueAuxLoss:
       discounts[:-1],
       target_v[1:],
       ).mean()
-    # y = reward_pred[:-1] + discounts[:-1]*target_v[1:]
-    # batch_td_error = online_v[:-1] - y
-
 
     return self.coeff*batch_loss, {'loss_value': batch_loss}
 

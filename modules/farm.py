@@ -30,6 +30,15 @@ class LSTMState(NamedTuple):
   hidden: jnp.ndarray
   cell: jnp.ndarray
 
+class FarmInputs(NamedTuple):
+  """An LSTM core state consists of hidden and cell vectors.
+  Attributes:
+    hidden: Hidden state.
+    cell: Cell state.
+  """
+  image: jnp.ndarray
+  vector: jnp.ndarray
+
 class StructuredLSTM(hk.RNNCore):
   r"""Long short-term memory (LSTM) RNN core.
   The implementation is based on :cite:`zaremba2014recurrent`. Given
@@ -147,14 +156,6 @@ class FeatureAttention(hk.Module):
 
     return image
 
-class FarmInputs(NamedTuple):
-  """An LSTM core state consists of hidden and cell vectors.
-  Attributes:
-    hidden: Hidden state.
-    cell: Cell state.
-  """
-  image: jnp.ndarray
-  vector: jnp.ndarray
 
 
 class FARM(hk.RNNCore):

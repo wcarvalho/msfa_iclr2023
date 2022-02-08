@@ -95,7 +95,6 @@ class UsfaHead(hk.Module):
       z=z,
       q=q_values)
 
-
 class RewardAuxTask(hk.Module):
   """docstring for RewardAuxTask"""
   def __init__(self, *args, **kwargs):

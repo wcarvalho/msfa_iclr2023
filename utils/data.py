@@ -1,3 +1,6 @@
+from typing import NamedTuple, Optional, Tuple, List, Sequence, Dict
+import dataclasses
+
 import collections
 import jax
 import jax.numpy as jnp
@@ -70,6 +73,26 @@ def expand_config_named(config, new):
 
   Config = collections.namedtuple('Config', config.keys())
   return Config(**config)
+
+def merge_configs(dataclass_configs, dict_configs):
+
+  if not isinstance(dataclass_configs, list):
+    dataclass_configs = [dataclass_configs]
+  if not isinstance(dict_configs, list):
+    dict_configs = [dict_configs]
+
+  everything = {}
+  for tc in dataclass_configs:
+    everything.update(tc.__dict__)
+
+  for dc in dict_configs:
+    everything.update(dc)
+
+  config = dataclass_configs[0]
+  for k,v in everything.items():
+    setattr(config, k, v)
+
+  return config
 
 # ======================================================
 # handling tensors
