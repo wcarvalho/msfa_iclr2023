@@ -37,16 +37,15 @@ def main(_):
 
   space = {
       "seed": tune.grid_search([1]),
-      "agent": tune.grid_search(
-        # ['usfa', 'r2d1', 'r2d1_farm']),
-        ['usfa_farmflat_reward_value', 'usfa_reward_value']),
-      "value_coeff": tune.grid_search( [1e-3, 1e-4, 1e-5]),
+      "agent": tune.grid_search(['r2d1_vae']),
+      "vae_coeff": tune.grid_search( [1e-3, 1e-4]),
+      "latent_source": tune.grid_search( ["samples", "memory"]),
   }
   # space = {
   #     "seed": tune.grid_search([1]),
   #     "agent": tune.grid_search(['usfa']),
   # }
-  experiment='reward'
+  experiment='vae'
   # space = ParameterGrid(space.values())
   # space = [p for p in space]
   # space = jax.tree_map(lambda x: tune.grid_search([x]), space)
