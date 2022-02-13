@@ -122,7 +122,7 @@ def build_program(agent, num_actors,
 
 
 def main(_):
-  config_kwargs=dict()
+  config_kwargs=dict(seed=FLAGS.seed)
   if FLAGS.max_number_of_steps is not None:
     config_kwargs['max_number_of_steps'] = FLAGS.max_number_of_steps
   program = build_program(FLAGS.agent, FLAGS.num_actors, FLAGS.experiment, config_kwargs=config_kwargs)

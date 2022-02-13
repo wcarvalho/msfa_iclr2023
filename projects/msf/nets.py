@@ -16,7 +16,7 @@ from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding
 from modules import farm
-from modules.farm_model import FarmModel
+from modules.farm_model import FarmModel, FarmCumulants
 from modules.vision import AtariVisionTorso
 from modules.usfa import UsfaHead, USFAInputs, RewardAuxTask, ValueAuxTask
 from modules import vae as vae_modules
@@ -160,11 +160,11 @@ def usfa_prep_fn(inputs, memory_out, *args, **kwargs):
     memory_out=memory_out,
     )
 
-def usfa_farm_prediction_prep_fn(inputs, memory_out, *args, **kwargs):
-  return USFAInputs(
-    w=inputs.observation.task,
-    memory_out=memory_out,
-    )
+# def usfa_farm_prediction_prep_fn(inputs, memory_out, *args, **kwargs):
+#   return USFAInputs(
+#     w=inputs.observation.task,
+#     memory_out=memory_out,
+#     )
 
 def usfa(config, env_spec):
   num_actions = env_spec.actions.num_values
@@ -219,13 +219,15 @@ def usfa_reward_vae(config, env_spec):
     aux_tasks=aux_tasks,
   )
 
-def usfa_farmflat_reward(config, env_spec):
+def usfa_farmflat_model(config, env_spec):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
   aux_tasks = [
-    ValueAuxTask([config.out_hidden_size, 1]),
-    RewardAuxTask([config.out_hidden_size, state_dim])
+    FarmModel(
+      config.model_layers*[config.module_size],
+      num_actions=num_actions),
+    FarmCumulants([config.out_hidden_size, state_dim], cumtype='sum'),
   ]
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
@@ -234,7 +236,7 @@ def usfa_farmflat_reward(config, env_spec):
     memory_prep_fn=make_farm_prep_fn(num_actions),
     memory=farm.FARM(config.module_size, config.nmodules),
     memory_proc_fn=flatten_structured_memory,
-    prediction_prep_fn=usfa_farm_prediction_prep_fn,
+    prediction_prep_fn=usfa_prep_fn,
     prediction=UsfaHead(
       num_actions=num_actions,
       state_dim=state_dim,

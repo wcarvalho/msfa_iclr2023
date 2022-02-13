@@ -58,11 +58,12 @@ class UsfaHead(hk.Module):
     inputs : USFAInputs,
     key: networks_lib.PRNGKey) -> USFAPreds:
 
+    import ipdb; ipdb.set_trace()
     # -----------------------
     # policies + embeddings
     # -----------------------
     # [B, S] --> [B, N, S]
-    z = sample_gauss(inputs.w, self.var, key, self.nsamples, axis=-2)
+    z = sample_gauss(mean=inputs.w, var=self.var, key=key, nsamples=self.nsamples, axis=-2)
     z_embedding = hk.BatchApply(self.policynet)(z) # [B, N, D]
 
     # -----------------------

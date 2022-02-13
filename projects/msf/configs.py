@@ -28,17 +28,17 @@ class R2D1Config:
   max_gradient_norm: float = 80.0  # For gradient clipping.
 
   # How many gradient updates to perform per learner step.
-  num_sgd_steps_per_step: int = 2
+  num_sgd_steps_per_step: int = 4
 
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 0.0 # 0.0=single process
-  min_replay_size: int = 10_000
+  min_replay_size: int = 1000
   max_replay_size: int = 200_000
   batch_size: int = 32
-  prefetch_size: int = 2
   store_lstm_state: bool = True
-  num_parallel_calls: int = 16
+  prefetch_size: int = 0
+  num_parallel_calls: int = 1
   replay_table_name: str = adders_reverb.DEFAULT_PRIORITY_TABLE
 
   # Priority options

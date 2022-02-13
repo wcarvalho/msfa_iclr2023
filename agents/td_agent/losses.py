@@ -217,8 +217,7 @@ def cumulants_from_preds(data, online_preds, online_state, target_preds, target_
 @dataclasses.dataclass
 class USFALearning(RecurrentTDLearning):
 
-  # auxilliary tasks
-  extract_cumulant: Callable = cumulants_from_env
+  extract_cumulants: Callable = cumulants_from_env
 
   def error(self, data, online_preds, online_state, target_preds, target_state):
 
@@ -240,8 +239,8 @@ class USFALearning(RecurrentTDLearning):
     discounts = (data.discount * self.discount).astype(new_q.dtype)
     discounts = jnp.expand_dims(discounts, axis=2)
     discounts = jnp.tile(discounts, [1,1, npolicies]) # [T, B, N]
-    cumulants = self.extract_cumulant(data, online_preds, online_state,
-      target_preds, target_state)
+    cumulants = self.extract_cumulants(data=data, online_preds=online_preds, online_state=online_state,
+      target_preds=target_preds, target_state=target_state)
     cumulants = jnp.expand_dims(cumulants, axis=2)
     cumulants = jnp.tile(cumulants, [1,1, npolicies, 1]) # [T, B, N, C]
     cumulants = cumulants.astype(discounts.dtype)

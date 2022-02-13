@@ -17,6 +17,7 @@ from agents.td_agent import losses
 from losses.usfa import ValueAuxLoss
 from losses.vae import VaeAuxLoss
 from losses.contrastive_model import DeltaContrastLoss
+from losses import cumulants
 
 from projects.msf import nets
 from projects.msf import networks as msf_networks
@@ -157,8 +158,6 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
       dict_configs=default_config
       )
 
-    config.batch_size = config.batch_size
-
     NetworkCls=nets.r2d1_farm_model # default: 1.5M params
     NetKwargs=dict(config=config,env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
@@ -197,50 +196,43 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
 
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
-      extract_cumulant=losses.cumulants_from_preds,
+      extract_cumulants=losses.cumulants_from_preds,
       # auxilliary task as argument
       aux_tasks=[
         VaeAuxLoss(coeff=config.vae_coeff),
-        functools.partial(aux_tasks.cumulant_from_reward,
-              coeff=config.reward_coeff,  # coefficient for loss
-              loss=config.reward_loss)
-              ])   # type of loss for reward
+        cumulants.CumulantRewardLoss(
+          coeff=config.reward_coeff,  # coefficient for loss
+          loss=config.reward_loss),  # type of loss for reward
+      ])   # type of loss for reward
 
     loss_label = 'usfa'
 
+  elif agent == "usfa_farmflat_model":
+    # Universal Successor Features which learns cumulants with structured transition model
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.USFAConfig(), configs.FarmConfig(), configs.FarmModelConfig()],
+      dict_configs=default_config
+      )
 
+    NetworkCls =  msf_networks.usfa_farmflat_model
+    NetKwargs=dict(config=config,env_spec=env_spec)
+    
+    LossFn = td_agent.USFALearning
 
-  # ======================================================
-  # Unchecked
-  # ======================================================
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      extract_cumulants=losses.cumulants_from_preds,
+      aux_tasks=[
+        cumulants.CumulantRewardLoss(
+          coeff=config.reward_coeff,  # coefficient for loss
+          loss=config.reward_loss),  # type of loss for reward
+        DeltaContrastLoss(
+                    coeff=config.model_coeff,
+                    extra_negatives=config.extra_negatives,
+                    temperature=config.temperature),
+      ])
 
-  # elif agent == "usfa_farm":
-  #   # Universal Successor Features which learns cumulants by predicting reward
-  #   config = configs.USFAConfig(**default_config)
-
-  #   NetworkCls =  msf_networks.UsfaFarmMixture
-  #   state_dim = env_spec.observations.observation.state_features.shape[0]
-  #   NetKwargs=dict(
-  #     num_actions=env_spec.actions.num_values,
-  #     state_dim=state_dim,
-  #     lstm_size=128,
-  #     hidden_size=128,
-  #     nsamples=config.npolicies,
-  #     variance=config.variance,
-  #     )
-
-  #   LossFn = td_agent.USFALearning
-
-  #   LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-  #   # LossFnKwargs.update(
-  #   #   extract_cumulant=losses.cumulants_from_preds,
-  #   #   # auxilliary task as argument
-  #   #   aux_tasks=functools.partial(
-  #   #     aux_tasks.cumulant_from_reward,
-  #   #       coeff=config.reward_coeff,  # coefficient for loss
-  #   #       loss=config.reward_loss))   # type of loss for reward
-
-  #   loss_label = 'usfa'
   else:
     raise NotImplementedError(agent)
 
