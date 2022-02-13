@@ -25,6 +25,8 @@ class VaeEncoderOutputs(NamedTuple):
 
 
 class VAE(hk.Module):
+  """
+  """
   def __init__(self, latent_dim=128, latent_source='memory',
     encoder=None, decoder=None
     ):
@@ -50,16 +52,15 @@ class VAE(hk.Module):
 
     if decoder is None:
       decoder = hk.Sequential([
-          hk.Conv2DTranspose(64, [1, 1], 1, padding='SAME'),
+          hk.Conv2DTranspose(64, [1, 1], 1),
           jax.nn.relu,
-          hk.Conv2DTranspose(64, [4, 4], 2, padding='VALID'),
+          hk.Conv2DTranspose(64, [4, 4], 2),
           jax.nn.relu,
-          hk.Conv2DTranspose(32, [4, 4], 2, padding='VALID'),
+          hk.Conv2DTranspose(32, [4, 4], 2),
           jax.nn.relu,
-          hk.Conv2DTranspose(3, [6, 6], 2, padding='VALID'),
+          hk.Conv2DTranspose(3, [6, 6], 2),
       ])
     self.decoder = decoder
-
     # -----------------------
     # settings
     # -----------------------
@@ -117,9 +118,39 @@ class VAE(hk.Module):
       latent = obs.samples
 
     reconstruction = self.decode(memory_out, input_dims, conv_dims)
+
     return dict(
       samples=obs.samples,
       mean=obs.mean,
       std=obs.std,
       reconstruction=reconstruction,
       )
+
+
+def atari_encoder_decoder():
+  return None
+
+def small_standard_encoder_decoder():
+  return dict(
+    encoder=hk.Sequential([
+          hk.Conv2D(32, [4, 4], 2),
+          jax.nn.leaky_relu,
+          hk.Conv2D(64, [4, 4], 2),
+          jax.nn.leaky_relu,
+          hk.Conv2D(128, [4, 4], 2),
+          jax.nn.leaky_relu,
+          # hk.Conv2D(128, [4, 4], 2),
+          # jax.nn.leaky_relu,
+        ]),
+    decoder=hk.Sequential([
+        # hk.Conv2DTranspose(128, [5, 5], 2),
+        # jax.nn.leaky_relu,
+        hk.Conv2DTranspose(128, [5, 5], 2),
+        jax.nn.leaky_relu,
+        hk.Conv2DTranspose(64, [5, 5], 2),
+        jax.nn.leaky_relu,
+        hk.Conv2DTranspose(32, [6, 6], 2),
+        jax.nn.leaky_relu,
+        hk.Conv2DTranspose(3, [6, 6], 2)
+        ])
+    )

@@ -9,6 +9,13 @@ import haiku as hk
 
 from utils import data as data_utils
 
+class AuxilliaryTask(hk.Module):
+  """docstring for AuxilliaryTask"""
+  def __init__(self, unroll_only=False, timeseries=False):
+    super(AuxilliaryTask, self).__init__()
+    self.unroll_only = unroll_only
+    self.timeseries = timeseries
+
 
 class BasicRecurrent(hk.Module):
   """docstring for BasicRecurrent"""
@@ -96,7 +103,7 @@ class BasicRecurrent(hk.Module):
         obs=obs,
         memory_out=memory_out,
         predictions=predictions,
-        batchapply=False)
+        unroll=False)
 
     return predictions, new_state
 
@@ -156,7 +163,7 @@ class BasicRecurrent(hk.Module):
         obs=obs,
         memory_out=memory_out,
         predictions=predictions,
-        batchapply=True)
+        unroll=True)
     return predictions, new_states
 
   def auxilliary_tasks(self,
@@ -164,11 +171,28 @@ class BasicRecurrent(hk.Module):
     obs,
     memory_out,
     predictions : NamedTuple,
-    batchapply=True):
+    unroll=True):
     all_preds = predictions._asdict()
+    all_preds['obs'] = obs
+    all_preds['memory_out'] = memory_out
 
-    batchfn = hk.BatchApply if batchapply else lambda x:x
+    inference=not unroll
     for aux_task in self.aux_tasks:
+      # -----------------------
+      # does this aux task only occur during unroll (not inference?)
+      # -----------------------
+      unroll_only = getattr(aux_task, 'unroll_only', False)
+      if unroll_only and inference: continue
+
+      # -----------------------
+      # if aux task is for time-series or during inference, no BatchApply
+      # -----------------------
+      aux_for_timeseries = getattr(aux_task, 'timeseries', False)
+      if aux_for_timeseries or inference:
+        batchfn = lambda x:x
+      else:
+        batchfn = hk.BatchApply 
+
       aux_pred = batchfn(aux_task)(
         inputs=inputs,
         obs=obs,

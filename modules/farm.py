@@ -3,7 +3,6 @@ import haiku as hk
 import jax
 import jax.numpy as jnp
 
-
 from utils import vmap
 
 def add_batch(nest, batch_size: Optional[int]):
@@ -160,17 +159,17 @@ class FeatureAttention(hk.Module):
 
 class FARM(hk.RNNCore):
   def __init__(self,
-    memory_size: int,
+    module_size: int,
     nmodules: int,
     projection_dim: int=16,
     name: Optional[str] = None):
     """
     """
     super().__init__(name=name)
-    self.memory = StructuredLSTM(memory_size, nmodules)
+    self.memory = StructuredLSTM(module_size, nmodules)
     self.obs_attention = FeatureAttention(projection_dim)
 
-    self.memory_size = memory_size
+    self.module_size = module_size
     self.nmodules = nmodules
     self.projection_dim = projection_dim
 
@@ -192,9 +191,9 @@ class FARM(hk.RNNCore):
 
     memory_input = jnp.concatenate((query, image_attn), axis=-1)
     # memory_input = jnp.concatenate((query, image_attn, module_attn))
-    state = self.memory(memory_input, prev_state)
+    hidden, state = self.memory(memory_input, prev_state)
 
-    return state
+    return hidden, state
 
   def initial_state(self, batch_size: Optional[int]) -> LSTMState:
     return self.memory.initial_state(batch_size)
@@ -208,3 +207,20 @@ class FARM(hk.RNNCore):
 
   def module_attention(self, query, image):
     return []
+
+
+class FarmSharedOutput(FARM):
+  """docstring for FarmSharedOutput"""
+  def __init__(self, out_layers, *args, **kwargs):
+    super(FarmSharedOutput, self).__init__(*args, **kwargs)
+    assert out_layers >=0
+    if out_layers == 0:
+      self.out_mlp = lambda x:x
+    else:
+      self.out_mlp = hk.nets.MLP([self.module_size]*out_layers)
+
+  def __call__(self, *args, **kwargs) -> Tuple[jnp.ndarray, LSTMState]:
+    hidden, state = super().__call__(*args, **kwargs)
+    hidden = hk.BatchApply(self.out_mlp)(hidden)
+    return hidden, state
+
