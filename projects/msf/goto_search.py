@@ -34,21 +34,36 @@ FLAGS = flags.FLAGS
 
 def main(_):
   mp.set_start_method('spawn')
+  experiment=None
 
-  space = {
-      "seed": tune.grid_search([1]),
-      "agent": tune.grid_search(['r2d1_vae']),
-      "vae_coeff": tune.grid_search( [1e-3, 1e-4]),
-      "latent_source": tune.grid_search( ["samples", "memory"]),
-  }
-  # space = {
-  #     "seed": tune.grid_search([1]),
-  #     "agent": tune.grid_search(['usfa']),
-  # }
-  experiment='vae'
-  # space = ParameterGrid(space.values())
-  # space = [p for p in space]
-  # space = jax.tree_map(lambda x: tune.grid_search([x]), space)
+  search = 'r2d1_farm'
+  if search == 'r2d1_farm':
+    space = {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1_farm_model']),
+        "out_layers": tune.grid_search( [1, 2]),
+        # "latent_source": tune.grid_search( ["samples", "memory"]),
+        "model_layers": tune.grid_search( [1, 2]),
+    }
+  # experiment='r2d1_farm_model_v1'
+  elif search == 'r2d1_vae':
+    space = {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1_vae']),
+        "vae_coeff": tune.grid_search( [1e-3, 1e-4]),
+        "beta": tune.grid_search( [25, 100]),
+        # "latent_source": tune.grid_search( ["samples", "memory"]),
+        "latent_dim": tune.grid_search( [512]),
+    }
+    experiment='vae_beta_v5'
+  elif search == 'usfa':
+    space = {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['usfa']),
+    }
+  else:
+    raise NotImplementedError
+
 
   num_cpus = 1
   num_gpus = 1

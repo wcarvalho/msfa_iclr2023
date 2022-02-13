@@ -34,7 +34,7 @@ class R2D1Config:
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 0.0 # 0.0=single process
   min_replay_size: int = 50_000
-  max_replay_size: int = 500_000
+  max_replay_size: int = 250_000
   batch_size: int = 64
   prefetch_size: int = 2
   store_lstm_state: bool = True
@@ -52,37 +52,42 @@ class R2D1Config:
 
 
 @dataclasses.dataclass
-class R2D1FarmConfig(R2D1Config):
-  """Extra configuration options for FARM module."""
-
-  # Network hps
-  module_size: int = 128
-  nmodules: int = 4
-
-
-@dataclasses.dataclass
 class USFAConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
   npolicies: int = 10 # number of policies to sample
   variance: float = 0.1
-
   # Network hps
   policy_size = 32
 
+
+
 @dataclasses.dataclass
-class USFAFarmConfig(USFAConfig):
+class FarmConfig:
   """Extra configuration options for FARM module."""
 
   # Network hps
   module_size: int = 128
   nmodules: int = 4
+  out_layers: int = 2
 
 @dataclasses.dataclass
-class USFARewardConfig(USFAConfig):
+class FarmModelConfig:
+  """Extra configuration options for FARM module."""
+
+  # Network hps
+  extra_negatives: int = 10
+  temperature: float = 0.01
+  model_coeff: float = 1e-3
+  out_layers: int = 2
+  model_layers: int = 2
+  batch_size: int = 20
+
+
+@dataclasses.dataclass
+class RewardConfig:
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 0.1 # coefficient for loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
-
 
 
 @dataclasses.dataclass
@@ -91,3 +96,5 @@ class VAEConfig:
   vae_coeff: float = 1e-4 # coefficient for loss
   latent_source: str = "samples" # coefficient for loss
   latent_dim: int = 128 # latent dim for compression
+  beta: float = 25 # beta for KL
+

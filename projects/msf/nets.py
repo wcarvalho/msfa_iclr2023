@@ -15,10 +15,11 @@ from agents import td_agent
 from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding
-from modules.farm import FARM, FarmInputs
+from modules import farm
+from modules.farm_model import FarmModel
 from modules.vision import AtariVisionTorso
 from modules.usfa import UsfaHead, USFAInputs, RewardAuxTask, ValueAuxTask
-from modules.vae import VAE
+from modules import vae as vae_modules
 
 from utils import data as data_utils
 
@@ -44,7 +45,7 @@ def make_farm_prep_fn(num_actions):
   """
   embedder = OAREmbedding(num_actions=num_actions, observation=False)
   def prep(inputs, obs):
-    return FarmInputs(
+    return farm.FarmInputs(
       image=obs, vector=embedder(inputs))
 
   return prep
@@ -97,9 +98,11 @@ def r2d1_vae(config, env_spec):
   num_actions = env_spec.actions.num_values
 
   prediction = DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
-  vae = VAE(
+  vae = vae_modules.VAE(
     latent_dim=config.latent_dim,
-    latent_source=config.latent_source)
+    latent_source=config.latent_source,
+    **vae_modules.small_standard_encoder_decoder(),
+    )
   aux_tasks = vae.aux_task
 
   return BasicRecurrent(
@@ -123,9 +126,29 @@ def r2d1_farm(config, env_spec):
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions),
-    memory=FARM(config.module_size, config.nmodules),
+    memory=farm.FARM(config.module_size, config.nmodules),
     prediction_prep_fn=flatten_structured_memory,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+  )
+
+def r2d1_farm_model(config, env_spec):
+  num_actions = env_spec.actions.num_values
+
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=False),
+    memory_prep_fn=make_farm_prep_fn(num_actions),
+    memory=farm.FarmSharedOutput(
+      module_size=config.module_size,
+      nmodules=config.nmodules,
+      out_layers=config.out_layers),
+    prediction_prep_fn=flatten_structured_memory,
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    aux_tasks=FarmModel(
+      config.model_layers*[config.module_size],
+      num_actions=num_actions),
   )
 
 # ======================================================
@@ -209,7 +232,7 @@ def usfa_farmflat_reward(config, env_spec):
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions),
-    memory=FARM(config.module_size, config.nmodules),
+    memory=farm.FARM(config.module_size, config.nmodules),
     memory_proc_fn=flatten_structured_memory,
     prediction_prep_fn=usfa_farm_prediction_prep_fn,
     prediction=UsfaHead(

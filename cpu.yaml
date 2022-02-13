@@ -7,24 +7,52 @@ dependencies:
   - python==3.9
   - opencv
   - pip:
-    - jax
-    - ipdb
     - pip
-    - reverb
+    - gpustat
     - setuptools
+    - hyperopt
+    - ray[tune]
+    - ipdb
     - wheel
-    - gym
     - sklearn
     - Pillow
     - matplotlib
-    # - rlax==0.0.4
-    # - tensorflow-probability==0.13
-    # - 'dm-acme'
-    # - 'dm-acme[jax]'
-    # - 'dm-acme[envs]'
-    - pyyaml
-    - chex
+    - numpy
+    - gym[atari]
 
-# conda env create -f cpu.yaml --force
-# conda env update --file cpu.yaml --prune
+    - tensorflow-probability
+
+    #### copied from acme
+    - chex
+    - jax==0.2.21
+    - trfl # new
+    # - tfp-nightly==0.14.0.dev20210818
+    - absl-py
+    - atari-py # new
+    - bsuite # new
+    - dm-env
+    - dm-haiku # new
+    - dm-sonnet # new
+    - dm-tree # new
+    - flax # new
+    - jaxlib # new
+    - optax # new
+    - Pillow # new
+    - pytest-xdist # new
+    - rlax # new
+    # specific versions needed
+    - dm-control==0.0.364896371
+    - keras==2.7.0 # new
+    - pytype==2021.8.11
+    - dm-launchpad==0.4.1 # new
+    - dm-reverb==0.6.1 # new
+    - tensorflow-datasets==4.4.0
+    - tensorflow-estimator==2.7.0 # new
+    - tensorflow==2.7.0 # new
+    # JAX: see README.md
+
+
+
+# conda env create -f gpu.yaml
+# conda env update --file gpu.yaml --prune
 # conda remove --name acmejax --all

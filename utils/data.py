@@ -101,6 +101,7 @@ def expand_tile_dim(x, axis, size):
   """E.g. shape=[1,128] --> [1,10,128] if dim=1, size=10
   """
   ndims = len(x.shape)
+  _axis = axis
   if axis < 0: # go AFTER -axis dims, e.g. x=[1,128], axis=-2 --> [1,10,128]
     axis += 1
     _axis = axis % ndims # to account for negative

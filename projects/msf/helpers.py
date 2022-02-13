@@ -16,6 +16,7 @@ from agents.td_agent import losses
 
 from losses.usfa import ValueAuxLoss
 from losses.vae import VaeAuxLoss
+from losses.contrastive_model import DeltaContrastLoss
 
 from projects.msf import nets
 from projects.msf import networks as msf_networks
@@ -137,7 +138,10 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
 
   elif agent == "r2d1_farm":
 
-    config = configs.R2D1FarmConfig(**default_config)
+    config = data_utils.merge_configs(
+      dataclass_configs=[configs.R2D1Config(), configs.Farm()],
+      dict_configs=default_config
+      )
     NetworkCls=nets.r2d1_farm # default: 1.5M params
     NetKwargs=dict(config=config,env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
@@ -158,7 +162,32 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
 
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
-      aux_tasks=[VaeAuxLoss(coeff=config.vae_coeff)])
+      aux_tasks=[VaeAuxLoss(
+                  coeff=config.vae_coeff,
+                  beta=config.beta)])
+
+    loss_label = 'r2d1'
+
+  elif agent == "r2d1_farm_model":
+
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.R2D1Config(), configs.FarmConfig(), configs.FarmModelConfig()],
+      dict_configs=default_config
+      )
+
+    config.batch_size = config.batch_size
+
+    NetworkCls=nets.r2d1_farm_model # default: 1.5M params
+    NetKwargs=dict(config=config,env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      aux_tasks=[DeltaContrastLoss(
+                    coeff=config.model_coeff,
+                    extra_negatives=config.extra_negatives,
+                    temperature=config.temperature,
+                  )])
 
     loss_label = 'r2d1'
 

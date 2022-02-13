@@ -44,7 +44,8 @@ def make_networks(batch_size, env_spec, NetworkCls, NetKwargs):
     return initial_state_hk.init(rng, batch_size)
   dummy_obs_batch = utils.tile_nested(
       utils.zeros_like(env_spec.observations), batch_size)
-  dummy_obs_sequence = utils.add_batch_dim(dummy_obs_batch)
+  dummy_length = 4
+  dummy_obs_sequence = utils.tile_nested(dummy_obs_batch, dummy_length)
 
   def unroll_init_fn(rng, initial_state):
     rng, rng_init = jax.random.split(rng)
