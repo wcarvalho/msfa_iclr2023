@@ -9,7 +9,7 @@ import rlax
 @dataclasses.dataclass
 class R2D1Config:
   """Configuration options for R2D2 agent."""
-  discount: float = 0.997
+  discount: float = 0.99
   target_update_period: int = 2500
   evaluation_epsilon: float = 0.
   num_epsilons: int = 256
@@ -17,9 +17,9 @@ class R2D1Config:
 
   # Learner options
   burn_in_length: int = 40  # burn in during learning
-  trace_length: int = 80  # how long training should be
+  trace_length: int = 40  # how long training should be
   sequence_period: int = 40  # how often to add
-  learning_rate: float = 1e-3
+  learning_rate: float = 5e-5
   bootstrap_n: int = 5
   seed: int = 1
   max_number_of_steps: int = 10_000_000
@@ -28,14 +28,14 @@ class R2D1Config:
   max_gradient_norm: float = 80.0  # For gradient clipping.
 
   # How many gradient updates to perform per learner step.
-  num_sgd_steps_per_step: int = 1
+  num_sgd_steps_per_step: int = 2
 
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 0.0 # 0.0=single process
-  min_replay_size: int = 50_000
-  max_replay_size: int = 250_000
-  batch_size: int = 64
+  min_replay_size: int = 10_000
+  max_replay_size: int = 200_000
+  batch_size: int = 32
   prefetch_size: int = 2
   store_lstm_state: bool = True
   num_parallel_calls: int = 16

@@ -1,33 +1,29 @@
 import jax
 import jax.numpy as jnp
 import haiku as hk
+import functools
 
-def multihead(fn, x, N):
+def multihead(x, fn):
     """create N parallel copies of fn with their own parameters.
     supports functions that return multiple outputs as tuples or list.
-    
-    
+
     Args:
         fn (TYPE): function to copy
-        x (TYPE): data
-        N (TYPE): number of heads
-    
+        x (TYPE): data (N x D). N = heads. D = dim of data.
+
     Returns:
         TYPE: Description
     
     Raises:
         RuntimeError: error if x is not jnp.ndarray
     """
-    if not isinstance(x, jnp.ndarray):
-        raise RuntimeError("Don't know how to handle anything except single array input. Can do multiple outputs.")
-    assert x.shape[0]==N, "make sure `x` & `N` fn are correct"
+    assert len(x.shape)==2, "only know how to deal with N x D"
 
+
+    # inner function will vmap over dimension N
+    N = x.shape[0]
     functions = [fn() for i in jnp.arange(N)]
     index = jnp.arange(N)
-
-    # functions = jax.lax.scan(fn,(), jnp.arange(N))
-
-
     if hk.running_init():
         # during initialization, just create functions
         example = x[0]
@@ -45,13 +41,11 @@ def multihead(fn, x, N):
     return x
 
 
-def multihead_tr(x, transpose_fn, **kwargs):
+def vmap_multihead(x, fn):
+    """See multihead. Wrapper for B x N x D data.
     """
-    transpose_fn specifies how to get dimension of heads to 0th dimension. after multihead function is made, dimensions are swapped back.
-    """
-    x = jax.tree_map(transpose_fn, x)
-    x = multihead(x=x, **kwargs)
-
-    x = jax.tree_map(transpose_fn, x)
-    return x
+    # vmap over dimension 0 = batch
+    # only know how to vmap over data. make fn part of function specification
+    vmap_func = functools.partial(multihead, fn=fn)
+    return hk.vmap(vmap_func, in_axes=0)(x)
 

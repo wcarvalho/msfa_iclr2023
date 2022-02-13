@@ -85,10 +85,9 @@ class StructuredLSTM(hk.RNNCore):
 
     x_and_h = jnp.concatenate([inputs, prev_state.hidden], axis=-1)
 
-    gated = vmap.multihead_tr(
+    gated = vmap.vmap_multihead(
       fn=lambda: hk.Linear(4 * self.hidden_size),
-      x=x_and_h, N=self.nmodules,
-      transpose_fn=lambda x: x.transpose(1,0,2)
+      x=x_and_h
     )
 
     # TODO(slebedev): Consider aligning the order of gates with Sonnet.
@@ -134,10 +133,9 @@ class FeatureAttention(hk.Module):
     # compute coefficients
     # ======================================================
     # function will create N copies
-    coefficients = vmap.multihead_tr(
+    coefficients = vmap.vmap_multihead(
       fn=lambda: hk.Linear(self.dim),
-      x=queries, N=N,
-      transpose_fn=lambda x: x.transpose(1,0,2))
+      x=queries)
     coefficients = jnp.expand_dims(coefficients, (2,3)) # [B, N, H, W, D]
     coefficients = jax.nn.sigmoid(coefficients)
 

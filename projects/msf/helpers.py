@@ -104,26 +104,7 @@ def make_environment(evaluation: bool = False,
 
 
 def load_agent_settings(agent, env_spec, config_kwargs=None):
-  default_config = dict(
-    # network
-    discount=0.99,
-    target_update_period=2500,
-
-    # Learner options
-    trace_length=40,
-    learning_rate=5e-5,
-    max_number_of_steps=50_000_000, # 5M takes 1hr
-
-    # How many gradient updates to perform per learner step.
-    num_sgd_steps_per_step=4,
-
-    # Replay options
-    batch_size=32,
-    min_replay_size=10_000,
-    max_replay_size=250_000,
-    num_parallel_calls=1,
-    prefetch_size=0,
-    )
+  default_config = dict()
   default_config.update(config_kwargs or {})
 
   if agent == "r2d1": # Recurrent DQN
@@ -139,7 +120,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
   elif agent == "r2d1_farm":
 
     config = data_utils.merge_configs(
-      dataclass_configs=[configs.R2D1Config(), configs.Farm()],
+      dataclass_configs=[configs.R2D1Config(), configs.FarmConfig()],
       dict_configs=default_config
       )
     NetworkCls=nets.r2d1_farm # default: 1.5M params

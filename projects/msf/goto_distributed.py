@@ -38,6 +38,7 @@ flags.DEFINE_string('experiment', None, 'experiment_name.')
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 10, 'Number of actors.')
+flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
 
 FLAGS = flags.FLAGS
 
@@ -121,7 +122,11 @@ def build_program(agent, num_actors,
 
 
 def main(_):
-  program = build_program(FLAGS.agent, FLAGS.num_actors, FLAGS.experiment)
+  config_kwargs=dict()
+  if FLAGS.max_number_of_steps is not None:
+    config_kwargs['max_number_of_steps'] = FLAGS.max_number_of_steps
+  program = build_program(FLAGS.agent, FLAGS.num_actors, FLAGS.experiment, config_kwargs=config_kwargs)
+
   # Launch experiment.
   lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
     terminal='current_terminal',
