@@ -59,12 +59,14 @@ class USFAConfig(R2D1Config):
   # Network hps
   policy_size = 32
   batch_size: int = 20
+  cumulant_hidden_size: int=128 # hidden size for cunmulant pred
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
   mixture: str='unique'
   cumtype: str='sum'
+
 
 
 @dataclasses.dataclass
@@ -86,7 +88,8 @@ class FarmModelConfig:
   model_coeff: float = 1e-3
   out_layers: int = 2
   model_layers: int = 2
-  batch_size: int = 20
+  batch_size: int = 16
+  activation: str='relu'
 
 
 @dataclasses.dataclass

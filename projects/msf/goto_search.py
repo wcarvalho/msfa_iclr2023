@@ -36,7 +36,7 @@ def main(_):
   mp.set_start_method('spawn')
   experiment=None
 
-  search = 'r2d1_farm'
+  search = 'usfa_farm'
   if search == 'r2d1_farm':
     space = {
         "seed": tune.grid_search([1]),
@@ -45,7 +45,7 @@ def main(_):
         # "latent_source": tune.grid_search( ["samples", "memory"]),
         "model_layers": tune.grid_search( [1, 2]),
     }
-  # experiment='r2d1_farm_model_v1'
+    # experiment='r2d1_farm_model_v1'
   elif search == 'r2d1_vae':
     space = {
         "seed": tune.grid_search([1]),
@@ -60,6 +60,13 @@ def main(_):
     space = {
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['usfa']),
+    }
+  elif search == 'usfa_farm':
+    space = {
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['usfa_farm_model', 'usfa_farmflat_model']),
+        "out_layers": tune.grid_search( [2]),
+        "cumulant_hidden_size": tune.grid_search( [0, 128]),
     }
   else:
     raise NotImplementedError
@@ -87,9 +94,15 @@ def main(_):
       agent=agent,
       **({'exp': experiment} if experiment else {}),
       **config)
-    print("="*50)
-    print(f"RUNNING\n{log_dir}")
-    print("="*50)
+
+    if not os.path.exists(log_dir):
+      print("="*50)
+      print(f"RUNNING\n{log_dir}")
+      print("="*50)
+    else:
+      print("="*50)
+      print(f"SKIPPING\n{log_dir}")
+      print("="*50)
 
     # launch experiment
     program = build_program(agent, num_actors,

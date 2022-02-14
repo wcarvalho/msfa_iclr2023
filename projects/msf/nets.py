@@ -44,7 +44,9 @@ def make_farm_prep_fn(num_actions):
   """
   Return farm inputs, (1) obs features (2) [action, reward] vector
   """
-  embedder = OAREmbedding(num_actions=num_actions, observation=False)
+  embedder = OAREmbedding(
+    num_actions=num_actions,
+    observation=False)
   def prep(inputs, obs):
     return farm.FarmInputs(
       image=obs, vector=embedder(inputs))
@@ -149,7 +151,8 @@ def r2d1_farm_model(config, env_spec):
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
     aux_tasks=FarmModel(
       config.model_layers*[config.module_size],
-      num_actions=num_actions),
+      num_actions=num_actions,
+      activation=getattr(jax.nn, config.activation)),
   )
 
 # ======================================================
@@ -222,9 +225,13 @@ def usfa_farmflat_model(config, env_spec):
     # takes structured farm input
     FarmModel(
       config.model_layers*[config.module_size],
-      num_actions=num_actions),
+      num_actions=num_actions,
+      activation=getattr(jax.nn, config.activation)),
     # takes structured farm input
-    FarmCumulants([config.out_hidden_size, state_dim], cumtype='concat'),
+    FarmCumulants(
+      state_dim=state_dim,
+      hidden_size=config.cumulant_hidden_size,
+      cumtype='concat'),
   ]
 
   def prediction_prep_fn(inputs, memory_out, *args, **kwargs):
@@ -261,9 +268,13 @@ def usfa_farm_model(config, env_spec):
     # takes structured farm input
     FarmModel(
       config.model_layers*[config.module_size],
-      num_actions=num_actions),
+      num_actions=num_actions,
+      activation=getattr(jax.nn, config.activation)),
     # takes structured farm input
-    FarmCumulants([config.out_hidden_size, state_dim], cumtype=config.cumtype),
+    FarmCumulants(
+      state_dim=state_dim,
+      hidden_size=config.cumulant_hidden_size,
+      cumtype=config.cumtype),
   ]
 
   if config.mixture == "unique":

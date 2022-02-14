@@ -36,9 +36,14 @@ class FarmModel(AuxilliaryTask):
 
 class FarmCumulants(AuxilliaryTask):
   """docstring for FarmCumulants"""
-  def __init__(self, *args, cumtype='sum', normalize=True, **kwargs):
+  def __init__(self, state_dim, hidden_size=0, cumtype='sum', normalize=True, **kwargs):
     super(FarmCumulants, self).__init__(unroll_only=True, timeseries=True)
-    self.cumulant_fn = hk.nets.MLP(*args, **kwargs)
+    if hidden_size:
+      layers = [hidden_size, state_dim]
+    else:
+      layers = [state_dim]
+    self.cumulant_fn = hk.nets.MLP(layers)
+
     cumtype = cumtype.lower()
     assert cumtype in ['sum', 'weighted', 'concat']
     self.cumtype = cumtype
@@ -55,9 +60,14 @@ class FarmCumulants(AuxilliaryTask):
 
     if self.cumtype == "sum":
       delta = delta.sum(axis=MODULE_AXIS)
+      # assert delta.shape[-1] == states.shape[-1]
     elif self.cumtype == "concat":
       delta = delta.reshape(*delta.shape[:2], -1)
+      # assert delta.shape[-1] == states.shape[-1]*states.shape[-2]
     elif self.cumtype == "weighted":
       raise NotImplementedError
 
-    return {'cumulants' : self.cumulant_fn(delta)}
+    # assert len(delta.shape) == 3, "should be T x B x D"
+    cumulants = self.cumulant_fn(delta)
+
+    return {'cumulants' : cumulants}
