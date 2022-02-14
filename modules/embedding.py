@@ -7,7 +7,7 @@ from acme.wrappers import observation_action_reward
 import haiku as hk
 import jax
 import jax.numpy as jnp
-
+import numpy as np
 Images = jnp.ndarray
 
 
@@ -46,3 +46,20 @@ class OAREmbedding(hk.Module):
       items = jnp.concatenate(items, axis=-1)  # [T?, B, D+A+1]
 
     return items
+
+
+class OneHotTask(hk.Module):
+  """docstring for OneHotTask"""
+  def __init__(self, size, dim, **kwargs):
+    super(OneHotTask, self).__init__()
+    self.size = size
+    self.dim = dim
+    self.embedder = hk.Embed(vocab_size=size, embed_dim=dim, **kwargs)
+  
+  def __call__(self, khot):
+
+    each = self.embedder(jnp.arange(self.size))
+    weighted = each*jnp.expand_dims(khot, axis=1)
+    return weighted.sum(0)
+
+
