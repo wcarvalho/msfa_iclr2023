@@ -3,6 +3,10 @@ import jax.numpy as jnp
 import haiku as hk
 from modules.basic_archs import AuxilliaryTask
 
+TIME_AXIS=0
+BATCH_AXIS=1
+MODULE_AXIS=2
+FEATURE_AXIS=3
 
 from utils import data as data_utils
 
@@ -32,12 +36,13 @@ class FarmModel(AuxilliaryTask):
 
 class FarmCumulants(AuxilliaryTask):
   """docstring for FarmCumulants"""
-  def __init__(self, *args, cumtype='sum', **kwargs):
+  def __init__(self, *args, cumtype='sum', normalize=True, **kwargs):
     super(FarmCumulants, self).__init__(unroll_only=True, timeseries=True)
     self.cumulant_fn = hk.nets.MLP(*args, **kwargs)
     cumtype = cumtype.lower()
     assert cumtype in ['sum', 'weighted', 'concat']
     self.cumtype = cumtype
+    self.normalize = normalize
 
   def __call__(self, memory_out, predictions, **kwargs):
 
@@ -45,15 +50,14 @@ class FarmCumulants(AuxilliaryTask):
     next_states = memory_out[1:]  # [T, B, N, D]
 
     delta = next_states - states
+    if self.normalize:
+      delta = delta / jnp.linalg.norm(delta, axis=-1, keepdims=True)
 
     if self.cumtype == "sum":
-      import ipdb; ipdb.set_trace()
-      raise NotImplementedError
-    elif self.cumtype == "weighted":
-      import ipdb; ipdb.set_trace()
-      raise NotImplementedError
+      delta = delta.sum(axis=MODULE_AXIS)
     elif self.cumtype == "concat":
-      import ipdb; ipdb.set_trace()
+      delta = delta.reshape(*delta.shape[:2], -1)
+    elif self.cumtype == "weighted":
       raise NotImplementedError
 
     return {'cumulants' : self.cumulant_fn(delta)}

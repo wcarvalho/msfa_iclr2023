@@ -218,6 +218,7 @@ def cumulants_from_preds(data, online_preds, online_state, target_preds, target_
 class USFALearning(RecurrentTDLearning):
 
   extract_cumulants: Callable = cumulants_from_env
+  shorten_data_for_cumulant: bool = False
 
   def error(self, data, online_preds, online_state, target_preds, target_state):
 
@@ -249,6 +250,11 @@ class USFALearning(RecurrentTDLearning):
     online_actions = jnp.expand_dims(data.action, axis=2)
     online_actions = jnp.tile(online_actions, [1,1, npolicies]) # [T, B, N]
 
+    if cumulants.shape[0] < online_sf.shape[0] and self.shorten_data_for_cumulant:
+      shape = cumulants.shape[0]
+      online_sf, online_actions, target_sf, target_actions, cumulants, discounts = jax.tree_map(
+        lambda x: x[:shape],
+        (online_sf, online_actions, target_sf, target_actions, cumulants, discounts))
 
     # Get N-step transformed TD error and loss.
     batch_td_error_fn = jax.vmap(

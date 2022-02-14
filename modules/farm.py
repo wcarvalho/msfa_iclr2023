@@ -85,7 +85,7 @@ class StructuredLSTM(hk.RNNCore):
 
     x_and_h = jnp.concatenate([inputs, prev_state.hidden], axis=-1)
 
-    gated = vmap.vmap_multihead(
+    gated = vmap.batch_multihead(
       fn=lambda: hk.Linear(4 * self.hidden_size),
       x=x_and_h
     )
@@ -100,9 +100,8 @@ class StructuredLSTM(hk.RNNCore):
     return h, LSTMState(h, c)
 
   def initial_state(self, batch_size: Optional[int]) -> LSTMState:
-    state = LSTMState(hidden=jnp.zeros([self.hidden_size]),
-                      cell=jnp.zeros([self.hidden_size]))
-    state = add_batch(state, self.nmodules)
+    state = LSTMState(hidden=jnp.zeros([self.nmodules, self.hidden_size]),
+                      cell=jnp.zeros([self.nmodules, self.hidden_size]))
     if batch_size is not None:
       state = add_batch(state, batch_size)
     return state
@@ -133,7 +132,7 @@ class FeatureAttention(hk.Module):
     # compute coefficients
     # ======================================================
     # function will create N copies
-    coefficients = vmap.vmap_multihead(
+    coefficients = vmap.batch_multihead(
       fn=lambda: hk.Linear(self.dim),
       x=queries)
     coefficients = jnp.expand_dims(coefficients, (2,3)) # [B, N, H, W, D]
@@ -214,11 +213,12 @@ class FarmSharedOutput(FARM):
     assert out_layers >=0
     if out_layers == 0:
       self.out_mlp = lambda x:x
+      raise RuntimeError
     else:
       self.out_mlp = hk.nets.MLP([self.module_size]*out_layers)
 
   def __call__(self, *args, **kwargs) -> Tuple[jnp.ndarray, LSTMState]:
     hidden, state = super().__call__(*args, **kwargs)
-    hidden = hk.BatchApply(self.out_mlp)(hidden)
-    return hidden, state
+    new_hidden = hk.BatchApply(self.out_mlp)(hidden)
+    return new_hidden, state
 

@@ -7,7 +7,6 @@ import haiku as hk
 from agents.td_agent import losses
 from utils import data as data_utils
 
-# 1. Require new value networks. Also require new loss that isn't computing argmax but is just computing value. Also, just do n=1? Since not source.
 
 class ValueAuxLoss:
   """docstring for ValueAuxLoss"""

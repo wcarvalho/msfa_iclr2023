@@ -58,7 +58,13 @@ class USFAConfig(R2D1Config):
   variance: float = 0.1
   # Network hps
   policy_size = 32
+  batch_size: int = 20
 
+@dataclasses.dataclass
+class ModularUSFAConfig(USFAConfig):
+  """Extra configuration options for USFA agent."""
+  mixture: str='unique'
+  cumtype: str='sum'
 
 
 @dataclasses.dataclass

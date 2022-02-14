@@ -109,3 +109,16 @@ def expand_tile_dim(x, axis, size):
   x = jnp.expand_dims(x, _axis)
   tiling = [1]*_axis + [size] + [1]*(ndims-_axis)
   return jnp.tile(x, tiling)
+
+def meshgrid(x: jnp.ndarray, y: jnp.ndarray):
+  """concatenate all pairs
+  Args:
+      x (jnp.ndarray): N x D1
+      y (jnp.ndarray): M x D2
+  
+  Returns:
+      jnp.ndarray: (N x M) x (D1 + D2)
+  """
+  x2 = jnp.tile(x, [len(y), 1])
+  y2 = jnp.repeat(y, len(x), axis=0)
+  return jnp.concatenate((x2, y2), axis=-1)
