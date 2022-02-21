@@ -13,7 +13,7 @@ from utils import data as data_utils
 from agents import td_agent
 from agents.td_agent import losses
 
-from losses.usfa import ValueAuxLoss
+from losses import usfa as usfa_losses
 from losses.vae import VaeAuxLoss
 from losses.contrastive_model import DeltaContrastLoss
 from losses import cumulants
@@ -209,7 +209,10 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
     # Universal Successor Features which learns cumulants with structured transition model
     config = data_utils.merge_configs(
       dataclass_configs=[
-        configs.USFAConfig(), configs.FarmConfig(), configs.FarmModelConfig(), configs.RewardConfig()],
+        configs.USFAConfig(),
+        configs.FarmConfig(),
+        configs.FarmModelConfig(),
+        configs.RewardConfig()],
       dict_configs=default_config
       )
 
@@ -225,12 +228,17 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
       aux_tasks=[
         cumulants.CumulantRewardLoss(
           shorten_data_for_cumulant=True,
-          coeff=config.reward_coeff,  # coefficient for loss
-          loss=config.reward_loss),  # type of loss for reward
+          coeff=config.reward_coeff,
+          loss=config.reward_loss,
+          balance=config.balance_reward,
+          ),
         DeltaContrastLoss(
-                    coeff=config.model_coeff,
-                    extra_negatives=config.extra_negatives,
-                    temperature=config.temperature),
+          coeff=config.model_coeff,
+          extra_negatives=config.extra_negatives,
+          temperature=config.temperature),
+        usfa_losses.QLearningAuxLoss(
+          coeff=config.value_coeff,
+          discount=config.discount)
       ])
     loss_label = 'usfa'
 

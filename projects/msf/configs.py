@@ -33,7 +33,7 @@ class R2D1Config:
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 0.0 # 0.0=single process
-  min_replay_size: int = 1000
+  min_replay_size: int = 10
   max_replay_size: int = 200_000
   batch_size: int = 32
   store_lstm_state: bool = True
@@ -59,7 +59,11 @@ class USFAConfig(R2D1Config):
   # Network hps
   policy_size = 32
   batch_size: int = 20
-  cumulant_hidden_size: int=128 # hidden size for cunmulant pred
+  cumulant_hidden_size: int=128 # hidden size for cumulant pred
+  embed_task: bool = False  # whether to embed task
+  normalize_task: bool = False # whether to normalize task embedding
+  normalize_cumulants: bool = True # whether to normalize task embedding
+  balance_reward: bool = False # whether to normalize task embedding
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
@@ -76,7 +80,7 @@ class FarmConfig:
   # Network hps
   module_size: int = 128
   nmodules: int = 4
-  out_layers: int = 2
+  out_layers: int = 0
 
 @dataclasses.dataclass
 class FarmModelConfig:
@@ -85,7 +89,7 @@ class FarmModelConfig:
   # Network hps
   extra_negatives: int = 10
   temperature: float = 0.01
-  model_coeff: float = 1e-3
+  model_coeff: float = 100
   out_layers: int = 2
   model_layers: int = 2
   batch_size: int = 16
@@ -96,6 +100,7 @@ class FarmModelConfig:
 class RewardConfig:
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 0.1 # coefficient for loss
+  value_coeff: float = 0.1 # coefficient for loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
 
 

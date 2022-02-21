@@ -63,16 +63,23 @@ def main(_):
     }
   elif search == 'usfa_farm':
     space = {
-        "seed": tune.grid_search([1, 2]),
-        "agent": tune.grid_search(['usfa_farm_model', 'usfa_farmflat_model']),
-        "out_layers": tune.grid_search( [2]),
-        "cumulant_hidden_size": tune.grid_search( [0, 128]),
+        "seed": tune.grid_search([1]),
+        # "agent": tune.grid_search(['usfa_farm_model', 'usfa_farmflat_model']),
+        "agent": tune.grid_search(['usfa_farmflat_model']),
+        # "out_layers": tune.grid_search([2]),
+        # "extra_negatives": tune.grid_search([0, 10]),
+        # "normalize_task": tune.grid_search([False]),
+        # "normalize_cumulants": tune.grid_search([True]),
+        "reward_loss": tune.grid_search(['l2']),
+        # "model_coeff": tune.grid_search([10, 100]),
+        "reward_coeff": tune.grid_search([100]),
+        "value_coeff": tune.grid_search([1, 100]),
     }
   else:
     raise NotImplementedError
 
 
-  num_cpus = 1
+  num_cpus = 2
   num_gpus = 1
 
   # root_path is needed to tell program absolute path
@@ -84,7 +91,7 @@ def main(_):
     """Create and run launchpad program
     """
     agent = config.pop('agent', 'r2d1')
-    num_actors = config.pop('num_actors', 10)
+    num_actors = config.pop('num_actors', 6)
 
 
     # get log dir for experiment
@@ -95,21 +102,22 @@ def main(_):
       **({'exp': experiment} if experiment else {}),
       **config)
 
-    if not os.path.exists(log_dir):
-      print("="*50)
-      print(f"RUNNING\n{log_dir}")
-      print("="*50)
-    else:
-      print("="*50)
-      print(f"SKIPPING\n{log_dir}")
-      print("="*50)
+    # if not os.path.exists(log_dir):
+    #   print("="*50)
+    #   print(f"RUNNING\n{log_dir}")
+    #   print("="*50)
+    # else:
+    #   print("="*50)
+    #   print(f"SKIPPING\n{log_dir}")
+    #   print("="*50)
+    #   return
 
     # launch experiment
     program = build_program(agent, num_actors,
       config_kwargs=config, 
       path=root_path,
       log_dir=log_dir)
-    lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING, terminal='current_terminal', 
+    lp.launch(program, lp.LaunchType.LOCAL_MULTI_THREADING, terminal='current_terminal', 
       local_resources = { # minimize GPU footprint
       'actor':
           PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),

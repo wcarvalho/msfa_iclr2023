@@ -36,18 +36,26 @@ class FarmModel(AuxilliaryTask):
 
 class FarmCumulants(AuxilliaryTask):
   """docstring for FarmCumulants"""
-  def __init__(self, state_dim, hidden_size=0, cumtype='sum', normalize=True, **kwargs):
-    super(FarmCumulants, self).__init__(unroll_only=True, timeseries=True)
-    if hidden_size:
-      layers = [hidden_size, state_dim]
-    else:
-      layers = [state_dim]
-    self.cumulant_fn = hk.nets.MLP(layers)
+  def __init__(self, out_dim=0, hidden_size=0, cumtype='sum', normalize_delta=True, normalize_cumulants=True, **kwargs):
+    super(FarmCumulants, self).__init__(
+      unroll_only=True, timeseries=True)
 
+    if hidden_size:
+      layers = [hidden_size, out_dim]
+    else:
+      layers = [out_dim]
+
+    if out_dim > 0:
+      self.cumulant_fn = hk.nets.MLP(layers)
+    else:
+      self.cumulant_fn = lambda x:x
+
+    self.out_dim = out_dim
     cumtype = cumtype.lower()
     assert cumtype in ['sum', 'weighted', 'concat']
     self.cumtype = cumtype
-    self.normalize = normalize
+    self.normalize_delta = normalize_delta
+    self.normalize_cumulants = normalize_cumulants
 
   def __call__(self, memory_out, predictions, **kwargs):
 
@@ -55,8 +63,8 @@ class FarmCumulants(AuxilliaryTask):
     next_states = memory_out[1:]  # [T, B, N, D]
 
     delta = next_states - states
-    if self.normalize:
-      delta = delta / jnp.linalg.norm(delta, axis=-1, keepdims=True)
+    if self.normalize_delta:
+      delta = delta / (1e-5+jnp.linalg.norm(delta, axis=-1, keepdims=True))
 
     if self.cumtype == "sum":
       delta = delta.sum(axis=MODULE_AXIS)
@@ -69,5 +77,6 @@ class FarmCumulants(AuxilliaryTask):
 
     # assert len(delta.shape) == 3, "should be T x B x D"
     cumulants = self.cumulant_fn(delta)
-
+    if self.normalize_cumulants:
+      cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
     return {'cumulants' : cumulants}

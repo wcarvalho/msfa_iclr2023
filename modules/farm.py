@@ -205,7 +205,10 @@ class FARM(hk.RNNCore):
   def module_attention(self, query, image):
     return []
 
-
+  @property
+  def total_dim(self):
+    return self.module_size*self.nmodules
+  
 class FarmSharedOutput(FARM):
   """docstring for FarmSharedOutput"""
   def __init__(self, out_layers, *args, **kwargs):

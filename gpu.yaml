@@ -20,7 +20,7 @@ dependencies:
     - numpy
     - gym[atari]
 
-    - tensorflow-probability
+    - tensorflow-probability==0.15.0
 
     #### copied from acme
     - chex

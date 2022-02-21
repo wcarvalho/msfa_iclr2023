@@ -13,7 +13,7 @@ import jax.numpy as jnp
 
 from agents import td_agent
 from agents.td_agent.types import Predictions
-from modules.basic_archs import BasicRecurrent
+from modules.basic_archs import BasicRecurrent, BasicRecurrentUnified
 from modules.embedding import OAREmbedding
 from modules import farm
 from modules.farm_model import FarmModel, FarmCumulants
@@ -164,6 +164,31 @@ def usfa_prep_fn(inputs, memory_out, *args, **kwargs):
     memory_out=memory_out,
     )
 
+def build_usfa_farm_head(config, state_dim, num_actions, farm_memory, flat=True):
+
+  if config.embed_task:
+    # if embedding task, don't project delta for cumulant
+    # embed task to size of delta
+    if flat:
+      task_embed = farm_memory.total_dim
+    else:
+      task_embed = farm_memory.module_size
+  else:
+    # if not embedding task, project delta for cumulant
+    task_embed = 0
+
+  usfa_head = UsfaHead(
+      num_actions=num_actions,
+      state_dim=state_dim,
+      hidden_size=config.out_hidden_size,
+      policy_size=config.policy_size,
+      variance=config.variance,
+      nsamples=config.npolicies,
+      task_embed=task_embed,
+      normalize_task=config.normalize_task and config.embed_task,
+      )
+  return usfa_head
+
 def usfa(config, env_spec):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
@@ -199,6 +224,7 @@ def usfa_reward_vae(config, env_spec):
 
   vae = VAE(latent_dim=config.latent_dim)
 
+  raise RuntimeError("account for when cumulants == raw state output")
   aux_tasks = [
     vae.aux_task,
     CumulantsAuxTask([state_dim])
@@ -221,6 +247,13 @@ def usfa_farmflat_model(config, env_spec):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
+  farm_memory = farm.FarmSharedOutput(
+      module_size=config.module_size,
+      nmodules=config.nmodules,
+      out_layers=config.out_layers)
+
+  usfa_head = build_usfa_farm_head(config, state_dim, num_actions, farm_memory, flat=True)
+
   aux_tasks = [
     # takes structured farm input
     FarmModel(
@@ -229,9 +262,10 @@ def usfa_farmflat_model(config, env_spec):
       activation=getattr(jax.nn, config.activation)),
     # takes structured farm input
     FarmCumulants(
-      state_dim=state_dim,
+      out_dim=usfa_head.out_dim,
       hidden_size=config.cumulant_hidden_size,
-      cumtype='concat'),
+      cumtype='concat',
+      normalize_cumulants=config.normalize_cumulants),
   ]
 
   def prediction_prep_fn(inputs, memory_out, *args, **kwargs):
@@ -239,30 +273,27 @@ def usfa_farmflat_model(config, env_spec):
     return usfa_prep_fn(inputs=inputs, 
       memory_out=flatten_structured_memory(memory_out))
 
-  return BasicRecurrent(
+  return BasicRecurrentUnified(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions),
-    memory=farm.FarmSharedOutput(
-      module_size=config.module_size,
-      nmodules=config.nmodules,
-      out_layers=config.out_layers),
+    memory=farm_memory,
     prediction_prep_fn=prediction_prep_fn,
-    prediction=UsfaHead(
-      num_actions=num_actions,
-      state_dim=state_dim,
-      hidden_size=config.out_hidden_size,
-      policy_size=config.policy_size,
-      variance=config.variance,
-      nsamples=config.npolicies,
-      ),
+    prediction=usfa_head,
     aux_tasks=aux_tasks,
   )
 
 def usfa_farm_model(config, env_spec):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
+
+  if config.embed_task:
+    cumulant_out_dim='identity'
+    import ipdb; ipdb.set_trace()
+  else:
+    cumulant_out_dim='concat'
+    import ipdb; ipdb.set_trace()
 
   aux_tasks = [
     # takes structured farm input
@@ -272,7 +303,7 @@ def usfa_farm_model(config, env_spec):
       activation=getattr(jax.nn, config.activation)),
     # takes structured farm input
     FarmCumulants(
-      state_dim=state_dim,
+      out_dim=cumulant_out_dim,
       hidden_size=config.cumulant_hidden_size,
       cumtype=config.cumtype),
   ]
