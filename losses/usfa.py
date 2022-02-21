@@ -59,11 +59,13 @@ class QLearningAuxLoss(nstep.QLearning):
       return jnp.sum(sf*w, axis=-1)
 
     # all are [T, B, N, A, C]
-    # assume that N=0 is task vector
     # output will be [T, B, A]
-    online_q = compute_q(online_preds.sf[:, :, 0], online_preds.z[:, :, 0])
-    target_q = compute_q(target_preds.sf[:, :, 0], online_preds.z[:, :, 0])
+    import ipdb; ipdb.set_trace()
+    online_q = compute_q(online_preds.sf, online_preds.w_embed)
+    target_q = compute_q(target_preds.sf, target_preds.w_embed)
 
+
+    # VMAP over N dimenison
     _, batch_loss, metrics = super().__call__(
       online_q=online_q,
       target_q=target_q,

@@ -29,6 +29,7 @@ import os
 from projects.msf.goto_distributed import build_program
 
 flags.DEFINE_string('folder', 'set', 'folder.')
+flags.DEFINE_string('root', None, 'root folder.')
 
 FLAGS = flags.FLAGS
 
@@ -62,6 +63,19 @@ def main(_):
         "agent": tune.grid_search(['usfa']),
     }
   elif search == 'usfa_farm':
+    # space = {
+    #     "seed": tune.grid_search([1]),
+    #     # "agent": tune.grid_search(['usfa_farm_model', 'usfa_farmflat_model']),
+    #     "agent": tune.grid_search(['usfa_farmflat_model']),
+    #     # "out_layers": tune.grid_search([2]),
+    #     # "extra_negatives": tune.grid_search([0, 10]),
+    #     # "normalize_task": tune.grid_search([False]),
+    #     "normalize_cumulants": tune.grid_search([True]),
+    #     "reward_loss": tune.grid_search(['l2']),
+    #     # "model_coeff": tune.grid_search([10, 100]),
+    #     "reward_coeff": tune.grid_search([100]),
+    #     "value_coeff": tune.grid_search([1, 100]),
+    # }
     space = {
         "seed": tune.grid_search([1]),
         # "agent": tune.grid_search(['usfa_farm_model', 'usfa_farmflat_model']),
@@ -69,11 +83,11 @@ def main(_):
         # "out_layers": tune.grid_search([2]),
         # "extra_negatives": tune.grid_search([0, 10]),
         # "normalize_task": tune.grid_search([False]),
-        # "normalize_cumulants": tune.grid_search([True]),
+        "normalize_cumulants": tune.grid_search([False]),
         "reward_loss": tune.grid_search(['l2']),
-        # "model_coeff": tune.grid_search([10, 100]),
-        "reward_coeff": tune.grid_search([100]),
-        "value_coeff": tune.grid_search([1, 100]),
+        "model_coeff": tune.grid_search([1e-2, 1e-3]),
+        "reward_coeff": tune.grid_search([1e-1]),
+        "value_coeff": tune.grid_search([1]),
     }
   else:
     raise NotImplementedError
@@ -84,7 +98,8 @@ def main(_):
 
   # root_path is needed to tell program absolute path
   # this is used for BabyAI
-  root_path = str(Path().absolute()) 
+
+  root_path = FLAGS.root if FLAGS.root else str(Path().absolute())
   folder=FLAGS.folder
 
   def create_and_run_program(config):
@@ -102,14 +117,14 @@ def main(_):
       **({'exp': experiment} if experiment else {}),
       **config)
 
-    # if not os.path.exists(log_dir):
-    #   print("="*50)
-    #   print(f"RUNNING\n{log_dir}")
-    #   print("="*50)
-    # else:
-    #   print("="*50)
-    #   print(f"SKIPPING\n{log_dir}")
-    #   print("="*50)
+    if not os.path.exists(log_dir):
+      print("="*50)
+      print(f"RUNNING\n{log_dir}")
+      print("="*50)
+    else:
+      print("="*50)
+      print(f"SKIPPING\n{log_dir}")
+      print("="*50)
     #   return
 
     # launch experiment
