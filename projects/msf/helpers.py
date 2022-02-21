@@ -24,8 +24,14 @@ from projects.msf import configs
 
 def make_environment(evaluation: bool = False,
                      tile_size=8,
+                     setting='small',
                      path='.',
                      ) -> dm_env.Environment:
+  settings = dict(
+    small=dict(room_size=5, nobjects=1),
+    medium=dict(room_size=8, nobjects=2),
+    large=dict(room_size=10, nobjects=3),
+    )
   """Loads environments."""
   if evaluation:
     obj2rew={
@@ -86,6 +92,7 @@ def make_environment(evaluation: bool = False,
     tile_size=tile_size,
     obj2rew=obj2rew,
     path=path,
+    **settings,
     wrappers=[functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size)]
     )
 

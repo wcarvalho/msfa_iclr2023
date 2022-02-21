@@ -17,18 +17,35 @@ class GotoAvoidEnv(KitchenLevel):
         tile_size=8,
         rootdir='.',
         verbosity=0,
-        nobjects=12,
+        nobjects=2,
+        respawn=False,
         kitchen=None,
         **kwargs):
-
+        """Summary
+        
+        Args:
+            *args: Description
+            object2reward (TYPE): Description
+            tile_size (int, optional): Description
+            rootdir (str, optional): Description
+            verbosity (int, optional): Description
+            nobjects (int, optional): How many times to spawn each objects type
+            respawn (bool, optional): Description
+            kitchen (None, optional): Description
+            **kwargs: Description
+        """
         self.object2reward = object2reward
+        self._task_objects = [k for k,v in object2reward.items() if v > 0]
+
         self.mission_arr = np.array(
             list(self.object2reward.values()),
             dtype=np.uint8,
             )
-        objects = object2reward.keys()
+        self.object_names = objects = list(object2reward.keys())
         self.object2idx = {o:idx for idx, o in enumerate(objects)}
+        self._task_oidxs = [self.object2idx[o] for o in self._task_objects]
         self.nobjects = nobjects
+        self.respawn = respawn
         kitchen = kitchen or Kitchen(
             objects=objects,
             tile_size=tile_size,
@@ -61,6 +78,9 @@ class GotoAvoidEnv(KitchenLevel):
             dtype='uint8'
         )
 
+    @property
+    def task_objects(self):
+      return self._task_objects
 
     def reset_task(self):
         # generate grid
@@ -69,11 +89,34 @@ class GotoAvoidEnv(KitchenLevel):
         # connect all rooms
         self.connect_all()
 
-        for idx in range(self.nobjects):
-            choice = np.random.randint(len(self.default_objects))
-            object = copy.deepcopy(self.default_objects[choice])
+        # -----------------------
+        # get objects to spawn
+        # -----------------------
+        types_to_place = []
+        for object_type in self.object2reward.keys():
+          types_to_place.extend([object_type]*self.nobjects)
+        # if self.nobjects < len(self.task_objects):
+        #   # random subset
+        #   types_to_place = list(np.random.choice(self.task_objects, n=self.nobjects))
+        # else:
+        #   types_to_place = self.task_objects
+
+        # remaining = self.nobjects - len(self.task_objects)
+        # for idx in range(remaining):
+        #   choice = np.random.randint(len(self.default_objects))
+        #   types_to_place.append(self.object_names[choice])
+
+        # -----------------------
+        # spawn objects
+        # -----------------------
+        self.object_occurrences = np.zeros(len(self.object2reward), dtype=np.uint8)
+        for object_type in types_to_place:
+            object_idx = self.object2idx[object_type]
+            self.object_occurrences[object_idx] += 1
+            object = copy.deepcopy(self.default_objects[object_idx])
             self.place_in_room(0, 0, object)
 
+        self.remaining = np.array(self.object_occurrences)
         # The agent must be placed after all the object to respect constraints
         while True:
             self.place_agent()
@@ -88,6 +131,8 @@ class GotoAvoidEnv(KitchenLevel):
         assert self.carrying is None
         obs['pickup'] = np.zeros(len(self.object2reward), dtype=np.uint8)
         obs['mission'] = self.mission_arr
+
+
         return obs
 
     def step(self, action):
@@ -132,13 +177,20 @@ class GotoAvoidEnv(KitchenLevel):
             if object_infront:
                 # get reward
                 if object_infront.type in self.object2reward:
-                    reward = float(self.object2reward[object_infront.type])
-                    self.grid.set(*fwd_pos, None)
-                    # move object
-                    self.place_in_room(0, 0, object_infront)
+                    obj_type = object_infront.type
+                    obj_idx = self.object2idx[obj_type]
 
-                    oidx = self.object2idx[object_infront.type]
-                    pickup[oidx] = 1
+                    reward = float(self.object2reward[obj_type])
+                    self.grid.set(*fwd_pos, None)
+
+                    if self.respawn:
+                      # move object
+                      self.place_in_room(0, 0, object_infront)
+                      self.object_occurrences[obj_idx] += 1
+                    else:
+                      self.remaining[obj_idx] -= 1
+
+                    pickup[obj_idx] = 1
 
         # ======================================================
         # copied from RoomGridLevel
@@ -147,6 +199,11 @@ class GotoAvoidEnv(KitchenLevel):
         # if past step count, done
         if self.step_count >= self.max_steps and self.use_time_limit:
             done = True
+
+        # if no task objects remaining, done
+        remaining = self.remaining[self._task_oidxs].sum()
+        if remaining < 1e-5:
+          done = True
 
         obs = self.gen_obs()
 
@@ -165,8 +222,14 @@ if __name__ == '__main__':
     import cv2
 
     tile_size=20
+    size='small'
+    sizes = dict(
+      small=dict(room_size=5, nobjects=1),
+      medium=dict(room_size=8, nobjects=2),
+      large=dict(room_size=10, nobjects=3),
+      )
+
     env = GotoAvoidEnv(
-        room_size=10,
         agent_view_size=5,
         object2reward={
             "pan" : 1,
@@ -174,8 +237,9 @@ if __name__ == '__main__':
             "fork" : 0,
             "knife" : 0,
             },
+        respawn=False,
         tile_size=tile_size,
-        nobjects=4,
+        **sizes[size],
         )
     env = RGBImgPartialObsWrapper(env, tile_size=tile_size)
 
@@ -197,10 +261,19 @@ if __name__ == '__main__':
     window.set_caption(obs['mission'])
     window.show_img(combine(full, obs['image']))
 
-    for step in range(5):
+    rewards = []
+    print("Initial occurrences:", env.object_occurrences)
+    for step in range(20):
         obs, reward, done, info = env.step(env.action_space.sample())
-        obs, reward, done, info = env.step(0)
+        rewards.append(reward)
         full = env.render('rgb_array', tile_size=tile_size, highlight=True)
         window.show_img(combine(full, obs['image']))
+        if done:
+          break
 
+    total_reward = sum(rewards)
+    normalized_reward = total_reward/env.object_occurrences[0]
+    print("Final occurrences:", env.object_occurrences)
+    print(f"Total reward: {total_reward}")
+    print(f"Normalized reward: {normalized_reward}")
     import ipdb; ipdb.set_trace()

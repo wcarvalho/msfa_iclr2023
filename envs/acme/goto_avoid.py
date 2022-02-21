@@ -50,6 +50,8 @@ class GoToAvoid(dm_env.Environment):
     tile_size=12,
     wrappers=None,
     nobjects=10,
+    respawn=False,
+    timestep_penalty=0.01,
     **kwargs):
     """Initializes a new Catch environment.
     Args:
@@ -65,6 +67,7 @@ class GoToAvoid(dm_env.Environment):
             object2reward=o2r,
             tile_size=tile_size,
             nobjects=nobjects,
+            respawn=respawn,
         )
 
     self.env = MultiLevel(
@@ -76,6 +79,7 @@ class GoToAvoid(dm_env.Environment):
 
 
     self.default_env = GymWrapper(self.env.env)
+    self.timestep_penalty = timestep_penalty
 
 
   def reset(self) -> dm_env.TimeStep:
@@ -91,6 +95,7 @@ class GoToAvoid(dm_env.Environment):
     obs, reward, done, info = self.env.step(action)
     obs = convert_rawobs(obs)
 
+    reward = reward - self.timestep_penalty
     if done:
       timestep = dm_env.termination(reward=reward, observation=obs)
     else:
@@ -106,12 +111,3 @@ class GoToAvoid(dm_env.Environment):
   def observation_spec(self):
     default = self.default_env.observation_spec()
     return GotoObs(**default)
-        # image=specs.BoundedArray(
-        #     shape=default['image'].shape,
-        #     dtype=np.float32,
-        #     name="image",
-        #     minimum=0,
-        #     maximum=1,
-        # ),
-        # mission=default['mission'],
-        # pickup=default['pickup'])
