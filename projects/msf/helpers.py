@@ -27,12 +27,22 @@ def make_environment(evaluation: bool = False,
                      setting='small',
                      path='.',
                      ) -> dm_env.Environment:
+  """Loads environments.
+  
+  Args:
+      evaluation (bool, optional): whether evaluation.
+      tile_size (int, optional): number of pixels per grid-cell.
+      setting (str, optional): `small` env, `medium` env or `large` env.
+      path (str, optional): path in system where running from.
+  
+  Returns:
+      dm_env.Environment: Multitask GotoAvoid environment is returned.
+  """
   settings = dict(
     small=dict(room_size=5, nobjects=1),
     medium=dict(room_size=8, nobjects=2),
     large=dict(room_size=10, nobjects=3),
     )
-  """Loads environments."""
   if evaluation:
     obj2rew={
         'pan_plates':{
