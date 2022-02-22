@@ -9,72 +9,47 @@ from utils import data as data_utils
 
 from losses import nstep
 
-# class ValueAuxLoss:
-#   """docstring for ValueAuxLoss"""
-#   def __init__(self, coeff: float, discount: float,
-#     clip_rewards: bool = False,
-#     bootstrap_n: int = 5,
-#     tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR):
-#     self.coeff = coeff
-#     self.discount = discount
-#     self.clip_rewards = clip_rewards
-#     self.bootstrap_n = bootstrap_n
-#     self.tx_pair = tx_pair
-
-#   def __call__(self, data, online_preds, online_state, target_preds, target_state):
-
-#     T, B = online_preds.value.shape[:2] # [T, B, 1]
-#     online_v = online_preds.value.reshape(T, B)
-#     target_v = target_preds.value.reshape(T, B)
-
-
-#     # discounts [T, B]
-#     discounts = (data.discount * self.discount).astype(online_v.dtype).reshape(T, B)
-
-
-#     cumulants = online_preds.cumulants  # predicted  [T, B, D]
-#     task = data.observation.observation.task  # ground-truth  [T, B, D]
-#     reward_pred = jnp.sum(cumulants*task, -1)  # dot product  [T, B]
-#     reward_pred = reward_pred.reshape(T, B)
-
-#     batch_loss = jax.vmap(jax.vmap(rlax.td_learning))(
-#       online_v[:-1],
-#       # data.action[:-1],
-#       reward_pred[:-1],
-#       discounts[:-1],
-#       target_v[1:],
-#       ).mean()
-
-#     return self.coeff*batch_loss, {'loss_value': batch_loss}
-
-
 class QLearningAuxLoss(nstep.QLearning):
   def __init__(self, coeff, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.coeff = coeff
 
-  def __call__(self, data, online_preds, online_state, target_preds, target_state):
+  def __call__(self, data, online_preds, target_preds, **kwargs):
 
     def compute_q(sf, w):
       return jnp.sum(sf*w, axis=-1)
 
-    # all are [T, B, N, A, C]
-    # output will be [T, B, A]
-    import ipdb; ipdb.set_trace()
-    online_q = compute_q(online_preds.sf, online_preds.w_embed)
-    target_q = compute_q(target_preds.sf, target_preds.w_embed)
+    # [T, B, C]
+    w_embed = online_preds.w_embed
 
+    # all data is [T, B, N, A, C]
+    compute_q_jax = jax.vmap(compute_q, in_axes=(2, None), out_axes=2)  # over N
+    compute_q_jax = jax.vmap(compute_q_jax, in_axes=(3, None), out_axes=3)  # over A
 
-    # VMAP over N dimenison
-    _, batch_loss, metrics = super().__call__(
-      online_q=online_q,
-      target_q=target_q,
-      rewards=data.reward,
-      discount=data.discount,
-      actions=data.action)
-    batch_loss = batch_loss.mean()
+    # output will be [T, B, N, A]
+    online_q = compute_q_jax(online_preds.sf, w_embed)
+    target_q = compute_q_jax(target_preds.sf, w_embed)
 
-    metrics.update({'loss_qlearning': batch_loss})
+    # VMAP over dimension = N
+    q_learning = jax.vmap(
+      super().__call__,
+      in_axes=(2, 2, None, None, None))
+
+    batch_td_error = q_learning(
+      online_q,  # [T, B, N, A]
+      target_q,  # [T, B, N, A]
+      data.reward,  # [T, B]
+      data.discount,  # [T, B]
+      data.action)  # [T, B]
+
+    batch_loss = 0.5 * jnp.square(batch_td_error).mean()
+
+    metrics = {
+      'loss_qlearning': batch_loss,
+      'z.q_mean': online_q.mean(),
+      'z.q_var': online_q.var(),
+      'z.q_max': online_q.max(),
+      'z.q_min': online_q.min()}
 
     return self.coeff*batch_loss, metrics
 

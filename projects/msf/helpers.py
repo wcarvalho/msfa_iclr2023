@@ -102,7 +102,7 @@ def make_environment(evaluation: bool = False,
     tile_size=tile_size,
     obj2rew=obj2rew,
     path=path,
-    **settings,
+    **settings[setting],
     wrappers=[functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size)]
     )
 

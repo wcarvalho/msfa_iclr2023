@@ -32,6 +32,7 @@ from utils import make_logger, gen_log_dir
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
+flags.DEFINE_bool('wandb', False, 'whether to log.')
 
 FLAGS = flags.FLAGS
 
@@ -49,8 +50,14 @@ def main(_):
     base_dir="results/msf/local",
     agent=FLAGS.agent,
     seed=config.seed)
+  if FLAGS.wandb:
+    import wandb
+    wandb.init(project="msf", entity="wcarvalho92")
+    wandb.config = config.__dict__
+
   logger_fn = lambda : make_logger(
-        log_dir=log_dir, label=loss_label)
+    wandb=FLAGS.wandb,
+    log_dir=log_dir, label=loss_label)
 
 
   # -----------------------
@@ -77,6 +84,7 @@ def main(_):
   # -----------------------
   env_logger = make_logger(
     log_dir=log_dir,
+    wandb=FLAGS.wandb,
     label='actor',
     steps_key="steps")
 

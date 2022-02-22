@@ -39,10 +39,12 @@ flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 10, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
+flags.DEFINE_bool('wandb', False, 'whether to log.')
 
 FLAGS = flags.FLAGS
 
 def build_program(agent, num_actors,
+  use_wandb=False,
   experiment=None,
   log_every=30.0, # how often to log
   config_kwargs=None, # config
@@ -87,8 +89,13 @@ def build_program(agent, num_actors,
     hourminute=hourminute,
     agent=agent,
     **extra)
+  if use_wandb:
+    import wandb
+    wandb.init(project="msf", entity="wcarvalho92")
+    wandb.config = config.__dict__
+
   logger_fn = lambda : make_logger(
-        log_dir=log_dir, label=loss_label, asynchronous=True)
+        wandb=use_wandb, log_dir=log_dir, label=loss_label, asynchronous=True)
 
   actor_logger_fn = lambda actor_id: make_logger(
                   log_dir=log_dir, label='actor',
@@ -125,7 +132,8 @@ def main(_):
   config_kwargs=dict(seed=FLAGS.seed)
   if FLAGS.max_number_of_steps is not None:
     config_kwargs['max_number_of_steps'] = FLAGS.max_number_of_steps
-  program = build_program(FLAGS.agent, FLAGS.num_actors, FLAGS.experiment, config_kwargs=config_kwargs)
+  program = build_program(FLAGS.agent, FLAGS.num_actors, FLAGS.experiment, 
+    wandb=FLAGS.wandb, config_kwargs=config_kwargs)
 
   # Launch experiment.
   lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
