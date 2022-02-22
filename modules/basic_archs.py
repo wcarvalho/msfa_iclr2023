@@ -16,6 +16,8 @@ class AuxilliaryTask(hk.Module):
     self.unroll_only = unroll_only
     self.timeseries = timeseries
 
+def overlapping(dict1, dict2):
+  return set(dict1.keys()).intersection(dict2.keys())
 
 class BasicRecurrent(hk.Module):
   """docstring for BasicRecurrent"""
@@ -80,6 +82,7 @@ class BasicRecurrent(hk.Module):
       memory_input = self.memory_prep_fn(inputs=inputs, obs=obs)
     else:
       memory_input = obs
+
     memory_out, new_state = self.memory(memory_input, state)
     if self.memory_proc_fn:
       memory_out = self.memory_proc_fn(memory_out)
@@ -301,9 +304,9 @@ class BasicRecurrentUnified(hk.Module):
       memory_input = obs
 
     if unroll:
-      memory_out, new_states = hk.static_unroll(self.memory, memory_input, state)
+      memory_out, new_state = hk.static_unroll(self.memory, memory_input, state)
     else:
-      memory_out, new_states = self.memory(memory_input, state)
+      memory_out, new_state = self.memory(memory_input, state)
 
     if self.memory_proc_fn:
       memory_out = self.memory_proc_fn(memory_out)
@@ -321,24 +324,27 @@ class BasicRecurrentUnified(hk.Module):
 
     pred_fun = functools.partial(self.prediction, key=key)
     predictions = batchfn(pred_fun)(prediction_input)
-    all_preds.update(predictions._asdict())
+    predictions = predictions._asdict()
+    overlapping_keys = overlapping(predictions, all_preds)
+    assert len(overlapping_keys) == 0, "overwriting!"
+    all_preds.update(predictions)
 
     # ======================================================
     # Auxiliary Tasks
     # ======================================================
-    inference=not unroll
+    forward=not unroll
     for aux_task in self.aux_tasks:
       # -----------------------
-      # does this aux task only occur during unroll (not inference?)
+      # does this aux task only occur during unroll (not forward?)
       # -----------------------
       unroll_only = getattr(aux_task, 'unroll_only', False)
-      if unroll_only and inference: continue
+      if unroll_only and forward: continue
 
       # -----------------------
-      # if aux task is for time-series or during inference, no BatchApply
+      # if aux task is for time-series or during forward, no BatchApply
       # -----------------------
       aux_for_timeseries = getattr(aux_task, 'timeseries', False)
-      if aux_for_timeseries or inference:
+      if aux_for_timeseries or forward:
         batchfn = lambda x:x
       else:
         batchfn = hk.BatchApply 
@@ -349,12 +355,12 @@ class BasicRecurrentUnified(hk.Module):
         memory_out=memory_out,
         predictions=predictions
         )
-      overlapping_keys = set(aux_pred.keys()).intersection(all_preds.keys())
+      overlapping_keys = overlapping(aux_pred, all_preds)
       assert len(overlapping_keys) == 0, "replacing values?"
       all_preds.update(aux_pred)
 
     Predictions = collections.namedtuple('Predictions', all_preds.keys())
     all_preds = Predictions(**all_preds)
 
-    return all_preds, new_states
+    return all_preds, new_state
 

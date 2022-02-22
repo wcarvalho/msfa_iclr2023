@@ -119,7 +119,7 @@ def make_environment(evaluation: bool = False,
   return wrappers.wrap_all(env, wrapper_list)
 
 
-def load_agent_settings(agent, env_spec, config_kwargs=None):
+def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
   default_config = dict()
   default_config.update(config_kwargs or {})
 
@@ -127,10 +127,9 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
     config = configs.R2D1Config(**default_config)
 
     NetworkCls=nets.r2d1 # default: 2M params
-    NetKwargs=dict(config=config,env_spec=env_spec)
+    NetKwargs=dict(config=config, env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-
     loss_label = 'r2d1'
 
   elif agent == "r2d1_farm":
@@ -194,7 +193,6 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
 
     NetworkCls=nets.usfa # default: 2M params
     NetKwargs=dict(config=config,env_spec=env_spec)
-
 
     LossFn = td_agent.USFALearning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)

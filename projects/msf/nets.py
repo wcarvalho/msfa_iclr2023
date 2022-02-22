@@ -60,11 +60,11 @@ def memory_prep_fn(num_actions, extract_fn):
   """Combine vae samples w/ action + reward"""
   embedder = OAREmbedding(
     num_actions=num_actions,
-    observation=False,
+    observation=True,
     concat=False)
   def prep(inputs, obs):
     items = [extract_fn(inputs, obs)]
-    items.extend(embedder(inputs))
+    items.extend(embedder(inputs, obs))
 
     return jnp.concatenate(items, axis=-1)
 
@@ -85,7 +85,7 @@ def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
 def r2d1(config, env_spec):
   num_actions = env_spec.actions.num_values
 
-  return BasicRecurrent(
+  return BasicRecurrentUnified(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=True),
@@ -108,7 +108,7 @@ def r2d1_vae(config, env_spec):
     )
   aux_tasks = vae.aux_task
 
-  return BasicRecurrent(
+  return BasicRecurrentUnified(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=vae,
@@ -124,7 +124,7 @@ def r2d1_vae(config, env_spec):
 def r2d1_farm(config, env_spec):
   num_actions = env_spec.actions.num_values
 
-  return BasicRecurrent(
+  return BasicRecurrentUnified(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),
@@ -138,7 +138,7 @@ def r2d1_farm_model(config, env_spec):
   num_actions = env_spec.actions.num_values
 
 
-  return BasicRecurrent(
+  return BasicRecurrentUnified(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),
@@ -193,7 +193,7 @@ def usfa(config, env_spec):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
-  return BasicRecurrent(
+  return BasicRecurrentUnified(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=True),
@@ -230,7 +230,7 @@ def usfa_reward_vae(config, env_spec):
     CumulantsAuxTask([state_dim])
   ]
 
-  return BasicRecurrent(
+  return BasicRecurrentUnified(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=vae,
@@ -314,7 +314,7 @@ def usfa_farm_model(config, env_spec):
   else:
     raise NotImplementedError
 
-  return BasicRecurrent(
+  return BasicRecurrentUnified(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),

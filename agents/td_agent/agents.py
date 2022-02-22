@@ -214,7 +214,7 @@ class TDAgent(local_layout.LocalLayout):
         networks=networks,
         policy_network=behavior_policy_constructor(networks, config),
         workdir=workdir,
-        min_replay_size=max(config.min_replay_size, config.batch_size),
+        min_replay_size=32 * config.sequence_period,
         samples_per_insert=1.,
         batch_size=config.batch_size,
         num_sgd_steps_per_step=config.sequence_period,

@@ -187,7 +187,7 @@ class LossFn_with_RND(learning_lib.LossFn):
     rnd_error = self.rnd_error(online_y1, online_y2)
 
     # add intrinsic reward
-    data._replace(reward=data.reward + jax.lax.stop_gradient(rnd_error))
+    data = data._replace(reward=data.reward + jax.lax.stop_gradient(rnd_error))
 
     batch_td_error, batch_loss = self.td_error(data, online_q, online_state, target_q, target_state)
 

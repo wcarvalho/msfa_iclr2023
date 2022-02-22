@@ -47,6 +47,7 @@ FLAGS = flags.FLAGS
 
 def build_program(agent, num_actors,
   use_wandb=False,
+  setting='small',
   experiment=None,
   log_every=30.0, # how often to log
   config_kwargs=None, # config
@@ -57,7 +58,7 @@ def build_program(agent, num_actors,
   # load env stuff
   # -----------------------
   environment_factory = lambda is_eval: helpers.make_environment(
-    evaluation=is_eval, path=path)
+    evaluation=is_eval, path=path, setting=setting)
   env = environment_factory(False)
   env_spec = acme.make_environment_spec(env)
   del env
@@ -65,7 +66,7 @@ def build_program(agent, num_actors,
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label = helpers.load_agent_settings(agent, env_spec, config_kwargs)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
 
   def network_factory(spec):
     return td_agent.make_networks(
@@ -96,21 +97,25 @@ def build_program(agent, num_actors,
   if use_wandb:
     import wandb
     # TODO: fix ugly hack
-    group = log_dir.split("/")[-2]
-    wandb.init(project="msf", group=group, entity="wcarvalho92")
+    date, settings = log_dir.split("/")[-3: -1]
+    wandb.init(project="msf", group=f"{date}/{settings}", entity="wcarvalho92")
     wandb.config = config.__dict__
 
   logger_fn = lambda : make_logger(
-        wandb=use_wandb, log_dir=log_dir, label=loss_label, asynchronous=True)
+        log_dir=log_dir,
+        label=loss_label,
+        wandb=use_wandb,
+        asynchronous=True)
 
   actor_logger_fn = lambda actor_id: make_logger(
                   log_dir=log_dir, label='actor',
+                  wandb=use_wandb,
                   save_data=actor_id == 0,
                   steps_key="actor_steps",
                   )
   evaluator_logger_fn = lambda : make_logger(
-                  log_dir=log_dir,
-                  label='evaluator',
+                  log_dir=log_dir, label='evaluator',
+                  wandb=use_wandb,
                   steps_key="evaluator_steps",
                   )
 

@@ -70,7 +70,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
     ) -> Tuple[jnp.DeviceArray, learning_lib.LossExtra]:
     """Calculate a loss on a single batch of data."""
 
-    unroll = network.unroll  # convenienve
+    unroll = network.unroll  # convenience
 
     # Convert sample data to sequence-major format [T, B, ...].
     data = jax_utils.batch_to_sequence(batch.data)

@@ -22,6 +22,7 @@ from sklearn.model_selection import ParameterGrid
 from ray import tune
 import multiprocessing as mp
 import jax
+import time
 
 from utils import gen_log_dir
 import os
@@ -37,8 +38,14 @@ def main(_):
   mp.set_start_method('spawn')
   experiment=None
 
-  search = 'usfa_farm'
-  if search == 'r2d1_farm':
+  search = 'baselines'
+  if search == 'baselines':
+    space = {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1', 'r2d1_farm', 'usfa']),
+    }
+    # experiment='r2d1_farm_model_v1'
+  elif search == 'r2d1_farm':
     space = {
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['r2d1_farm_model']),
@@ -84,8 +91,8 @@ def main(_):
         # "extra_negatives": tune.grid_search([0, 10]),
         # "normalize_task": tune.grid_search([False]),
         "normalize_cumulants": tune.grid_search([False]),
-        "reward_loss": tune.grid_search(['l2']),
-        "model_coeff": tune.grid_search([1e-2, 1e-3]),
+        "reward_loss": tune.grid_search(['l2', 'binary']),
+        "model_coeff": tune.grid_search([1, 10]),
         "reward_coeff": tune.grid_search([1e-1]),
         "value_coeff": tune.grid_search([1]),
     }
@@ -107,6 +114,7 @@ def main(_):
     """
     agent = config.pop('agent', 'r2d1')
     num_actors = config.pop('num_actors', 6)
+    setting = config.pop('setting', 'small')
 
 
     # get log dir for experiment
@@ -125,10 +133,13 @@ def main(_):
       print("="*50)
       print(f"SKIPPING\n{log_dir}")
       print("="*50)
-    #   return
+      return
 
     # launch experiment
-    program = build_program(agent, num_actors,
+    program = build_program(
+      agent=agent, num_actors=num_actors,
+      use_wandb=True,
+      setting=setting,
       config_kwargs=config, 
       path=root_path,
       log_dir=log_dir)
@@ -140,13 +151,13 @@ def main(_):
           PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
           }
       )
+    time.sleep(15) # sleep for 15 seconds
 
 
 
   def train_function(config):
     """Run inside threads and creates new process.
     """
-
     p = mp.Process(
       target=create_and_run_program, 
       args=(config,))

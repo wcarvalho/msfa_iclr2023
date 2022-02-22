@@ -30,6 +30,7 @@ from utils import make_logger, gen_log_dir
 # flags
 # -----------------------
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
+flags.DEFINE_string('env_setting', 'small', 'which environment setting.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('wandb', False, 'whether to log.')
@@ -38,10 +39,10 @@ FLAGS = flags.FLAGS
 
 
 def main(_):
-  env = helpers.make_environment()
+  env = helpers.make_environment(setting=FLAGS.env_setting)
   env_spec = acme.make_environment_spec(env)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label = helpers.load_agent_settings(FLAGS.agent, env_spec)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label = helpers.load_agent_settings(FLAGS.agent, env_spec, setting=FLAGS.env_setting)
 
   # -----------------------
   # logger
