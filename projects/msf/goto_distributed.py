@@ -23,12 +23,14 @@ from launchpad.nodes.python.local_multi_processing import PythonProcess
 from absl import app
 from absl import flags
 import acme
+from acme.utils import paths
 import functools
 
 from agents import td_agent
 from projects.msf import helpers
 from projects.msf.environment_loop import EnvironmentLoop
 from utils import make_logger, gen_log_dir
+import pickle
 
 
 # -----------------------
@@ -89,9 +91,13 @@ def build_program(agent, num_actors,
     hourminute=hourminute,
     agent=agent,
     **extra)
+
+
   if use_wandb:
     import wandb
-    wandb.init(project="msf", entity="wcarvalho92")
+    # TODO: fix ugly hack
+    group = log_dir.split("/")[-2]
+    wandb.init(project="msf", group=group, entity="wcarvalho92")
     wandb.config = config.__dict__
 
   logger_fn = lambda : make_logger(
@@ -107,6 +113,13 @@ def build_program(agent, num_actors,
                   label='evaluator',
                   steps_key="evaluator_steps",
                   )
+
+  # -----------------------
+  # save config
+  # -----------------------
+  paths.process_path(log_dir)
+  with open(os.path.join(log_dir, 'config.pickle'), 'wb') as handle:
+    pickle.dump(config, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
   # -----------------------
   # build program
@@ -132,8 +145,11 @@ def main(_):
   config_kwargs=dict(seed=FLAGS.seed)
   if FLAGS.max_number_of_steps is not None:
     config_kwargs['max_number_of_steps'] = FLAGS.max_number_of_steps
-  program = build_program(FLAGS.agent, FLAGS.num_actors, FLAGS.experiment, 
-    wandb=FLAGS.wandb, config_kwargs=config_kwargs)
+  program = build_program(
+    agent=FLAGS.agent,
+    num_actors=FLAGS.num_actors,
+    experiment=FLAGS.experiment,
+    use_wandb=FLAGS.wandb, config_kwargs=config_kwargs)
 
   # Launch experiment.
   lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
