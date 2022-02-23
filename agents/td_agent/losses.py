@@ -36,6 +36,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
   burn_in_length: int = None
   clip_rewards : bool = False
   max_abs_reward: float = 1.
+  loss_coeff: float = 1.
 
   # auxilliary tasks
   aux_tasks: Union[Callable, Sequence[Callable]]=None
@@ -109,16 +110,17 @@ class RecurrentTDLearning(learning_lib.LossFn):
     # -----------------------
     # main loss
     # -----------------------
-    batch_td_error, batch_loss = self.error(data, online_preds, online_state, target_preds, target_state)
+    batch_td_error, batch_loss, metrics = self.error(data, online_preds, online_state, target_preds, target_state)
 
     # Importance weighting.
     probs = batch.info.probability
     importance_weights = (1. / (probs + 1e-6)).astype(online_preds.q.dtype)
     importance_weights **= self.importance_sampling_exponent
     importance_weights /= jnp.max(importance_weights)
-    mean_loss = jnp.mean(importance_weights * batch_loss)
-    metrics = dict(main=mean_loss,
-                   main_no_weight=batch_loss.mean())
+    mean_loss = self.loss_coeff*jnp.mean(importance_weights * batch_loss)
+    metrics.update(dict(main=mean_loss,
+                       reward=data.reward.mean(),
+                       ))
 
     # Calculate priorities as a mixture of max and mean sequence errors.
     abs_td_error = jnp.abs(batch_td_error).astype(online_preds.q.dtype)
@@ -166,6 +168,7 @@ def r2d2_loss_kwargs(config):
       tx_pair=config.tx_pair,
       bootstrap_n=config.bootstrap_n,
       clip_rewards=config.clip_rewards,
+      loss_coeff=config.loss_coeff,
   )
 
 @dataclasses.dataclass
@@ -199,9 +202,15 @@ class R2D2Learning(RecurrentTDLearning):
         selector_actions[1:],
         rewards[:-1],
         discounts[:-1])
-    batch_loss = 0.5 * jnp.square(batch_td_error).sum(axis=0)
+    batch_loss = 0.5 * jnp.square(batch_td_error).mean(axis=0)
 
-    return batch_td_error, batch_loss # [T-1, B], [B]
+    metrics = {
+      'z.q_mean': online_preds.q.mean(),
+      'z.q_var': online_preds.q.var(),
+      'z.q_max': online_preds.q.max(),
+      'z.q_min': online_preds.q.min()}
+
+    return batch_td_error, batch_loss, metrics # [T-1, B], [B]
 
 
 def cumulants_from_env(data, online_preds, online_state, target_preds, target_state):
@@ -276,6 +285,13 @@ class USFALearning(RecurrentTDLearning):
         discounts[:-1])      # [T, B, N]
 
     # average over all policies(2) + cumulants(3)
-    batch_loss = 0.5 * jnp.square(batch_td_error).sum(axis=(0, 2, 3)) # [B]
+    batch_loss = 0.5 * jnp.square(batch_td_error).mean(axis=(0, 2, 3)) # [B]
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
-    return batch_td_error, batch_loss # [T, B], [B]
+
+    metrics = {
+      'z.sf_mean': online_preds.sf.mean(),
+      'z.sf_var': online_preds.sf.var(),
+      'z.sf_max': online_preds.sf.max(),
+      'z.sf_min': online_preds.sf.min()}
+
+    return batch_td_error, batch_loss, metrics # [T, B], [B]

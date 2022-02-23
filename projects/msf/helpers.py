@@ -45,58 +45,58 @@ def make_environment(evaluation: bool = False,
     )
   if evaluation:
     obj2rew={
-        'pan_plates':{
+        '1,1,0,0':{
             "pan" : 1,
             "plates" :1,
-            "fork" : 0,
+            "tomato" : 0,
             "knife" : 0,
             },
-        'all':{
+        '1,1,1,1':{
             "pan" : 1,
             "plates" : 1,
-            "fork" : 1,
+            "tomato" : 1,
             "knife" : 1,
             },
-        'mix1':{
+        '-1,1,-1,1':{
             "pan" : -1,
             "plates" : 1,
-            "fork" : -1,
+            "tomato" : -1,
             "knife" : 1,
             },
-        'mix2':{
+        '-1,1,0,1':{
             "pan" : -1,
             "plates" : 1,
-            "fork" : 0,
+            "tomato" : 0,
             "knife" : 1,
             },
     }
   else:
-    obj2rew=dict(
-        pan={
+    obj2rew={
+        "1,0,0,0":{
             "pan" : 1,
             "plates" : 0,
-            "fork" : 0,
+            "tomato" : 0,
             "knife" : 0,
             },
-        plates={
+        "0,1,0,0":{
             "pan" : 0,
             "plates" : 1,
-            "fork" : 0,
+            "tomato" : 0,
             "knife" : 0,
             },
-        fork={
+        "0,0,1,0":{
             "pan" : 0,
             "plates" : 0,
-            "fork" : 1,
+            "tomato" : 1,
             "knife" : 0,
             },
-        knife={
+        "0,0,0,1":{
             "pan" : 0,
             "plates" : 0,
-            "fork" : 0,
+            "tomato" : 0,
             "knife" : 1,
             },
-    )
+    }
 
   env = GoToAvoid(
     tile_size=tile_size,
@@ -131,6 +131,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     loss_label = 'r2d1'
+    eval_network = config.eval_network
 
   elif agent == "r2d1_farm":
 
@@ -144,6 +145,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
     loss_label = 'r2d1'
+    eval_network = config.eval_network
 
   elif agent == "r2d1_vae":
     # R2D1 + VAE
@@ -163,6 +165,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
                   beta=config.beta)])
 
     loss_label = 'r2d1'
+    eval_network = config.eval_network
 
   elif agent == "r2d1_farm_model":
 
@@ -184,6 +187,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
                   )])
 
     loss_label = 'r2d1'
+    eval_network = config.eval_network
 
   elif agent == "usfa": # Universal Successor Features
     state_dim = env_spec.observations.observation.state_features.shape[0]
@@ -198,6 +202,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
     loss_label = 'usfa'
+    eval_network = config.eval_network
 
   elif agent == "usfa_reward_vae":
     # Universal Successor Features which learns cumulants by predicting reward
@@ -219,6 +224,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
       ])   # type of loss for reward
 
     loss_label = 'usfa'
+    eval_network = config.eval_network
 
   elif agent == "usfa_farmflat_model":
     # Universal Successor Features which learns cumulants with structured transition model
@@ -256,6 +262,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
           discount=config.discount)
       ])
     loss_label = 'usfa'
+    eval_network = config.eval_network
 
   elif agent == "usfa_farm_model":
     # Universal Successor Features which learns cumulants with structured transition model
@@ -285,7 +292,8 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
                     temperature=config.temperature),
       ])
     loss_label = 'usfa'
+    eval_network = config.eval_network
   else:
     raise NotImplementedError(agent)
 
-  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label
+  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network

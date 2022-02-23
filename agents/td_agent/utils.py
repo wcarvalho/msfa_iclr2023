@@ -14,8 +14,19 @@ import numpy as np
 from agents.td_agent.types import TDNetworkFns, Predictions
 from agents.td_agent.configs import R2D1Config
 
-def make_networks(batch_size, env_spec, NetworkCls, NetKwargs):
-  """Builds USF networks."""
+def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, eval_network: bool=False):
+  """Builds USF networks.
+  
+  Args:
+      batch_size (TYPE): Description
+      env_spec (TYPE): Description
+      NetworkCls (TYPE): Description
+      NetKwargs (TYPE): Description
+      eval_network (bool, optional): whether to make seperate evaluation network
+  
+  Returns:
+      TYPE: Description
+  """
 
   # ======================================================
   # Functions for use
@@ -36,6 +47,7 @@ def make_networks(batch_size, env_spec, NetworkCls, NetKwargs):
   forward_hk = hk.transform(forward_fn)
   initial_state_hk = hk.transform(initial_state_fn)
   unroll_hk = hk.transform(unroll_fn)
+
 
   # ======================================================
   # Define networks init functions.
@@ -60,7 +72,22 @@ def make_networks(batch_size, env_spec, NetworkCls, NetKwargs):
   initial_state = networks_lib.FeedForwardNetwork(
       init=initial_state_init_fn, apply=initial_state_hk.apply)
 
+  # -----------------------
+  # optional evaluation network
+  # -----------------------
+  evaluation=None
+  if eval_network:
+    def eval_fn(x, s, k: Optional[int]=None):
+      model = NetworkCls(**NetKwargs)
+      return model.evaluate(x, s, k)
+    eval_hk = hk.transform(eval_fn)
+    evaluation = networks_lib.FeedForwardNetwork(
+      init=eval_hk.init, apply=eval_hk.apply)
+
+
+  # ======================================================
   # create initialization function
+  # ======================================================
   def init(random_key):
     random_key, key_initial_1, key_initial_2 = jax.random.split(random_key, 3)
     initial_state_params = initial_state.init(key_initial_1, batch_size)
@@ -75,10 +102,11 @@ def make_networks(batch_size, env_spec, NetworkCls, NetKwargs):
 
     return initial_params
 
-  # this conforms to both R2D2 & DQN APIs
+  # this conforms to DQN, R2D2, & USFA's APIs
   return TDNetworkFns(
       init=init,
       forward=forward,
+      evaluation=evaluation,
       unroll=unroll,
       initial_state=initial_state)
 
@@ -108,7 +136,16 @@ def make_behavior_policy(
                       core_state: types.NestedArray,
                       epsilon):
     key, key_net, key_sample = jax.random.split(key, 3)
-    preds, core_state = networks.forward.apply(
+
+    # -----------------------
+    # if evaluating & have seperation evaluation function, use it
+    # -----------------------
+    if evaluation and networks.evaluation is not None:
+      forward_fn = networks.evaluation.apply
+    else:
+      forward_fn = networks.forward.apply
+
+    preds, core_state = forward_fn(
         params, key_net, observation, core_state, key_sample)
     epsilon = config.evaluation_epsilon if evaluation else epsilon
     return rlax.epsilon_greedy(epsilon).sample(key_net, preds.q),core_state

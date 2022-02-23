@@ -39,7 +39,7 @@ import pickle
 flags.DEFINE_string('experiment', None, 'experiment_name.')
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
-flags.DEFINE_integer('num_actors', 10, 'Number of actors.')
+flags.DEFINE_integer('num_actors', 1, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
 flags.DEFINE_bool('wandb', False, 'whether to log.')
 
@@ -66,14 +66,15 @@ def build_program(agent, num_actors,
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
 
   def network_factory(spec):
     return td_agent.make_networks(
       batch_size=config.batch_size,
       env_spec=env_spec,
       NetworkCls=NetworkCls,
-      NetKwargs=NetKwargs)
+      NetKwargs=NetKwargs,
+      eval_network=eval_network)
 
   builder=functools.partial(td_agent.TDBuilder,
       LossFn=LossFn, LossFnKwargs=LossFnKwargs,
@@ -94,13 +95,6 @@ def build_program(agent, num_actors,
     **extra)
 
 
-  if use_wandb:
-    import wandb
-    # TODO: fix ugly hack
-    date, settings = log_dir.split("/")[-3: -1]
-    wandb.init(project="msf", group=f"{date}/{settings}", entity="wcarvalho92")
-    wandb.config = config.__dict__
-
   logger_fn = lambda : make_logger(
         log_dir=log_dir,
         label=loss_label,
@@ -118,6 +112,26 @@ def build_program(agent, num_actors,
                   wandb=use_wandb,
                   steps_key="evaluator_steps",
                   )
+
+  # -----------------------
+  # wandb setup
+  # -----------------------
+  def wandb_wrap_logger(logger_fn):
+    def make_logger(*args, **kwargs):
+      import wandb
+      # TODO: fix ugly hack
+      date, settings = log_dir.split("/")[-3: -1]
+      wandb.init(project="msf", group=f"{date}/{settings}", entity="wcarvalho92")
+      return logger_fn(*args, **kwargs)
+    return make_logger
+
+  if use_wandb:
+    import wandb
+    wandb.config = config.__dict__
+
+    logger_fn = wandb_wrap_logger(logger_fn)
+    actor_logger_fn = wandb_wrap_logger(actor_logger_fn)
+    evaluator_logger_fn = wandb_wrap_logger(evaluator_logger_fn)
 
   # -----------------------
   # save config
@@ -157,7 +171,7 @@ def main(_):
     use_wandb=FLAGS.wandb, config_kwargs=config_kwargs)
 
   # Launch experiment.
-  lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
+  lp.launch(program, lp.LaunchType.LOCAL_MULTI_THREADING,
     terminal='current_terminal',
     local_resources = {
       'actor':

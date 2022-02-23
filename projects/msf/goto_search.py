@@ -37,14 +37,18 @@ FLAGS = flags.FLAGS
 def main(_):
   mp.set_start_method('spawn')
   experiment=None
+  num_cpus = 3
+  num_gpus = 1
 
   search = 'baselines'
   if search == 'baselines':
     space = {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1', 'r2d1_farm', 'usfa']),
+        "agent": tune.grid_search(['usfa']),
+        # "agent": tune.grid_search(['r2d1']),
+        "setting": tune.grid_search(['small', 'medium', 'large']),
     }
-    # experiment='r2d1_farm_model_v1'
+    experiment='baselines_3'
   elif search == 'r2d1_farm':
     space = {
         "seed": tune.grid_search([1]),
@@ -100,8 +104,6 @@ def main(_):
     raise NotImplementedError
 
 
-  num_cpus = 2
-  num_gpus = 1
 
   # root_path is needed to tell program absolute path
   # this is used for BabyAI
@@ -113,7 +115,7 @@ def main(_):
     """Create and run launchpad program
     """
     agent = config.pop('agent', 'r2d1')
-    num_actors = config.pop('num_actors', 6)
+    num_actors = config.pop('num_actors', 9)
     setting = config.pop('setting', 'small')
 
 
@@ -122,6 +124,7 @@ def main(_):
       base_dir=f"{root_path}/results/msf/{folder}",
       hourminute=False,
       agent=agent,
+      setting=setting,
       **({'exp': experiment} if experiment else {}),
       **config)
 
@@ -138,7 +141,7 @@ def main(_):
     # launch experiment
     program = build_program(
       agent=agent, num_actors=num_actors,
-      use_wandb=True,
+      use_wandb=False,
       setting=setting,
       config_kwargs=config, 
       path=root_path,

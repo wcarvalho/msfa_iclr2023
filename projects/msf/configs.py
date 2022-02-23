@@ -16,8 +16,8 @@ class R2D1Config:
   variable_update_period: int = 400 # how often to update actor
 
   # Learner options
-  burn_in_length: int = 40  # burn in during learning
-  trace_length: int = 40  # how long training should be
+  burn_in_length: int = 0  # burn in during learning
+  trace_length: int = 20  # how long training should be
   sequence_period: int = 40  # how often to add
   learning_rate: float = 5e-5
   bootstrap_n: int = 5
@@ -26,6 +26,7 @@ class R2D1Config:
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
+  loss_coeff: float = 1.0
 
   # How many gradient updates to perform per learner step.
   num_sgd_steps_per_step: int = 4
@@ -49,6 +50,7 @@ class R2D1Config:
   # Network hps
   memory_size = 512
   out_hidden_size = 128
+  eval_network: bool = False
 
 
 @dataclasses.dataclass
@@ -64,6 +66,7 @@ class USFAConfig(R2D1Config):
   normalize_task: bool = False # whether to normalize task embedding
   normalize_cumulants: bool = True # whether to normalize task embedding
   balance_reward: bool = False # whether to normalize task embedding
+  eval_network: bool = True
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
@@ -89,7 +92,7 @@ class FarmModelConfig:
   # Network hps
   extra_negatives: int = 10
   temperature: float = 0.01
-  model_coeff: float = 100
+  model_coeff: float = 1
   out_layers: int = 2
   model_layers: int = 2
   batch_size: int = 16
@@ -99,8 +102,8 @@ class FarmModelConfig:
 @dataclasses.dataclass
 class RewardConfig:
   """Extra configuration options for USFA agent."""
-  reward_coeff: float = 0.1 # coefficient for loss
-  value_coeff: float = 0.1 # coefficient for loss
+  reward_coeff: float = 1. # coefficient for loss
+  value_coeff: float = 1. # coefficient for loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
 
 

@@ -45,6 +45,7 @@ class TDNetworkFns:
   forward: ValueFn
   unroll: ValueFn
   initial_state: RecurrentStateFn
+  evaluation: ValueFn = None
 
 
 class Predictions(NamedTuple):

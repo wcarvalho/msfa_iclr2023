@@ -45,11 +45,11 @@ class QLearningAuxLoss(nstep.QLearning):
     batch_loss = 0.5 * jnp.square(batch_td_error).mean()
 
     metrics = {
-      'loss_qlearning': batch_loss,
-      'z.q_mean': online_q.mean(),
-      'z.q_var': online_q.var(),
-      'z.q_max': online_q.max(),
-      'z.q_min': online_q.min()}
+      'loss_qlearning_sf': batch_loss,
+      'z.q_sf_mean': online_q.mean(),
+      'z.q_sf_var': online_q.var(),
+      'z.q_sf_max': online_q.max(),
+      'z.q_sf_min': online_q.min()}
 
     return self.coeff*batch_loss, metrics
 

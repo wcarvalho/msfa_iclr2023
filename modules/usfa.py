@@ -18,6 +18,7 @@ class USFAPreds(NamedTuple):
 class USFAInputs(NamedTuple):
   w: jnp.ndarray  # task vector
   memory_out: jnp.ndarray  # memory output (e.g. LSTM)
+  w_train: jnp.ndarray = None  # train task vectors
 
 
 def sample_gauss(mean, var, key, nsamples, axis):
@@ -83,8 +84,6 @@ class UsfaHead(hk.Module):
         policy_size + hidden_size,
         num_actions * self.sf_out_dim])
 
-
-
   def __call__(self,
     inputs : USFAInputs,
     key: networks_lib.PRNGKey) -> USFAPreds:
@@ -105,6 +104,50 @@ class UsfaHead(hk.Module):
     # combine samples with original task vector
     z_base = jnp.expand_dims(w_embed, axis=1)
     z = jnp.concatenate((z_base, z_samples), axis=1)  # [B, N+1, S]
+
+    return self.sfgpi(inputs=inputs, z=z, w_embed=w_embed, key=key)
+
+  def evaluation(self,
+    inputs : USFAInputs,
+    key: networks_lib.PRNGKey) -> USFAPreds:
+
+    # -----------------------
+    # embed task
+    # -----------------------
+    w_embed = jax.vmap(self.task_embed)(inputs.w) # [B, D]
+    B = w_embed.shape[0]
+    if self.normalize_task:
+      w_embed/(1e-5+jnp.linalg.norm(w_embed, axis=-1, keepdims=True))
+
+    w_train = jax.vmap(self.task_embed)(inputs.w_train) # [N, D]
+    N = w_train.shape[0]
+    if self.normalize_task:
+      w_train/(1e-5+jnp.linalg.norm(w_train, axis=-1, keepdims=True))
+
+    # -----------------------
+    # policies + embeddings
+    # -----------------------
+    z = data_utils.expand_tile_dim(w_train, axis=0, size=B)
+    preds = self.sfgpi(inputs=inputs, z=z, w_embed=w_embed, key=key)
+
+    return preds
+
+  def sfgpi(self,
+    inputs: USFAInputs,
+    z: jnp.ndarray,
+    w_embed: jnp.ndarray,
+    key: networks_lib.PRNGKey) -> USFAPreds:
+    """Summary
+    
+    Args:
+        inputs (USFAInputs): Description
+        z (jnp.ndarray): B x N x D
+        w_embed (jnp.ndarray): B x D
+        key (networks_lib.PRNGKey): Description
+    
+    Returns:
+        USFAPreds: Description
+    """
     z_embedding = hk.BatchApply(self.policynet)(z) # [B, N, D]
     nz = z.shape[1]
 
@@ -121,7 +164,7 @@ class UsfaHead(hk.Module):
     # Compute Q values --> Generalized Policy Improvement (best policy)
     # use task vector
     # -----------------------
-    # [B, D] --> [B, N+1, D]
+    # [B, D] --> [B, N, D]
     w_embed_expand = data_utils.expand_tile_dim(w_embed, axis=-2, size=nz)
 
     def add_actions_dimension(task):
@@ -136,12 +179,12 @@ class UsfaHead(hk.Module):
     q_values = jnp.sum(sf*w_embed_expand, axis=-1) # [B, N, A]
     q_values = jnp.max(q_values, axis=-2) # [B, A]
 
-
     return USFAPreds(
       sf=sf,
       z=z,
       q=q_values,
       w_embed=w_embed)
+
 
   @property
   def out_dim(self):
