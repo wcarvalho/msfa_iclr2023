@@ -113,7 +113,7 @@ class GotoAvoidEnv(KitchenLevel):
         for object_type in types_to_place:
             object_idx = self.object2idx[object_type]
             self.object_occurrences[object_idx] += 1
-            object = copy.deepcopy(self.default_objects[object_idx])
+            object = self.default_objects[object_idx]
             self.place_in_room(0, 0, object)
 
         self.remaining = np.array(self.object_occurrences)
@@ -220,6 +220,7 @@ if __name__ == '__main__':
     from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, RGBImgFullyObsWrapper
     import matplotlib.pyplot as plt 
     import cv2
+    import tqdm
 
     tile_size=20
     size='small'
@@ -234,7 +235,7 @@ if __name__ == '__main__':
         object2reward={
             "pan" : 1,
             "plates" : 0,
-            "fork" : 0,
+            "tomato" : 0,
             "knife" : 0,
             },
         respawn=False,
@@ -256,24 +257,25 @@ if __name__ == '__main__':
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.show_img(combine(full, obs['image']))
 
-    obs = env.reset()
-    full = env.render('rgb_array', tile_size=tile_size, highlight=True)
-    window.set_caption(obs['mission'])
-    window.show_img(combine(full, obs['image']))
+    for _ in tqdm.tqdm(range(1000)):
+      obs = env.reset()
+      full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+      window.set_caption(obs['mission'])
+      window.show_img(combine(full, obs['image']))
 
-    rewards = []
-    print("Initial occurrences:", env.object_occurrences)
-    for step in range(20):
-        obs, reward, done, info = env.step(env.action_space.sample())
-        rewards.append(reward)
-        full = env.render('rgb_array', tile_size=tile_size, highlight=True)
-        window.show_img(combine(full, obs['image']))
-        if done:
-          break
+      rewards = []
+      # print("Initial occurrences:", env.object_occurrences)
+      for step in range(5):
+          obs, reward, done, info = env.step(env.action_space.sample())
+          rewards.append(reward)
+          full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+          window.show_img(combine(full, obs['image']))
+          if done:
+            break
 
-    total_reward = sum(rewards)
-    normalized_reward = total_reward/env.object_occurrences[0]
-    print("Final occurrences:", env.object_occurrences)
-    print(f"Total reward: {total_reward}")
-    print(f"Normalized reward: {normalized_reward}")
+      total_reward = sum(rewards)
+      normalized_reward = total_reward/env.object_occurrences[0]
+      # print("Final occurrences:", env.object_occurrences)
+      # print(f"Total reward: {total_reward}")
+      # print(f"Normalized reward: {normalized_reward}")
     import ipdb; ipdb.set_trace()
