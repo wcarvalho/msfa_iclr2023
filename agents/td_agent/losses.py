@@ -118,9 +118,10 @@ class RecurrentTDLearning(learning_lib.LossFn):
     importance_weights **= self.importance_sampling_exponent
     importance_weights /= jnp.max(importance_weights)
     mean_loss = self.loss_coeff*jnp.mean(importance_weights * batch_loss)
-    metrics.update(dict(main=mean_loss,
-                       reward=data.reward.mean(),
-                       ))
+    metrics.update({
+      'loss_main':mean_loss,
+      'z.reward' :data.reward.mean()
+      })
 
     # Calculate priorities as a mixture of max and mean sequence errors.
     abs_td_error = jnp.abs(batch_td_error).astype(online_preds.q.dtype)
@@ -147,6 +148,9 @@ class RecurrentTDLearning(learning_lib.LossFn):
         metrics.update(aux_metrics)
         mean_loss = mean_loss + aux_loss
 
+    metrics.update({
+      'loss_total':mean_loss,
+      })
 
     reverb_update = learning_lib.ReverbUpdate(
         keys=batch.info.key,

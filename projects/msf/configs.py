@@ -57,9 +57,10 @@ class R2D1Config:
 class USFAConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
   npolicies: int = 10 # number of policies to sample
-  variance: float = 0.1
+  variance: float = 0.5
   # Network hps
   policy_size = 32
+  policy_layers = 0
   batch_size: int = 20
   cumulant_hidden_size: int=128 # hidden size for cumulant pred
   embed_task: bool = False  # whether to embed task
@@ -67,6 +68,19 @@ class USFAConfig(R2D1Config):
   normalize_cumulants: bool = True # whether to normalize task embedding
   balance_reward: bool = False # whether to normalize task embedding
   eval_network: bool = True
+  duelling: bool = False
+  z_as_train_task: bool = True
+  state_hidden_size: int = 0
+
+
+@dataclasses.dataclass
+class RewardConfig:
+  """Extra configuration options for USFA agent."""
+  reward_coeff: float = 1. # coefficient for reward loss
+  value_coeff: float = 1. # coefficient for value loss
+  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
+  q_aux: str="ensemble"
+
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
@@ -86,7 +100,7 @@ class FarmConfig:
   out_layers: int = 0
 
 @dataclasses.dataclass
-class FarmModelConfig:
+class FarmModelConfig(FarmConfig):
   """Extra configuration options for FARM module."""
 
   # Network hps
@@ -99,12 +113,6 @@ class FarmModelConfig:
   activation: str='relu'
 
 
-@dataclasses.dataclass
-class RewardConfig:
-  """Extra configuration options for USFA agent."""
-  reward_coeff: float = 1. # coefficient for loss
-  value_coeff: float = 1. # coefficient for loss
-  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
 
 
 @dataclasses.dataclass

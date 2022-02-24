@@ -37,7 +37,7 @@ FLAGS = flags.FLAGS
 def main(_):
   mp.set_start_method('spawn')
   experiment=None
-  num_cpus = 3
+  num_cpus = 4
   num_gpus = 1
 
   search = 'baselines'
@@ -45,10 +45,25 @@ def main(_):
     space = {
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['usfa']),
-        # "agent": tune.grid_search(['r2d1']),
-        "setting": tune.grid_search(['small', 'medium', 'large']),
+        "z_as_train_task": tune.grid_search([True]),
+        "variance": tune.grid_search([.1, .5]),
+        # "setting": tune.grid_search(['small', 'medium', 'large']),
     }
-    experiment='baselines_3'
+    experiment='baselines_5'
+  elif search == 'ablations':
+    space = {
+        "seed": tune.grid_search([2]),
+        "agent": tune.grid_search(['usfa_qlearning']),
+        "state_hidden_size": tune.grid_search([0, 128]),
+        "z_as_train_task": tune.grid_search([True, False]),
+        "variance": tune.grid_search([.1, .5]),
+        
+        # "q_aux": tune.grid_search(['ensemble']),
+        # "policy_layers": tune.grid_search([0, 2]),
+        # "duelling": tune.grid_search([True, False]),
+        # "setting": tune.grid_search(['small', 'medium', 'large']),
+    }
+    experiment='ablations_2'
   elif search == 'r2d1_farm':
     space = {
         "seed": tune.grid_search([1]),
@@ -74,32 +89,20 @@ def main(_):
         "agent": tune.grid_search(['usfa']),
     }
   elif search == 'usfa_farm':
-    # space = {
-    #     "seed": tune.grid_search([1]),
-    #     # "agent": tune.grid_search(['usfa_farm_model', 'usfa_farmflat_model']),
-    #     "agent": tune.grid_search(['usfa_farmflat_model']),
-    #     # "out_layers": tune.grid_search([2]),
-    #     # "extra_negatives": tune.grid_search([0, 10]),
-    #     # "normalize_task": tune.grid_search([False]),
-    #     "normalize_cumulants": tune.grid_search([True]),
-    #     "reward_loss": tune.grid_search(['l2']),
-    #     # "model_coeff": tune.grid_search([10, 100]),
-    #     "reward_coeff": tune.grid_search([100]),
-    #     "value_coeff": tune.grid_search([1, 100]),
-    # }
     space = {
         "seed": tune.grid_search([1]),
-        # "agent": tune.grid_search(['usfa_farm_model', 'usfa_farmflat_model']),
         "agent": tune.grid_search(['usfa_farmflat_model']),
-        # "out_layers": tune.grid_search([2]),
-        # "extra_negatives": tune.grid_search([0, 10]),
-        # "normalize_task": tune.grid_search([False]),
-        "normalize_cumulants": tune.grid_search([False]),
-        "reward_loss": tune.grid_search(['l2', 'binary']),
-        "model_coeff": tune.grid_search([1, 10]),
-        "reward_coeff": tune.grid_search([1e-1]),
-        "value_coeff": tune.grid_search([1]),
+        # "model_coeff": tune.grid_search([1e-1, 1e-2]),
+        # "value_coeff": tune.grid_search([100., 1000.0]),
+        # "reward_coeff": tune.grid_search([1.]),
+        # "loss_coeff": tune.grid_search([1e-1, 1e-2]),
+        "model_coeff": tune.grid_search([0., 1e-1]),
+        "value_coeff": tune.grid_search([100., 1000.0]),
+        "reward_coeff": tune.grid_search([0.]),
+        "loss_coeff": tune.grid_search([0.]),
+
     }
+    experiment='farm_flat'
   else:
     raise NotImplementedError
 

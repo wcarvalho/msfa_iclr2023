@@ -10,7 +10,11 @@ from utils import data as data_utils
 
 
 class QLearning:
-  """docstring for ValueAuxLoss"""
+  """Calculates transformed n-step TD errors.
+
+  See "Recurrent Experience Replay in Distributed Reinforcement Learning" by
+  Kapturowski et al. (https://openreview.net/pdf?id=r1lyTjAqYX).
+  """
   def __init__(self,
     discount: float,
     clip_rewards: bool = False,
@@ -21,7 +25,12 @@ class QLearning:
     self.bootstrap_n = bootstrap_n
     self.tx_pair = tx_pair
 
-  def __call__(self, online_q : jnp.ndarray, target_q : jnp.ndarray, discount : jnp.ndarray, rewards : jnp.ndarray, actions : jnp.ndarray):
+  def __call__(self,
+      online_q : jnp.ndarray,
+      target_q : jnp.ndarray,
+      discount : jnp.ndarray,
+      rewards : jnp.ndarray,
+      actions : jnp.ndarray):
     """Summary
     
     Args:
