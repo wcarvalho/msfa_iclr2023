@@ -97,7 +97,7 @@ def merge_configs(dataclass_configs, dict_configs):
 # ======================================================
 # handling tensors
 # ======================================================
-def expand_tile_dim(x, axis, size):
+def expand_tile_dim(x, size, axis=-1):
   """E.g. shape=[1,128] --> [1,10,128] if dim=1, size=10
   """
   ndims = len(x.shape)

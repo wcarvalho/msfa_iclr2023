@@ -1,7 +1,11 @@
 """Loggeres."""
 
+import time
+from typing import Optional
+from absl import logging
+
 from acme.utils import loggers
-# from acme.utils.loggers import tf_summary
+from acme.utils.loggers import base
 from acme.utils.loggers import asynchronous as async_logger
 
 from utils.tf_summary import TFSummaryLogger
@@ -13,6 +17,12 @@ try:
   from rich import print as rich_print
 except ImportError:
   rich_print = None
+
+try:
+  import wandb
+  WANDB_AVAILABLE=True
+except ImportError:
+  WANDB_AVAILABLE=False
 
 def gen_log_dir(base_dir="results/", hourminute=True, seed=None, **kwargs):
   strkey = '%Y.%m.%d'
@@ -32,6 +42,7 @@ def make_logger(
   save_data: bool = True,
   asynchronous: bool = False,
   tensorboard=True,
+  wandb=False,
   steps_key: str=None) -> loggers.Logger:
   """Creates ACME loggers as we wish.
   Features:
@@ -39,7 +50,7 @@ def make_logger(
     - TF Summary
   """
   # See acme.utils.loggers.default:make_default_logger
-
+  wandb = wandb and WANDB_AVAILABLE
   _loggers = [
       loggers.TerminalLogger(label=label, print_fn=rich_print or print),
   ]
@@ -49,6 +60,9 @@ def make_logger(
   if tensorboard:
     _loggers.append(
       TFSummaryLogger(log_dir, label=label, steps_key=steps_key))
+
+  if wandb:
+    _loggers.append(WandbLogger(label=label, steps_key=steps_key))
 
   # Dispatch to all writers and filter Nones.
   logger = loggers.Dispatcher(_loggers, loggers.to_numpy)  # type: ignore
@@ -62,4 +76,54 @@ def make_logger(
 
 
   return logger
+
+
+def _format_key(key: str) -> str:
+  """Internal function for formatting keys in Tensorboard format."""
+  new = key.title().replace('_', '').replace("/", "-")
+  return new
+
+class WandbLogger(base.Logger):
+  """Logs to a tf.summary created in a given logdir.
+
+  If multiple TFSummaryLogger are created with the same logdir, results will be
+  categorized by labels.
+  """
+
+  def __init__(
+      self,
+      label: str = 'Logs',
+      steps_key: Optional[str] = None
+  ):
+    """Initializes the logger.
+
+    Args:
+      logdir: directory to which we should log files.
+      label: label string to use when logging. Default to 'Logs'.
+      steps_key: key to use for steps. Must be in the values passed to write.
+    """
+    self._time = time.time()
+    self.label = label
+    self._iter = 0
+    # self.summary = tf.summary.create_file_writer(logdir)
+    self._steps_key = steps_key
+
+  def write(self, values: base.LoggingData):
+    if self._steps_key is not None and self._steps_key not in values:
+      logging.warn('steps key "%s" not found. Skip logging.', self._steps_key)
+      logging.warn('Available keys:', str(values.keys()))
+      return
+
+    step = values[self._steps_key] if self._steps_key is not None else self._iter
+    to_log = {f'{self.label}/step' : step}
+    for key in values.keys() - [self._steps_key]:
+      name = f'{self.label}/{_format_key(key)}'
+      to_log[name] = values[key]
+
+    wandb.log(to_log)
+    self._iter += 1
+
+  def close(self):
+    self.summary.close()
+
 

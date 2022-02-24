@@ -22,6 +22,7 @@ from sklearn.model_selection import ParameterGrid
 from ray import tune
 import multiprocessing as mp
 import jax
+import time
 
 from utils import gen_log_dir
 import os
@@ -36,9 +37,34 @@ FLAGS = flags.FLAGS
 def main(_):
   mp.set_start_method('spawn')
   experiment=None
+  num_cpus = 4
+  num_gpus = 1
 
-  search = 'usfa_farm'
-  if search == 'r2d1_farm':
+  search = 'baselines'
+  if search == 'baselines':
+    space = {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['usfa']),
+        "z_as_train_task": tune.grid_search([True]),
+        "variance": tune.grid_search([.1, .5]),
+        # "setting": tune.grid_search(['small', 'medium', 'large']),
+    }
+    experiment='baselines_5'
+  elif search == 'ablations':
+    space = {
+        "seed": tune.grid_search([2]),
+        "agent": tune.grid_search(['usfa_qlearning']),
+        "state_hidden_size": tune.grid_search([0, 128]),
+        "z_as_train_task": tune.grid_search([True, False]),
+        "variance": tune.grid_search([.1, .5]),
+        
+        # "q_aux": tune.grid_search(['ensemble']),
+        # "policy_layers": tune.grid_search([0, 2]),
+        # "duelling": tune.grid_search([True, False]),
+        # "setting": tune.grid_search(['small', 'medium', 'large']),
+    }
+    experiment='ablations_2'
+  elif search == 'r2d1_farm':
     space = {
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['r2d1_farm_model']),
@@ -63,38 +89,24 @@ def main(_):
         "agent": tune.grid_search(['usfa']),
     }
   elif search == 'usfa_farm':
-    # space = {
-    #     "seed": tune.grid_search([1]),
-    #     # "agent": tune.grid_search(['usfa_farm_model', 'usfa_farmflat_model']),
-    #     "agent": tune.grid_search(['usfa_farmflat_model']),
-    #     # "out_layers": tune.grid_search([2]),
-    #     # "extra_negatives": tune.grid_search([0, 10]),
-    #     # "normalize_task": tune.grid_search([False]),
-    #     "normalize_cumulants": tune.grid_search([True]),
-    #     "reward_loss": tune.grid_search(['l2']),
-    #     # "model_coeff": tune.grid_search([10, 100]),
-    #     "reward_coeff": tune.grid_search([100]),
-    #     "value_coeff": tune.grid_search([1, 100]),
-    # }
     space = {
         "seed": tune.grid_search([1]),
-        # "agent": tune.grid_search(['usfa_farm_model', 'usfa_farmflat_model']),
         "agent": tune.grid_search(['usfa_farmflat_model']),
-        # "out_layers": tune.grid_search([2]),
-        # "extra_negatives": tune.grid_search([0, 10]),
-        # "normalize_task": tune.grid_search([False]),
-        "normalize_cumulants": tune.grid_search([False]),
-        "reward_loss": tune.grid_search(['l2']),
-        "model_coeff": tune.grid_search([1e-2, 1e-3]),
-        "reward_coeff": tune.grid_search([1e-1]),
-        "value_coeff": tune.grid_search([1]),
+        # "model_coeff": tune.grid_search([1e-1, 1e-2]),
+        # "value_coeff": tune.grid_search([100., 1000.0]),
+        # "reward_coeff": tune.grid_search([1.]),
+        # "loss_coeff": tune.grid_search([1e-1, 1e-2]),
+        "model_coeff": tune.grid_search([0., 1e-1]),
+        "value_coeff": tune.grid_search([100., 1000.0]),
+        "reward_coeff": tune.grid_search([0.]),
+        "loss_coeff": tune.grid_search([0.]),
+
     }
+    experiment='farm_flat'
   else:
     raise NotImplementedError
 
 
-  num_cpus = 2
-  num_gpus = 1
 
   # root_path is needed to tell program absolute path
   # this is used for BabyAI
@@ -106,7 +118,8 @@ def main(_):
     """Create and run launchpad program
     """
     agent = config.pop('agent', 'r2d1')
-    num_actors = config.pop('num_actors', 6)
+    num_actors = config.pop('num_actors', 9)
+    setting = config.pop('setting', 'small')
 
 
     # get log dir for experiment
@@ -114,6 +127,7 @@ def main(_):
       base_dir=f"{root_path}/results/msf/{folder}",
       hourminute=False,
       agent=agent,
+      setting=setting,
       **({'exp': experiment} if experiment else {}),
       **config)
 
@@ -125,10 +139,13 @@ def main(_):
       print("="*50)
       print(f"SKIPPING\n{log_dir}")
       print("="*50)
-    #   return
+      return
 
     # launch experiment
-    program = build_program(agent, num_actors,
+    program = build_program(
+      agent=agent, num_actors=num_actors,
+      use_wandb=False,
+      setting=setting,
       config_kwargs=config, 
       path=root_path,
       log_dir=log_dir)
@@ -140,13 +157,13 @@ def main(_):
           PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
           }
       )
+    time.sleep(15) # sleep for 15 seconds
 
 
 
   def train_function(config):
     """Run inside threads and creates new process.
     """
-
     p = mp.Process(
       target=create_and_run_program, 
       args=(config,))

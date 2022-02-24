@@ -15,7 +15,7 @@ class CumulantRewardLoss:
 
   def __call__(self, data, online_preds, **kwargs):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
-    task = online_preds.w_embed  # ground-truth  [T, B, D]
+    task = online_preds.w  # ground-truth  [T, B, D]
 
     rewards = data.reward  # ground-truth  [T, B]
 
@@ -43,6 +43,5 @@ class CumulantRewardLoss:
 
     metrics = {
       f'loss_reward_{self.loss}': error,
-      'z.batch_reward' : rewards.mean(),
     }
     return error*self.coeff, metrics

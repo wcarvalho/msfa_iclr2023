@@ -20,6 +20,7 @@ class GotoAvoidEnv(KitchenLevel):
         nobjects=2,
         respawn=False,
         kitchen=None,
+        objects=None,
         **kwargs):
         """Summary
         
@@ -41,7 +42,12 @@ class GotoAvoidEnv(KitchenLevel):
             list(self.object2reward.values()),
             dtype=np.uint8,
             )
-        self.object_names = objects = list(object2reward.keys())
+        self.object_names = list(object2reward.keys())
+        if objects:
+          assert objects == self.object_names
+        else:
+          objects = self.object_names
+
         self.object2idx = {o:idx for idx, o in enumerate(objects)}
         self._task_oidxs = [self.object2idx[o] for o in self._task_objects]
         self.nobjects = nobjects
@@ -95,16 +101,6 @@ class GotoAvoidEnv(KitchenLevel):
         types_to_place = []
         for object_type in self.object2reward.keys():
           types_to_place.extend([object_type]*self.nobjects)
-        # if self.nobjects < len(self.task_objects):
-        #   # random subset
-        #   types_to_place = list(np.random.choice(self.task_objects, n=self.nobjects))
-        # else:
-        #   types_to_place = self.task_objects
-
-        # remaining = self.nobjects - len(self.task_objects)
-        # for idx in range(remaining):
-        #   choice = np.random.randint(len(self.default_objects))
-        #   types_to_place.append(self.object_names[choice])
 
         # -----------------------
         # spawn objects
@@ -155,7 +151,6 @@ class GotoAvoidEnv(KitchenLevel):
 
         # Get the contents of the cell in front of the agent
         object_infront = self.grid.get(*fwd_pos)
-
 
         # Rotate left
         action_info = None
@@ -209,8 +204,6 @@ class GotoAvoidEnv(KitchenLevel):
 
         obs['mission'] = self.mission_arr
         obs['pickup'] = pickup
-
-
 
         return obs, reward, done, info
 

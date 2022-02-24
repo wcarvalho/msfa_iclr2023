@@ -23,12 +23,14 @@ from launchpad.nodes.python.local_multi_processing import PythonProcess
 from absl import app
 from absl import flags
 import acme
+from acme.utils import paths
 import functools
 
 from agents import td_agent
 from projects.msf import helpers
 from projects.msf.environment_loop import EnvironmentLoop
 from utils import make_logger, gen_log_dir
+import pickle
 
 
 # -----------------------
@@ -37,12 +39,15 @@ from utils import make_logger, gen_log_dir
 flags.DEFINE_string('experiment', None, 'experiment_name.')
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
-flags.DEFINE_integer('num_actors', 10, 'Number of actors.')
+flags.DEFINE_integer('num_actors', 1, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
+flags.DEFINE_bool('wandb', False, 'whether to log.')
 
 FLAGS = flags.FLAGS
 
 def build_program(agent, num_actors,
+  use_wandb=False,
+  setting='small',
   experiment=None,
   log_every=30.0, # how often to log
   config_kwargs=None, # config
@@ -53,7 +58,7 @@ def build_program(agent, num_actors,
   # load env stuff
   # -----------------------
   environment_factory = lambda is_eval: helpers.make_environment(
-    evaluation=is_eval, path=path)
+    evaluation=is_eval, path=path, setting=setting)
   env = environment_factory(False)
   env_spec = acme.make_environment_spec(env)
   del env
@@ -61,14 +66,15 @@ def build_program(agent, num_actors,
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label = helpers.load_agent_settings(agent, env_spec, config_kwargs)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
 
   def network_factory(spec):
     return td_agent.make_networks(
       batch_size=config.batch_size,
       env_spec=env_spec,
       NetworkCls=NetworkCls,
-      NetKwargs=NetKwargs)
+      NetKwargs=NetKwargs,
+      eval_network=eval_network)
 
   builder=functools.partial(td_agent.TDBuilder,
       LossFn=LossFn, LossFnKwargs=LossFnKwargs,
@@ -87,19 +93,52 @@ def build_program(agent, num_actors,
     hourminute=hourminute,
     agent=agent,
     **extra)
+
+
   logger_fn = lambda : make_logger(
-        log_dir=log_dir, label=loss_label, asynchronous=True)
+        log_dir=log_dir,
+        label=loss_label,
+        wandb=use_wandb,
+        asynchronous=True)
 
   actor_logger_fn = lambda actor_id: make_logger(
                   log_dir=log_dir, label='actor',
+                  wandb=use_wandb,
                   save_data=actor_id == 0,
                   steps_key="actor_steps",
                   )
   evaluator_logger_fn = lambda : make_logger(
-                  log_dir=log_dir,
-                  label='evaluator',
+                  log_dir=log_dir, label='evaluator',
+                  wandb=use_wandb,
                   steps_key="evaluator_steps",
                   )
+
+  # -----------------------
+  # wandb setup
+  # -----------------------
+  def wandb_wrap_logger(logger_fn):
+    def make_logger(*args, **kwargs):
+      import wandb
+      # TODO: fix ugly hack
+      date, settings = log_dir.split("/")[-3: -1]
+      wandb.init(project="msf", group=f"{date}/{settings}", entity="wcarvalho92")
+      return logger_fn(*args, **kwargs)
+    return make_logger
+
+  if use_wandb:
+    import wandb
+    wandb.config = config.__dict__
+
+    logger_fn = wandb_wrap_logger(logger_fn)
+    actor_logger_fn = wandb_wrap_logger(actor_logger_fn)
+    evaluator_logger_fn = wandb_wrap_logger(evaluator_logger_fn)
+
+  # -----------------------
+  # save config
+  # -----------------------
+  paths.process_path(log_dir)
+  with open(os.path.join(log_dir, 'config.pickle'), 'wb') as handle:
+    pickle.dump(config, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
   # -----------------------
   # build program
@@ -125,10 +164,14 @@ def main(_):
   config_kwargs=dict(seed=FLAGS.seed)
   if FLAGS.max_number_of_steps is not None:
     config_kwargs['max_number_of_steps'] = FLAGS.max_number_of_steps
-  program = build_program(FLAGS.agent, FLAGS.num_actors, FLAGS.experiment, config_kwargs=config_kwargs)
+  program = build_program(
+    agent=FLAGS.agent,
+    num_actors=FLAGS.num_actors,
+    experiment=FLAGS.experiment,
+    use_wandb=FLAGS.wandb, config_kwargs=config_kwargs)
 
   # Launch experiment.
-  lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
+  lp.launch(program, lp.LaunchType.LOCAL_MULTI_THREADING,
     terminal='current_terminal',
     local_resources = {
       'actor':

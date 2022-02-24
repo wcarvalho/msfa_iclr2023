@@ -10,7 +10,11 @@ from utils import data as data_utils
 
 
 class QLearning:
-  """docstring for ValueAuxLoss"""
+  """Calculates transformed n-step TD errors.
+
+  See "Recurrent Experience Replay in Distributed Reinforcement Learning" by
+  Kapturowski et al. (https://openreview.net/pdf?id=r1lyTjAqYX).
+  """
   def __init__(self,
     discount: float,
     clip_rewards: bool = False,
@@ -21,8 +25,24 @@ class QLearning:
     self.bootstrap_n = bootstrap_n
     self.tx_pair = tx_pair
 
-  def __call__(self, online_q, target_q, discount, rewards, actions):
-
+  def __call__(self,
+      online_q : jnp.ndarray,
+      target_q : jnp.ndarray,
+      discount : jnp.ndarray,
+      rewards : jnp.ndarray,
+      actions : jnp.ndarray):
+    """Summary
+    
+    Args:
+        online_q (TYPE): T x B x A
+        target_q (TYPE): T x B x A
+        discount (TYPE): T x B
+        rewards (TYPE): T x B
+        actions (TYPE): T x B
+    
+    Returns:
+        TYPE: Description
+    """
     # Get value-selector actions from online Q-values for double Q-learning.
     selector_actions = jnp.argmax(online_q, axis=-1) # [T, B]
     # Preprocess discounts & rewards.
@@ -41,20 +61,11 @@ class QLearning:
         out_axes=1)
     # TODO(b/183945808): when this bug is fixed, truncations of actions,
     # rewards, and discounts will no longer be necessary.
-    batch_td_error = batch_td_error_fn(
+    return batch_td_error_fn(
         online_q[:-1],
         actions[:-1],
         target_q[1:],
         selector_actions[1:],
         rewards[:-1],
         discounts[:-1])
-    batch_loss = 0.5 * jnp.square(batch_td_error).sum(axis=0)
-
-    metrics = {'z.q_mean': online_q.mean()}
-    metrics = {'z.q_max': online_q.max()}
-    metrics = {'z.q_min': online_q.min()}
-
-    return batch_td_error, batch_loss, metrics
-
-
 

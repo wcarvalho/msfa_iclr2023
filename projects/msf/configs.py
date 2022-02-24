@@ -16,16 +16,17 @@ class R2D1Config:
   variable_update_period: int = 400 # how often to update actor
 
   # Learner options
-  burn_in_length: int = 40  # burn in during learning
-  trace_length: int = 40  # how long training should be
+  burn_in_length: int = 0  # burn in during learning
+  trace_length: int = 20  # how long training should be
   sequence_period: int = 40  # how often to add
   learning_rate: float = 5e-5
   bootstrap_n: int = 5
   seed: int = 1
-  max_number_of_steps: int = 10_000_000
+  max_number_of_steps: int = 5_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
+  loss_coeff: float = 1.0
 
   # How many gradient updates to perform per learner step.
   num_sgd_steps_per_step: int = 4
@@ -33,7 +34,7 @@ class R2D1Config:
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 0.0 # 0.0=single process
-  min_replay_size: int = 10
+  min_replay_size: int = 10_000
   max_replay_size: int = 200_000
   batch_size: int = 32
   store_lstm_state: bool = True
@@ -49,21 +50,37 @@ class R2D1Config:
   # Network hps
   memory_size = 512
   out_hidden_size = 128
+  eval_network: bool = False
 
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
   npolicies: int = 10 # number of policies to sample
-  variance: float = 0.1
+  variance: float = 0.5
   # Network hps
   policy_size = 32
+  policy_layers = 0
   batch_size: int = 20
   cumulant_hidden_size: int=128 # hidden size for cumulant pred
   embed_task: bool = False  # whether to embed task
   normalize_task: bool = False # whether to normalize task embedding
   normalize_cumulants: bool = True # whether to normalize task embedding
   balance_reward: bool = False # whether to normalize task embedding
+  eval_network: bool = True
+  duelling: bool = False
+  z_as_train_task: bool = True
+  state_hidden_size: int = 0
+
+
+@dataclasses.dataclass
+class RewardConfig:
+  """Extra configuration options for USFA agent."""
+  reward_coeff: float = 1. # coefficient for reward loss
+  value_coeff: float = 1. # coefficient for value loss
+  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
+  q_aux: str="ensemble"
+
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
@@ -83,25 +100,19 @@ class FarmConfig:
   out_layers: int = 0
 
 @dataclasses.dataclass
-class FarmModelConfig:
+class FarmModelConfig(FarmConfig):
   """Extra configuration options for FARM module."""
 
   # Network hps
   extra_negatives: int = 10
   temperature: float = 0.01
-  model_coeff: float = 100
+  model_coeff: float = 1
   out_layers: int = 2
   model_layers: int = 2
   batch_size: int = 16
   activation: str='relu'
 
 
-@dataclasses.dataclass
-class RewardConfig:
-  """Extra configuration options for USFA agent."""
-  reward_coeff: float = 0.1 # coefficient for loss
-  value_coeff: float = 0.1 # coefficient for loss
-  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
 
 
 @dataclasses.dataclass

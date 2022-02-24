@@ -51,7 +51,6 @@ class GoToAvoid(dm_env.Environment):
     wrappers=None,
     nobjects=10,
     respawn=False,
-    timestep_penalty=0.01,
     **kwargs):
     """Initializes a new Catch environment.
     Args:
@@ -68,6 +67,7 @@ class GoToAvoid(dm_env.Environment):
             tile_size=tile_size,
             nobjects=nobjects,
             respawn=respawn,
+            objects=list(o2r.keys()),
         )
 
     self.env = MultiLevel(
@@ -79,7 +79,6 @@ class GoToAvoid(dm_env.Environment):
 
 
     self.default_env = GymWrapper(self.env.env)
-    self.timestep_penalty = timestep_penalty
 
 
   def reset(self) -> dm_env.TimeStep:
@@ -95,7 +94,6 @@ class GoToAvoid(dm_env.Environment):
     obs, reward, done, info = self.env.step(action)
     obs = convert_rawobs(obs)
 
-    reward = reward - self.timestep_penalty
     if done:
       timestep = dm_env.termination(reward=reward, observation=obs)
     else:
