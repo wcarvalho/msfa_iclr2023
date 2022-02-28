@@ -121,13 +121,43 @@ def build_program(agent, num_actors,
       import wandb
       # TODO: fix ugly hack
       date, settings = log_dir.split("/")[-3: -1]
-      wandb.init(project="msf", group=f"{date}/{settings}", entity="wcarvalho92")
+      # wandb.init(project="msf", group=f"{date}/{settings}", entity="wcarvalho92")
+      wandb.init(
+            project='msf',
+            entity="wcarvalho92",
+            dir=path,
+            name=f"{date}/{settings}",
+            group=f"{date}/{settings}",
+            # name='Gridworld few tasks: policy and value; a2c outer loss; rmsprop theta, eta optim; update mu once per 10 theta, eta updates',
+
+            # name='Gridworld One task; a2c outer loss; rmsprop train theta, eta, mu; unroll=4; slow mu lr',
+
+            # notes='nGVF={}; theta lr={}, eps={}; eta lr={}, eps={}, entropy_reg={}'.format(
+            #     config['num_gvfs'], 
+            #     config['a2c_opt_kwargs']['learning_rate'], config['a2c_opt_kwargs']['eps'], 
+            #     # config['eta_opt_kwargs']['eta_learning_rate'], config['eta_opt_kwargs']['eps'],
+            #     config['eta_opt_kwargs']['learning_rate'], config['eta_opt_kwargs']['eps'],
+            #     config['entropy_coef'], 
+            # ), 
+            save_code=False,
+            config=config.__dict__,
+        )
       return logger_fn(*args, **kwargs)
     return make_logger
 
   if use_wandb:
     import wandb
     wandb.config = config.__dict__
+    date, settings = log_dir.split("/")[-3: -1]
+    wandb.init(
+            project='msf',
+            entity="wcarvalho92",
+            dir=path,
+            name=f"{date}/{settings}",
+            group=f"{date}/{settings}",
+            save_code=False,
+            config=config.__dict__,
+        )
 
     logger_fn = wandb_wrap_logger(logger_fn)
     actor_logger_fn = wandb_wrap_logger(actor_logger_fn)

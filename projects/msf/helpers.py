@@ -17,6 +17,7 @@ from losses import usfa as usfa_losses
 from losses.vae import VaeAuxLoss
 from losses.contrastive_model import DeltaContrastLoss
 from losses import cumulants
+from modules.ensembles import QLearningEnsembleLoss
 
 from projects.msf import nets
 from projects.msf import configs
@@ -140,6 +141,33 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
+  elif agent == "r2d1_noise":
+    config = configs.USFAConfig(**default_config)  # for convenience since has var
+
+    NetworkCls=nets.r2d1_noise # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
+  elif agent == "r2d1_noise_ensemble":
+    config = configs.USFAConfig(**default_config)   # for convenience since has var
+    config.loss_coeff = 0 # Turn off main loss
+
+    NetworkCls=nets.r2d1_noise_ensemble # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      aux_tasks=[
+        QLearningEnsembleLoss(
+          coeff=1.,
+          discount=config.discount)
+      ])
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
   elif agent == "r2d1_farm":
 
     config = data_utils.merge_configs(
@@ -188,7 +216,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     LossFnKwargs.update(
       aux_tasks=[
         q_aux_loss(config.q_aux)(
-          coeff=config.value_coeff,
+          coeff=1.,
           discount=config.discount)
       ])
     loss_label = 'usfa'

@@ -18,7 +18,8 @@ from modules.embedding import OAREmbedding
 from modules import farm
 from modules.farm_model import FarmModel, FarmCumulants
 from modules.vision import AtariVisionTorso
-from modules.usfa import UsfaHead, USFAInputs, USFAInputs, CumulantsAuxTask, ConcatFlatStatePolicy
+from modules.usfa import UsfaHead, USFAInputs, CumulantsAuxTask, ConcatFlatStatePolicy
+from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules import usfa as usfa_modules
 from modules import vae as vae_modules
 
@@ -77,7 +78,6 @@ def memory_prep_fn(num_actions, extract_fn=None):
 # R2D1
 # ======================================================
 
-
 def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
   """
   Concat task with memory output.
@@ -96,6 +96,58 @@ def r2d1(config, env_spec):
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=r2d1_prediction_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+  )
+
+def r2d1_noise(config, env_spec):
+  num_actions = env_spec.actions.num_values
+
+  def prediction_prep_fn(inputs, memory_out, **kwargs):
+    """
+    Concat [task + noise] with memory output.
+    """
+    task = inputs.observation.task
+    noise = jax.random.normal(hk.next_rng_key(), task.shape)
+    task =  task + jnp.sqrt(config.variance) * noise
+    return jnp.concatenate((memory_out, task), axis=-1)
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=True),
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=prediction_prep_fn,
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+  )
+
+def r2d1_noise_ensemble(config, env_spec):
+  num_actions = env_spec.actions.num_values
+
+  def prediction_prep_fn(inputs, memory_out, **kwargs):
+    """
+    Concat [task + noise] with memory output.
+    """
+    return QEnsembleInputs(
+      w=inputs.observation.task,
+      memory_out=memory_out,
+      )
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=True),
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=prediction_prep_fn,
+    prediction=QEnsembleHead(
+    num_actions=num_actions,
+      hidden_size=config.out_hidden_size,
+      policy_size=config.policy_size,
+      variance=config.variance,
+      nsamples=config.npolicies,
+      policy_layers=config.policy_layers,
+      q_input_fn=ConcatFlatStatePolicy(config.state_hidden_size)
+      )
   )
 
 def r2d1_farm(config, env_spec):
@@ -184,7 +236,6 @@ def usfa(config, env_spec, use_seperate_eval=True):
     evaluation_prep_fn=evaluation_prep_fn,
     evaluation=evaluation,
   )
-
 
 def build_usfa_farm_head(config, state_dim, num_actions, farm_memory, flat=True):
 

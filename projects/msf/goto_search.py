@@ -44,12 +44,10 @@ def main(_):
   if search == 'baselines':
     space = {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa']),
-        "z_as_train_task": tune.grid_search([True]),
-        "variance": tune.grid_search([.1, .5]),
+        "agent": tune.grid_search(['usfa', 'usfa_qlearning', 'r2d1', 'r2d1_farm']),
         # "setting": tune.grid_search(['small', 'medium', 'large']),
     }
-    experiment='baselines_5'
+    experiment='baselines_6'
   elif search == 'ablations':
     space = {
         "seed": tune.grid_search([2]),
@@ -144,7 +142,7 @@ def main(_):
     # launch experiment
     program = build_program(
       agent=agent, num_actors=num_actors,
-      use_wandb=False,
+      use_wandb=True,
       setting=setting,
       config_kwargs=config, 
       path=root_path,
