@@ -74,7 +74,7 @@ def build_program(agent, num_actors,
       env_spec=env_spec,
       NetworkCls=NetworkCls,
       NetKwargs=NetKwargs,
-      eval_network=eval_network)
+      eval_network=True)
 
   builder=functools.partial(td_agent.TDBuilder,
       LossFn=LossFn, LossFnKwargs=LossFnKwargs,
@@ -125,7 +125,7 @@ def build_program(agent, num_actors,
       wandb.init(
             project='msf',
             entity="wcarvalho92",
-            dir=path,
+            # dir=path,
             name=f"{date}/{settings}",
             group=f"{date}/{settings}",
             # name='Gridworld few tasks: policy and value; a2c outer loss; rmsprop theta, eta optim; update mu once per 10 theta, eta updates',
@@ -146,13 +146,15 @@ def build_program(agent, num_actors,
     return make_logger
 
   if use_wandb:
+    os.chdir(path)
+
     import wandb
     wandb.config = config.__dict__
     date, settings = log_dir.split("/")[-3: -1]
     wandb.init(
             project='msf',
             entity="wcarvalho92",
-            dir=path,
+            # dir=path,
             name=f"{date}/{settings}",
             group=f"{date}/{settings}",
             save_code=False,

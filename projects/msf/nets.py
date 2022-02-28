@@ -101,7 +101,7 @@ def r2d1(config, env_spec):
 def r2d1_noise(config, env_spec):
   num_actions = env_spec.actions.num_values
 
-  def prediction_prep_fn(inputs, memory_out, **kwargs):
+  def add_noise_concat(inputs, memory_out, **kwargs):
     """
     Concat [task + noise] with memory output.
     """
@@ -116,7 +116,8 @@ def r2d1_noise(config, env_spec):
     vision=AtariVisionTorso(flatten=True),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=prediction_prep_fn,
+    prediction_prep_fn=add_noise_concat, # add noise
+    evaluation_prep_fn=r2d1_prediction_prep_fn, # don't add noise
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 

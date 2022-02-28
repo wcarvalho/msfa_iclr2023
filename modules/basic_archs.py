@@ -38,6 +38,8 @@ class BasicRecurrent(hk.Module):
     self.vision = vision
     self.memory = memory
     self.prediction = prediction
+    if evaluation is None:
+      evaluation = prediction
     self.evaluation = evaluation
 
     self.inputs_prep_fn = inputs_prep_fn
@@ -45,9 +47,10 @@ class BasicRecurrent(hk.Module):
     self.memory_prep_fn = memory_prep_fn
     self.memory_proc_fn = memory_proc_fn
     self.prediction_prep_fn = prediction_prep_fn
-    if evaluation is not None and evaluation_prep_fn is None:
+    if evaluation_prep_fn is None:
         evaluation_prep_fn = prediction_prep_fn
     self.evaluation_prep_fn = evaluation_prep_fn
+
 
     # -----------------------
     # auxilliary tasks
@@ -82,7 +85,6 @@ class BasicRecurrent(hk.Module):
       state: hk.LSTMState,  # [T, ...]
       key: networks_lib.PRNGKey,
     ) -> Tuple[Any, hk.LSTMState]:
-    assert self.evaluation is not None, "no eval function"
     return self.forward(inputs, state, key, setting="evaluate")
 
   def forward(

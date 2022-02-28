@@ -79,7 +79,7 @@ def main(_):
         env_spec=env_spec,
         NetworkCls=NetworkCls,
         NetKwargs=NetKwargs,
-        eval_network=eval_network),
+        eval_network=True),
       builder=builder,
       workdir=log_dir,
       config=config,

@@ -37,10 +37,10 @@ FLAGS = flags.FLAGS
 def main(_):
   mp.set_start_method('spawn')
   experiment=None
-  num_cpus = 4
+  num_cpus = 6
   num_gpus = 1
 
-  search = 'baselines'
+  search = 'ablations'
   if search == 'baselines':
     space = {
         "seed": tune.grid_search([1]),
@@ -51,17 +51,13 @@ def main(_):
   elif search == 'ablations':
     space = {
         "seed": tune.grid_search([2]),
-        "agent": tune.grid_search(['usfa_qlearning']),
-        "state_hidden_size": tune.grid_search([0, 128]),
-        "z_as_train_task": tune.grid_search([True, False]),
-        "variance": tune.grid_search([.1, .5]),
-        
-        # "q_aux": tune.grid_search(['ensemble']),
-        # "policy_layers": tune.grid_search([0, 2]),
-        # "duelling": tune.grid_search([True, False]),
-        # "setting": tune.grid_search(['small', 'medium', 'large']),
+        "agent": tune.grid_search([
+          'r2d1', 'usfa_qlearning', 'r2d1_noise', 'r2d1_noise_ensemble',
+          'usfa',
+          ]),
+        "setting": tune.grid_search(['medium']),
     }
-    experiment='ablations_2'
+    experiment='ablations_3'
   elif search == 'r2d1_farm':
     space = {
         "seed": tune.grid_search([1]),
@@ -147,6 +143,8 @@ def main(_):
       config_kwargs=config, 
       path=root_path,
       log_dir=log_dir)
+
+    if program is None: return
     lp.launch(program, lp.LaunchType.LOCAL_MULTI_THREADING, terminal='current_terminal', 
       local_resources = { # minimize GPU footprint
       'actor':
