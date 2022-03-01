@@ -2,7 +2,7 @@
    BabyAI derivative environments.
 
 Comand I run:
-  PYTHONPATH=$PYTHONPATH:$HOME/projects/rljax/ \
+  PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
     CUDA_VISIBLE_DEVICES=0 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
