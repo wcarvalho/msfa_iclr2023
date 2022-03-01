@@ -15,7 +15,7 @@ class MissionIntegerWrapper(gym.core.ObservationWrapper):
         self.observation_space.spaces['mission'] = gym.spaces.Box(
             low=0,
             high=1,
-            shape=(30,),
+            shape=(self.max_length,),
             dtype='uint8'
         )
 

@@ -16,6 +16,7 @@
 """Kitchen reinforcement learning environment."""
 from typing import NamedTuple
 import os.path
+import yaml
 
 import dm_env
 from dm_env import specs
@@ -36,7 +37,6 @@ class Observation(NamedTuple):
 
 def convert_rawobs(obs):
     obs.pop('mission_idx')
-    obs['image'] = obs['image'] / 255.0
     return Observation(**obs)
 
 class MultitaskKitchen(dm_env.Environment):
@@ -134,12 +134,4 @@ class MultitaskKitchen(dm_env.Environment):
 
   def observation_spec(self):
     default = self.default_env.observation_spec()
-    return Observation(
-        image=specs.BoundedArray(
-            shape=default['image'].shape,
-            dtype=np.float32,
-            name="image",
-            minimum=0,
-            maximum=1,
-        ),
-        mission=default['mission'])
+    return Observation(**default)

@@ -3,12 +3,12 @@ Run Successor Feature based agents and baselines on
   BabyAI derivative environments.
 
 Comand I run:
-  PYTHONPATH=$PYTHONPATH:$HOME/projects/rljax/ \
+  PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
     CUDA_VISIBLE_DEVICES=0 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
-    python projects/msf/goto_distributed.py \
+    python projects/comp_babyai/train_distributed.py \
     --agent usfa
 """
 
@@ -27,8 +27,8 @@ from acme.utils import paths
 import functools
 
 from agents import td_agent
-from projects.msf import helpers
-from projects.msf.environment_loop import EnvironmentLoop
+from projects.comp_babyai import helpers
+from projects.comp_babyai.environment_loop import EnvironmentLoop
 from utils import make_logger, gen_log_dir
 import pickle
 
@@ -57,8 +57,9 @@ def build_program(agent, num_actors,
   # -----------------------
   # load env stuff
   # -----------------------
+  max_vocab_size = 35
   environment_factory = lambda is_eval: helpers.make_environment(
-    evaluation=is_eval, path=path, setting=setting)
+    evaluation=is_eval, path=path, setting=setting, max_vocab_size=max_vocab_size)
   env = environment_factory(False)
   env_spec = acme.make_environment_spec(env)
   del env
@@ -66,7 +67,8 @@ def build_program(agent, num_actors,
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs,
+    setting=setting, max_vocab_size=max_vocab_size)
 
   def network_factory(spec):
     return td_agent.make_networks(
@@ -89,7 +91,7 @@ def build_program(agent, num_actors,
   if experiment:
     extra['exp'] = experiment
   log_dir = log_dir or gen_log_dir(
-    base_dir=f"{path}/results/msf/distributed",
+    base_dir=f"{path}/results/comp_babyai/distributed",
     hourminute=hourminute,
     agent=agent,
     **extra)
@@ -121,9 +123,9 @@ def build_program(agent, num_actors,
       import wandb
       # TODO: fix ugly hack
       date, settings = log_dir.split("/")[-3: -1]
-      # wandb.init(project="msf", group=f"{date}/{settings}", entity="wcarvalho92")
+      # wandb.init(project="comp_babyai", group=f"{date}/{settings}", entity="wcarvalho92")
       wandb.init(
-            project='msf',
+            project='comp_babyai',
             entity="wcarvalho92",
             # dir=path,
             name=f"{date}/{settings}",
@@ -152,7 +154,7 @@ def build_program(agent, num_actors,
     wandb.config = config.__dict__
     date, settings = log_dir.split("/")[-3: -1]
     wandb.init(
-            project='msf',
+            project='comp_babyai',
             entity="wcarvalho92",
             # dir=path,
             name=f"{date}/{settings}",

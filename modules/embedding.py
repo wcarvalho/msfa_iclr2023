@@ -64,9 +64,9 @@ class OneHotTask(hk.Module):
 
 
 class LanguageTaskEmbedder(hk.Module):
-  """docstring for OneHotTask"""
+  """Module that embed words and then runs them through GRU."""
   def __init__(self, vocab_size, word_dim, task_dim, **kwargs):
-    super(OneHotTask, self).__init__()
+    super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
     self.word_dim = word_dim
     self.embedder = hk.Embed(vocab_size=vocab_size, embed_dim=word_dim, **kwargs)
@@ -82,10 +82,10 @@ class LanguageTaskEmbedder(hk.Module):
         TYPE: Description
     """
     B, N = x.shape
-    initial = self.language_model.initial_state(B)
-    words = self.embedder(x)
+    initial = self.language_model.initial_state(B) 
+    words = self.embedder(x) # B x N x D
+    words = jnp.transpose(words, (1,0,2))  # N x B x D
     sentence, _ = hk.static_unroll(self.language_model, words, initial)
-    import ipdb; ipdb.set_trace()
-    return sentence
+    return sentence[-1] # embedding at end
 
 

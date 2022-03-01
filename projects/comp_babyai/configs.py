@@ -16,8 +16,8 @@ class R2D1Config:
   variable_update_period: int = 400 # how often to update actor
 
   # Learner options
-  burn_in_length: int = 0  # burn in during learning
-  trace_length: int = 20  # how long training should be
+  burn_in_length: int = 10  # burn in during learning
+  trace_length: int = 30  # how long training should be
   sequence_period: int = 40  # how often to add
   learning_rate: float = 5e-5
   bootstrap_n: int = 5

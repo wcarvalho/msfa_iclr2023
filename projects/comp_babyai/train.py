@@ -30,6 +30,7 @@ from utils import make_logger, gen_log_dir
 # flags
 # -----------------------
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
+flags.DEFINE_string('env_setting', 'small', 'which environment setting.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
@@ -38,7 +39,7 @@ FLAGS = flags.FLAGS
 
 
 def main(_):
-  max_vocab_size = 50
+  max_vocab_size = 35
   env = helpers.make_environment(max_vocab_size=max_vocab_size)
   env_spec = acme.make_environment_spec(env)
 

@@ -35,7 +35,6 @@ class GotoObs(NamedTuple):
 
 def convert_rawobs(obs):
     obs.pop('mission_idx')
-    # obs['image'] = obs['image'] / 255.0
     return GotoObs(**obs)
 
 class GoToAvoid(dm_env.Environment):
@@ -52,7 +51,7 @@ class GoToAvoid(dm_env.Environment):
     nobjects=10,
     respawn=False,
     **kwargs):
-    """Initializes a new Catch environment.
+    """Initializes a new Goto/Avoid environment.
     Args:
       rows: number of rows.
       columns: number of columns.

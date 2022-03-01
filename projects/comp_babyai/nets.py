@@ -1,6 +1,5 @@
-import haiku as hk
-
 from typing import Callable, Optional, Tuple, NamedTuple
+import functools
 
 from acme.jax.networks import duelling
 from acme.jax import networks as networks_lib
@@ -18,10 +17,6 @@ from modules.embedding import OAREmbedding, LanguageTaskEmbedder
 from modules import farm
 from modules.farm_model import FarmModel, FarmCumulants
 from modules.vision import AtariVisionTorso
-from modules.usfa import UsfaHead, USFAInputs, CumulantsAuxTask, ConcatFlatStatePolicy
-from modules.ensembles import QEnsembleInputs, QEnsembleHead
-from modules import usfa as usfa_modules
-from modules import vae as vae_modules
 
 from utils import data as data_utils
 
@@ -57,43 +52,29 @@ def make_farm_prep_fn(num_actions):
 def flatten_structured_memory(memory_out, **kwargs):
   return memory_out.reshape(*memory_out.shape[:-2], -1)
 
-def memory_prep_fn(num_actions, extract_fn=None):
-  """Combine vae samples w/ action + reward"""
-  embedder = OAREmbedding(
-    num_actions=num_actions,
-    observation=True,
-    concat=False)
-  def prep(inputs, obs):
-    if extract_fn:
-      items = [extract_fn(inputs, obs)]
-    else:
-      items = []
-    items.extend(embedder(inputs, obs))
-
-    return jnp.concatenate(items, axis=-1)
-
-  return prep
+def prep_task(inputs, task_embedder):
+  """Convert task to ints, batchapply if necessary, and run through embedding function."""
+  task = inputs.observation.task
+  has_time = len(task.shape) == 3
+  batchfn = hk.BatchApply if has_time else lambda x:x
+  return batchfn(task_embedder)(task.astype(jnp.int32))
 
 # ======================================================
 # R2D1
 # ======================================================
 
-def r2d1_prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
+def prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
   """
   Concat task with memory output.
   """
-  task = inputs.observation.task
-  task = task_embedder(task)
-  import ipdb; ipdb.set_trace()
+  task = prep_task(inputs, task_embedder)
   return jnp.concatenate((memory_out, task), axis=-1)
 
 def farm_prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
   """
   Concat task with memory output.
   """
-  task = inputs.observation.task
-  task = task_embedder(task)
-  import ipdb; ipdb.set_trace()
+  task = prep_task(inputs, task_embedder)
   return jnp.concatenate((flatten_structured_memory(memory_out), task), axis=-1)
 
 def r2d1(config, env_spec):
@@ -105,7 +86,7 @@ def r2d1(config, env_spec):
     vision=AtariVisionTorso(flatten=True),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=functools.partial(r2d1_prediction_prep_fn,
+    prediction_prep_fn=functools.partial(prediction_prep_fn,
       task_embedder=LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
@@ -134,7 +115,6 @@ def r2d1_farm(config, env_spec):
 
 def r2d1_farm_model(config, env_spec):
   num_actions = env_spec.actions.num_values
-
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,

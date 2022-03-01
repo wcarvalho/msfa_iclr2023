@@ -422,6 +422,7 @@ class KitchenLevel(RoomGridLevel):
         else:
             num_navs = 1
         self.max_steps = num_navs * nav_time_maze
+        self.timesteps_complete=0
 
         return obs
 
@@ -504,12 +505,17 @@ class KitchenLevel(RoomGridLevel):
 
         # If we've successfully completed the mission
         info = {'success': False}
+        done = False
         if self.task is not None:
-            reward, done = self.task.check_status()
+            reward, task_done = self.task.check_status()
             reward = float(reward)
 
-            if done:
+            if task_done:
                 info['success'] = True
+                self.timesteps_complete += 1
+
+            if self.timesteps_complete == 2:
+              done = True
 
         # if past step count, done
         if self.step_count >= self.max_steps and self.use_time_limit:

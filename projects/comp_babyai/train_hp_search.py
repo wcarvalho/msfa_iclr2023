@@ -2,13 +2,13 @@
 Param search.
 
 Comand I run:
-  PYTHONPATH=$PYTHONPATH:$HOME/projects/rljax/ \
+  PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
     CUDA_VISIBLE_DEVICES="1,2,3" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
-    python projects/msf/goto_search.py \
-    --folder 'reward'
+    python projects/comp_babyai/train_hp_search.py \
+    --folder 'initial'
 """
 
 from absl import app
@@ -27,7 +27,7 @@ import time
 from utils import gen_log_dir
 import os
 
-from projects.msf.goto_distributed import build_program
+from projects.comp_babyai.train_distributed import build_program
 
 flags.DEFINE_string('folder', 'set', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
@@ -40,24 +40,14 @@ def main(_):
   num_cpus = 6
   num_gpus = 1
 
-  search = 'ablations'
+  search = 'baselines'
   if search == 'baselines':
     space = {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa', 'usfa_qlearning', 'r2d1', 'r2d1_farm']),
+        "seed": tune.grid_search([1, 2, 3]),
+        "agent": tune.grid_search(['r2d1']),
         # "setting": tune.grid_search(['small', 'medium', 'large']),
     }
-    experiment='baselines_6'
-  elif search == 'ablations':
-    space = {
-        "seed": tune.grid_search([2]),
-        "agent": tune.grid_search([
-          'r2d1', 'usfa_qlearning', 'r2d1_noise', 'r2d1_noise_ensemble',
-          'usfa',
-          ]),
-        "setting": tune.grid_search(['medium']),
-    }
-    experiment='ablations_3'
+    experiment='baselines'
   elif search == 'r2d1_farm':
     space = {
         "seed": tune.grid_search([1]),
@@ -67,36 +57,6 @@ def main(_):
         "model_layers": tune.grid_search( [1, 2]),
     }
     # experiment='r2d1_farm_model_v1'
-  elif search == 'r2d1_vae':
-    space = {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1_vae']),
-        "vae_coeff": tune.grid_search( [1e-3, 1e-4]),
-        "beta": tune.grid_search( [25, 100]),
-        # "latent_source": tune.grid_search( ["samples", "memory"]),
-        "latent_dim": tune.grid_search( [512]),
-    }
-    experiment='vae_beta_v5'
-  elif search == 'usfa':
-    space = {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa']),
-    }
-  elif search == 'usfa_farm':
-    space = {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa_farmflat_model']),
-        # "model_coeff": tune.grid_search([1e-1, 1e-2]),
-        # "value_coeff": tune.grid_search([100., 1000.0]),
-        # "reward_coeff": tune.grid_search([1.]),
-        # "loss_coeff": tune.grid_search([1e-1, 1e-2]),
-        "model_coeff": tune.grid_search([0., 1e-1]),
-        "value_coeff": tune.grid_search([100., 1000.0]),
-        "reward_coeff": tune.grid_search([0.]),
-        "loss_coeff": tune.grid_search([0.]),
-
-    }
-    experiment='farm_flat'
   else:
     raise NotImplementedError
 
@@ -113,12 +73,12 @@ def main(_):
     """
     agent = config.pop('agent', 'r2d1')
     num_actors = config.pop('num_actors', 9)
-    setting = config.pop('setting', 'small')
+    setting = config.pop('setting', 'small_length2_nodist')
 
 
     # get log dir for experiment
     log_dir = gen_log_dir(
-      base_dir=f"{root_path}/results/msf/{folder}",
+      base_dir=f"{root_path}/results/comp_babyai/{folder}",
       hourminute=False,
       agent=agent,
       setting=setting,

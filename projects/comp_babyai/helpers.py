@@ -1,3 +1,6 @@
+import os.path
+import yaml
+
 import acme
 import functools
 
@@ -20,8 +23,8 @@ from modules.ensembles import QLearningEnsembleLoss
 from projects.comp_babyai import nets
 from projects.comp_babyai import configs
 
-from envs.acme.goto_avoid import GoToAvoid
-from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper
+from envs.acme.multitask_kitchen import MultitaskKitchen
+from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, MissionIntegerWrapper
 from envs.babyai_kitchen.utils import InstructionsPreprocessor
 
 
@@ -54,7 +57,7 @@ def make_environment(evaluation: bool = False,
     task_dicts = tasks['train']
 
   instr_preproc = InstructionsPreprocessor(
-    path="data/babyai_kitchen/vocab.json")
+    path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
 
   env = MultitaskKitchen(
     task_dicts=task_dicts,
