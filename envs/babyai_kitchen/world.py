@@ -294,7 +294,7 @@ class Kitchen(object):
                     rootdir=rootdir,
                     properties=['on', 'dirty'],
                     visible_properties=['on'],
-                    can_contain=['knife', 'pot', 'pan', 'fork', 'plates'],
+                    can_contain=['knife', 'pot', 'pan', 'fork', 'plates', 'bowl'],
                     pickupable=False,
                     toggle_prop={'dirty': False},
                     # can_clean_contained=True,
@@ -351,6 +351,14 @@ class Kitchen(object):
                     properties=['dirty'],
                     visible_properties=['dirty'],
                 ),
+                KitchenContainer(
+                    name="bowl",
+                    rendering_scale=rendering_scale,
+                    rootdir=rootdir,
+                    can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                    properties=['dirty'],
+                    visible_properties=['dirty'],
+                ),
 
                 KitchenObject(
                     name="fork",
@@ -364,6 +372,8 @@ class Kitchen(object):
                     name="knife",
                     object_type='utensil',
                     rendering_scale=rendering_scale,
+                    properties=['dirty'],
+                    visible_properties=['dirty'],
                     rootdir=rootdir,
                 ),
 
@@ -384,6 +394,19 @@ class Kitchen(object):
                     rootdir=rootdir,
                     ),
 
+                Food(name='apple',
+                    rendering_scale=rendering_scale,
+                    rootdir=rootdir,
+                    properties=['sliced'],
+                    visible_properties=['sliced'],
+                    ),
+
+                Food(name='orange',
+                    rendering_scale=rendering_scale,
+                    rootdir=rootdir,
+                    properties=['sliced'],
+                    visible_properties=['sliced'],
+                    ),
         ]
 
 if __name__ == '__main__':

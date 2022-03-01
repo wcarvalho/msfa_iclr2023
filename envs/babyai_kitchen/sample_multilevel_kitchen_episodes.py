@@ -16,12 +16,14 @@ def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--tasks', help='tasks file', 
-      default='envs/babyai_kitchen/tasks/unseen_arg/length=3_cook.yaml')
+      default='envs/babyai_kitchen/tasks/unseen_arg/length=2_no_dist.yaml')
+    parser.add_argument('--task_kind', help='task_kind', 
+      default=None)
     parser.add_argument('--sets', help='sets file',
         default="envs/babyai_kitchen/tasks/default_sets.yaml")
     parser.add_argument('--missions', help='# of unique missions',
         default=10)
-    parser.add_argument('--room-size', type=int, default=8)
+    parser.add_argument('--room-size', type=int, default=5)
     parser.add_argument('--agent-view-size', type=int, default=7)
     parser.add_argument('--random-object-state', type=int, default=0)
     parser.add_argument('--num-rows', type=int, default=1)
