@@ -51,6 +51,8 @@ class R2D1Config:
   memory_size = 512
   out_hidden_size = 128
   eval_network: bool = False
+  max_vocab_size: int = 30
+  word_dim: int = 128  # dimension of both word and task (sentence) embeddings
 
 
 @dataclasses.dataclass

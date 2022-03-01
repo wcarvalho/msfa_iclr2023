@@ -14,12 +14,8 @@ train:
 
   - name: pickup_train
     task_kinds: pickup
-      x: [
-        pot, pan, bowl, 
-        lettuce, potato, orange,
-        fork, plates, knife,
-        onion, tomato, apple
-      ]
+    taskarg_options:
+      x: [pot, pan, bowl, lettuce, potato, orange, fork, plates, knife, onion, tomato, apple]
     num_dists: 0
 
 test:

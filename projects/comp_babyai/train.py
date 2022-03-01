@@ -38,10 +38,11 @@ FLAGS = flags.FLAGS
 
 
 def main(_):
-  env = helpers.make_environment()
+  max_vocab_size = 50
+  env = helpers.make_environment(max_vocab_size=max_vocab_size)
   env_spec = acme.make_environment_spec(env)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(FLAGS.agent, env_spec, setting=FLAGS.env_setting)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(FLAGS.agent, env_spec, setting=FLAGS.env_setting, max_vocab_size=max_vocab_size)
 
   # -----------------------
   # logger

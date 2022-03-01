@@ -14,7 +14,7 @@ import jax.numpy as jnp
 from agents import td_agent
 from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
-from modules.embedding import OAREmbedding
+from modules.embedding import OAREmbedding, LanguageTaskEmbedder
 from modules import farm
 from modules.farm_model import FarmModel, FarmCumulants
 from modules.vision import AtariVisionTorso
@@ -78,12 +78,23 @@ def memory_prep_fn(num_actions, extract_fn=None):
 # R2D1
 # ======================================================
 
-def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
+def r2d1_prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
   """
   Concat task with memory output.
   """
   task = inputs.observation.task
+  task = task_embedder(task)
+  import ipdb; ipdb.set_trace()
   return jnp.concatenate((memory_out, task), axis=-1)
+
+def farm_prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
+  """
+  Concat task with memory output.
+  """
+  task = inputs.observation.task
+  task = task_embedder(task)
+  import ipdb; ipdb.set_trace()
+  return jnp.concatenate((flatten_structured_memory(memory_out), task), axis=-1)
 
 def r2d1(config, env_spec):
   num_actions = env_spec.actions.num_values
@@ -94,7 +105,12 @@ def r2d1(config, env_spec):
     vision=AtariVisionTorso(flatten=True),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=r2d1_prediction_prep_fn,
+    prediction_prep_fn=functools.partial(r2d1_prediction_prep_fn,
+      task_embedder=LanguageTaskEmbedder(
+        vocab_size=config.max_vocab_size,
+        word_dim=config.word_dim,
+        task_dim=config.word_dim),
+      ),
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
@@ -107,7 +123,12 @@ def r2d1_farm(config, env_spec):
     vision=AtariVisionTorso(flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions),
     memory=farm.FARM(config.module_size, config.nmodules),
-    prediction_prep_fn=flatten_structured_memory,
+    prediction_prep_fn=functools.partial(farm_prediction_prep_fn,
+      task_embedder=LanguageTaskEmbedder(
+        vocab_size=config.max_vocab_size,
+        word_dim=config.word_dim,
+        task_dim=config.word_dim),
+      ),
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
@@ -124,7 +145,12 @@ def r2d1_farm_model(config, env_spec):
       module_size=config.module_size,
       nmodules=config.nmodules,
       out_layers=config.out_layers),
-    prediction_prep_fn=flatten_structured_memory,
+    prediction_prep_fn=functools.partial(farm_prediction_prep_fn,
+      task_embedder=LanguageTaskEmbedder(
+        vocab_size=config.max_vocab_size,
+        word_dim=config.word_dim,
+        task_dim=config.word_dim),
+      ),
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
     aux_tasks=FarmModel(
       config.model_layers*[config.module_size],

@@ -27,6 +27,7 @@ from envs.babyai_kitchen.utils import InstructionsPreprocessor
 
 def make_environment(evaluation: bool = False,
                      tile_size=8,
+                     max_vocab_size=30,
                      path='.',
                      setting='small_length2_nodist',
                      ) -> dm_env.Environment:
@@ -63,7 +64,7 @@ def make_environment(evaluation: bool = False,
     wrappers=[ # wrapper for babyAI gym env
       functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size),
       functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc,
-        max_length=30)],
+        max_length=max_vocab_size)],
     )
 
   # wrappers for dm_env: used by agent/replay buffer
@@ -77,8 +78,8 @@ def make_environment(evaluation: bool = False,
   return wrappers.wrap_all(env, wrapper_list)
 
 
-def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
-  default_config = dict()
+def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', max_vocab_size=30):
+  default_config = dict(max_vocab_size=max_vocab_size)
   default_config.update(config_kwargs or {})
 
   if agent == "r2d1": # Recurrent DQN
@@ -98,6 +99,20 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
       dict_configs=default_config
       )
     NetworkCls=nets.r2d1_farm # default: 1.5M params
+    NetKwargs=dict(config=config,env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
+  elif agent == "r2d1_farm_model":
+
+    config = data_utils.merge_configs(
+      dataclass_configs=[configs.R2D1Config(), configs.FarmConfig()],
+      dict_configs=default_config
+      )
+    NetworkCls=nets.r2d1_farm_model # default: 1.5M params
     NetKwargs=dict(config=config,env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
