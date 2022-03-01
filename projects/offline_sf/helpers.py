@@ -16,38 +16,14 @@ import numpy as np
 from envs.acme.multitask_kitchen import MultitaskKitchen
 from envs.babyai_kitchen.bot import KitchenBot
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, RGBImgFullyObsWrapper, MissionIntegerWrapper
+from envs.babyai_kitchen.utils import InstructionsPreprocessor
+
 
 from utils.wrappers import ObservationRemapWrapper
 from utils import data
 
 from agents import td_agent
 from projects.msf import networks as msf_networks
-
-
-class InstructionsPreprocessor(object):
-  def __init__(self, path):
-    if os.path.exists(path):
-        # self.vocab = babyai.utils.format.Vocabulary(path)
-        self.vocab = json.load(open(path))
-    else:
-        raise FileNotFoundError(f'No vocab at "{path}"')
-
-  def __call__(self, mission, device=None):
-    """Copied from BabyAI
-    """
-    raw_instrs = []
-    max_instr_len = 0
-
-
-    tokens = re.findall("([a-z]+)", mission.lower())
-    instr = np.array([self.vocab[token] for token in tokens])
-    raw_instrs.append(instr)
-    max_instr_len = max(len(instr), max_instr_len)
-
-    instrs = np.zeros(max_instr_len, dtype=np.int32)
-    instrs[:len(instr)] = instr
-
-    return instrs
 
 
 def make_environment(tile_size=8,

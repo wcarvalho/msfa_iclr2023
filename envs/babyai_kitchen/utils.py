@@ -62,4 +62,27 @@ def load_kitchen_tasks(tasks, kitchen=None, kitchen_kwargs={}):
     return _tasks, _task_kinds
 
 
+class InstructionsPreprocessor(object):
+  def __init__(self, path):
+    if os.path.exists(path):
+        # self.vocab = babyai.utils.format.Vocabulary(path)
+        self.vocab = json.load(open(path))
+    else:
+        raise FileNotFoundError(f'No vocab at "{path}"')
 
+  def __call__(self, mission, device=None):
+    """Copied from BabyAI
+    """
+    raw_instrs = []
+    max_instr_len = 0
+
+
+    tokens = re.findall("([a-z]+)", mission.lower())
+    instr = np.array([self.vocab[token] for token in tokens])
+    raw_instrs.append(instr)
+    max_instr_len = max(len(instr), max_instr_len)
+
+    instrs = np.zeros(max_instr_len, dtype=np.int32)
+    instrs[:len(instr)] = instr
+
+    return instrs
