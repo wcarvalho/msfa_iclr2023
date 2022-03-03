@@ -514,6 +514,7 @@ class KitchenLevel(RoomGridLevel):
                 info['success'] = True
                 self.timesteps_complete += 1
 
+            # in order to complete final states in observation stream
             if self.timesteps_complete == 2:
               done = True
 

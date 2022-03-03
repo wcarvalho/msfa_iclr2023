@@ -39,27 +39,8 @@ class FarmInputs(NamedTuple):
   vector: jnp.ndarray
 
 class StructuredLSTM(hk.RNNCore):
-  r"""Long short-term memory (LSTM) RNN core.
-  The implementation is based on :cite:`zaremba2014recurrent`. Given
-  :math:`x_t` and the previous state :math:`(h_{t-1}, c_{t-1})` the core
-  computes
-  .. math::
-     \begin{array}{ll}
-     i_t = \sigma(W_{ii} x_t + W_{hi} h_{t-1} + b_i) \\
-     f_t = \sigma(W_{if} x_t + W_{hf} h_{t-1} + b_f) \\
-     g_t = \tanh(W_{ig} x_t + W_{hg} h_{t-1} + b_g) \\
-     o_t = \sigma(W_{io} x_t + W_{ho} h_{t-1} + b_o) \\
-     c_t = f_t c_{t-1} + i_t g_t \\
-     h_t = o_t \tanh(c_t)
-     \end{array}
-  where :math:`i_t`, :math:`f_t`, :math:`o_t` are input, forget and
-  output gate activations, and :math:`g_t` is a vector of cell updates.
-  The output is equal to the new hidden, :math:`h_t`.
-  Notes:
-    Forget gate initialization:
-      Following :cite:`jozefowicz2015empirical` we add 1.0 to :math:`b_f`
-      after initialization in order to reduce the scale of forgetting in
-      the beginning of the training.
+  r""" Structured long short-term memory (LSTM) RNN core.
+  This acts as N indepedently updating RNNs.
   """
 
   def __init__(self, hidden_size: int, nmodules: int, name: Optional[str] = None):
@@ -109,6 +90,7 @@ class StructuredLSTM(hk.RNNCore):
 
 class FeatureAttention(hk.Module):
   """FeatureAttention from Feature-Attending Recurrent Modules. f_att from paper.
+  Each module has its own attention parameters.
   """
   def __init__(self, dim=16):
     super(FeatureAttention, self).__init__()
@@ -153,18 +135,89 @@ class FeatureAttention(hk.Module):
     return image
 
 
+class ModuleAttention(hk.Module):
+  """Attention over modules using transformer-style attention. 
+  Each module has its own parameters. f_share from paper."""
+  def __init__(self, module_size, num_heads=4, w_init_scale=2.):
+    super(ModuleAttention, self).__init__()
+    self.attn_factory = lambda: hk.MultiHeadAttention(
+      num_heads=num_heads,
+      key_size=module_size,
+      model_size=module_size,
+      w_init_scale=w_init_scale,
+      )
+
+  def __call__(
+      self,
+      queries: jnp.ndarray,
+      hidden_states: jnp.ndarray,
+      ) -> jnp.ndarray:
+    """ Multihead attention expects [N, B, D].
+    
+    Args:
+        queries (jnp.ndarray): B x N x D
+        hidden_states (jnp.ndarray): B x N x D
+    
+    Returns:
+        jnp.ndarray: Description
+    """
+    # convert things to dims expected by multihead attention
+    hidden_states = hidden_states.transpose((1,0,2))  # [N, B, D]
+    queries = queries.transpose((1,0,2))  # [N, B, D]
+
+    N, B = queries.shape[:2]
+    D = hidden_states.shape[2]
+
+    # add zeros for no attention
+    zeros = jnp.zeros((1, B, D))
+    hidden_states = jnp.concatenate((hidden_states, zeros)) # [N+1, B, D]
+
+    # add dummy dimension to vmap over it.
+    queries = jnp.expand_dims(queries, axis=1)  # [N, B, D] --> [N, 1, B, D]
+
+
+    functions = [self.attn_factory() for i in jnp.arange(N)]
+    if hk.running_init():
+      # during initialization, just create functions
+      q = queries[0]  # [1, B, D]
+      h = hidden_states  # [N+1, B, D]
+      # reuse same example for all functions
+      x = [f(q, h, h) for f in functions]
+
+      # combine all outputs at leaf jnp.ndarray level
+      out = jax.tree_map(lambda *arrays: jnp.stack(arrays), *x)
+    else:
+      index = jnp.arange(N)
+      # during apply, apply functions in parallel
+      vmap_functions = hk.vmap(
+        lambda i, x: hk.switch(i, functions, x),
+        # select by {0th, 1st} for {index, queries}, and make copies
+        #   for hidden_states
+        # doing this will mimic sizes used during initialization
+        in_axes=(0, 1, None),
+        split_rng=True)
+      out = vmap_functions(index, queries, hidden_states, hidden_states)
+
+    # remove dummy dimension & return to batch-first
+    out = out[:, 0] # [N, B, D]
+    out = out.transpose((1,0,2))  # [B, N, D]
+    return out
+
 
 class FARM(hk.RNNCore):
   def __init__(self,
     module_size: int,
     nmodules: int,
+    nattn_heads: int=4,
     projection_dim: int=16,
     name: Optional[str] = None):
     """
     """
     super().__init__(name=name)
     self.memory = StructuredLSTM(module_size, nmodules)
-    self.obs_attention = FeatureAttention(projection_dim)
+    self._feature_attention = FeatureAttention(projection_dim)
+    self._module_attention = ModuleAttention(
+      module_size=module_size, num_heads=nattn_heads)
 
     self.module_size = module_size
     self.nmodules = nmodules
@@ -181,13 +234,10 @@ class FARM(hk.RNNCore):
     query = jnp.concatenate((prev_state.hidden, vector_tiled),
       axis=-1)
 
-    image_attn = self.image_attention(query, inputs.image)
+    image_attn = self.image_attention(query, inputs.image)  # [B, N , D]
+    module_attn = self.module_attention(query, prev_state.hidden)  # [B, N , D]
 
-    # module_attn = self.module_attention(query, prev_state.hidden)
-
-
-    memory_input = jnp.concatenate((query, image_attn), axis=-1)
-    # memory_input = jnp.concatenate((query, image_attn, module_attn))
+    memory_input = jnp.concatenate((query, image_attn, module_attn), axis=-1)
     hidden, state = self.memory(memory_input, prev_state)
 
     return hidden, state
@@ -198,17 +248,18 @@ class FARM(hk.RNNCore):
 
   def image_attention(self, query, image):
     """Apply attention and flatten output"""
-    attn_out = self.obs_attention(query, image)
+    attn_out = self._feature_attention(query, image)
     B, N = attn_out.shape[:2]
     return attn_out.reshape(B, N, -1)
 
-  def module_attention(self, query, image):
-    return []
+  def module_attention(self, query, hidden_states):
+    return self._module_attention(query, hidden_states)
+
 
   @property
   def total_dim(self):
     return self.module_size*self.nmodules
-  
+
 class FarmSharedOutput(FARM):
   """docstring for FarmSharedOutput"""
   def __init__(self, out_layers, *args, **kwargs):
