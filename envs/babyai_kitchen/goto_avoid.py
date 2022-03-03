@@ -4,6 +4,7 @@
 
 from gym import spaces
 
+import math
 import numpy as np
 import copy
 from envs.babyai_kitchen.world import Kitchen
@@ -153,6 +154,68 @@ class GotoAvoidEnv(KitchenLevel):
         return reward
       return 0.0
 
+    def place_obj(self,
+        obj,
+        top=None,
+        size=None,
+        reject_fn=None,
+        max_tries=math.inf
+    ):
+        """
+        Place an object at an empty position in the grid
+
+        :param top: top-left position of the rectangle where to place
+        :param size: size of the rectangle where to place
+        :param reject_fn: function to filter out potential positions
+        """
+
+        if top is None:
+            top = (0, 0)
+        else:
+            top = (max(top[0], 0), max(top[1], 0))
+
+        if size is None:
+            size = (self.grid.width, self.grid.height)
+
+        num_tries = 0
+
+        while True:
+            # This is to handle with rare cases where rejection sampling
+            # gets stuck in an infinite loop
+            if num_tries > max_tries:
+                raise RecursionError('rejection sampling failed in place_obj')
+
+            num_tries += 1
+
+            pos = np.array((
+                self._rand_int(top[0], min(top[0] + size[0], self.grid.width)),
+                self._rand_int(top[1], min(top[1] + size[1], self.grid.height))
+            ))
+
+            # Don't place the object on top of another object
+            if self.grid.get(*pos) != None:
+                continue
+
+            # Don't place the object where the agent is
+            if np.array_equal(pos, self.agent_pos):
+                continue
+
+            # import ipdb; ipdb.set_trace()
+
+            # # Check if there is a filtering criterion
+            # if reject_fn and reject_fn(self, pos):
+            #     continue
+
+            break
+
+        self.grid.set(*pos, obj)
+
+        if obj is not None:
+            obj.init_pos = pos
+            obj.cur_pos = pos
+
+        return pos
+
     def step(self, action):
         """Copied from: 
         - gym_minigrid.minigrid:MiniGridEnv.step
@@ -228,11 +291,12 @@ if __name__ == '__main__':
     import tqdm
 
     tile_size=20
-    size='small'
+    size='large'
     sizes = dict(
       small=dict(room_size=5, nobjects=1),
-      medium=dict(room_size=8, nobjects=2),
-      large=dict(room_size=10, nobjects=3),
+      medium=dict(room_size=7, nobjects=2),
+      large=dict(room_size=8, nobjects=3),
+      xl=dict(room_size=10, nobjects=5),
       )
 
     env = GotoAvoidEnv(
