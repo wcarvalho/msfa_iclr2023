@@ -159,7 +159,9 @@ def r2d1_farm(config, env_spec):
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions),
-    memory=farm.FARM(config.module_size, config.nmodules),
+    memory=farm.FARM(
+      config.module_size, config.nmodules,
+      shared_attn_params=config.shared_attn_params),
     prediction_prep_fn=flatten_structured_memory,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )

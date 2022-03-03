@@ -69,10 +69,10 @@ class MultiLevel(object):
       #   kwargs to get settings
       # -----------------------
       if not kitchen:
+        kitchen_kwargs = next(iter(all_level_kwargs.values()))
         if kwargs:
-          kitchen_kwargs = kwargs
-        else:
-          kitchen_kwargs = next(iter(all_level_kwargs.values()))
+          kitchen_kwargs.update(kwargs)
+
         self.kitchen = Kitchen(
           objects=kitchen_kwargs.get('objects', []),
           tile_size=kitchen_kwargs.get('tile_size', 8),

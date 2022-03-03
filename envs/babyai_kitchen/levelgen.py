@@ -420,8 +420,8 @@ class KitchenLevel(RoomGridLevel):
         if self.task:
             num_navs = self.task.num_navs
         else:
-            num_navs = 1
-        self.max_steps = num_navs * nav_time_maze
+            num_navs = 2
+        self.max_steps = max(num_navs, 2) * nav_time_maze
         self.timesteps_complete=0
 
         return obs

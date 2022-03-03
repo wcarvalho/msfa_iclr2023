@@ -87,7 +87,6 @@ class StructuredLSTM(hk.RNNCore):
       state = add_batch(state, batch_size)
     return state
 
-
 class FeatureAttention(hk.Module):
   """FeatureAttention from Feature-Attending Recurrent Modules. f_att from paper.
   Each module has its own attention parameters.
@@ -134,11 +133,11 @@ class FeatureAttention(hk.Module):
 
     return image
 
-
 class ModuleAttention(hk.Module):
   """Attention over modules using transformer-style attention. 
   Each module has its own parameters. f_share from paper."""
-  def __init__(self, module_size, num_heads=4, w_init_scale=2.):
+  def __init__(self, module_size, num_heads=4, w_init_scale=2.,
+    shared_parameters=True):
     super(ModuleAttention, self).__init__()
     self.attn_factory = lambda: hk.MultiHeadAttention(
       num_heads=num_heads,
@@ -146,21 +145,17 @@ class ModuleAttention(hk.Module):
       model_size=module_size,
       w_init_scale=w_init_scale,
       )
+    self.shared_parameters = shared_parameters
 
-  def __call__(
+  def prepare_data(
       self,
       queries: jnp.ndarray,
       hidden_states: jnp.ndarray,
       ) -> jnp.ndarray:
-    """ Multihead attention expects [N, B, D].
-    
-    Args:
-        queries (jnp.ndarray): B x N x D
-        hidden_states (jnp.ndarray): B x N x D
-    
-    Returns:
-        jnp.ndarray: Description
-    """
+    """ Multihead attention expects [N, B, D]. Fix. """
+    # -----------------------
+    # prepare data
+    # -----------------------
     # convert things to dims expected by multihead attention
     hidden_states = hidden_states.transpose((1,0,2))  # [N, B, D]
     queries = queries.transpose((1,0,2))  # [N, B, D]
@@ -172,29 +167,100 @@ class ModuleAttention(hk.Module):
     zeros = jnp.zeros((1, B, D))
     hidden_states = jnp.concatenate((hidden_states, zeros)) # [N+1, B, D]
 
-    # add dummy dimension to vmap over it.
-    queries = jnp.expand_dims(queries, axis=1)  # [N, B, D] --> [N, 1, B, D]
+    return queries, hidden_states
 
+  def __call__(
+      self,
+      queries: jnp.ndarray,
+      hidden_states: jnp.ndarray,
+      ) -> jnp.ndarray:
+    """
+    Args:
+        queries (jnp.ndarray): B x N x D
+        hidden_states (jnp.ndarray): B x N x D
+    
+    Returns:
+        jnp.ndarray: Description
+    """
+    if self.shared_parameters:
+      return self.shared_attn(queries, hidden_states)
+    else:
+      return self.independent_attn(queries, hidden_states)
 
-    functions = [self.attn_factory() for i in jnp.arange(N)]
+  def shared_attn(
+      self,
+      queries: jnp.ndarray,
+      hidden_states: jnp.ndarray,
+      ) -> jnp.ndarray:
+    """Share parameters across queries.
+    
+    Args:
+        queries (jnp.ndarray): [B, N, D]
+        hidden_states (jnp.ndarray): [B, N, D]
+    
+    Returns:
+        jnp.ndarray: Description
+    """
+    queries, hidden_states = self.prepare_data(queries, hidden_states)
+
+    attn = self.attn_factory()
+    attn = jax.vmap(attn, in_axes=(0, None, None))
+
+    out = attn(queries, hidden_states, hidden_states)
+    out = out.transpose((1,0,2))  # [B, N, D]
+    return out
+
+  def independent_attn(
+      self,
+      queries: jnp.ndarray,
+      hidden_states: jnp.ndarray,
+      ) -> jnp.ndarray:
+    """Each query gets indepedent set of parameters
+    
+    Args:
+        queries (jnp.ndarray): [B, N, D]
+        hidden_states (jnp.ndarray): [B, N, D]
+    
+    Returns:
+        jnp.ndarray: Description
+    """
+    queries, hidden_states = self.prepare_data(queries, hidden_states)
+
+    # -----------------------
+    # make functions
+    # -----------------------
+    def apply_attn(x):
+      return self.attn_factory()(x[0], x[1], x[2])
+    functions = [apply_attn for i in jnp.arange(N)]
+
+    # -----------------------
+    # initialization:
+    #  just make N copies of function
+    # -----------------------
     if hk.running_init():
       # during initialization, just create functions
       q = queries[0]  # [1, B, D]
       h = hidden_states  # [N+1, B, D]
       # reuse same example for all functions
-      x = [f(q, h, h) for f in functions]
+      x = [f((q, h, h)) for f in functions]
 
       # combine all outputs at leaf jnp.ndarray level
       out = jax.tree_map(lambda *arrays: jnp.stack(arrays), *x)
+
+    # -----------------------
+    # apply:
+    #  vmap magic
+    # -----------------------
     else:
       index = jnp.arange(N)
       # during apply, apply functions in parallel
       vmap_functions = hk.vmap(
-        lambda i, x: hk.switch(i, functions, x),
+        # switch can only take 1 input so make tuple
+        lambda i, q, k, v: hk.switch(i, functions, (q, k, v)),
         # select by {0th, 1st} for {index, queries}, and make copies
         #   for hidden_states
         # doing this will mimic sizes used during initialization
-        in_axes=(0, 1, None),
+        in_axes=(0, 0, None, None),
         split_rng=True)
       out = vmap_functions(index, queries, hidden_states, hidden_states)
 
@@ -203,12 +269,13 @@ class ModuleAttention(hk.Module):
     out = out.transpose((1,0,2))  # [B, N, D]
     return out
 
-
 class FARM(hk.RNNCore):
   def __init__(self,
     module_size: int,
     nmodules: int,
+    attn_size: int = None,
     nattn_heads: int=4,
+    shared_attn_params: bool=True,
     projection_dim: int=16,
     name: Optional[str] = None):
     """
@@ -217,7 +284,9 @@ class FARM(hk.RNNCore):
     self.memory = StructuredLSTM(module_size, nmodules)
     self._feature_attention = FeatureAttention(projection_dim)
     self._module_attention = ModuleAttention(
-      module_size=module_size, num_heads=nattn_heads)
+      module_size=attn_size or module_size,
+      num_heads=nattn_heads,
+      shared_parameters=shared_attn_params)
 
     self.module_size = module_size
     self.nmodules = nmodules

@@ -98,6 +98,7 @@ class FarmConfig:
   module_size: int = 128
   nmodules: int = 4
   out_layers: int = 0
+  shared_attn_params: bool = False
 
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):

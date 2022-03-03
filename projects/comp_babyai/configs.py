@@ -22,7 +22,7 @@ class R2D1Config:
   learning_rate: float = 5e-5
   bootstrap_n: int = 5
   seed: int = 1
-  max_number_of_steps: int = 5_000_000
+  max_number_of_steps: int = 10_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -106,22 +106,11 @@ class FarmModelConfig(FarmConfig):
   """Extra configuration options for FARM module."""
 
   # Network hps
-  extra_negatives: int = 10
+  extra_negatives: int = 4
   temperature: float = 0.01
-  model_coeff: float = 1
+  model_coeff: float = 1e-5
   out_layers: int = 2
   model_layers: int = 2
   batch_size: int = 16
   activation: str='relu'
-
-
-
-
-@dataclasses.dataclass
-class VAEConfig:
-  """Extra configuration options for USFA agent."""
-  vae_coeff: float = 1e-4 # coefficient for loss
-  latent_source: str = "samples" # coefficient for loss
-  latent_dim: int = 128 # latent dim for compression
-  beta: float = 25 # beta for KL
 

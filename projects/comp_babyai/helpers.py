@@ -112,13 +112,21 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', ma
   elif agent == "r2d1_farm_model":
 
     config = data_utils.merge_configs(
-      dataclass_configs=[configs.R2D1Config(), configs.FarmConfig()],
+      dataclass_configs=[
+        configs.R2D1Config(), configs.FarmConfig(), configs.FarmModelConfig()],
       dict_configs=default_config
       )
+
     NetworkCls=nets.r2d1_farm_model # default: 1.5M params
     NetKwargs=dict(config=config,env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      aux_tasks=[DeltaContrastLoss(
+                    coeff=config.model_coeff,
+                    extra_negatives=config.extra_negatives,
+                    temperature=config.temperature,
+                  )])
 
     loss_label = 'r2d1'
     eval_network = config.eval_network

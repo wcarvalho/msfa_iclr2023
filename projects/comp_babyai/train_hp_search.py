@@ -4,11 +4,12 @@ Param search.
 Comand I run:
   PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES="1,2,3" \
+    CUDA_VISIBLE_DEVICES="0,1,2,3" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/comp_babyai/train_hp_search.py \
-    --folder 'initial'
+    --folder 'initial' \
+    --search model
 """
 
 from absl import app
@@ -31,6 +32,7 @@ from projects.comp_babyai.train_distributed import build_program
 
 flags.DEFINE_string('folder', 'set', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
+flags.DEFINE_string('search', 'model', 'root folder.')
 
 FLAGS = flags.FLAGS
 
@@ -40,23 +42,24 @@ def main(_):
   num_cpus = 6
   num_gpus = 1
 
-  search = 'baselines'
+  search = FLAGS.search
   if search == 'baselines':
     space = {
-        "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(['r2d1']),
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['r2d1', 'r2d1_farm']),
         # "setting": tune.grid_search(['small', 'medium', 'large']),
     }
     experiment='baselines'
-  elif search == 'r2d1_farm':
+  elif search == 'model':
     space = {
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['r2d1_farm_model']),
-        "out_layers": tune.grid_search( [1, 2]),
-        # "latent_source": tune.grid_search( ["samples", "memory"]),
-        "model_layers": tune.grid_search( [1, 2]),
+        # "out_layers": tune.grid_search( [2]),
+        # "model_layers": tune.grid_search( [2]),
+        "extra_negatives": tune.grid_search([4, 8]),
+        "model_coeff": tune.grid_search([1e-3]),
     }
-    # experiment='r2d1_farm_model_v1'
+    experiment='model'
   else:
     raise NotImplementedError
 

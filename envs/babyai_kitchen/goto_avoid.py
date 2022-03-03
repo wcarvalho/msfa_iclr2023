@@ -51,8 +51,8 @@ class GotoAvoidEnv(KitchenLevel):
         else:
           objects = self.object_names
 
-        self.object2idx = {o:idx for idx, o in enumerate(objects)}
-        self._task_oidxs = [self.object2idx[o] for o in self._task_objects]
+        self.type2idx = {o:idx for idx, o in enumerate(objects)}
+        self._task_oidxs = [self.type2idx[o] for o in self._task_objects]
         self.nobjects = nobjects
         self.respawn = respawn
         kitchen = kitchen or Kitchen(
@@ -110,9 +110,10 @@ class GotoAvoidEnv(KitchenLevel):
         # -----------------------
         self.object_occurrences = np.zeros(len(self.object2reward), dtype=np.uint8)
         for object_type in types_to_place:
-            object_idx = self.object2idx[object_type]
+            object_idx = self.type2idx[object_type]
             self.object_occurrences[object_idx] += 1
             object = self.default_objects[object_idx]
+            assert object.type in self.object2reward, "placing object with no reward signature"
             self.place_in_room(0, 0, object)
 
         self.remaining = np.array(self.object_occurrences)
@@ -137,9 +138,10 @@ class GotoAvoidEnv(KitchenLevel):
     def remove_object(self, fwd_pos, pickup_vector):
       # get reward
       object = self.grid.get(*fwd_pos)
+
       if object.type in self.object2reward:
         obj_type = object.type
-        obj_idx = self.object2idx[obj_type]
+        obj_idx = self.type2idx[obj_type]
 
         reward = float(self.object2reward[obj_type])
         self.grid.set(*fwd_pos, None)
@@ -160,7 +162,7 @@ class GotoAvoidEnv(KitchenLevel):
         size=None,
         reject_fn=None,
         max_tries=math.inf
-    ):
+       ):
         """
         Place an object at an empty position in the grid
 
@@ -200,7 +202,6 @@ class GotoAvoidEnv(KitchenLevel):
             if np.array_equal(pos, self.agent_pos):
                 continue
 
-            # import ipdb; ipdb.set_trace()
 
             # # Check if there is a filtering criterion
             # if reject_fn and reject_fn(self, pos):
@@ -280,6 +281,7 @@ class GotoAvoidEnv(KitchenLevel):
         obs['mission'] = self.mission_arr
         obs['pickup'] = pickup
 
+        # print('final', reward)
         return obs, reward, done, info
 
 if __name__ == '__main__':

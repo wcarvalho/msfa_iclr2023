@@ -2,13 +2,13 @@
 Param search.
 
 Comand I run:
-  PYTHONPATH=$PYTHONPATH:$HOME/projects/rljax/ \
+  PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES="1,2,3" \
+    CUDA_VISIBLE_DEVICES="0,1" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/msf/goto_search.py \
-    --folder 'reward'
+    --folder 'refactor'
 """
 
 from absl import app
@@ -31,6 +31,7 @@ from projects.msf.goto_distributed import build_program
 
 flags.DEFINE_string('folder', 'set', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
+flags.DEFINE_string('search', 'baselines', 'root folder.')
 
 FLAGS = flags.FLAGS
 
@@ -40,31 +41,32 @@ def main(_):
   num_cpus = 6
   num_gpus = 1
 
-  search = 'ablations'
+  search = FLAGS.search
   if search == 'baselines':
     space = {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa', 'usfa_qlearning', 'r2d1', 'r2d1_farm']),
-        # "setting": tune.grid_search(['small', 'medium', 'large']),
+        "agent": tune.grid_search(
+          ['usfa', 'r2d1', 'r2d1_noise', 'r2d1_noise_ensemble']),
+        "setting": tune.grid_search(['large_nopickup']),
     }
     experiment='baselines_6'
   elif search == 'ablations':
     space = {
-        "seed": tune.grid_search([2]),
+        "seed": tune.grid_search([1, 2]),
         "agent": tune.grid_search([
           'r2d1', 'usfa_qlearning', 'r2d1_noise', 'r2d1_noise_ensemble',
           'usfa',
           ]),
-        "setting": tune.grid_search(['medium']),
+        "setting": tune.grid_search(['large_nopickup']),
     }
     experiment='ablations_3'
   elif search == 'r2d1_farm':
     space = {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1_farm_model']),
-        "out_layers": tune.grid_search( [1, 2]),
-        # "latent_source": tune.grid_search( ["samples", "memory"]),
-        "model_layers": tune.grid_search( [1, 2]),
+        "agent": tune.grid_search(['r2d1_farm']),
+        # "out_layers": tune.grid_search( [1, 2]),
+        "shared_attn_params": tune.grid_search([True, False]),
+        "setting": tune.grid_search(['large_nopickup']),
     }
     # experiment='r2d1_farm_model_v1'
   elif search == 'r2d1_vae':
@@ -138,7 +140,7 @@ def main(_):
     # launch experiment
     program = build_program(
       agent=agent, num_actors=num_actors,
-      use_wandb=True,
+      use_wandb=False,
       setting=setting,
       config_kwargs=config, 
       path=root_path,

@@ -25,7 +25,7 @@ from projects.msf import configs
 
 def make_environment(evaluation: bool = False,
                      tile_size=8,
-                     setting='small',
+                     setting='small_nopickup',
                      path='.',
                      ) -> dm_env.Environment:
   """Loads environments.
@@ -41,8 +41,15 @@ def make_environment(evaluation: bool = False,
   """
   settings = dict(
     small=dict(room_size=5, nobjects=1),
+    small_nopickup=dict(
+      room_size=5, nobjects=1, pickup_required=False),
     medium=dict(room_size=8, nobjects=2),
-    large=dict(room_size=10, nobjects=3),
+    medium_nopickup=dict(
+      room_size=8, nobjects=2, pickup_required=False),
+    large=dict(room_size=8, nobjects=3),
+    large_nopickup=dict(
+      room_size=8, nobjects=3, pickup_required=False),
+    
     )
   if evaluation:
     obj2rew={
@@ -67,6 +74,30 @@ def make_environment(evaluation: bool = False,
         '-1,1,0,1':{
             "pan" : -1,
             "plates" : 1,
+            "tomato" : 0,
+            "knife" : 1,
+            },
+        "1,0,0,0":{
+            "pan" : 1,
+            "plates" : 0,
+            "tomato" : 0,
+            "knife" : 0,
+            },
+        "0,1,0,0":{
+            "pan" : 0,
+            "plates" : 1,
+            "tomato" : 0,
+            "knife" : 0,
+            },
+        "0,0,1,0":{
+            "pan" : 0,
+            "plates" : 0,
+            "tomato" : 1,
+            "knife" : 0,
+            },
+        "0,0,0,1":{
+            "pan" : 0,
+            "plates" : 0,
             "tomato" : 0,
             "knife" : 1,
             },
