@@ -35,7 +35,6 @@ dependencies:
     - dm-sonnet # new
     - dm-tree # new
     - flax # new
-    - jaxlib # new
     - optax # new
     - Pillow # new
     - pytest-xdist # new
@@ -44,8 +43,6 @@ dependencies:
     - dm-control==0.0.364896371
     - keras==2.7.0 # new
     - pytype==2021.8.11
-    - dm-launchpad==0.4.1 # new
-    - dm-reverb==0.6.1 # new
     - tensorflow-datasets==4.4.0
     - tensorflow-estimator==2.7.0 # new
     - tensorflow==2.7.0 # new
@@ -53,6 +50,6 @@ dependencies:
 
 
 
-# conda env create -f gpu.yaml
-# conda env update --file gpu.yaml --prune
+# conda env create -f cpu.yaml
+# conda env update --file cpu.yaml --prune
 # conda remove --name acmejax --all

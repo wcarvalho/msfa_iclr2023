@@ -21,6 +21,7 @@ class GotoAvoidEnv(KitchenLevel):
         respawn=False,
         kitchen=None,
         objects=None,
+        pickup_required=True,
         **kwargs):
         """Summary
         
@@ -37,6 +38,7 @@ class GotoAvoidEnv(KitchenLevel):
         """
         self.object2reward = object2reward
         self._task_objects = [k for k,v in object2reward.items() if v > 0]
+        self.pickup_required = pickup_required
 
         self.mission_arr = np.array(
             list(self.object2reward.values()),
@@ -131,6 +133,26 @@ class GotoAvoidEnv(KitchenLevel):
 
         return obs
 
+    def remove_object(self, fwd_pos, pickup_vector):
+      # get reward
+      object = self.grid.get(*fwd_pos)
+      if object.type in self.object2reward:
+        obj_type = object.type
+        obj_idx = self.object2idx[obj_type]
+
+        reward = float(self.object2reward[obj_type])
+        self.grid.set(*fwd_pos, None)
+
+        if self.respawn:
+          # move object
+          self.place_in_room(0, 0, object)
+          self.object_occurrences[obj_idx] += 1
+        else:
+          self.remaining[obj_idx] -= 1
+
+        return reward
+      return 0.0
+
     def step(self, action):
         """Copied from: 
         - gym_minigrid.minigrid:MiniGridEnv.step
@@ -167,25 +189,15 @@ class GotoAvoidEnv(KitchenLevel):
         elif action == self.actiondict.get('forward', -1):
             if object_infront == None or object_infront.can_overlap():
                 self.agent_pos = fwd_pos
-        # pickup
+
+
+            if object_infront and not self.pickup_required:
+              reward = self.remove_object(fwd_pos, pickup)
+        # pickup or no-op if not pickup_required
         else:
-            if object_infront:
-                # get reward
-                if object_infront.type in self.object2reward:
-                    obj_type = object_infront.type
-                    obj_idx = self.object2idx[obj_type]
-
-                    reward = float(self.object2reward[obj_type])
-                    self.grid.set(*fwd_pos, None)
-
-                    if self.respawn:
-                      # move object
-                      self.place_in_room(0, 0, object_infront)
-                      self.object_occurrences[obj_idx] += 1
-                    else:
-                      self.remaining[obj_idx] -= 1
-
-                    pickup[obj_idx] = 1
+            if object_infront and self.pickup_required:
+              # get reward
+              reward = self.remove_object(fwd_pos, pickup)
 
         # ======================================================
         # copied from RoomGridLevel
@@ -232,6 +244,7 @@ if __name__ == '__main__':
             "knife" : 0,
             },
         respawn=False,
+        pickup_required=True,
         tile_size=tile_size,
         **sizes[size],
         )
@@ -250,7 +263,7 @@ if __name__ == '__main__':
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.show_img(combine(full, obs['image']))
 
-    for _ in tqdm.tqdm(range(1000)):
+    for _ in tqdm.tqdm(range(3)):
       obs = env.reset()
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.set_caption(obs['mission'])
@@ -258,7 +271,7 @@ if __name__ == '__main__':
 
       rewards = []
       # print("Initial occurrences:", env.object_occurrences)
-      for step in range(5):
+      for step in range(25):
           obs, reward, done, info = env.step(env.action_space.sample())
           rewards.append(reward)
           full = env.render('rgb_array', tile_size=tile_size, highlight=True)
@@ -269,6 +282,6 @@ if __name__ == '__main__':
       total_reward = sum(rewards)
       normalized_reward = total_reward/env.object_occurrences[0]
       # print("Final occurrences:", env.object_occurrences)
-      # print(f"Total reward: {total_reward}")
+      print(f"Total reward: {total_reward}")
       # print(f"Normalized reward: {normalized_reward}")
-    import ipdb; ipdb.set_trace()
+      import ipdb; ipdb.set_trace()
