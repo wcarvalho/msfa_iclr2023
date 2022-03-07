@@ -49,11 +49,15 @@ class TDBuilder(r2d2.R2D2Builder):
                config: r2d2_config.R2D2Config,
                logger_fn: Callable[[], loggers.Logger] = lambda: None,
                LossFn: learning_lib.LossFn=R2D2Learning,
-               LossFnKwargs=None):
+               LossFnKwargs=None,
+               learner_kwargs=None,
+               take_sgd_step=True,
+               cycle_batches=True):
     super().__init__(networks=networks, config=config, logger_fn=logger_fn)
 
     LossFnKwargs = LossFnKwargs or dict()
     self.loss_fn = LossFn(**LossFnKwargs)
+    self.learner_kwargs = learner_kwargs or dict()
 
   def make_learner(
       self,
@@ -65,6 +69,7 @@ class TDBuilder(r2d2.R2D2Builder):
   ) -> core.Learner:
 
     # The learner updates the parameters (and initializes them).
+    logger = self._logger_fn()
     return learning_lib.SGDLearner(
         network=networks,
         random_key=random_key,
@@ -79,4 +84,5 @@ class TDBuilder(r2d2.R2D2Builder):
         replay_table_name=self._config.replay_table_name,
         counter=counter,
         num_sgd_steps_per_step=self._config.num_sgd_steps_per_step,
-        logger=self._logger_fn())
+        logger=logger,
+        **self.learner_kwargs)

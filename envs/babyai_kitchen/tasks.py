@@ -563,49 +563,48 @@ class CookTask(KitchenTask):
 
 class PickupCookedTask(CookTask):
 
-
-    @property
-    def abstract_rep(self):
-        return 'pickup cooked x'
-
-
-    @property
-    def num_navs(self): return 3
-
-    def check_status(self):
-        _, done = super().check_status()
-        if self.env.carrying:
-            picked_up = self.env.carrying.type == self.object_to_cook.type
-            reward = done = done and picked_up
-        else:
-            done = reward = False
-
-        return reward, done
+  @property
+  def abstract_rep(self):
+      return 'pickup cooked x'
 
 
-    def subgoals(self):
-      return [
-        ActionsSubgoal(
-          goto=self.object_to_cook, actions=['pickup_contents']),
-        ActionsSubgoal(
-          goto=self.object_to_cook_with, actions=['place', 'pickup_container']),
-        ActionsSubgoal(
-          goto=self.object_to_cook_on, actions=['place', 'toggle', 'pickup_contents'])
-      ]
+  @property
+  def num_navs(self): return 3
 
+  def check_status(self):
+      _, done = super().check_status()
+      if self.env.carrying:
+          picked_up = self.env.carrying.type == self.object_to_cook.type
+          reward = done = done and picked_up
+      else:
+          done = reward = False
+
+      return reward, done
+
+
+  def subgoals(self):
+    return [
+      ActionsSubgoal(
+        goto=self.object_to_cook, actions=['pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_cook_with, actions=['place', 'pickup_container']),
+      ActionsSubgoal(
+        goto=self.object_to_cook_on, actions=['place', 'toggle', 'pickup_contents'])
+    ]
 
 
 
-TASKS=dict(
-    pickup=PickupTask,
-    place=PlaceTask,
-    heat=HeatTask,
-    clean=CleanTask,
-    slice=SliceTask,
-    chill=ChillTask,
-    pickup_cleaned=PickupCleanedTask,
-    pickup_sliced=PickupSlicedTask,
-    pickup_chilled=PickupChilledTask,
-    cook=CookTask,
-    pickup_cooked=PickupCookedTask,
-)
+def all_tasks():
+  return dict(
+      pickup=PickupTask,
+      place=PlaceTask,
+      heat=HeatTask,
+      clean=CleanTask,
+      slice=SliceTask,
+      chill=ChillTask,
+      pickup_cleaned=PickupCleanedTask,
+      pickup_sliced=PickupSlicedTask,
+      pickup_chilled=PickupChilledTask,
+      cook=CookTask,
+      pickup_cooked=PickupCookedTask,
+  )

@@ -103,6 +103,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       device_prefetch: bool = False,
       log_to_bigtable: bool = True,
       log_every: float = 10.0,
+      **kwargs,
   ):
     self.EnvLoopCls = EnvLoopCls
 
@@ -129,9 +130,9 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
     # policy factories
     # -----------------------
     policy_network_factory = (
-        lambda n: make_behavior_policy(n, config))
+        lambda n: behavior_policy_constructor(n, config))
     evaluator_policy_network_factory = (
-        lambda n: make_behavior_policy(n, config, True))
+        lambda n: behavior_policy_constructor(n, config, True))
 
 
     super().__init__(
@@ -157,7 +158,8 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
         log_to_bigtable=log_to_bigtable,
         actor_logger_fn=actor_logger_fn,
         prefetch_size=config.prefetch_size,
-        workdir=workdir)
+        workdir=workdir,
+        **kwargs)
 
   def actor(self, random_key: networks_lib.PRNGKey, replay: reverb.Client,
             variable_source: core.VariableSource, counter: counting.Counter,

@@ -85,6 +85,25 @@ def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
   task = inputs.observation.task
   return jnp.concatenate((memory_out, task), axis=-1)
 
+def r2d1_dummy_symbolic(config, env_spec):
+  num_actions = env_spec.actions.num_values
+
+  class DummySymbolicTorso(hk.Module):
+    """Flatten."""
+
+    def __call__(self, inputs) -> jnp.ndarray:
+      return jnp.reshape(inputs, [inputs.shape[0], -1])  # [B, D]
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=DummySymbolicTorso(),
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=r2d1_prediction_prep_fn,
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+  )
+
 def r2d1(config, env_spec):
   num_actions = env_spec.actions.num_values
 

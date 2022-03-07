@@ -33,9 +33,6 @@ class GotoObs(NamedTuple):
   pickup: types.Nest
   mission: types.Nest
 
-def convert_rawobs(obs):
-    obs.pop('mission_idx')
-    return GotoObs(**obs)
 
 class GoToAvoid(dm_env.Environment):
   """
@@ -76,14 +73,18 @@ class GoToAvoid(dm_env.Environment):
         all_level_kwargs=all_level_kwargs,
         **kwargs)
 
+    if wrappers:
+      self.default_env = GymWrapper(self.env.env)
+    else:
+      self.default_env = GymWrapper(self.env)
 
-    self.default_env = GymWrapper(self.env.env)
+    self.keys = ['image', 'pickup', 'mission']
 
 
   def reset(self) -> dm_env.TimeStep:
     """Returns the first `TimeStep` of a new episode."""
     obs = self.env.reset()
-    obs = convert_rawobs(obs)
+    obs = GotoObs(**{k: obs[k] for k in self.keys})
     timestep = dm_env.restart(obs)
 
     return timestep
@@ -91,7 +92,7 @@ class GoToAvoid(dm_env.Environment):
   def step(self, action: int) -> dm_env.TimeStep:
     """Updates the environment according to the action."""
     obs, reward, done, info = self.env.step(action)
-    obs = convert_rawobs(obs)
+    obs = GotoObs(**{k: obs[k] for k in self.keys})
 
     if done:
       timestep = dm_env.termination(reward=reward, observation=obs)

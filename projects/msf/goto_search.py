@@ -4,11 +4,12 @@ Param search.
 Comand I run:
   PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES="0,1" \
+    CUDA_VISIBLE_DEVICES="0,1,2,3,4,5" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/msf/goto_search.py \
-    --folder 'refactor'
+    --folder 'results/msf/final/babyai_pickup_large' \
+    --date=False
 """
 
 from absl import app
@@ -31,6 +32,7 @@ from projects.msf.goto_distributed import build_program
 
 flags.DEFINE_string('folder', 'set', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
+flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_string('search', 'baselines', 'root folder.')
 
 FLAGS = flags.FLAGS
@@ -44,10 +46,11 @@ def main(_):
   search = FLAGS.search
   if search == 'baselines':
     space = {
-        "seed": tune.grid_search([1]),
+        "seed": tune.grid_search([1,2,3]),
         "agent": tune.grid_search(
-          ['usfa', 'r2d1', 'r2d1_noise', 'r2d1_noise_ensemble']),
-        "setting": tune.grid_search(['large_nopickup']),
+          ['r2d1', 'r2d1_noise', 'r2d1_noise_ensemble']),
+          # ['usfa']),
+        "setting": tune.grid_search(['large']),
     }
     experiment='baselines_6'
   elif search == 'ablations':
@@ -108,7 +111,8 @@ def main(_):
   # this is used for BabyAI
 
   root_path = FLAGS.root if FLAGS.root else str(Path().absolute())
-  folder=FLAGS.folder
+  folder=FLAGS.folder if FLAGS.folder else "results/msf/refactor"
+  use_date = FLAGS.date
 
   def create_and_run_program(config):
     """Create and run launchpad program
@@ -120,8 +124,9 @@ def main(_):
 
     # get log dir for experiment
     log_dir = gen_log_dir(
-      base_dir=f"{root_path}/results/msf/{folder}",
+      base_dir=os.path.join(root_path,folder),
       hourminute=False,
+      date=use_date,
       agent=agent,
       setting=setting,
       **({'exp': experiment} if experiment else {}),
@@ -155,7 +160,7 @@ def main(_):
           PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
           }
       )
-    time.sleep(15) # sleep for 15 seconds
+    time.sleep(30) # sleep for 15 seconds
 
 
 

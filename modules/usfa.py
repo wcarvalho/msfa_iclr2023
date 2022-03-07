@@ -180,6 +180,8 @@ class UsfaHead(hk.Module):
     # policies + embeddings
     # -----------------------
     z = data_utils.expand_tile_dim(w_train, axis=0, size=B)
+    # z = [B, N, D]
+    # w = [B, D]
     preds = self.sfgpi(inputs=inputs, z=z, w=w, key=key)
 
     return preds

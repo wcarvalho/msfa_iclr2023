@@ -27,6 +27,7 @@ def make_environment(evaluation: bool = False,
                      tile_size=8,
                      setting='small_nopickup',
                      path='.',
+                     image_wrapper=True,
                      ) -> dm_env.Environment:
   """Loads environments.
   
@@ -42,14 +43,16 @@ def make_environment(evaluation: bool = False,
   settings = dict(
     small=dict(room_size=5, nobjects=1),
     small_nopickup=dict(
-      room_size=5, nobjects=1, pickup_required=False),
+      room_size=5, nobjects=1,
+      pickup_required=False),
     medium=dict(room_size=8, nobjects=2),
     medium_nopickup=dict(
-      room_size=8, nobjects=2, pickup_required=False),
+      room_size=8, nobjects=2,
+      pickup_required=False),
     large=dict(room_size=8, nobjects=3),
     large_nopickup=dict(
-      room_size=8, nobjects=3, pickup_required=False),
-    
+      room_size=8, nobjects=3,
+      pickup_required=False),
     )
   if evaluation:
     obj2rew={
@@ -130,12 +133,16 @@ def make_environment(evaluation: bool = False,
             },
     }
 
+  env_wrappers = []
+  if image_wrapper:
+    env_wrappers.append(functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size))
+
   env = GoToAvoid(
     tile_size=tile_size,
     obj2rew=obj2rew,
     path=path,
     **settings[setting],
-    wrappers=[functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size)]
+    wrappers=env_wrappers,
     )
 
   wrapper_list = [
@@ -217,6 +224,22 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     state_dim = env_spec.observations.observation.state_features.shape[0]
 
     config = configs.USFAConfig(**default_config)
+    config.state_dim = state_dim
+
+    NetworkCls=nets.usfa # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+
+    LossFn = td_agent.USFALearning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+
+    loss_label = 'usfa'
+    eval_network = config.eval_network
+
+  elif agent == "usfa_paper": # Universal Successor Features
+    state_dim = env_spec.observations.observation.state_features.shape[0]
+
+    config = configs.USFAConfig(**default_config)
+    config.z_as_task = False
     config.state_dim = state_dim
 
     NetworkCls=nets.usfa # default: 2M params
@@ -344,6 +367,17 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
       ])
     loss_label = 'usfa'
     eval_network = config.eval_network
+
+  elif agent == "r2d1_dummy_symbolic":
+    config = configs.R2D1Config(**default_config)
+
+    NetworkCls=nets.r2d1_dummy_symbolic # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
   else:
     raise NotImplementedError(agent)
 
