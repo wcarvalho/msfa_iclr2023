@@ -112,7 +112,7 @@ if __name__ == '__main__':
       task_colors = ['red', 'blue', 'purple', 'yellow', 'grey']
     else:
       task_colors = ['green']
-    env = GotoLevel(room_size=8, task_colors=task_colors)
+    env = GotoLevel(room_size=6, task_colors=task_colors)
     env = RGBImgPartialObsWrapper(env, tile_size=tile_size)
 
     def combine(full, partial):
