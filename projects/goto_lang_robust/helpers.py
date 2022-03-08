@@ -23,51 +23,51 @@ from modules.ensembles import QLearningEnsembleLoss
 from projects.comp_babyai import nets
 from projects.comp_babyai import configs
 
-from envs.acme.multitask_kitchen import MultitaskKitchen
+from envs.acme.babyai import BabyAI
+
+# TODO: move each of these to `envs.babyai` and update imports across files
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, MissionIntegerWrapper
 from envs.babyai_kitchen.utils import InstructionsPreprocessor
 
 
 def make_environment(evaluation: bool = False,
                      tile_size=8,
-                     max_vocab_size=30,
+                     room_size=6,
+                     max_text_length=5, # go to the {color} {type}
                      path='.',
-                     setting='small_length2_nodist',
+                     setting: int=2,
                      ) -> dm_env.Environment:
   """Loads environments."""
-  settings = dict(
-    small_length2_nodist=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_no_dist.yaml",
-      room_size=5,
-      ),
-    # medium=dict(
-    #   tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=3_cook.yaml",
-    #   room_size=7
-    #   )
-    )
-  settings=settings[setting]
-  
-  tasks_file = settings['tasks_file']
-  with open(os.path.join(path, tasks_file), 'r') as f:
-    tasks = yaml.load(f, Loader=yaml.SafeLoader)
 
+  # -----------------------
+  # setup settings
+  # -----------------------
+  all_colors=['green', 'red', 'blue', 'purple', 'yellow', 'grey']
+  ntest = setting
+  ntrain = len(all_colors) - ntest
+  key_base = f'{ntest}test_{ntrain}train'
   if evaluation:
-    task_dicts = tasks['test']
+    key2colors={
+      f'test_{key_base}': all_colors[:ntest],
+      f'train_{key_base}': all_colors[ntest:],
+    }
   else:
-    task_dicts = tasks['train']
+    key2colors={
+      f'train_{key_base}': all_colors[ntest:],
+    }
 
+  # make word preprocessor for converting language to ints
   instr_preproc = InstructionsPreprocessor(
-    path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
+    path=os.path.join(path, "data/babyai/vocab.json"))
+  max_vocab_size = len(instr_preproc.vocab)
 
-  env = MultitaskKitchen(
-    task_dicts=task_dicts,
-    tile_size=tile_size,
-    path=path,
-    room_size=settings['room_size'],
+  env = BabyAI(
+    key2colors=key2colors,
+    room_size=room_size,
     wrappers=[ # wrapper for babyAI gym env
       functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size),
       functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc,
-        max_length=max_vocab_size)],
+        max_length=max_text_length)],
     )
 
   # wrappers for dm_env: used by agent/replay buffer
@@ -78,7 +78,7 @@ def make_environment(evaluation: bool = False,
     wrappers.SinglePrecisionWrapper,
   ]
 
-  return wrappers.wrap_all(env, wrapper_list)
+  return wrappers.wrap_all(env, wrapper_list), max_vocab_size
 
 
 def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', max_vocab_size=30):
@@ -92,46 +92,33 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', ma
     NetKwargs=dict(config=config, env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    loss_label = 'r2d1'
-    eval_network = config.eval_network
 
-  elif agent == "r2d1_farm":
 
-    config = data_utils.merge_configs(
-      dataclass_configs=[configs.R2D1Config(), configs.FarmConfig()],
-      dict_configs=default_config
-      )
-    NetworkCls=nets.r2d1_farm # default: 1.5M params
-    NetKwargs=dict(config=config,env_spec=env_spec)
+  elif agent == "r2d1_noise":
+    config = configs.NoiseEnsembleConfig(**default_config)  # for convenience since has var
+
+    NetworkCls=nets.r2d1_noise # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
-    loss_label = 'r2d1'
-    eval_network = config.eval_network
 
-  elif agent == "r2d1_farm_model":
+  elif agent == "r2d1_noise_ensemble":
+    config = configs.NoiseEnsembleConfig(**default_config)   # for convenience since has var
+    config.loss_coeff = 0 # Turn off main loss
 
-    config = data_utils.merge_configs(
-      dataclass_configs=[
-        configs.R2D1Config(), configs.FarmConfig(), configs.FarmModelConfig()],
-      dict_configs=default_config
-      )
-
-    NetworkCls=nets.r2d1_farm_model # default: 1.5M params
-    NetKwargs=dict(config=config,env_spec=env_spec)
+    NetworkCls=nets.r2d1_noise_ensemble # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
-      aux_tasks=[DeltaContrastLoss(
-                    coeff=config.model_coeff,
-                    extra_negatives=config.extra_negatives,
-                    temperature=config.temperature,
-                  )])
-
-    loss_label = 'r2d1'
-    eval_network = config.eval_network
+      aux_tasks=[
+        QLearningEnsembleLoss(
+          coeff=1.,
+          discount=config.discount)
+      ])
 
   else:
     raise NotImplementedError(agent)
 
-  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
+  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs

@@ -14,7 +14,13 @@ class GotoLevel(RoomGridLevel):
     This level has distractors but doesn't make use of language.
     """
 
-    def __init__(self, room_size=8, num_dists=4, task_colors=None, task_types=None, seed=None):
+    def __init__(self,
+        room_size=8,
+        num_dists=4,
+        task_colors=None,
+        task_types=None,
+        seed=None,
+        **kwargs):
       self.all_colors = ['red', 'green', 'blue', 'purple', 'yellow', 'grey']
       self.all_types = ['key', 'box', 'ball']
 
@@ -22,17 +28,19 @@ class GotoLevel(RoomGridLevel):
       self.task_colors = task_colors or self.all_colors
 
       self.num_dists = num_dists
+
       super().__init__(
           num_rows=1,
           num_cols=1,
           room_size=room_size,
-          seed=seed
+          seed=seed,
+          **kwargs
       )
 
     def add_distractors(self, i=None, j=None, num_distractors=10, all_unique=True, types=None):
       """
       Add random objects that can potentially distract/confuse the agent.
-      Change: "types" is argument now.
+      Change: "types" is argument now and used for selecting.
       """
 
       # Collect a list of existing objects

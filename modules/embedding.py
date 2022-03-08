@@ -82,7 +82,7 @@ class LanguageTaskEmbedder(hk.Module):
         TYPE: Description
     """
     B, N = x.shape
-    initial = self.language_model.initial_state(B) 
+    initial = self.language_model.initial_state(B)
     words = self.embedder(x) # B x N x D
     words = jnp.transpose(words, (1,0,2))  # N x B x D
     sentence, _ = hk.static_unroll(self.language_model, words, initial)

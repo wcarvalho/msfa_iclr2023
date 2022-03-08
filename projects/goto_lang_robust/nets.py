@@ -14,8 +14,7 @@ from agents import td_agent
 from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding, LanguageTaskEmbedder
-from modules import farm
-from modules.farm_model import FarmModel, FarmCumulants
+from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules.vision import AtariVisionTorso
 
 from utils import data as data_utils
@@ -36,46 +35,23 @@ def convert_floats(inputs):
 def get_image_from_inputs(inputs : observation_action_reward.OAR):
   return inputs.observation.image/255.0
 
-def make_farm_prep_fn(num_actions):
-  """
-  Return farm inputs, (1) obs features (2) [action, reward] vector
-  """
-  embedder = OAREmbedding(
-    num_actions=num_actions,
-    observation=False)
-  def prep(inputs, obs):
-    return farm.FarmInputs(
-      image=obs, vector=embedder(inputs))
-
-  return prep
-
-def flatten_structured_memory(memory_out, **kwargs):
-  return memory_out.reshape(*memory_out.shape[:-2], -1)
-
-def prep_task(inputs, task_embedder):
+def embed_task(inputs, task_embedder):
   """Convert task to ints, batchapply if necessary, and run through embedding function."""
   task = inputs.observation.task
   has_time = len(task.shape) == 3
   batchfn = hk.BatchApply if has_time else lambda x:x
   return batchfn(task_embedder)(task.astype(jnp.int32))
 
-# ======================================================
-# R2D1
-# ======================================================
-
 def prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
   """
   Concat task with memory output.
   """
-  task = prep_task(inputs, task_embedder)
+  task = embed_task(inputs, task_embedder)
   return jnp.concatenate((memory_out, task), axis=-1)
 
-def farm_prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
-  """
-  Concat task with memory output.
-  """
-  task = prep_task(inputs, task_embedder)
-  return jnp.concatenate((flatten_structured_memory(memory_out), task), axis=-1)
+# ======================================================
+# Networks
+# ======================================================
 
 def r2d1(config, env_spec):
   num_actions = env_spec.actions.num_values
@@ -95,45 +71,72 @@ def r2d1(config, env_spec):
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
-def r2d1_farm(config, env_spec):
+def r2d1_noise(config, env_spec):
   num_actions = env_spec.actions.num_values
+
+  def add_noise_concat(inputs, memory_out, task_embedder, **kwargs):
+    """
+    1. embed task
+    2. Concat [task + noise] with memory output.
+    """
+    task = embed_task(inputs, task_embedder)
+    import ipdb; ipdb.set_trace()
+    noise = jax.random.normal(hk.next_rng_key(), task.shape)
+    task =  task + jnp.sqrt(config.variance) * noise
+    return jnp.concatenate((memory_out, task), axis=-1)
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=False),
-    memory_prep_fn=make_farm_prep_fn(num_actions),
-    memory=farm.FARM(config.module_size, config.nmodules),
-    prediction_prep_fn=functools.partial(farm_prediction_prep_fn,
+    vision=AtariVisionTorso(flatten=True),
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=functools.partial(add_noise_concat, # add noise
       task_embedder=LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         task_dim=config.word_dim),
-      ),
+    ),
+    evaluation_prep_fn=r2d1_prediction_prep_fn, # don't add noise
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
-def r2d1_farm_model(config, env_spec):
+def r2d1_noise_ensemble(config, env_spec):
   num_actions = env_spec.actions.num_values
 
-  return BasicRecurrent(
-    inputs_prep_fn=convert_floats,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=False),
-    memory_prep_fn=make_farm_prep_fn(num_actions),
-    memory=farm.FarmSharedOutput(
-      module_size=config.module_size,
-      nmodules=config.nmodules,
-      out_layers=config.out_layers),
-    prediction_prep_fn=functools.partial(farm_prediction_prep_fn,
+  def ensemble_prep_fn(inputs, memory_out, task_embedder, **kwargs):
+    """
+    1. embed task
+    2. Create inputs where task is language embedding
+    """
+    task = embed_task(inputs, task_embedder)
+    import ipdb; ipdb.set_trace()
+    return QEnsembleInputs(
+      w=task,
+      memory_out=memory_out,
+      )
+
+  prediction_prep_fn = functools.partial(ensemble_prep_fn, # add noise
       task_embedder=LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         task_dim=config.word_dim),
-      ),
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
-    aux_tasks=FarmModel(
-      config.model_layers*[config.module_size],
+    ),
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=True),
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=prediction_prep_fn,
+    prediction=QEnsembleHead(
       num_actions=num_actions,
-      activation=getattr(jax.nn, config.activation)),
+      hidden_size=config.out_hidden_size,
+      policy_size=config.policy_size,
+      variance=config.variance,
+      nsamples=config.npolicies,
+      policy_layers=config.policy_layers,
+      q_input_fn=ConcatFlatStatePolicy(config.state_hidden_size)
+      )
   )

@@ -29,7 +29,6 @@ from envs.babyai.goto import GotoLevel
 
 class BabyAiObs(NamedTuple):
   image: types.Nest
-  pickup: types.Nest
   mission: types.Nest
 
 
@@ -39,12 +38,12 @@ class BabyAI(dm_env.Environment):
 
   def __init__(self,
     key2colors: dict, 
-    room_size=10,
+    room_size=8,
     agent_view_size=5,
     wrappers=None,
     LevelCls=GotoLevel,
     ObsCreator=BabyAiObs,
-    obs_keys=['image', 'pickup', 'mission'],
+    obs_keys=['image', 'mission'],
     **kwargs):
     """Initializes a new Goto/Avoid environment.
     
@@ -59,16 +58,15 @@ class BabyAI(dm_env.Environment):
     """
     all_level_kwargs = dict()
     for key, colors in key2colors.items():
-        all_level_kwargs[key]=dict(
-            room_size=room_size,
-            agent_view_size=agent_view_size,
-            task_colors=colors,
-        )
+      all_level_kwargs[key]=dict(
+          room_size=room_size,
+          agent_view_size=agent_view_size,
+          task_colors=colors,
+      )
 
     self.env = MultiLevel(
         LevelCls=LevelCls,
         wrappers=wrappers,
-        path=path,
         all_level_kwargs=all_level_kwargs,
         **kwargs)
 
@@ -84,8 +82,7 @@ class BabyAI(dm_env.Environment):
   def reset(self) -> dm_env.TimeStep:
     """Returns the first `TimeStep` of a new episode."""
     obs = self.env.reset()
-    import ipdb; ipdb.set_trace()
-    obs = self.ObsCreator(**{k: obs[k] for k in self.keys})
+    obs = self.ObsCreator(**{k: obs[k] for k in self.obs_keys})
     timestep = dm_env.restart(obs)
 
     return timestep
@@ -93,7 +90,9 @@ class BabyAI(dm_env.Environment):
   def step(self, action: int) -> dm_env.TimeStep:
     """Updates the environment according to the action."""
     obs, reward, done, info = self.env.step(action)
-    obs = self.ObsCreator(**{k: obs[k] for k in self.keys})
+    reward = float(reward > 0.0) # 1 if complete, 0 otherwise
+
+    obs = self.ObsCreator(**{k: obs[k] for k in self.obs_keys})
 
     if done:
       timestep = dm_env.termination(reward=reward, observation=obs)
