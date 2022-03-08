@@ -21,6 +21,9 @@ from losses import cumulants
 from modules.ensembles import QLearningEnsembleLoss
 
 
+from projects.goto_lang_robust import nets
+from projects.goto_lang_robust import configs
+
 from envs.acme.babyai import BabyAI
 
 # TODO: move each of these to `envs.babyai` and update imports across files
@@ -87,6 +90,8 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', ma
   default_config = dict(max_vocab_size=max_vocab_size)
   default_config.update(config_kwargs or {})
 
+  print("check vocab size")
+  import ipdb; ipdb.set_trace()
   if agent == "r2d1": # Recurrent DQN
     config = configs.R2D1Config(**default_config)
 

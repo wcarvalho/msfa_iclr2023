@@ -51,14 +51,11 @@ def main(_):
         "setting": tune.grid_search([1, 2]),
     }
     experiment='baselines'
-  elif search == 'model':
+  elif search == 'r2d1_search':
     space = {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1_farm_model']),
-        # "out_layers": tune.grid_search( [2]),
-        # "model_layers": tune.grid_search( [2]),
-        "extra_negatives": tune.grid_search([4, 8]),
-        "model_coeff": tune.grid_search([1e-3]),
+        "agent": tune.grid_search(['r2d1']),
+        "word_dim": tune.grid_search([32, 64, 128]),
     }
     experiment='model'
   else:
