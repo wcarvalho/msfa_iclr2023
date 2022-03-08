@@ -8,7 +8,7 @@ Comand I run:
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python -m ipdb -c continue projects/goto_lang_robust/train.py \
-    --agent r2d1
+    --agent r2d1_noise
 """
 
 from absl import app
@@ -34,7 +34,8 @@ FLAGS = flags.FLAGS
 
 
 def main(_):
-  env, max_vocab_size = helpers.make_environment()
+  env = helpers.make_environment()
+  max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   env_spec = acme.make_environment_spec(env)
 
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings(FLAGS.agent, env_spec, setting=FLAGS.env_setting, max_vocab_size=max_vocab_size)

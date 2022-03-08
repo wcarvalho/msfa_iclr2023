@@ -16,6 +16,7 @@ from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding, LanguageTaskEmbedder
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules.vision import AtariVisionTorso
+from modules.usfa import ConcatFlatStatePolicy
 
 from utils import data as data_utils
 
@@ -71,7 +72,7 @@ def r2d1(config, env_spec):
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
-def r2d1_noise(config, env_spec):
+def r2d1_noise(config, env_spec, noise_eval=True):
   num_actions = env_spec.actions.num_values
 
   def add_noise_concat(inputs, memory_out, task_embedder, **kwargs):
@@ -80,10 +81,26 @@ def r2d1_noise(config, env_spec):
     2. Concat [task + noise] with memory output.
     """
     task = embed_task(inputs, task_embedder)
-    import ipdb; ipdb.set_trace()
     noise = jax.random.normal(hk.next_rng_key(), task.shape)
     task =  task + jnp.sqrt(config.variance) * noise
     return jnp.concatenate((memory_out, task), axis=-1)
+
+  prediction_prep_fn=functools.partial(add_noise_concat, # add noise
+      task_embedder=LanguageTaskEmbedder(
+        vocab_size=config.max_vocab_size,
+        word_dim=config.word_dim,
+        task_dim=config.word_dim),
+    )
+
+  if noise_eval:
+    evaluation_prep_fn = prediction_prep_fn
+  else:
+    evaluation_prep_fn=functools.partial(prediction_prep_fn, # don't add noise
+        task_embedder=LanguageTaskEmbedder(
+          vocab_size=config.max_vocab_size,
+          word_dim=config.word_dim,
+          task_dim=config.word_dim),
+      )
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
@@ -91,15 +108,11 @@ def r2d1_noise(config, env_spec):
     vision=AtariVisionTorso(flatten=True),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=functools.partial(add_noise_concat, # add noise
-      task_embedder=LanguageTaskEmbedder(
-        vocab_size=config.max_vocab_size,
-        word_dim=config.word_dim,
-        task_dim=config.word_dim),
-    ),
-    evaluation_prep_fn=r2d1_prediction_prep_fn, # don't add noise
+    prediction_prep_fn=prediction_prep_fn,
+    evaluation_prep_fn=evaluation_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
+
 
 def r2d1_noise_ensemble(config, env_spec):
   num_actions = env_spec.actions.num_values
@@ -110,7 +123,6 @@ def r2d1_noise_ensemble(config, env_spec):
     2. Create inputs where task is language embedding
     """
     task = embed_task(inputs, task_embedder)
-    import ipdb; ipdb.set_trace()
     return QEnsembleInputs(
       w=task,
       memory_out=memory_out,
@@ -121,7 +133,7 @@ def r2d1_noise_ensemble(config, env_spec):
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         task_dim=config.word_dim),
-    ),
+    )
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,

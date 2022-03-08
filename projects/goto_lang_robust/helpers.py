@@ -20,8 +20,6 @@ from losses.contrastive_model import DeltaContrastLoss
 from losses import cumulants
 from modules.ensembles import QLearningEnsembleLoss
 
-from projects.comp_babyai import nets
-from projects.comp_babyai import configs
 
 from envs.acme.babyai import BabyAI
 
@@ -29,6 +27,11 @@ from envs.acme.babyai import BabyAI
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, MissionIntegerWrapper
 from envs.babyai_kitchen.utils import InstructionsPreprocessor
 
+# -----------------------
+# specific to these set of experiments
+# -----------------------
+from projects.goto_lang_robust import nets
+from projects.goto_lang_robust import configs
 
 def make_environment(evaluation: bool = False,
                      tile_size=8,
@@ -59,7 +62,6 @@ def make_environment(evaluation: bool = False,
   # make word preprocessor for converting language to ints
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai/vocab.json"))
-  max_vocab_size = len(instr_preproc.vocab)
 
   env = BabyAI(
     key2colors=key2colors,
@@ -78,7 +80,7 @@ def make_environment(evaluation: bool = False,
     wrappers.SinglePrecisionWrapper,
   ]
 
-  return wrappers.wrap_all(env, wrapper_list), max_vocab_size
+  return wrappers.wrap_all(env, wrapper_list)
 
 
 def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', max_vocab_size=30):

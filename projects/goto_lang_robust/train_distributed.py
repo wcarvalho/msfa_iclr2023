@@ -57,10 +57,10 @@ def build_program(agent, num_actors,
   # -----------------------
   # load env stuff
   # -----------------------
-  max_vocab_size = 35
   environment_factory = lambda is_eval: helpers.make_environment(
-    evaluation=is_eval, path=path, setting=setting, max_vocab_size=max_vocab_size)
+    evaluation=is_eval, path=path, setting=setting)
   env = environment_factory(False)
+  max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   env_spec = acme.make_environment_spec(env)
   del env
 
@@ -70,9 +70,10 @@ def build_program(agent, num_actors,
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings(agent, env_spec, config_kwargs,
     setting=setting, max_vocab_size=max_vocab_size)
 
+  batch_size = config.batch_size
   def network_factory(spec):
     return td_agent.make_networks(
-      batch_size=config.batch_size,
+      batch_size=batch_size,
       env_spec=env_spec,
       NetworkCls=NetworkCls,
       NetKwargs=NetKwargs,
@@ -81,7 +82,6 @@ def build_program(agent, num_actors,
   builder=functools.partial(td_agent.TDBuilder,
       LossFn=LossFn, LossFnKwargs=LossFnKwargs,
     )
-
 
   # -----------------------
   # loggers
@@ -99,7 +99,7 @@ def build_program(agent, num_actors,
 
   logger_fn = lambda : make_logger(
         log_dir=log_dir,
-        label=loss_label,
+        label='r2d1',
         asynchronous=True)
 
   actor_logger_fn = lambda actor_id: make_logger(
