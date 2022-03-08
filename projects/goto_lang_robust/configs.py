@@ -16,13 +16,13 @@ class R2D1Config:
   variable_update_period: int = 400 # how often to update actor
 
   # Learner options
-  burn_in_length: int = 10  # burn in during learning
+  burn_in_length: int = 0  # burn in during learning
   trace_length: int = 30  # how long training should be
   sequence_period: int = 40  # how often to add
   learning_rate: float = 5e-5
   bootstrap_n: int = 5
   seed: int = 1
-  max_number_of_steps: int = 10_000_000
+  max_number_of_steps: int = 1_500_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -35,7 +35,7 @@ class R2D1Config:
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 0.0 # 0.0=single process
   min_replay_size: int = 10_000
-  max_replay_size: int = 200_000
+  max_replay_size: int = 100_000
   batch_size: int = 32
   store_lstm_state: bool = True
   prefetch_size: int = 0
@@ -53,6 +53,7 @@ class R2D1Config:
   eval_network: bool = False
   max_vocab_size: int = 30
   word_dim: int = 128  # dimension of both word and task (sentence) embeddings
+  word_initializer: str = 'RandomNormal'
 
 
 @dataclasses.dataclass
@@ -64,12 +65,5 @@ class NoiseEnsembleConfig(R2D1Config):
   policy_size = 32
   policy_layers = 0
   batch_size: int = 20
-  cumulant_hidden_size: int=128 # hidden size for cumulant pred
-  embed_task: bool = False  # whether to embed task
-  normalize_task: bool = False # whether to normalize task embedding
-  normalize_cumulants: bool = True # whether to normalize task embedding
-  balance_reward: bool = False # whether to normalize task embedding
   eval_network: bool = True
-  duelling: bool = False
-  z_as_train_task: bool = True
-  state_hidden_size: int = 0
+  state_hidden_size: int = 0 # embed memory before passing in?

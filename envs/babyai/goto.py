@@ -5,7 +5,7 @@ from gym import spaces
 
 from gym_minigrid.minigrid import Grid, WorldObj
 from babyai.levels.levelgen import RoomGridLevel, RejectSampling
-from babyai.levels.verifier import GoToInstr, ObjDesc
+from babyai.levels.verifier import GoToInstr, ObjDesc, PickupInstr
 
 class GotoLevel(RoomGridLevel):
     """
@@ -98,11 +98,17 @@ class GotoLevel(RoomGridLevel):
 
       dists = self.add_distractors(num_distractors=self.num_dists, all_unique=False, types=distractor_types)
 
+      for dist in dists:
+        overlap = dist.type == obj.type and dist.color == obj.color
+        dist_tuple = (dist.type, dist.color)
+        obj_tuple = (obj.type, obj.color)
+
+        assert overlap is False, f"{obj_tuple}=={dist_tuple}"
 
       # Make sure no unblocking is required
       self.check_objs_reachable()
 
-      self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
+      self.instrs = PickupInstr(ObjDesc(obj.type, obj.color))
 
 
 
@@ -115,12 +121,17 @@ if __name__ == '__main__':
     import cv2
 
     tile_size=12
-    train = False
+    train = True
+    all_colors=['green', 'red', 'blue', 'purple', 'yellow', 'grey']
+    ntest = 1
     if train:
-      task_colors = ['red', 'blue', 'purple', 'yellow', 'grey']
+      task_colors = all_colors[ntest:]
     else:
-      task_colors = ['green']
-    env = GotoLevel(room_size=6, task_colors=task_colors)
+      task_colors = all_colors[:ntest]
+    env = GotoLevel(
+      room_size=6,
+      agent_view_size=5,
+      task_colors=task_colors)
     env = RGBImgPartialObsWrapper(env, tile_size=tile_size)
 
     def combine(full, partial):
@@ -136,15 +147,16 @@ if __name__ == '__main__':
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.show_img(combine(full, obs['image']))
 
-    obs = env.reset()
-    full = env.render('rgb_array', tile_size=tile_size, highlight=True)
-    window.set_caption(obs['mission'])
-    window.show_img(combine(full, obs['image']))
+    for nenv in range(100):
+      obs = env.reset()
+      full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+      window.set_caption(obs['mission'])
+      window.show_img(combine(full, obs['image']))
 
-    for step in range(5):
-        obs, reward, done, info = env.step(env.action_space.sample())
-        obs, reward, done, info = env.step(0)
-        full = env.render('rgb_array', tile_size=tile_size, highlight=True)
-        window.show_img(combine(full, obs['image']))
+      for step in range(1):
+          obs, reward, done, info = env.step(env.action_space.sample())
+          obs, reward, done, info = env.step(0)
+          full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+          window.show_img(combine(full, obs['image']))
 
     import ipdb; ipdb.set_trace()

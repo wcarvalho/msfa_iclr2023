@@ -55,7 +55,11 @@ def prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
 
 def r2d1(config, env_spec):
   num_actions = env_spec.actions.num_values
-
+  task_embedder = LanguageTaskEmbedder(
+        vocab_size=config.max_vocab_size,
+        word_dim=config.word_dim,
+        task_dim=config.word_dim,
+        initializer=config.word_initializer)
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
@@ -63,12 +67,9 @@ def r2d1(config, env_spec):
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=functools.partial(prediction_prep_fn,
-      task_embedder=LanguageTaskEmbedder(
-        vocab_size=config.max_vocab_size,
-        word_dim=config.word_dim,
-        task_dim=config.word_dim),
-      ),
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+      task_embedder=task_embedder),
+    prediction=DuellingMLP(num_actions,
+      hidden_sizes=[config.out_hidden_size])
   )
 
 def r2d1_noise(config, env_spec):
@@ -95,7 +96,8 @@ def r2d1_noise(config, env_spec):
       task_embedder=LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
-        task_dim=config.word_dim),
+        task_dim=config.word_dim,
+        initializer=config.word_initializer),
     ),
     evaluation_prep_fn=r2d1_prediction_prep_fn, # don't add noise
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
@@ -120,7 +122,8 @@ def r2d1_noise_ensemble(config, env_spec):
       task_embedder=LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
-        task_dim=config.word_dim),
+        task_dim=config.word_dim,
+        initializer=config.word_initializer),
     ),
 
   return BasicRecurrent(
