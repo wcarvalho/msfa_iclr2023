@@ -50,7 +50,7 @@ class R2D1Config:
   # Network hps
   memory_size = 512
   out_hidden_size = 128
-  eval_network: bool = False
+  eval_network: bool = True
 
 
 @dataclasses.dataclass

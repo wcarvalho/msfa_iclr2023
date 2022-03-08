@@ -35,7 +35,7 @@ class R2D1Config:
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 0.0 # 0.0=single process
   min_replay_size: int = 10_000
-  max_replay_size: int = 200_000
+  max_replay_size: int = 100_000
   batch_size: int = 32
   store_lstm_state: bool = True
   prefetch_size: int = 0
@@ -50,7 +50,7 @@ class R2D1Config:
   # Network hps
   memory_size = 512
   out_hidden_size = 128
-  eval_network: bool = False
+  eval_network: bool = True
   max_vocab_size: int = 30
   word_dim: int = 128  # dimension of both word and task (sentence) embeddings
 

@@ -45,9 +45,9 @@ def main(_):
   search = FLAGS.search
   if search == 'baselines':
     space = {
-        "seed": tune.grid_search([1, 2]),
-        "agent": tune.grid_search(['r2d1', 'r2d1_farm']),
-        # "setting": tune.grid_search(['small', 'medium', 'large']),
+        "seed": tune.grid_search([1, 2, 3]),
+        "agent": tune.grid_search(['r2d1', 'r2d1_noise', 'r2d1_noise_ensemble']),
+        "setting": tune.grid_search([1]),
     }
     experiment='baselines'
   elif search == 'model':
@@ -81,7 +81,7 @@ def main(_):
 
     # get log dir for experiment
     log_dir = gen_log_dir(
-      base_dir=f"{root_path}/{folder}",
+      base_dir=os.path.join(root_path,folder),
       hourminute=False,
       agent=agent,
       setting=setting,

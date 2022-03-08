@@ -189,6 +189,17 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
+  elif agent == "r2d1_noise_eval":
+    config = configs.USFAConfig(**default_config)  # for convenience since has var
+    config.eval_network = False # don't use seperate eval network 
+
+    NetworkCls=nets.r2d1_noise # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
   elif agent == "r2d1_noise_ensemble":
     config = configs.USFAConfig(**default_config)   # for convenience since has var
     config.loss_coeff = 0 # Turn off main loss

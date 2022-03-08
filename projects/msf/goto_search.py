@@ -4,7 +4,7 @@ Param search.
 Comand I run:
   PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES="0,1,2,3,4,5" \
+    CUDA_VISIBLE_DEVICES="0,1,2,3" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/msf/goto_search.py \
@@ -41,14 +41,14 @@ def main(_):
   mp.set_start_method('spawn')
   experiment=None
   num_cpus = 6
-  num_gpus = 1
+  num_gpus = .5
 
   search = FLAGS.search
   if search == 'baselines':
     space = {
         "seed": tune.grid_search([1,2,3]),
         "agent": tune.grid_search(
-          ['r2d1', 'r2d1_noise', 'r2d1_noise_ensemble']),
+          ['r2d1', 'r2d1_noise', 'r2d1_noise_eval', 'r2d1_noise_ensemble']),
           # ['usfa']),
         "setting": tune.grid_search(['large']),
     }

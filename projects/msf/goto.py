@@ -8,15 +8,8 @@ Comand I run:
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python -m ipdb -c continue projects/msf/goto.py \
-    --agent usfa
+    --agent r2d1_noise
 
-Memory leak:
-  PYTHONPATH=$PYTHONPATH:. \
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=0 \
-    XLA_PYTHON_CLIENT_PREALLOCATE=false \
-    TF_FORCE_GPU_ALLOW_GROWTH=true \
-    mprof run projects/msf/goto.py --agent r2d1 --test True
 """
 
 # Do not preallocate GPU memory for JAX.

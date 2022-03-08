@@ -29,6 +29,10 @@ class MultiLevel(BabyAiMultiLevel):
   """
 
   def __init__(self,
+      all_level_kwargs : dict,
+      levelname2idx=None,
+      LevelCls=KitchenLevel,
+      wrappers=None,
       kitchen : Kitchen=None,
       path: str='.',
       **kwargs):
@@ -40,7 +44,12 @@ class MultiLevel(BabyAiMultiLevel):
         levelname2idx (dict, optional): {levelname: idx} dictionary. useful for returning idx versions of levelnames.
         **kwargs: kwargs for all levels
     """
-    super().__init__(**kwargs)
+    super().__init__(
+      all_level_kwargs=all_level_kwargs,
+      levelname2idx=levelname2idx,
+      LevelCls=LevelCls,
+      wrappers=wrappers,
+      **kwargs)
 
     # -----------------------
     # initialize kitchen if not provided. 
@@ -48,7 +57,7 @@ class MultiLevel(BabyAiMultiLevel):
     #   kwargs to get settings
     # -----------------------
     if not kitchen:
-      kitchen_kwargs = next(iter(all_level_kwargs.values()))
+      kitchen_kwargs = next(iter(self.all_level_kwargs.values()))
       if kwargs:
         kitchen_kwargs.update(kwargs)
 
@@ -62,5 +71,4 @@ class MultiLevel(BabyAiMultiLevel):
     level = self.LevelCls(
       kitchen=copy.deepcopy(self.kitchen),
       **level_kwargs)
-    import ipdb; ipdb.set_trace()
     return level

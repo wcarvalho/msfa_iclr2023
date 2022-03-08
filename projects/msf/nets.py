@@ -129,6 +129,12 @@ def r2d1_noise(config, env_spec):
     task =  task + jnp.sqrt(config.variance) * noise
     return jnp.concatenate((memory_out, task), axis=-1)
 
+  if config.eval_network:
+    # seperate eval network that doesn't use noise
+    evaluation_prep_fn = r2d1_prediction_prep_fn # don't add noise
+  else:
+    evaluation_prep_fn = add_noise_concat # add noise
+
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
@@ -136,7 +142,7 @@ def r2d1_noise(config, env_spec):
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=add_noise_concat, # add noise
-    evaluation_prep_fn=r2d1_prediction_prep_fn, # don't add noise
+    evaluation_prep_fn=evaluation_prep_fn, # (maybe) don't add noise
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
