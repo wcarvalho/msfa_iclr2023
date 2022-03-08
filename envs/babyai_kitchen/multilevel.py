@@ -18,28 +18,19 @@ from envs.babyai_kitchen.world import Kitchen
 import envs.babyai_kitchen.tasks
 from envs.babyai_kitchen.levelgen import KitchenLevel
 
+from envs.babyai.multilevel import MultiLevel as BabyAiMultiLevel
 
-class MultiLevel(object):
+class MultiLevel(BabyAiMultiLevel):
 
-  """Wrapper environment that acts like the `current_level`.
-  Everytime reset is called, a new level is sampled.
+  """main change is that 1 kitchen is created and copied to every environment. saves in loading time.
   Attributes:
       levelnames (list): names of levels
       levels (dict): level objects
   """
 
-  def __getattr__(self, name):
-    """This is where all the magic happens. 
-    This enables this class to act like `current_level`."""
-    return getattr(self.current_level, name)
-
   def __init__(self,
-      all_level_kwargs : dict,
       kitchen : Kitchen=None,
-      levelname2idx=dict(),
-      LevelCls=KitchenLevel,
-      path='.',
-      wrappers=[],
+      path: str='.',
       **kwargs):
     """Summary
     
@@ -49,19 +40,7 @@ class MultiLevel(object):
         levelname2idx (dict, optional): {levelname: idx} dictionary. useful for returning idx versions of levelnames.
         **kwargs: kwargs for all levels
     """
-    self.initialized = False
-    self.kwargs = kwargs
-    self.kitchen = kitchen
-    self.LevelCls = LevelCls
-    self.wrappers = wrappers
-
-    self.levels = dict()
-    self.all_level_kwargs = all_level_kwargs
-    self.levelnames = list(all_level_kwargs.keys())
-
-    self.levelname2idx = levelname2idx or {k:idx for idx, k in enumerate(self.levelnames)}
-
-    self._current_idx = 0
+    super().__init__(**kwargs)
 
     # -----------------------
     # initialize kitchen if not provided. 
@@ -79,46 +58,9 @@ class MultiLevel(object):
         rootdir=kitchen_kwargs.get('root_dir', path),
         verbosity=kitchen_kwargs.get('verbosity', 0)
       )
-
-  def get_level(self, idx):
-    """Return level for idx. Spawn environment lazily.
-    Args:
-        idx (TYPE): idx to return (or spawn)
-    
-    Returns:
-        TYPE: level
-    """
-    key = self.levelnames[idx]
-    if not key in self.levels:
-      level_kwargs = dict(**self.all_level_kwargs[key])
-      level_kwargs.update(self.kwargs)
-      self.levels[key] = self.LevelCls(
-            kitchen=copy.deepcopy(self.kitchen),
-            **level_kwargs)
-
-      if self.wrappers:
-          for wrapper in self.wrappers:
-              self.levels[key] = wrapper(self.levels[key])
-
-
-    return self.levels[key]
-
-  def reset(self, **kwargs):
-    """Sample new level."""
-    self._current_idx = np.random.randint(len(self.levelnames))
-    obs = self.current_level.reset(**kwargs)
-    return obs
-
-  def step(self, *args, **kwargs):
-    """Sample new level."""
-    obs, reward, done, info = self.current_level.step(*args, **kwargs)
-    return obs, reward, done, info
-
-
-  @property
-  def current_levelname(self):
-      return self.levelnames[self._current_idx]
-
-  @property
-  def current_level(self):
-    return self.get_level(self._current_idx)
+  def create_level(self, **level_kwargs):
+    level = self.LevelCls(
+      kitchen=copy.deepcopy(self.kitchen),
+      **level_kwargs)
+    import ipdb; ipdb.set_trace()
+    return level

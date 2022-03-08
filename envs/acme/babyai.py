@@ -24,53 +24,49 @@ from acme.wrappers import GymWrapper
 
 import numpy as np
 
-from envs.babyai_kitchen.multilevel import MultiLevel
-from envs.babyai_kitchen.goto_avoid import GotoAvoidEnv
+from envs.babyai.multilevel import MultiLevel
+from envs.babyai.goto import GotoLevel
 
-# from envs.acme.babyai import BabyAI
-
-
-class GotoObs(NamedTuple):
-  """Container for (Observation, Action, Reward) tuples."""
+class BabyAiObs(NamedTuple):
   image: types.Nest
   pickup: types.Nest
   mission: types.Nest
 
 
-class GoToAvoid(dm_env.Environment):
+class BabyAI(dm_env.Environment):
   """
   """
 
   def __init__(self,
-    obj2rew: dict, 
+    key2colors: dict, 
     room_size=10,
     agent_view_size=5,
-    path='.',
-    tile_size=12,
     wrappers=None,
-    nobjects=10,
-    respawn=False,
+    LevelCls=GotoLevel,
+    ObsCreator=BabyAiObs,
+    obs_keys=['image', 'pickup', 'mission'],
     **kwargs):
     """Initializes a new Goto/Avoid environment.
+    
     Args:
-      rows: number of rows.
-      columns: number of columns.
-      seed: random seed for the RNG.
+        obj2rew (dict): Description
+        room_size (int, optional): Description
+        agent_view_size (int, optional): Description
+        wrappers (None, optional): Description
+        LevelCls (TYPE, optional): Description
+        **kwargs: Description
+
     """
     all_level_kwargs = dict()
-    for key, o2r in obj2rew.items():
+    for key, colors in key2colors.items():
         all_level_kwargs[key]=dict(
             room_size=room_size,
             agent_view_size=agent_view_size,
-            object2reward=o2r,
-            tile_size=tile_size,
-            nobjects=nobjects,
-            respawn=respawn,
-            objects=list(o2r.keys()),
+            task_colors=colors,
         )
 
     self.env = MultiLevel(
-        LevelCls=GotoAvoidEnv,
+        LevelCls=LevelCls,
         wrappers=wrappers,
         path=path,
         all_level_kwargs=all_level_kwargs,
@@ -81,13 +77,15 @@ class GoToAvoid(dm_env.Environment):
     else:
       self.default_env = GymWrapper(self.env)
 
-    self.keys = ['image', 'pickup', 'mission']
+    self.ObsCreator = ObsCreator
+    self.obs_keys = obs_keys
 
 
   def reset(self) -> dm_env.TimeStep:
     """Returns the first `TimeStep` of a new episode."""
     obs = self.env.reset()
-    obs = GotoObs(**{k: obs[k] for k in self.keys})
+    import ipdb; ipdb.set_trace()
+    obs = self.ObsCreator(**{k: obs[k] for k in self.keys})
     timestep = dm_env.restart(obs)
 
     return timestep
@@ -95,7 +93,7 @@ class GoToAvoid(dm_env.Environment):
   def step(self, action: int) -> dm_env.TimeStep:
     """Updates the environment according to the action."""
     obs, reward, done, info = self.env.step(action)
-    obs = GotoObs(**{k: obs[k] for k in self.keys})
+    obs = self.ObsCreator(**{k: obs[k] for k in self.keys})
 
     if done:
       timestep = dm_env.termination(reward=reward, observation=obs)
@@ -111,4 +109,4 @@ class GoToAvoid(dm_env.Environment):
 
   def observation_spec(self):
     default = self.default_env.observation_spec()
-    return GotoObs(**default)
+    return self.ObsCreator(**default)
