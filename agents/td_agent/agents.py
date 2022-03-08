@@ -103,6 +103,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       device_prefetch: bool = False,
       log_to_bigtable: bool = True,
       log_every: float = 10.0,
+      multithreading_colocate_learner_and_reverb=True,
       **kwargs,
   ):
     self.EnvLoopCls = EnvLoopCls
@@ -159,6 +160,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
         actor_logger_fn=actor_logger_fn,
         prefetch_size=config.prefetch_size,
         workdir=workdir,
+        multithreading_colocate_learner_and_reverb=multithreading_colocate_learner_and_reverb,
         **kwargs)
 
   def actor(self, random_key: networks_lib.PRNGKey, replay: reverb.Client,
