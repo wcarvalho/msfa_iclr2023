@@ -4,12 +4,12 @@ Param search.
 Comand I run:
   PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES="0,1,2,3" \
+    CUDA_VISIBLE_DEVICES="5,6,7" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/goto_lang_robust/train_hp_search.py \
-    --folder 'initial' \
-    --search model
+    --folder 'results/msf/final/goto_language_test1' --search baselines \
+    --date=False
 """
 
 from absl import app
@@ -32,6 +32,7 @@ from projects.goto_lang_robust.train_distributed import build_program
 
 flags.DEFINE_string('folder', 'set', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
+flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_string('search', 'model', 'root folder.')
 
 FLAGS = flags.FLAGS
@@ -46,8 +47,8 @@ def main(_):
   if search == 'baselines':
     space = {
         "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(['r2d1', 'r2d1_noise', 'r2d1_noise_ensemble']),
-        "setting": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1', 'r2d1_noise_ensemble']),
+        "setting": tune.grid_search([1, 2]),
     }
     experiment='baselines'
   elif search == 'model':
@@ -70,6 +71,7 @@ def main(_):
 
   root_path = FLAGS.root if FLAGS.root else str(Path().absolute())
   folder=FLAGS.folder
+  use_date = FLAGS.date
 
   def create_and_run_program(config):
     """Create and run launchpad program
@@ -83,6 +85,7 @@ def main(_):
     log_dir = gen_log_dir(
       base_dir=os.path.join(root_path,folder),
       hourminute=False,
+      date=use_date,
       agent=agent,
       setting=setting,
       **({'exp': experiment} if experiment else {}),

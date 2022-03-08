@@ -75,33 +75,28 @@ def r2d1(config, env_spec):
 def r2d1_noise(config, env_spec):
   num_actions = env_spec.actions.num_values
 
-  def add_noise_concat(inputs, memory_out, task_embedder, **kwargs):
+  task_embedder = LanguageTaskEmbedder(
+          vocab_size=config.max_vocab_size,
+          word_dim=config.word_dim,
+          task_dim=config.word_dim)
+  variance = config.variance
+
+  def add_noise_concat(inputs, memory_out, **kwargs):
     """
     1. embed task
     2. Concat [task + noise] with memory output.
     """
     task = embed_task(inputs, task_embedder)
     noise = jax.random.normal(hk.next_rng_key(), task.shape)
-    task =  task + jnp.sqrt(config.variance) * noise
+    task =  task + jnp.sqrt(variance) * noise
     return jnp.concatenate((memory_out, task), axis=-1)
-
-  new_add_noise_concat=functools.partial(add_noise_concat, # add noise
-      task_embedder=LanguageTaskEmbedder(
-        vocab_size=config.max_vocab_size,
-        word_dim=config.word_dim,
-        task_dim=config.word_dim),
-    )
 
   if config.eval_network:
     # seperate eval network that doesn't use noise
-    evaluation_prep_fn=functools.partial(prediction_prep_fn, # don't add noise
-        task_embedder=LanguageTaskEmbedder(
-          vocab_size=config.max_vocab_size,
-          word_dim=config.word_dim,
-          task_dim=config.word_dim),
-      )
+    evaluation_prep_fn=functools.partial(prediction_prep_fn,
+        task_embedder=task_embedder)
   else:
-    evaluation_prep_fn = new_add_noise_concat # add noise
+    evaluation_prep_fn = add_noise_concat # add noise
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
@@ -109,7 +104,7 @@ def r2d1_noise(config, env_spec):
     vision=AtariVisionTorso(flatten=True),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=prediction_prep_fn,
+    prediction_prep_fn=add_noise_concat,
     evaluation_prep_fn=evaluation_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )

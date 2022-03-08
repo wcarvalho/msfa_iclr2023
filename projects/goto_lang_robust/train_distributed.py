@@ -9,7 +9,7 @@ Comand I run:
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/goto_lang_robust/train_distributed.py \
-    --agent r2d1
+    --agent r2d1_noise_ensemble
 """
 
 # Do not preallocate GPU memory for JAX.
