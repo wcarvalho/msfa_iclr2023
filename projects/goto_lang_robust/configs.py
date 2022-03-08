@@ -56,7 +56,7 @@ class R2D1Config:
 
 
 @dataclasses.dataclass
-class USFAConfig(R2D1Config):
+class NoiseEnsembleConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
   npolicies: int = 10 # number of policies to sample
   variance: float = 0.5
@@ -73,44 +73,3 @@ class USFAConfig(R2D1Config):
   duelling: bool = False
   z_as_train_task: bool = True
   state_hidden_size: int = 0
-
-
-@dataclasses.dataclass
-class RewardConfig:
-  """Extra configuration options for USFA agent."""
-  reward_coeff: float = 1. # coefficient for reward loss
-  value_coeff: float = 1. # coefficient for value loss
-  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
-  q_aux: str="ensemble"
-
-
-@dataclasses.dataclass
-class ModularUSFAConfig(USFAConfig):
-  """Extra configuration options for USFA agent."""
-  mixture: str='unique'
-  cumtype: str='sum'
-
-
-
-@dataclasses.dataclass
-class FarmConfig:
-  """Extra configuration options for FARM module."""
-
-  # Network hps
-  module_size: int = 128
-  nmodules: int = 4
-  out_layers: int = 0
-
-@dataclasses.dataclass
-class FarmModelConfig(FarmConfig):
-  """Extra configuration options for FARM module."""
-
-  # Network hps
-  extra_negatives: int = 4
-  temperature: float = 0.01
-  model_coeff: float = 1e-5
-  out_layers: int = 2
-  model_layers: int = 2
-  batch_size: int = 16
-  activation: str='relu'
-

@@ -9,7 +9,7 @@ Comand I run:
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/goto_lang_robust/train_distributed.py \
-    --agent usfa
+    --agent r2d1
 """
 
 # Do not preallocate GPU memory for JAX.
@@ -47,7 +47,7 @@ FLAGS = flags.FLAGS
 
 def build_program(agent, num_actors,
   use_wandb=False,
-  setting='small',
+  setting=1,
   experiment=None,
   log_every=30.0, # how often to log
   config_kwargs=None, # config
@@ -67,7 +67,7 @@ def build_program(agent, num_actors,
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs,
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings(agent, env_spec, config_kwargs,
     setting=setting, max_vocab_size=max_vocab_size)
 
   def network_factory(spec):
@@ -100,18 +100,15 @@ def build_program(agent, num_actors,
   logger_fn = lambda : make_logger(
         log_dir=log_dir,
         label=loss_label,
-        wandb=use_wandb,
         asynchronous=True)
 
   actor_logger_fn = lambda actor_id: make_logger(
                   log_dir=log_dir, label='actor',
-                  wandb=use_wandb,
                   save_data=actor_id == 0,
                   steps_key="actor_steps",
                   )
   evaluator_logger_fn = lambda : make_logger(
                   log_dir=log_dir, label='evaluator',
-                  wandb=use_wandb,
                   steps_key="evaluator_steps",
                   )
 
