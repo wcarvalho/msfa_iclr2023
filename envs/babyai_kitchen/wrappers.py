@@ -21,6 +21,7 @@ class MissionIntegerWrapper(gym.core.ObservationWrapper):
 
   def observation(self, obs):
     mission = self.instr_preproc(obs['mission'])
+    assert len(mission) <= self.max_length
     obs['mission'] = np.zeros(self.max_length, dtype=np.uint8)
     obs['mission'][:len(mission)] = mission
     return obs
