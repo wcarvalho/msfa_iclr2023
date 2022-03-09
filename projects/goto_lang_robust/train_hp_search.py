@@ -4,7 +4,7 @@ Param search.
 Comand I run:
   PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7" \
+    CUDA_VISIBLE_DEVICES="5,6,7" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/goto_lang_robust/train_hp_search.py \
@@ -71,11 +71,22 @@ def main(_):
         # "num_epsilons": tune.grid_search([128, 256]),
         "room_size": tune.grid_search([5]),
         "num_dists": tune.grid_search([1]),
-        "instr": tune.grid_search(["goto", "pickup"]),
-        "task_in_memory": tune.grid_search(["goto", "pickup"]),
-        "max_replay_size": tune.grid_search([100_000, 200_000, 400_000]),
+        "instr": tune.grid_search(["pickup"]),
+        "task_in_memory": tune.grid_search([True, False]),
+        "max_replay_size": tune.grid_search([100_000, 200_000]),
     }
-    experiment='r2d1_babyai'
+    experiment='small_room'
+  elif search == 'r2d1_gated':
+    space = {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1_gated']),
+        "vision_torso": tune.grid_search(['babyai', 'atari']),
+        "room_size": tune.grid_search([5]),
+        "num_dists": tune.grid_search([1]),
+        "instr": tune.grid_search(["pickup"]),
+        "max_replay_size": tune.grid_search([100_000, 200_000]),
+    }
+    experiment='small_room'
   else:
     raise NotImplementedError
 
@@ -94,6 +105,9 @@ def main(_):
     agent = config.pop('agent', 'r2d1')
     num_actors = config.pop('num_actors', 9)
     setting = config.pop('setting', 1)
+    room_size = config.pop("room_size", 6)
+    num_dists = config.pop("num_dists", 1)
+    instr = config.pop("instr", 'goto')
 
 
     # get log dir for experiment
@@ -123,6 +137,9 @@ def main(_):
       setting=setting,
       config_kwargs=config, 
       path=root_path,
+      room_size=room_size,
+      num_dists=num_dists,
+      instr=instr,
       log_dir=log_dir)
 
     if program is None: return

@@ -100,6 +100,13 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', ma
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
+  elif agent == "r2d1_gated": # Recurrent DQN
+    config = configs.R2D1Config(**default_config)
+
+    NetworkCls=nets.r2d1_gated # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
   elif agent == "r2d1_noise":
     config = configs.NoiseEnsembleConfig(**default_config)  # for convenience since has var

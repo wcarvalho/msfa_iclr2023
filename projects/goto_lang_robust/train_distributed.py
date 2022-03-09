@@ -49,7 +49,7 @@ def build_program(agent, num_actors,
   use_wandb=False,
   setting=1,
   room_size=6,
-  num_dists=4,
+  num_dists=1,
   instr='goto',
   experiment=None,
   log_every=30.0, # how often to log
@@ -65,6 +65,7 @@ def build_program(agent, num_actors,
     path=path,
     setting=setting,
     room_size=room_size,
+    num_dists=num_dists,
     instr=instr,
     )
   env = environment_factory(False)

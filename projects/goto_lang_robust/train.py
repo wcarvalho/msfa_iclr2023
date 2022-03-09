@@ -7,9 +7,8 @@ Comand I run:
     CUDA_VISIBLE_DEVICES=0 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
-    JAX_DISABLE_JIT=1 \
     python -m ipdb -c continue projects/goto_lang_robust/train.py \
-    --agent r2d1
+    --agent r2d1_gated
 """
 
 from absl import app
@@ -35,7 +34,10 @@ FLAGS = flags.FLAGS
 
 
 def main(_):
-  env = helpers.make_environment()
+  env = helpers.make_environment(
+    room_size=5,
+    num_dists=1,
+    instr='pickup')
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   env_spec = acme.make_environment_spec(env)
 

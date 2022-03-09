@@ -50,6 +50,35 @@ def prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
   task = embed_task(inputs, task_embedder)
   return jnp.concatenate((memory_out, task), axis=-1)
 
+
+class GatedAttention(hk.Module):
+  """Chaplot.
+  """
+  def __init__(self):
+    super(GatedAttention, self).__init__()
+
+  def __call__(
+      self,
+      task: jnp.ndarray, # [B, D]
+      image: jnp.ndarray, # [B, H, W, C]
+  ) -> jnp.ndarray:
+
+    dim = image.shape[-1]
+
+    # ======================================================
+    # compute coefficients
+    # ======================================================
+    coefficients = hk.Linear(dim)(task)
+    coefficients = jnp.expand_dims(coefficients, (-3,-2)) # [B, H, W, D]
+    coefficients = jax.nn.sigmoid(coefficients)
+
+    # ======================================================
+    # attend + projections
+    # ======================================================
+    image = image*coefficients
+    image = hk.Conv2D(dim, [1, 1], 1)(image)
+    return image
+
 # ======================================================
 # Networks
 # ======================================================
@@ -73,14 +102,14 @@ def r2d1(config, env_spec):
     raise NotImplementedError
 
   embedder = OAREmbedding(num_actions=num_actions)
-  def task_memory_prep_fn(inputs, obs):
+  def task_in_memory_prep_fn(inputs, obs):
     task = embed_task(inputs, task_embedder)
     oar = embedder(inputs, obs)
-    return jnp.concatenate((oar_input, task), axis=-1)
+    return jnp.concatenate((oar, task), axis=-1)
 
   if config.task_in_memory:
-    memory_prep_fn=task_memory_prep_fn
-    pred_prep_fn=prediction_prep_fn
+    memory_prep_fn=task_in_memory_prep_fn
+    pred_prep_fn=None # just use memory output
   else:
     memory_prep_fn=embedder
     pred_prep_fn=functools.partial(prediction_prep_fn,
@@ -91,6 +120,76 @@ def r2d1(config, env_spec):
     vision_prep_fn=get_image_from_inputs,
     vision=vision,
     memory_prep_fn=memory_prep_fn,
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=pred_prep_fn,
+    prediction=DuellingMLP(num_actions,
+      hidden_sizes=[config.out_hidden_size])
+  )
+
+def r2d1_gated(config, env_spec):
+  num_actions = env_spec.actions.num_values
+  task_embedder = LanguageTaskEmbedder(
+        vocab_size=config.max_vocab_size,
+        word_dim=config.word_dim,
+        task_dim=config.word_dim,
+        initializer=config.word_initializer,
+        compress=config.word_compress)
+
+  if config.vision_torso == 'atari':
+    vision = AtariVisionTorso(
+      flatten=False,
+      conv_dim=0,
+      out_dim=config.vision_size)
+  elif config.vision_torso == 'babyai':
+    vision = BabyAIVisionTorso(
+      flatten=False,
+      batch_norm=config.vision_batch_norm)
+  else:
+    raise NotImplementedError
+
+
+  embedder = OAREmbedding(
+    num_actions=num_actions,
+    concat=False,
+    observation=False)
+  def gated_attn_prep_fn(inputs, obs):
+    task = inputs.observation.task.astype(jnp.uint8)
+    has_time = len(task.shape) == 3
+    batchfn = hk.BatchApply if has_time else lambda x:x
+
+    def apply_attn(obs, task):
+      """Summary
+      
+      Args:
+          obs (TYPE): B x H x W x C
+          task (TYPE): B x D
+      
+      Returns:
+          TYPE: Description
+      """
+      task_embed = task_embedder(task)
+      B, D = task_embed.shape
+      obs = GatedAttention()(task=task_embed, image=obs)
+
+      obs_flat = obs.reshape(B, -1)
+
+      return obs_flat, task_embed
+
+    action_reward = embedder(inputs, obs)
+    obs_flat, task_embed =  batchfn(apply_attn)(obs, task)
+
+    everything = action_reward+[obs_flat, task_embed]
+    everything = jnp.concatenate(everything, axis=-1)
+
+    return everything
+
+  pred_prep_fn=None # just use memory output
+  
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=vision,
+    memory_prep_fn=gated_attn_prep_fn,
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=pred_prep_fn,
     prediction=DuellingMLP(num_actions,
