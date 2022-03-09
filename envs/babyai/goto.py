@@ -122,8 +122,12 @@ if __name__ == '__main__':
 
     tile_size=12
     train = True
-    all_colors=['green', 'red', 'blue', 'purple', 'yellow', 'grey']
     ntest = 1
+    nresets=1
+    nenv_steps = 100
+
+
+    all_colors=['green', 'red', 'blue', 'purple', 'yellow', 'grey']
     if train:
       task_colors = all_colors[ntest:]
     else:
@@ -131,6 +135,7 @@ if __name__ == '__main__':
     env = GotoLevel(
       room_size=6,
       agent_view_size=5,
+      num_dists=1,
       task_colors=task_colors)
     env = RGBImgPartialObsWrapper(env, tile_size=tile_size)
 
@@ -147,16 +152,22 @@ if __name__ == '__main__':
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.show_img(combine(full, obs['image']))
 
-    for nenv in range(100):
+    for nenv in range(nresets):
       obs = env.reset()
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.set_caption(obs['mission'])
       window.show_img(combine(full, obs['image']))
 
-      for step in range(1):
+      rewards = []
+      for step in range(nenv_steps):
           obs, reward, done, info = env.step(env.action_space.sample())
-          obs, reward, done, info = env.step(0)
+          rewards.append(reward)
           full = env.render('rgb_array', tile_size=tile_size, highlight=True)
           window.show_img(combine(full, obs['image']))
+          if done:
+            break
 
+      print(f"Rewards={sum(rewards)}")
     import ipdb; ipdb.set_trace()
+
+
