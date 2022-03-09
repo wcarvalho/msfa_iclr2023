@@ -15,7 +15,7 @@ from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding, LanguageTaskEmbedder
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
-from modules.vision import AtariVisionTorso
+from modules.vision import AtariVisionTorso, BabyAIVisionTorso
 from modules.usfa import ConcatFlatStatePolicy
 
 from utils import data as data_utils
@@ -41,7 +41,7 @@ def embed_task(inputs, task_embedder):
   task = inputs.observation.task
   has_time = len(task.shape) == 3
   batchfn = hk.BatchApply if has_time else lambda x:x
-  return batchfn(task_embedder)(task.astype(jnp.int32))
+  return batchfn(task_embedder)(task.astype(jnp.uint8))
 
 def prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
   """
@@ -60,15 +60,39 @@ def r2d1(config, env_spec):
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         task_dim=config.word_dim,
-        initializer=config.word_initializer)
+        initializer=config.word_initializer,
+        compress=config.word_compress)
+
+  if config.vision_torso == 'atari':
+    vision = AtariVisionTorso(conv_dim=0, out_dim=config.vision_size)
+  elif config.vision_torso == 'babyai':
+    vision = BabyAIVisionTorso(
+      batch_norm=config.vision_batch_norm,
+      )
+  else:
+    raise NotImplementedError
+
+  embedder = OAREmbedding(num_actions=num_actions)
+  def task_memory_prep_fn(inputs, obs):
+    task = embed_task(inputs, task_embedder)
+    oar = embedder(inputs, obs)
+    return jnp.concatenate((oar_input, task), axis=-1)
+
+  if config.task_in_memory:
+    memory_prep_fn=task_memory_prep_fn
+    pred_prep_fn=prediction_prep_fn
+  else:
+    memory_prep_fn=embedder
+    pred_prep_fn=functools.partial(prediction_prep_fn,
+      task_embedder=task_embedder)
+
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    vision=vision,
+    memory_prep_fn=memory_prep_fn,
     memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=functools.partial(prediction_prep_fn,
-      task_embedder=task_embedder),
+    prediction_prep_fn=pred_prep_fn,
     prediction=DuellingMLP(num_actions,
       hidden_sizes=[config.out_hidden_size])
   )
@@ -102,7 +126,7 @@ def r2d1_noise(config, env_spec):
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
+    vision=AtariVisionTorso(conv_dim=0, out_dim=config.vision_size),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=add_noise_concat,
@@ -130,13 +154,14 @@ def r2d1_noise_ensemble(config, env_spec):
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         task_dim=config.word_dim,
-        initializer=config.word_initializer),
+        initializer=config.word_initializer,
+        compress=config.word_compress),
     ),
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
+    vision=AtariVisionTorso(conv_dim=0, out_dim=config.vision_size),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=prediction_prep_fn,

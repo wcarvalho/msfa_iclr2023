@@ -48,6 +48,9 @@ FLAGS = flags.FLAGS
 def build_program(agent, num_actors,
   use_wandb=False,
   setting=1,
+  room_size=6,
+  num_dists=4,
+  instr='goto',
   experiment=None,
   log_every=30.0, # how often to log
   config_kwargs=None, # config
@@ -58,7 +61,12 @@ def build_program(agent, num_actors,
   # load env stuff
   # -----------------------
   environment_factory = lambda is_eval: helpers.make_environment(
-    evaluation=is_eval, path=path, setting=setting)
+    evaluation=is_eval,
+    path=path,
+    setting=setting,
+    room_size=room_size,
+    instr=instr,
+    )
   env = environment_factory(False)
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   env_spec = acme.make_environment_spec(env)

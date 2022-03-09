@@ -2,7 +2,6 @@
 import dataclasses
 
 from acme.adders import reverb as adders_reverb
-from acme.agents.jax.r2d2 import config as r2d2_config
 import rlax
 
 
@@ -17,7 +16,7 @@ class R2D1Config:
 
   # Learner options
   burn_in_length: int = 0  # burn in during learning
-  trace_length: int = 30  # how long training should be
+  trace_length: int = 40  # how long training should be
   sequence_period: int = 40  # how often to add
   learning_rate: float = 5e-5
   bootstrap_n: int = 5
@@ -48,12 +47,17 @@ class R2D1Config:
   max_priority_weight: float = 0.9
 
   # Network hps
-  memory_size = 512
-  out_hidden_size = 128
+  memory_size: int = 512
+  vision_size: int = 512
+  vision_torso: str = 'babyai'
+  vision_batch_norm: bool = False
+  task_in_memory: bool = True
+  out_hidden_size: int = 128
   eval_network: bool = True
   max_vocab_size: int = 30
   word_dim: int = 128  # dimension of both word and task (sentence) embeddings
-  word_initializer: str = 'RandomNormal'
+  word_initializer: str = 'TruncatedNormal'
+  word_compress: str = 'sum'
 
 
 @dataclasses.dataclass

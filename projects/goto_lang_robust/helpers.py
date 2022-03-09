@@ -21,13 +21,11 @@ from losses import cumulants
 from modules.ensembles import QLearningEnsembleLoss
 
 
-from projects.goto_lang_robust import nets
-from projects.goto_lang_robust import configs
-
 from envs.acme.babyai import BabyAI
 
 # TODO: move each of these to `envs.babyai` and update imports across files
-from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, MissionIntegerWrapper
+from gym_minigrid.wrappers import RGBImgPartialObsWrapper
+from envs.babyai_kitchen.wrappers import MissionIntegerWrapper
 from envs.babyai_kitchen.utils import InstructionsPreprocessor
 
 # -----------------------
@@ -37,9 +35,11 @@ from projects.goto_lang_robust import nets
 from projects.goto_lang_robust import configs
 
 def make_environment(evaluation: bool = False,
-                     tile_size=8,
+                     tile_size=12,
                      room_size=6,
                      max_text_length=5, # go to the {color} {type}
+                     num_dists=4,
+                     instr='goto',
                      path='.',
                      setting: int=2,
                      ) -> dm_env.Environment:
@@ -69,6 +69,8 @@ def make_environment(evaluation: bool = False,
   env = BabyAI(
     key2colors=key2colors,
     room_size=room_size,
+    num_dists=num_dists,
+    instr=instr,
     wrappers=[ # wrapper for babyAI gym env
       functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size),
       functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc,
@@ -90,8 +92,6 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', ma
   default_config = dict(max_vocab_size=max_vocab_size)
   default_config.update(config_kwargs or {})
 
-  print("check vocab size")
-  import ipdb; ipdb.set_trace()
   if agent == "r2d1": # Recurrent DQN
     config = configs.R2D1Config(**default_config)
 

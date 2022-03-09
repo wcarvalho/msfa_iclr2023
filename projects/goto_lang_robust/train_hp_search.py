@@ -4,11 +4,21 @@ Param search.
 Comand I run:
   PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
+    CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7" \
+    XLA_PYTHON_CLIENT_PREALLOCATE=false \
+    TF_FORCE_GPU_ALLOW_GROWTH=true \
+    python projects/goto_lang_robust/train_hp_search.py \
+    --search r2d1_search \
+    --folder 'results/msf/refactor/goto_language_test1'
+
+  PYTHONPATH=$PYTHONPATH:. \
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
     CUDA_VISIBLE_DEVICES="5,6,7" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/goto_lang_robust/train_hp_search.py \
-    --folder 'results/msf/final/goto_language_test1' --search baselines \
+    --folder 'results/msf/final/goto_language_test1' \
+    --search baselines \
     --date=False
 """
 
@@ -55,9 +65,17 @@ def main(_):
     space = {
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['r2d1']),
-        "word_dim": tune.grid_search([32, 64, 128]),
+        # "word_dim": tune.grid_search([32, 64, 128]),
+        # "word_initializer": tune.grid_search(["RandomNormal", "TruncatedNormal"]),
+        # "vision_torso": tune.grid_search(['babyai']),
+        # "num_epsilons": tune.grid_search([128, 256]),
+        "room_size": tune.grid_search([5]),
+        "num_dists": tune.grid_search([1]),
+        "instr": tune.grid_search(["goto", "pickup"]),
+        "task_in_memory": tune.grid_search(["goto", "pickup"]),
+        "max_replay_size": tune.grid_search([100_000, 200_000, 400_000]),
     }
-    experiment='model'
+    experiment='r2d1_babyai'
   else:
     raise NotImplementedError
 
@@ -75,12 +93,12 @@ def main(_):
     """
     agent = config.pop('agent', 'r2d1')
     num_actors = config.pop('num_actors', 9)
-    setting = config.pop('setting', 'small_length2_nodist')
+    setting = config.pop('setting', 1)
 
 
     # get log dir for experiment
     log_dir = gen_log_dir(
-      base_dir=os.path.join(root_path,folder),
+      base_dir=os.path.join(root_path, folder),
       hourminute=False,
       date=use_date,
       agent=agent,
@@ -109,12 +127,12 @@ def main(_):
 
     if program is None: return
     lp.launch(program, lp.LaunchType.LOCAL_MULTI_THREADING, terminal='current_terminal', 
-      local_resources = { # minimize GPU footprint
-      'actor':
-          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
-      'evaluator':
-          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
-          }
+      # local_resources = { # minimize GPU footprint
+      # 'actor':
+      #     PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
+      # 'evaluator':
+      #     PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
+      #     }
       )
     time.sleep(30) # sleep for 15 seconds
 

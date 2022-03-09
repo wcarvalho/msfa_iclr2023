@@ -7,8 +7,9 @@ Comand I run:
     CUDA_VISIBLE_DEVICES=0 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
+    JAX_DISABLE_JIT=1 \
     python -m ipdb -c continue projects/goto_lang_robust/train.py \
-    --agent r2d1_noise
+    --agent r2d1
 """
 
 from absl import app
