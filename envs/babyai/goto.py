@@ -108,7 +108,7 @@ class GotoLevel(RoomGridLevel):
       # Make sure no unblocking is required
       self.check_objs_reachable()
 
-      self.instrs = PickupInstr(ObjDesc(obj.type, obj.color))
+      self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
 
 
 
