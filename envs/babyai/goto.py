@@ -19,15 +19,21 @@ class GotoLevel(RoomGridLevel):
         num_dists=4,
         task_colors=None,
         task_types=None,
+        instr='goto',
         seed=None,
         **kwargs):
       self.all_colors = ['red', 'green', 'blue', 'purple', 'yellow', 'grey']
       self.all_types = ['key', 'box', 'ball']
-
       self.task_types = task_types or self.all_types
       self.task_colors = task_colors or self.all_colors
-
       self.num_dists = num_dists
+
+      instr = instr.lower()
+      assert instr in ("goto", 'pickup')
+      if instr == "goto":
+        self.InstrCls = GoToInstr
+      else:
+        self.InstrCls = PickupInstr
 
       super().__init__(
           num_rows=1,
@@ -108,7 +114,7 @@ class GotoLevel(RoomGridLevel):
       # Make sure no unblocking is required
       self.check_objs_reachable()
 
-      self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
+      self.instrs = self.InstrCls(ObjDesc(obj.type, obj.color))
 
 
 
@@ -122,9 +128,15 @@ if __name__ == '__main__':
 
     tile_size=12
     train = True
+    check_end=True
     ntest = 1
-    nresets=1
+    nresets=10
     nenv_steps = 100
+
+    instr='pickup'
+    room_size=5
+    num_dists=3
+    agent_view_size=5
 
 
     all_colors=['green', 'red', 'blue', 'purple', 'yellow', 'grey']
@@ -133,9 +145,10 @@ if __name__ == '__main__':
     else:
       task_colors = all_colors[:ntest]
     env = GotoLevel(
-      room_size=6,
-      agent_view_size=5,
-      num_dists=1,
+      room_size=room_size,
+      agent_view_size=agent_view_size,
+      num_dists=num_dists,
+      instr=instr,
       task_colors=task_colors)
     env = RGBImgPartialObsWrapper(env, tile_size=tile_size)
 
@@ -168,6 +181,8 @@ if __name__ == '__main__':
             break
 
       print(f"Rewards={sum(rewards)}")
+      if check_end:
+        import ipdb; ipdb.set_trace()
     import ipdb; ipdb.set_trace()
 
 
