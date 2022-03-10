@@ -155,7 +155,8 @@ def main(_):
       #     PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
       #     }
       )
-    time.sleep(30) # sleep for 15 seconds
+    time.sleep(45) # sleep for 45 seconds
+    # prevents overlapping reverbs
 
 
 

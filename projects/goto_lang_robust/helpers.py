@@ -109,12 +109,13 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', ma
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
   elif agent == "r2d1_noise":
-    config = configs.NoiseEnsembleConfig(**default_config)
+    raise NotImplementedError("task in memory works best and not implemented for this. need to not sample in memory during eval. shouldn't be too hard")
+    # config = configs.NoiseEnsembleConfig(**default_config)
 
-    NetworkCls=nets.r2d1_noise # default: 2M params
-    NetKwargs=dict(config=config, env_spec=env_spec)
-    LossFn = td_agent.R2D2Learning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    # NetworkCls=nets.r2d1_noise # default: 2M params
+    # NetKwargs=dict(config=config, env_spec=env_spec)
+    # LossFn = td_agent.R2D2Learning
+    # LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
   elif agent == "r2d1_noise_eval":
     config = configs.NoiseEnsembleConfig(**default_config)
@@ -126,19 +127,20 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', ma
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
   elif agent == "r2d1_noise_ensemble":
-    config = configs.NoiseEnsembleConfig(**default_config)
-    config.loss_coeff = 0 # Turn off main loss
+    raise NotImplementedError("task in memory works best and not implemented for this")
+    # config = configs.NoiseEnsembleConfig(**default_config)
+    # config.loss_coeff = 0 # Turn off main loss
 
-    NetworkCls=nets.r2d1_noise_ensemble # default: 2M params
-    NetKwargs=dict(config=config, env_spec=env_spec)
-    LossFn = td_agent.R2D2Learning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(
-      aux_tasks=[
-        QLearningEnsembleLoss(
-          coeff=1.,
-          discount=config.discount)
-      ])
+    # NetworkCls=nets.r2d1_noise_ensemble # default: 2M params
+    # NetKwargs=dict(config=config, env_spec=env_spec)
+    # LossFn = td_agent.R2D2Learning
+    # LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    # LossFnKwargs.update(
+    #   aux_tasks=[
+    #     QLearningEnsembleLoss(
+    #       coeff=1.,
+    #       discount=config.discount)
+    #   ])
 
   else:
     raise NotImplementedError(agent)

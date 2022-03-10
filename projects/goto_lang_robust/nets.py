@@ -83,6 +83,17 @@ class GatedAttention(hk.Module):
 # Networks
 # ======================================================
 
+def build_vision_net(config):
+  if config.vision_torso == 'atari':
+    vision = AtariVisionTorso(conv_dim=0, out_dim=config.vision_size)
+  elif config.vision_torso == 'babyai':
+    vision = BabyAIVisionTorso(
+      batch_norm=config.vision_batch_norm,
+      )
+  else:
+    raise NotImplementedError
+  return vision
+
 def r2d1(config, env_spec):
   num_actions = env_spec.actions.num_values
   task_embedder = LanguageTaskEmbedder(
@@ -92,14 +103,7 @@ def r2d1(config, env_spec):
         initializer=config.word_initializer,
         compress=config.word_compress)
 
-  if config.vision_torso == 'atari':
-    vision = AtariVisionTorso(conv_dim=0, out_dim=config.vision_size)
-  elif config.vision_torso == 'babyai':
-    vision = BabyAIVisionTorso(
-      batch_norm=config.vision_batch_norm,
-      )
-  else:
-    raise NotImplementedError
+  vision = build_vision_net(config)
 
   embedder = OAREmbedding(num_actions=num_actions)
   def task_in_memory_prep_fn(inputs, obs):
@@ -125,6 +129,116 @@ def r2d1(config, env_spec):
     prediction=DuellingMLP(num_actions,
       hidden_sizes=[config.out_hidden_size])
   )
+
+def r2d1_noise(config, env_spec):
+  num_actions = env_spec.actions.num_values
+
+  task_embedder = LanguageTaskEmbedder(
+          vocab_size=config.max_vocab_size,
+          word_dim=config.word_dim,
+          task_dim=config.word_dim)
+  variance = config.variance
+
+
+  embedder = OAREmbedding(num_actions=num_actions)
+  def noisy_task_in_memory_prep_fn(inputs, obs):
+    """
+    1. embed task
+    2. Concat [task + noise] with memory output.
+    """
+    task = embed_task(inputs, task_embedder)
+    noise = jax.random.normal(hk.next_rng_key(), task.shape)
+    task =  task + jnp.sqrt(variance) * noise
+    oar = embedder(inputs, obs)
+    return jnp.concatenate((oar, task), axis=-1)
+
+  if config.task_in_memory:
+    memory_prep_fn=noisy_task_in_memory_prep_fn
+    pred_prep_fn=None # just use memory output
+
+    if config.eval_network:
+      # seperate eval network that doesn't use noise
+      evaluation_prep_fn=functools.partial(prediction_prep_fn,
+          task_embedder=task_embedder)
+      raise NotImplementedError("Need settings that create jax function which doesn't sample before putting into RNN.")
+    else:
+      evaluation_prep_fn = None # just use memory output
+
+  else:
+    raise NotImplementedError
+    # memory_prep_fn=embedder
+    # pred_prep_fn=functools.partial(prediction_prep_fn,
+    #   task_embedder=task_embedder)
+
+
+
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=build_vision_net(config),
+    memory_prep_fn=memory_prep_fn,
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=pred_prep_fn,
+    evaluation_prep_fn=evaluation_prep_fn,
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+  )
+
+
+def r2d1_noise_ensemble(config, env_spec):
+  num_actions = env_spec.actions.num_values
+
+  vision = build_vision_net(config)
+
+  def ensemble_prep_fn(inputs, memory_out, task_embedder, **kwargs):
+    """
+    1. embed task
+    2. Create inputs where task is language embedding
+    """
+    task = embed_task(inputs, task_embedder)
+    return QEnsembleInputs(
+      w=task,
+      memory_out=memory_out,
+      )
+
+  if config.task_in_memory:
+    raise NotImplementedError("Need way to deal with N samples going into RNN....")
+    memory_prep_fn=noisy_task_in_memory_prep_fn
+    pred_prep_fn=None # just use memory output
+    evaluation_prep_fn = None # just use memory output
+
+  else:
+    raise NotImplementedError
+
+  prediction_prep_fn = functools.partial(ensemble_prep_fn, # add noise
+      task_embedder=LanguageTaskEmbedder(
+        vocab_size=config.max_vocab_size,
+        word_dim=config.word_dim,
+        task_dim=config.word_dim,
+        initializer=config.word_initializer,
+        compress=config.word_compress),
+    )
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=vision,
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=prediction_prep_fn,
+    prediction=QEnsembleHead(
+      num_actions=num_actions,
+      hidden_size=config.out_hidden_size,
+      policy_size=config.policy_size,
+      variance=config.variance,
+      nsamples=config.npolicies,
+      policy_layers=config.policy_layers,
+      q_input_fn=ConcatFlatStatePolicy(config.state_hidden_size)
+      )
+  )
+
+
+
 
 def r2d1_gated(config, env_spec):
   num_actions = env_spec.actions.num_values
@@ -195,83 +309,4 @@ def r2d1_gated(config, env_spec):
     prediction_prep_fn=pred_prep_fn,
     prediction=DuellingMLP(num_actions,
       hidden_sizes=[config.out_hidden_size])
-  )
-
-def r2d1_noise(config, env_spec):
-  num_actions = env_spec.actions.num_values
-
-  task_embedder = LanguageTaskEmbedder(
-          vocab_size=config.max_vocab_size,
-          word_dim=config.word_dim,
-          task_dim=config.word_dim)
-  variance = config.variance
-
-  def add_noise_concat(inputs, memory_out, **kwargs):
-    """
-    1. embed task
-    2. Concat [task + noise] with memory output.
-    """
-    task = embed_task(inputs, task_embedder)
-    noise = jax.random.normal(hk.next_rng_key(), task.shape)
-    task =  task + jnp.sqrt(variance) * noise
-    return jnp.concatenate((memory_out, task), axis=-1)
-
-  if config.eval_network:
-    # seperate eval network that doesn't use noise
-    evaluation_prep_fn=functools.partial(prediction_prep_fn,
-        task_embedder=task_embedder)
-  else:
-    evaluation_prep_fn = add_noise_concat # add noise
-
-  return BasicRecurrent(
-    inputs_prep_fn=convert_floats,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(conv_dim=0, out_dim=config.vision_size),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
-    memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=add_noise_concat,
-    evaluation_prep_fn=evaluation_prep_fn,
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
-  )
-
-
-def r2d1_noise_ensemble(config, env_spec):
-  num_actions = env_spec.actions.num_values
-
-  def ensemble_prep_fn(inputs, memory_out, task_embedder, **kwargs):
-    """
-    1. embed task
-    2. Create inputs where task is language embedding
-    """
-    task = embed_task(inputs, task_embedder)
-    return QEnsembleInputs(
-      w=task,
-      memory_out=memory_out,
-      )
-
-  prediction_prep_fn = functools.partial(ensemble_prep_fn, # add noise
-      task_embedder=LanguageTaskEmbedder(
-        vocab_size=config.max_vocab_size,
-        word_dim=config.word_dim,
-        task_dim=config.word_dim,
-        initializer=config.word_initializer,
-        compress=config.word_compress),
-    ),
-
-  return BasicRecurrent(
-    inputs_prep_fn=convert_floats,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(conv_dim=0, out_dim=config.vision_size),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
-    memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=prediction_prep_fn,
-    prediction=QEnsembleHead(
-      num_actions=num_actions,
-      hidden_size=config.out_hidden_size,
-      policy_size=config.policy_size,
-      variance=config.variance,
-      nsamples=config.npolicies,
-      policy_layers=config.policy_layers,
-      q_input_fn=ConcatFlatStatePolicy(config.state_hidden_size)
-      )
   )
