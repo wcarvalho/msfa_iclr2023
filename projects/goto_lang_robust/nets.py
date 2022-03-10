@@ -138,11 +138,12 @@ def r2d1_gated(config, env_spec):
   if config.vision_torso == 'atari':
     vision = AtariVisionTorso(
       flatten=False,
-      conv_dim=0,
+      conv_dim=16,
       out_dim=config.vision_size)
   elif config.vision_torso == 'babyai':
     vision = BabyAIVisionTorso(
       flatten=False,
+      conv_dim=16,
       batch_norm=config.vision_batch_norm)
   else:
     raise NotImplementedError

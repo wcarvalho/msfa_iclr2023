@@ -54,6 +54,14 @@ def main(_):
   logger_fn = lambda : make_logger(
     log_dir=log_dir, label='r2d1')
 
+  # -----------------------
+  # save config
+  # -----------------------
+  paths.process_path(log_dir)
+  config_path = os.path.join(log_dir, 'config.json')
+  data_utils.save_dict(
+    dictionary=config.__dict__,
+    file=config_path)
 
   # -----------------------
   # agent

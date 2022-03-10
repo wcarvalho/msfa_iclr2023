@@ -8,8 +8,8 @@ Comand I run:
     CUDA_VISIBLE_DEVICES=0 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
-    python projects/goto_lang_robust/train_distributed.py \
-    --agent r2d1_noise_ensemble
+    python -m ipdb -c continue projects/goto_lang_robust/train_distributed.py \
+    --agent r2d1
 """
 
 # Do not preallocate GPU memory for JAX.
@@ -26,11 +26,12 @@ import acme
 from acme.utils import paths
 import functools
 
+
 from agents import td_agent
 from projects.goto_lang_robust import helpers
 from projects.goto_lang_robust.environment_loop import EnvironmentLoop
 from utils import make_logger, gen_log_dir
-import pickle
+from utils import data as data_utils
 
 
 # -----------------------
@@ -57,6 +58,7 @@ def build_program(agent, num_actors,
   path='.', # path that's being run from
   log_dir=None,
   hourminute=True):
+
   # -----------------------
   # load env stuff
   # -----------------------
@@ -125,8 +127,10 @@ def build_program(agent, num_actors,
   # save config
   # -----------------------
   paths.process_path(log_dir)
-  with open(os.path.join(log_dir, 'config.pickle'), 'wb') as handle:
-    pickle.dump(config, handle, protocol=pickle.HIGHEST_PROTOCOL)
+  config_path = os.path.join(log_dir, 'config.json')
+  data_utils.save_dict(
+    dictionary=config.__dict__,
+    file=config_path)
 
   # -----------------------
   # build program

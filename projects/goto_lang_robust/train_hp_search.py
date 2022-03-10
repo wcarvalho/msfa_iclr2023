@@ -4,20 +4,20 @@ Param search.
 Comand I run:
   PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES="5,6,7" \
+    CUDA_VISIBLE_DEVICES="0,1,2,3,4,5" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/goto_lang_robust/train_hp_search.py \
-    --search r2d1_search \
-    --folder 'results/msf/refactor/goto_language_test1'
+    --search baselines \
+    --folder 'results/msf/refactor/goto_language_test3'
 
   PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES="5,6,7" \
+    CUDA_VISIBLE_DEVICES="0,1,2,3,4,5" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/goto_lang_robust/train_hp_search.py \
-    --folder 'results/msf/final/goto_language_test1' \
+    --folder 'results/msf/final/goto_language_test2' \
     --search baselines \
     --date=False
 """
@@ -43,22 +43,23 @@ from projects.goto_lang_robust.train_distributed import build_program
 flags.DEFINE_string('folder', 'set', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
 flags.DEFINE_bool('date', True, 'use date.')
-flags.DEFINE_string('search', 'model', 'root folder.')
+flags.DEFINE_string('search', 'baselines', 'search.')
 
 FLAGS = flags.FLAGS
 
 def main(_):
   mp.set_start_method('spawn')
   experiment=None
-  num_cpus = 6
+  num_cpus = 4
   num_gpus = 1
 
   search = FLAGS.search
   if search == 'baselines':
     space = {
         "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(['r2d1', 'r2d1_noise_ensemble']),
-        "setting": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['r2d1', 'r2d1_noise_eval']),
+        "room_size": tune.grid_search([5]),
+        "setting": tune.grid_search([1]),
     }
     experiment='baselines'
   elif search == 'r2d1_search':
@@ -107,7 +108,7 @@ def main(_):
     setting = config.pop('setting', 1)
     room_size = config.pop("room_size", 6)
     num_dists = config.pop("num_dists", 1)
-    instr = config.pop("instr", 'goto')
+    instr = config.pop("instr", 'pickup')
 
 
     # get log dir for experiment
@@ -117,6 +118,9 @@ def main(_):
       date=use_date,
       agent=agent,
       setting=setting,
+      room_size=room_size,
+      num_dists=num_dists,
+      instr=instr,
       **({'exp': experiment} if experiment else {}),
       **config)
 
@@ -164,7 +168,6 @@ def main(_):
     p.start()
     p.join() # this blocks until the process terminates
     # this will call right away and end.
-
 
 
   experiment_spec = tune.Experiment(

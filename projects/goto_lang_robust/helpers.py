@@ -109,16 +109,24 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small', ma
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
   elif agent == "r2d1_noise":
-    config = configs.NoiseEnsembleConfig(**default_config)  # for convenience since has var
+    config = configs.NoiseEnsembleConfig(**default_config)
 
     NetworkCls=nets.r2d1_noise # default: 2M params
     NetKwargs=dict(config=config, env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
+  elif agent == "r2d1_noise_eval":
+    config = configs.NoiseEnsembleConfig(**default_config)
+    config.eval_network = False # don't use seperate eval network 
+
+    NetworkCls=nets.r2d1_noise # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
 
   elif agent == "r2d1_noise_ensemble":
-    config = configs.NoiseEnsembleConfig(**default_config)   # for convenience since has var
+    config = configs.NoiseEnsembleConfig(**default_config)
     config.loss_coeff = 0 # Turn off main loss
 
     NetworkCls=nets.r2d1_noise_ensemble # default: 2M params

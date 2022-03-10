@@ -21,7 +21,7 @@ class R2D1Config:
   learning_rate: float = 5e-5
   bootstrap_n: int = 5
   seed: int = 1
-  max_number_of_steps: int = 1_500_000
+  max_number_of_steps: int = 5_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -34,7 +34,7 @@ class R2D1Config:
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 0.0 # 0.0=single process
   min_replay_size: int = 10_000
-  max_replay_size: int = 100_000
+  max_replay_size: int = 150_000
   batch_size: int = 32
   store_lstm_state: bool = True
   prefetch_size: int = 0
@@ -56,8 +56,8 @@ class R2D1Config:
   eval_network: bool = True
   max_vocab_size: int = 30
   word_dim: int = 128  # dimension of both word and task (sentence) embeddings
-  word_initializer: str = 'TruncatedNormal'
-  word_compress: str = 'sum'
+  word_initializer: str = 'RandomNormal'
+  word_compress: str = 'last'
 
 
 @dataclasses.dataclass

@@ -9,7 +9,7 @@ Comand I run:
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/msf/goto_distributed.py \
-    --agent usfa
+    --agent r2d1
 """
 
 # Do not preallocate GPU memory for JAX.
@@ -169,8 +169,8 @@ def build_program(agent, num_actors,
   # save config
   # -----------------------
   paths.process_path(log_dir)
-  with open(os.path.join(log_dir, 'config.pickle'), 'wb') as handle:
-    pickle.dump(config, handle, protocol=pickle.HIGHEST_PROTOCOL)
+  # with open(os.path.join(log_dir, 'config.json'), 'w') as handle:
+  #   json.dump(config.__dict__, handle)
 
   # -----------------------
   # build program
@@ -203,7 +203,7 @@ def main(_):
     use_wandb=FLAGS.wandb, config_kwargs=config_kwargs)
 
   # Launch experiment.
-  lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
+  lp.launch(program, lp.LaunchType.LOCAL_MULTI_THREADING,
     terminal='current_terminal',
     local_resources = {
       'actor':
