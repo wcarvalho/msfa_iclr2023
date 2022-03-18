@@ -18,8 +18,8 @@ Comand I run:
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/goto_lang_robust/train_hp_search.py \
     --folder 'results/msf/final/goto_language_test2' \
-    --search baselines \
-    --date=False
+    --date=False \
+    --search baselines
 """
 
 from absl import app
@@ -64,7 +64,7 @@ def main(_):
     experiment='baselines'
   elif search == 'r2d1_search':
     space = {
-        "seed": tune.grid_search([1]),
+        "seed": tune.grid_search([1,2,3]),
         "agent": tune.grid_search(['r2d1']),
         # "word_dim": tune.grid_search([32, 64, 128]),
         # "word_initializer": tune.grid_search(["RandomNormal", "TruncatedNormal"]),
@@ -77,6 +77,15 @@ def main(_):
         "max_replay_size": tune.grid_search([100_000, 200_000]),
     }
     experiment='small_room'
+  elif search == 'r2d1_noise_search':
+    space = {
+        "seed": tune.grid_search([1,2,3]),
+        "agent": tune.grid_search(['r2d1_noise_eval']),
+        "room_size": tune.grid_search([5]),
+        "setting": tune.grid_search([1]),
+        "word_initializer": tune.grid_search(["RandomNormal"]),
+    }
+    experiment='baselines'
   elif search == 'r2d1_gated':
     space = {
         "seed": tune.grid_search([1]),

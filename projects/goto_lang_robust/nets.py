@@ -94,16 +94,19 @@ def build_vision_net(config):
     raise NotImplementedError
   return vision
 
-def r2d1(config, env_spec):
-  num_actions = env_spec.actions.num_values
-  task_embedder = LanguageTaskEmbedder(
+def build_task_embedder(config):
+  return LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         task_dim=config.word_dim,
         initializer=config.word_initializer,
         compress=config.word_compress)
 
+def r2d1(config, env_spec):
+  num_actions = env_spec.actions.num_values
+
   vision = build_vision_net(config)
+  task_embedder = build_task_embedder(config)
 
   embedder = OAREmbedding(num_actions=num_actions)
   def task_in_memory_prep_fn(inputs, obs):
@@ -132,14 +135,9 @@ def r2d1(config, env_spec):
 
 def r2d1_noise(config, env_spec):
   num_actions = env_spec.actions.num_values
-
-  task_embedder = LanguageTaskEmbedder(
-          vocab_size=config.max_vocab_size,
-          word_dim=config.word_dim,
-          task_dim=config.word_dim)
   variance = config.variance
 
-
+  task_embedder = build_task_embedder(config)
   embedder = OAREmbedding(num_actions=num_actions)
   def noisy_task_in_memory_prep_fn(inputs, obs):
     """
@@ -157,21 +155,11 @@ def r2d1_noise(config, env_spec):
     pred_prep_fn=None # just use memory output
 
     if config.eval_network:
-      # seperate eval network that doesn't use noise
-      evaluation_prep_fn=functools.partial(prediction_prep_fn,
-          task_embedder=task_embedder)
       raise NotImplementedError("Need settings that create jax function which doesn't sample before putting into RNN.")
     else:
       evaluation_prep_fn = None # just use memory output
-
   else:
     raise NotImplementedError
-    # memory_prep_fn=embedder
-    # pred_prep_fn=functools.partial(prediction_prep_fn,
-    #   task_embedder=task_embedder)
-
-
-
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
