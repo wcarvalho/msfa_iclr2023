@@ -225,7 +225,7 @@ class GotoAvoidEnv(KitchenLevel):
     This class derives from RoomGridLevel. We want to use the parent of RoomGridLevel for step. 
     """
     # ======================================================
-    # copied from MiniGridEnv
+    # adapted from MiniGridEnv
     # ======================================================
     self.step_count += 1
 
@@ -265,7 +265,7 @@ class GotoAvoidEnv(KitchenLevel):
           reward = self.remove_object(fwd_pos, pickup)
 
     # ======================================================
-    # copied from RoomGridLevel
+    # adapted from RoomGridLevel
     # ======================================================
     info = {}
     # if past step count, done
