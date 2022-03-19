@@ -71,9 +71,10 @@ def dictop(dictionary: dict, op, skip=[], verbose=False):
 # configs
 # ======================================================
 
-def save_dict(dictionary, file):
+def save_dict(dictionary, file, **kwargs):
   with open(file, 'w') as handle:
     new = dictionary
+    new.update(kwargs)
     def fits(x):
       y = isinstance(x, str)
       y = y or isinstance(x, float)
@@ -81,7 +82,6 @@ def save_dict(dictionary, file):
       y = y or isinstance(x, bool)
       return y
     new = {k:v for k,v in new.items() if fits(v)}
-
     json.dump(new, handle)
     return new
 
