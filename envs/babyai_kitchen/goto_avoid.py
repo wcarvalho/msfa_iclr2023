@@ -43,7 +43,7 @@ class GotoAvoidEnv(KitchenLevel):
 
     self.mission_arr = np.array(
         list(self.object2reward.values()),
-        dtype=np.uint8,
+        dtype=np.int32,
         )
     self.object_names = list(object2reward.keys())
     if objects:
@@ -78,7 +78,7 @@ class GotoAvoidEnv(KitchenLevel):
         low=0,
         high=255,
         shape=(len(self.object2reward),),
-        dtype='uint8'
+        dtype='int32'
     )
     self.observation_space.spaces['pickup'] = spaces.Box(
         low=0,
@@ -240,8 +240,9 @@ class GotoAvoidEnv(KitchenLevel):
     object_infront = self.grid.get(*fwd_pos)
 
     # Rotate left
-    action_info = None
-    if action == self.actiondict.get('left', -1):
+    if action == self.actiondict.get('noop', -1):
+      pass
+    elif action == self.actiondict.get('left', -1):
         self.agent_dir -= 1
         if self.agent_dir < 0:
             self.agent_dir += 4
@@ -259,10 +260,12 @@ class GotoAvoidEnv(KitchenLevel):
         if object_infront and not self.pickup_required:
           reward = self.remove_object(fwd_pos, pickup)
     # pickup or no-op if not pickup_required
-    else:
+    elif action == self.actiondict.get('pickup_contents', -1):
         if object_infront and self.pickup_required:
           # get reward
           reward = self.remove_object(fwd_pos, pickup)
+    else:
+      raise RuntimeError(action)
 
     # ======================================================
     # adapted from RoomGridLevel

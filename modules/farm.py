@@ -39,7 +39,7 @@ class FarmInputs(NamedTuple):
   vector: jnp.ndarray
 
 class StructuredLSTM(hk.RNNCore):
-  r""" Structured long short-term memory (LSTM) RNN core.
+  """ Structured long short-term memory (LSTM) RNN core.
   This acts as N indepedently updating RNNs.
   """
 
@@ -224,14 +224,16 @@ class ModuleAttention(hk.Module):
     Returns:
         jnp.ndarray: Description
     """
+    # swap B, N and add zeros to hidden states
     queries, hidden_states = self.prepare_data(queries, hidden_states)
-
+    N, B, D = queries.shape
     # -----------------------
     # make functions
     # -----------------------
+    index = jnp.arange(N)
     def apply_attn(x):
       return self.attn_factory()(x[0], x[1], x[2])
-    functions = [apply_attn for i in jnp.arange(N)]
+    functions = [apply_attn for i in index]
 
     # -----------------------
     # initialization:
@@ -240,19 +242,16 @@ class ModuleAttention(hk.Module):
     if hk.running_init():
       # during initialization, just create functions
       q = queries[0]  # [1, B, D]
-      h = hidden_states  # [N+1, B, D]
       # reuse same example for all functions
-      x = [f((q, h, h)) for f in functions]
+      x = [f((q, hidden_states, hidden_states)) for f in functions]
 
       # combine all outputs at leaf jnp.ndarray level
       out = jax.tree_map(lambda *arrays: jnp.stack(arrays), *x)
-
     # -----------------------
     # apply:
     #  vmap magic
     # -----------------------
     else:
-      index = jnp.arange(N)
       # during apply, apply functions in parallel
       vmap_functions = hk.vmap(
         # switch can only take 1 input so make tuple
@@ -264,8 +263,7 @@ class ModuleAttention(hk.Module):
         split_rng=True)
       out = vmap_functions(index, queries, hidden_states, hidden_states)
 
-    # remove dummy dimension & return to batch-first
-    out = out[:, 0] # [N, B, D]
+    # return to batch-first
     out = out.transpose((1,0,2))  # [B, N, D]
     return out
 
@@ -273,20 +271,23 @@ class FARM(hk.RNNCore):
   def __init__(self,
     module_size: int,
     nmodules: int,
-    attn_size: int = None,
-    nattn_heads: int=4,
-    shared_attn_params: bool=True,
+    module_attn_size: int = None,
+    module_attn_heads: int=4,
+    shared_module_attn: bool=True,
     projection_dim: int=16,
     name: Optional[str] = None):
     """
     """
     super().__init__(name=name)
+    self.module_attn_heads = module_attn_heads
     self.memory = StructuredLSTM(module_size, nmodules)
     self._feature_attention = FeatureAttention(projection_dim)
-    self._module_attention = ModuleAttention(
-      module_size=attn_size or module_size,
-      num_heads=nattn_heads,
-      shared_parameters=shared_attn_params)
+
+    if module_attn_heads > 0:
+      self._module_attention = ModuleAttention(
+        module_size=module_attn_size or module_size,
+        num_heads=module_attn_heads,
+        shared_parameters=shared_module_attn)
 
     self.module_size = module_size
     self.nmodules = nmodules
@@ -303,10 +304,16 @@ class FARM(hk.RNNCore):
     query = jnp.concatenate((prev_state.hidden, vector_tiled),
       axis=-1)
 
-    image_attn = self.image_attention(query, inputs.image)  # [B, N , D]
-    module_attn = self.module_attention(query, prev_state.hidden)  # [B, N , D]
+    # [B, N , D]
+    image_attn = self.image_attention(query, inputs.image)
 
-    memory_input = jnp.concatenate((query, image_attn, module_attn), axis=-1)
+    memory_input = [query, image_attn]
+    if self.module_attn_heads > 0:
+      # [B, N , D]
+      module_attn = self.module_attention(query, prev_state.hidden)
+      memory_input.append(module_attn)
+
+    memory_input = jnp.concatenate(memory_input, axis=-1)
     hidden, state = self.memory(memory_input, prev_state)
 
     return hidden, state
@@ -336,7 +343,6 @@ class FarmSharedOutput(FARM):
     assert out_layers >=0
     if out_layers == 0:
       self.out_mlp = lambda x:x
-      raise RuntimeError
     else:
       self.out_mlp = hk.nets.MLP([self.module_size]*out_layers)
 

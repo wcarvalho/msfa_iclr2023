@@ -10,6 +10,8 @@ from utils import data as data_utils
 
 from modules.embedding import OneHotTask
 from modules.duelling import DuellingSfQNet
+from utils import vmap
+from utils import data as data_utils
 
 class USFAPreds(NamedTuple):
   q: jnp.ndarray  # q-value
@@ -40,13 +42,18 @@ class SfQNet(hk.Module):
       num_actions: int,
       num_cumulants: int,
       hidden_sizes: Sequence[int],
+      multihead: bool=False,
   ):
     super().__init__(name='sf_network')
     self.num_actions = num_actions
     self.num_cumulants = num_cumulants
-
-    self.mlp = hk.nets.MLP([
-        *hidden_sizes, num_actions * num_cumulants])
+    self.multihead = multihead
+    if multihead:
+      self.mlp_factory = lambda: hk.nets.MLP([
+          *hidden_sizes, num_actions])
+    else:
+      self.mlp = hk.nets.MLP([
+          *hidden_sizes, num_actions * num_cumulants])
 
   def __call__(self, inputs: jnp.ndarray, w: jnp.ndarray) -> jnp.ndarray:
     """Forward pass of the duelling network.
@@ -58,12 +65,20 @@ class SfQNet(hk.Module):
     Returns:
         jnp.ndarray: 2-D tensor of action values of shape [batch_size, num_actions]
     """
-
-    # [B, A * C]
-    sf = self.mlp(inputs)
-
-    # [B, A, C]
-    sf = jnp.reshape(sf, [sf.shape[0], self.num_actions, self.num_cumulants])
+    if self.multihead:
+      # [B, z] --> [B, C, z]
+      inputs = data_utils.expand_tile_dim(inputs, size=self.num_cumulants, axis=1)
+      # make C copies of MLP 
+      sf = vmap.batch_multihead(
+        fn=self.mlp_factory,
+        x=inputs)
+      # [B, A, C]
+      sf = jnp.transpose(sf, (0, 2, 1))
+    else:
+      # [B, A * C]
+      sf = self.mlp(inputs)
+      # [B, A, C]
+      sf = jnp.reshape(sf, [sf.shape[0], self.num_actions, self.num_cumulants])
 
     q_values = jnp.sum(sf*w, axis=-1) # [B, A]
 
@@ -88,7 +103,28 @@ class UsfaHead(hk.Module):
     duelling: bool = False,
     normalize_task: bool = False,
     z_as_train_task: bool = False,
+    multihead: bool = False,
     ):
+    """Summary
+
+    Args:
+        num_actions (int): Description
+        state_dim (int): Description
+        hidden_size (int, optional): Description
+        policy_size (int, optional): Description
+        policy_layers (int, optional): Description
+        variance (float, optional): Description
+        nsamples (int, optional): Description
+        sf_input_fn (None, optional): Description
+        task_embed (int, optional): Description
+        duelling (bool, optional): Description
+        normalize_task (bool, optional): Description
+        z_as_train_task (bool, optional): whether to dot-product with z-vector (True) or w-vector (False)
+        multihead (bool, optional): Description
+    
+    Raises:
+        NotImplementedError: Description
+    """
     super(UsfaHead, self).__init__()
     self.num_actions = num_actions
     self.state_dim = state_dim
@@ -96,6 +132,7 @@ class UsfaHead(hk.Module):
     self.var = variance
     self.nsamples = nsamples
     self.z_as_train_task = z_as_train_task
+    self.multihead = multihead
 
 
     # -----------------------
@@ -128,11 +165,17 @@ class UsfaHead(hk.Module):
       self.policynet = lambda x:x
 
     if duelling:
-      self.sf_q_net = DuellingSfQNet(num_actions=num_actions, num_cumulants=self.sf_out_dim,
-        hidden_sizes=[hidden_size])
+      if multihead:
+        raise NotImplementedError
+      else:
+        self.sf_q_net = DuellingSfQNet(num_actions=num_actions, 
+          num_cumulants=self.sf_out_dim,
+          hidden_sizes=[hidden_size])
     else:
-      self.sf_q_net = SfQNet(num_actions=num_actions, num_cumulants=self.sf_out_dim,
-        hidden_sizes=[hidden_size])
+      self.sf_q_net = SfQNet(num_actions=num_actions,
+        num_cumulants=self.sf_out_dim,
+        hidden_sizes=[hidden_size],
+        multihead=multihead)
 
   def __call__(self,
     inputs : USFAInputs,
@@ -154,7 +197,6 @@ class UsfaHead(hk.Module):
     # combine samples with original task vector
     z_base = jnp.expand_dims(w, axis=1) # [B, 1, D_w]
     z = jnp.concatenate((z_base, z_samples), axis=1)  # [B, N+1, D_w]
-
     return self.sfgpi(inputs=inputs, z=z, w=w,
       key=key,
       z_as_task=self.z_as_train_task)
@@ -205,7 +247,7 @@ class UsfaHead(hk.Module):
     """
 
     z_embedding = hk.BatchApply(self.policynet)(z) # [B, N, D_z]
-    sf_input = self.sf_input_fn(inputs.memory_out, z_embedding)
+    sf_input = self.sf_input_fn(inputs.memory_out, z_embedding) # [B, N, D_s]
 
     # -----------------------
     # prepare task vectors
@@ -220,18 +262,22 @@ class UsfaHead(hk.Module):
       task = data_utils.expand_tile_dim(task, axis=2, size=self.num_actions)
       return task
 
-    w_expand = add_actions_dimension(w_expand)
     z = add_actions_dimension(z)
 
     # -----------------------
     # compute successor features
     # -----------------------
-    # [B, N, A, S], [B, N, A]
+    # inputs = [B, N, D_s], [B, N, A, D_w]
+    # ouputs = [B, N, A, S], [B, N, A]
     if z_as_task:
       sf, q_values = hk.BatchApply(self.sf_q_net)(sf_input, z)
     else:
+      w_expand = add_actions_dimension(w_expand)
       sf, q_values = hk.BatchApply(self.sf_q_net)(sf_input, w_expand)
 
+    # -----------------------
+    # GPI
+    # -----------------------
     # [B, A]
     q_values = jnp.max(q_values, axis=1)
 
@@ -285,16 +331,15 @@ class UniqueStatePolicyPairs(StatePolicyCombination):
     w = jax.vmap(repeat)(w)
     return w
 
-class CumulantsAuxTask(hk.Module):
+class CumulantsFromMemoryAuxTask(hk.Module):
   """docstring for Cumulants"""
-  def __init__(self, normalize=False, *args, **kwargs):
-    super(Cumulants, self).__init__()
+  def __init__(self, *args, normalize=False, **kwargs):
+    super(CumulantsFromMemoryAuxTask, self).__init__()
     self.cumulant_fn = hk.nets.MLP(*args, **kwargs)
     self.normalize = normalize
 
   def __call__(self, memory_out, **kwargs):
     cumulants = self.cumulant_fn(memory_out)
     if self.normalize:
-      import ipdb; ipdb.set_trace()
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
     return {'cumulants' : cumulants}

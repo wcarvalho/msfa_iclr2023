@@ -8,8 +8,19 @@ Comand I run:
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/msf/goto_search.py \
-    --folder 'results/msf/final/babyai_pickup_large' \
-    --date=False
+    --folder 'results/msf/final/goto_avoid' \
+    --date=False \
+    --search baselines \
+    --num_gpus .5
+
+  PYTHONPATH=$PYTHONPATH:. \
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
+    CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7" \
+    XLA_PYTHON_CLIENT_PREALLOCATE=false \
+    TF_FORCE_GPU_ALLOW_GROWTH=true \
+    python projects/msf/goto_search.py \
+    --folder 'results/msf/refactor' \
+    --search usfa_farm_nomodel
 """
 
 from absl import app
@@ -33,75 +44,70 @@ from projects.msf.goto_distributed import build_program
 flags.DEFINE_string('folder', 'set', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
 flags.DEFINE_bool('date', True, 'use date.')
-flags.DEFINE_string('search', 'baselines', 'root folder.')
+flags.DEFINE_string('search', 'baselines', 'which search to use.')
+flags.DEFINE_float('num_gpus', 1, 'number of gpus per job. accepts fractions.')
 
 FLAGS = flags.FLAGS
 
 def main(_):
   mp.set_start_method('spawn')
   experiment=None
-  num_cpus = 6
-  num_gpus = .5
+  num_cpus = 4
+  num_gpus = FLAGS.num_gpus
 
   search = FLAGS.search
   if search == 'baselines':
     space = {
         "seed": tune.grid_search([1,2,3]),
         "agent": tune.grid_search(
-          ['r2d1', 'r2d1_noise', 'r2d1_noise_eval', 'r2d1_noise_ensemble']),
-          # ['usfa']),
+          ['r2d1', 'r2d1_noise_eval', 'usfa', 'r2d1_farm']),
         "setting": tune.grid_search(['large']),
     }
-    experiment='baselines_6'
-  elif search == 'ablations':
-    space = {
-        "seed": tune.grid_search([1, 2]),
-        "agent": tune.grid_search([
-          'r2d1', 'usfa_qlearning', 'r2d1_noise', 'r2d1_noise_ensemble',
-          'usfa',
-          ]),
-        "setting": tune.grid_search(['large_nopickup']),
-    }
-    experiment='ablations_3'
-  elif search == 'r2d1_farm':
-    space = {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1_farm']),
-        # "out_layers": tune.grid_search( [1, 2]),
-        "shared_attn_params": tune.grid_search([True, False]),
-        "setting": tune.grid_search(['large_nopickup']),
-    }
-    # experiment='r2d1_farm_model_v1'
-  elif search == 'r2d1_vae':
-    space = {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1_vae']),
-        "vae_coeff": tune.grid_search( [1e-3, 1e-4]),
-        "beta": tune.grid_search( [25, 100]),
-        # "latent_source": tune.grid_search( ["samples", "memory"]),
-        "latent_dim": tune.grid_search( [512]),
-    }
-    experiment='vae_beta_v5'
+    experiment='baselines'
   elif search == 'usfa':
     space = {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa']),
+        "agent": tune.grid_search(['usfa_lstm']),
+        "normalize_cumulants": tune.grid_search([True, False]),
+        "normalize_cumulants": tune.grid_search([True, False]),
     }
+    experiment='fixed_env_1'
+  elif search == 'usfa_farm_qlearning':
+    space = {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['usfa_farmflat_qlearning']),
+        "module_attn_heads": tune.grid_search([0, 4]),
+        "shared_module_attn": tune.grid_search([True, False]),
+
+    }
+    experiment='usfa_farm_q1'
+  elif search == 'usfa_farm_nomodel':
+    space = {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['usfa_farmflat']),
+        "model_coeff": tune.grid_search([0.]),
+        "value_coeff": tune.grid_search([1.]), # Q-learning
+        "loss_coeff": tune.grid_search([1e-1, 1e-2, 1e-3]), # SF
+        "reward_coeff": tune.grid_search([1e-1, 1e-2, 1e-3]), # reward coeff
+        "delta_cumulant": tune.grid_search([False]),
+
+    }
+    experiment='no_model'
   elif search == 'usfa_farm':
     space = {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa_farmflat_model']),
+        "agent": tune.grid_search(['usfa_farmflat']),
         # "model_coeff": tune.grid_search([1e-1, 1e-2]),
         # "value_coeff": tune.grid_search([100., 1000.0]),
         # "reward_coeff": tune.grid_search([1.]),
         # "loss_coeff": tune.grid_search([1e-1, 1e-2]),
-        "model_coeff": tune.grid_search([0., 1e-1]),
+        "model_coeff": tune.grid_search([0.]),
         "value_coeff": tune.grid_search([100., 1000.0]),
         "reward_coeff": tune.grid_search([0.]),
         "loss_coeff": tune.grid_search([0.]),
 
     }
-    experiment='farm_flat'
+    experiment='no_model'
   else:
     raise NotImplementedError
 
@@ -119,7 +125,7 @@ def main(_):
     """
     agent = config.pop('agent', 'r2d1')
     num_actors = config.pop('num_actors', 9)
-    setting = config.pop('setting', 'small')
+    setting = config.pop('setting', 'large')
 
 
     # get log dir for experiment
@@ -153,14 +159,14 @@ def main(_):
 
     if program is None: return
     lp.launch(program, lp.LaunchType.LOCAL_MULTI_THREADING, terminal='current_terminal', 
-      local_resources = { # minimize GPU footprint
-      'actor':
-          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
-      'evaluator':
-          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
-          }
+      # local_resources = { # minimize GPU footprint
+      # 'actor':
+      #     PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
+      # 'evaluator':
+      #     PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))
+      #     }
       )
-    time.sleep(30) # sleep for 15 seconds
+    time.sleep(60) # sleep for 15 seconds
 
 
 

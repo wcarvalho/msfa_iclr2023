@@ -42,13 +42,16 @@ FLAGS = flags.FLAGS
 
 
 def main(_):
-  env = helpers.make_environment(setting=FLAGS.env_setting)
+  env = helpers.make_environment(setting=FLAGS.env_setting, evaluation=FLAGS.evaluate)
   env_spec = acme.make_environment_spec(env)
 
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(FLAGS.agent, env_spec, setting=FLAGS.env_setting)
 
   if FLAGS.test:
     config.max_replay_size = 10_000
+    config.min_replay_size = 100
+    config.npolicies = 2
+    config.variance = 0.1
   # -----------------------
   # logger
   # -----------------------

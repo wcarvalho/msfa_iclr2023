@@ -11,7 +11,7 @@ class R2D1Config:
   """Configuration options for R2D2 agent."""
   discount: float = 0.99
   target_update_period: int = 2500
-  evaluation_epsilon: float = 0.
+  evaluation_epsilon: float = 0.0
   num_epsilons: int = 256
   variable_update_period: int = 400 # how often to update actor
 
@@ -22,7 +22,7 @@ class R2D1Config:
   learning_rate: float = 5e-5
   bootstrap_n: int = 5
   seed: int = 1
-  max_number_of_steps: int = 2_000_000
+  max_number_of_steps: int = 3_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -51,6 +51,7 @@ class R2D1Config:
   memory_size = 512
   out_hidden_size = 128
   eval_network: bool = True
+  vision_torso: str = 'atari'
 
 
 @dataclasses.dataclass
@@ -65,28 +66,32 @@ class USFAConfig(R2D1Config):
   cumulant_hidden_size: int=128 # hidden size for cumulant pred
   embed_task: bool = False  # whether to embed task
   normalize_task: bool = False # whether to normalize task embedding
-  normalize_cumulants: bool = True # whether to normalize task embedding
   balance_reward: bool = False # whether to normalize task embedding
   eval_network: bool = True
   duelling: bool = False
-  z_as_train_task: bool = True
+  z_as_train_task: bool = False  # whether to dot-product SF with z-vector (True) or w-vector (False)
   state_hidden_size: int = 0
+  multihead: bool = False
+  loss_coeff: float = 1e-2
 
 
 @dataclasses.dataclass
 class RewardConfig:
   """Extra configuration options for USFA agent."""
-  reward_coeff: float = 1. # coefficient for reward loss
+  reward_coeff: float = 1e-3 # coefficient for reward loss
   value_coeff: float = 1. # coefficient for value loss
-  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
+  reward_loss: str = 'binary' # type of regression. L2 vs. binary cross entropy
   q_aux: str="ensemble"
+  normalize_cumulants: bool = True # whether to normalize cumulants
 
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
-  mixture: str='unique'
-  cumtype: str='sum'
+  mixture: str='unique'  # how to mix FARM modules
+  aggregation: str='sum'  # how to aggregate modules for cumulant
+  delta_cumulant: bool=True  # whether to use delta between states as cumulant
+  normalize_delta: bool = True # whether to normalize delta between states
 
 
 
@@ -99,6 +104,10 @@ class FarmConfig:
   nmodules: int = 4
   out_layers: int = 0
   shared_attn_params: bool = False
+  module_attn_size: int = 64
+  module_attn_heads: int = 0
+  shared_module_attn: bool = False
+  projection_dim: int = 16
 
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):

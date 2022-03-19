@@ -87,9 +87,7 @@ def build_vision_net(config):
   if config.vision_torso == 'atari':
     vision = AtariVisionTorso(conv_dim=0, out_dim=config.vision_size)
   elif config.vision_torso == 'babyai':
-    vision = BabyAIVisionTorso(
-      batch_norm=config.vision_batch_norm,
-      )
+    vision = BabyAIVisionTorso()
   else:
     raise NotImplementedError
   return vision
@@ -245,8 +243,7 @@ def r2d1_gated(config, env_spec):
   elif config.vision_torso == 'babyai':
     vision = BabyAIVisionTorso(
       flatten=False,
-      conv_dim=16,
-      batch_norm=config.vision_batch_norm)
+      conv_dim=16)
   else:
     raise NotImplementedError
 

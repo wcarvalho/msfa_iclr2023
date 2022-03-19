@@ -169,8 +169,10 @@ def build_program(agent, num_actors,
   # save config
   # -----------------------
   paths.process_path(log_dir)
-  # with open(os.path.join(log_dir, 'config.json'), 'w') as handle:
-  #   json.dump(config.__dict__, handle)
+  config_path = os.path.join(log_dir, 'config.json')
+  data_utils.save_dict(
+    dictionary=config.__dict__,
+    file=config_path)
 
   # -----------------------
   # build program

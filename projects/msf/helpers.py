@@ -25,7 +25,7 @@ from projects.msf import configs
 
 def make_environment(evaluation: bool = False,
                      tile_size=8,
-                     setting='small_nopickup',
+                     setting='small',
                      path='.',
                      image_wrapper=True,
                      ) -> dm_env.Environment:
@@ -169,7 +169,8 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
   default_config = dict()
   default_config.update(config_kwargs or {})
 
-  if agent == "r2d1": # Recurrent DQN
+  if agent == "r2d1":
+  # Recurrent DQN/UVFA
     config = configs.R2D1Config(**default_config)
 
     NetworkCls=nets.r2d1 # default: 2M params
@@ -179,45 +180,19 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
-  elif agent == "r2d1_noise":
+  elif agent == "r2d1_noise_eval": 
+  # UVFA + noise added to goal embedding
     config = configs.USFAConfig(**default_config)  # for convenience since has var
 
     NetworkCls=nets.r2d1_noise # default: 2M params
-    NetKwargs=dict(config=config, env_spec=env_spec)
+    NetKwargs=dict(config=config, env_spec=env_spec, eval_noise=True)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    loss_label = 'r2d1'
-    eval_network = config.eval_network
-
-  elif agent == "r2d1_noise_eval":
-    config = configs.USFAConfig(**default_config)  # for convenience since has var
-    config.eval_network = False # don't use seperate eval network 
-
-    NetworkCls=nets.r2d1_noise # default: 2M params
-    NetKwargs=dict(config=config, env_spec=env_spec)
-    LossFn = td_agent.R2D2Learning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    loss_label = 'r2d1'
-    eval_network = config.eval_network
-
-  elif agent == "r2d1_noise_ensemble":
-    config = configs.USFAConfig(**default_config)   # for convenience since has var
-    config.loss_coeff = 0 # Turn off main loss
-
-    NetworkCls=nets.r2d1_noise_ensemble # default: 2M params
-    NetKwargs=dict(config=config, env_spec=env_spec)
-    LossFn = td_agent.R2D2Learning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(
-      aux_tasks=[
-        QLearningEnsembleLoss(
-          coeff=1.,
-          discount=config.discount)
-      ])
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
   elif agent == "r2d1_farm":
+  # UVFA + FARM
 
     config = data_utils.merge_configs(
       dataclass_configs=[configs.R2D1Config(), configs.FarmConfig()],
@@ -231,14 +206,16 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
-  elif agent == "usfa": # Universal Successor Features
-    state_dim = env_spec.observations.observation.state_features.shape[0]
+  elif agent == "usfa":
+  # USFA
 
     config = configs.USFAConfig(**default_config)
-    config.state_dim = state_dim
 
     NetworkCls=nets.usfa # default: 2M params
-    NetKwargs=dict(config=config, env_spec=env_spec)
+    NetKwargs=dict(
+      config=config,
+      env_spec=env_spec,
+      use_seperate_eval=True)
 
     LossFn = td_agent.USFALearning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
@@ -246,74 +223,77 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     loss_label = 'usfa'
     eval_network = config.eval_network
 
-  elif agent == "usfa_paper": # Universal Successor Features
-    state_dim = env_spec.observations.observation.state_features.shape[0]
+  elif agent == "usfa_lstm":
+  # USFA + cumulants from LSTM + Q-learning
 
-    config = configs.USFAConfig(**default_config)
-    config.z_as_task = False
-    config.state_dim = state_dim
-
-    NetworkCls=nets.usfa # default: 2M params
-    NetKwargs=dict(config=config, env_spec=env_spec)
-
-    LossFn = td_agent.USFALearning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-
-    loss_label = 'usfa'
-    eval_network = config.eval_network
-
-  elif agent == "usfa_qlearning":
-    # Successor Features Architecture with Q-learning
     config = data_utils.merge_configs(
       dataclass_configs=[
         configs.USFAConfig(),
         configs.RewardConfig()],
       dict_configs=default_config
       )
-    config.loss_coeff = 0 # Turn off USFA Learning
 
-    NetworkCls =  functools.partial(nets.usfa, use_seperate_eval=False)
-    NetKwargs=dict(config=config,env_spec=env_spec)
+    NetworkCls=nets.usfa # default: 2M params
+    NetKwargs=dict(
+      config=config,
+      env_spec=env_spec,
+      use_seperate_eval=True,
+      predict_cumulants=True)
 
     LossFn = td_agent.USFALearning
-
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
+      extract_cumulants=losses.cumulants_from_preds,
       aux_tasks=[
-        q_aux_loss(config.q_aux)(
-          coeff=1.,
-          discount=config.discount)
+        usfa_losses.QLearningAuxLoss(
+          coeff=1.0,
+          discount=config.discount),
+        cumulants.CumulantRewardLoss(
+          coeff=config.reward_coeff,
+          loss=config.reward_loss,
+          ),
       ])
-    loss_label = 'usfa'
-    eval_network = False
 
-  elif agent == "usfa_farm_qlearning":
-    # Successor Features Architecture with Q-learning
+    loss_label = 'usfa'
+    eval_network = config.eval_network
+
+  elif agent == "usfa_farmflat":
+  # USFA Arch. + FARM + Q-learning + SF loss
     config = data_utils.merge_configs(
       dataclass_configs=[
-        configs.USFAConfig(),
+        configs.ModularUSFAConfig(),
+        configs.FarmModelConfig(),
         configs.RewardConfig()],
       dict_configs=default_config
       )
-    config.loss_coeff = 0 # Turn off USFA Learning
+    config.model_coeff = 0.0
+    # config.delta_cumulant = False # don't use delta
 
-    NetworkCls =  nets.usfa_farm_qlearning
+    NetworkCls =  nets.usfa_farmflat_model
     NetKwargs=dict(config=config,env_spec=env_spec)
 
     LossFn = td_agent.USFALearning
 
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
+      extract_cumulants=losses.cumulants_from_preds,
+      shorten_data_for_cumulant=True, # needed since using delta for cumulant
       aux_tasks=[
-        q_aux_loss(config.q_aux)(
+        usfa_losses.QLearningAuxLoss(
           coeff=config.value_coeff,
-          discount=config.discount)
+          discount=config.discount),
+        cumulants.CumulantRewardLoss(
+          shorten_data_for_cumulant=True,
+          coeff=config.reward_coeff,
+          loss=config.reward_loss,
+          ),
       ])
     loss_label = 'usfa'
-    eval_network = False
+    eval_network = config.eval_network
 
   elif agent == "usfa_farmflat_model":
-    # Universal Successor Features which learns cumulants with structured transition model
+  # USFA Arch. + FARM + Q-learning + SF loss + model
+    # USFA which learns cumulants with structured transition model
     config = data_utils.merge_configs(
       dataclass_configs=[
         configs.ModularUSFAConfig(),
@@ -336,7 +316,6 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
           shorten_data_for_cumulant=True,
           coeff=config.reward_coeff,
           loss=config.reward_loss,
-          balance=config.balance_reward,
           ),
         DeltaContrastLoss(
           coeff=config.model_coeff,
@@ -347,46 +326,6 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
           discount=config.discount)
       ])
     loss_label = 'usfa'
-    eval_network = config.eval_network
-
-  elif agent == "usfa_farm_model":
-    # Universal Successor Features which learns cumulants with structured transition model
-    config = data_utils.merge_configs(
-      dataclass_configs=[
-        configs.ModularUSFAConfig(), configs.FarmConfig(), configs.FarmModelConfig(), configs.RewardConfig()],
-      dict_configs=default_config
-      )
-
-    NetworkCls =  nets.usfa_farm_model
-    NetKwargs=dict(config=config,env_spec=env_spec)
-    
-    LossFn = td_agent.USFALearning
-
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(
-      extract_cumulants=losses.cumulants_from_preds,
-      shorten_data_for_cumulant=True, # needed since using delta for cumulant
-      aux_tasks=[
-        cumulants.CumulantRewardLoss(
-          shorten_data_for_cumulant=True,
-          coeff=config.reward_coeff,  # coefficient for loss
-          loss=config.reward_loss),  # type of loss for reward
-        DeltaContrastLoss(
-                    coeff=config.model_coeff,
-                    extra_negatives=config.extra_negatives,
-                    temperature=config.temperature),
-      ])
-    loss_label = 'usfa'
-    eval_network = config.eval_network
-
-  elif agent == "r2d1_dummy_symbolic":
-    config = configs.R2D1Config(**default_config)
-
-    NetworkCls=nets.r2d1_dummy_symbolic # default: 2M params
-    NetKwargs=dict(config=config, env_spec=env_spec)
-    LossFn = td_agent.R2D2Learning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    loss_label = 'r2d1'
     eval_network = config.eval_network
 
   else:

@@ -17,7 +17,6 @@ import tree
 
 
 from agents.td_agent.types import TDNetworkFns, Predictions
-from utils import td
 
 
 @dataclasses.dataclass
@@ -227,6 +226,11 @@ def cumulants_from_preds(data, online_preds, online_state, target_preds, target_
   else:
     return online_preds.cumulants # [T, B, C]
 
+def dummy_cumulants_from_env(data, online_preds, online_state, target_preds, target_state):
+  state_features = data.observation.observation.state_features # [T, B, C]
+  return jnp.zeros(state_features.shape)
+
+
 @dataclasses.dataclass
 class USFALearning(RecurrentTDLearning):
 
@@ -235,60 +239,89 @@ class USFALearning(RecurrentTDLearning):
 
   def error(self, data, online_preds, online_state, target_preds, target_state):
 
+    # ======================================================
+    # Loss for SF
+    # ======================================================
+    def sf_loss(online_sf, online_actions, target_sf, selector_actions, cumulants, discounts):
+      """Vmap over cumulant dimension.
+      
+      Args:
+          online_sf (TYPE): [T, A, C]
+          online_actions (TYPE): [T]
+          target_sf (TYPE): [T, A, C]
+          selector_actions (TYPE): [T]
+          cumulants (TYPE): [T, C]
+          discounts (TYPE): [T]
+
+      Returns:
+          TYPE: Description
+      """
+      # copies selector_actions, online_actions, vmaps over cumulant dim
+
+      # go over cumulant axis
+      td_error_fn = jax.vmap(
+        functools.partial(
+            rlax.transformed_n_step_q_learning,
+            n=self.bootstrap_n,
+            tx_pair=self.tx_pair),
+        in_axes=(2, None, 2, None, 1, None), out_axes=1)
+
+      td_error = td_error_fn(
+        online_sf[:-1],       # [T, A, C] (vmap 2) 
+        online_actions[:-1],  # [T]       (vmap None) 
+        target_sf[1:],        # [T, A, C] (vmap 2) 
+        selector_actions[1:], # [T]       (vmap None) 
+        cumulants[:-1],       # [T, C]    (vmap 1) 
+        discounts[:-1])       # [T]       (vmap None) 
+
+      return td_error # [T, C]
+
+    # ======================================================
+    # Prepare Data
+    # ======================================================
     # all are [T, B, N, A, C]
     # N = num policies, A = actions, C = cumulant dim
-    online_sf = online_preds.sf 
+    online_sf = online_preds.sf
     online_z = online_preds.z
     target_sf = target_preds.sf
-    target_z = target_preds.z
-    npolicies = online_sf.shape[2]
 
-
-    # Get value-selector actions from online Q-values for double Q-learning.
-    # wil do average over [T, B, C]
-    new_q =  (online_sf*online_z).sum(axis=-1) # [T, B, N, A]
-    target_actions = jnp.argmax(new_q, axis=-1) # [T, B, N]
-
-    # Preprocess discounts & rewards.
-    discounts = (data.discount * self.discount).astype(new_q.dtype)
-    discounts = jnp.expand_dims(discounts, axis=2)
-    discounts = jnp.tile(discounts, [1,1, npolicies]) # [T, B, N]
+    # pseudo rewards, [T, B, C]
     cumulants = self.extract_cumulants(data=data, online_preds=online_preds, online_state=online_state,
       target_preds=target_preds, target_state=target_state)
-    cumulants = jnp.expand_dims(cumulants, axis=2)
-    cumulants = jnp.tile(cumulants, [1,1, npolicies, 1]) # [T, B, N, C]
-    cumulants = cumulants.astype(discounts.dtype)
+    cumulants = cumulants.astype(online_sf.dtype)
 
-    # actions used for online_sf
-    online_actions = jnp.expand_dims(data.action, axis=2)
-    online_actions = jnp.tile(online_actions, [1,1, npolicies]) # [T, B, N]
-
-    if cumulants.shape[0] < online_sf.shape[0] and self.shorten_data_for_cumulant:
-      shape = cumulants.shape[0]
+    cumulants_T = cumulants.shape[0]
+    data_T = online_sf.shape[0]
+    if cumulants_T < data_T and self.shorten_data_for_cumulant:
       online_sf, online_actions, target_sf, target_actions, cumulants, discounts = jax.tree_map(
-        lambda x: x[:shape],
+        lambda x: x[:cumulants_T],
         (online_sf, online_actions, target_sf, target_actions, cumulants, discounts))
 
-    # Get N-step transformed TD error and loss.
-    batch_td_error_fn = jax.vmap(
-      functools.partial(
-          td.n_step_td_learning,
-          n=self.bootstrap_n),
-      in_axes=1, out_axes=1) # batch axis
+    # Get selector actions from online Q-values for double Q-learning.
+    online_q =  (online_sf*online_z).sum(axis=-1) # [T, B, N, A]
+    selector_actions = jnp.argmax(online_q, axis=-1) # [T, B, N]
+    online_actions = data.action # [T, B]
 
-    batch_td_error_fn = jax.vmap(
-      batch_td_error_fn,
-      in_axes=1, out_axes=1) # policy axis
+    # Preprocess discounts & rewards.
+    discounts = (data.discount * self.discount).astype(online_q.dtype)
 
-    batch_td_error = batch_td_error_fn(
-        online_sf[:-1],      # [T, B, N, A, C]
-        online_actions[:-1], # [T, B, N]
-        target_sf[1:],       # [T, B, N, A, C]
-        target_actions[1:],  # [T, B, N]
-        cumulants[:-1],      # [T, B, N, A, C]
-        discounts[:-1])      # [T, B, N]
+    # ======================================================
+    # Prepare loss (via vmaps)
+    # ======================================================
+    # vmap over batch dimension
+    sf_loss = jax.vmap(sf_loss, in_axes=1, out_axes=1)
+    # vmap over policy dimension
+    sf_loss = jax.vmap(sf_loss, in_axes=(2, None, 2, 2, None, None), out_axes=2)
+    # output = [T, B, N, C]
+    batch_td_error = sf_loss(
+      online_sf,        # [T, B, N, A, C] (vmap 2,1)
+      online_actions,   # [T, B]          (vmap None,1)
+      target_sf,        # [T, B, N, A, C] (vmap 2,1)
+      selector_actions, # [T, B, N]       (vmap 2,1)
+      cumulants,        # [T, B, C]       (vmap None,1)
+      discounts)        # [T, B]          (vmap None,1)
 
-    # average over all policies(2) + cumulants(3)
+    # average over {T, N, C}
     batch_loss = 0.5 * jnp.square(batch_td_error).mean(axis=(0, 2, 3)) # [B]
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
 
