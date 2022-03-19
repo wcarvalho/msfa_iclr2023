@@ -1,5 +1,5 @@
 """
-
+python -m ipdb -c continue envs/babyai_kitchen/goto_avoid.py
 """
 
 from gym import spaces
@@ -91,9 +91,7 @@ class GotoAvoidEnv(KitchenLevel):
   def task_objects(self):
     return self._task_objects
 
-  def reset_task(self):
-    # generate grid
-    self._gen_grid(width=self.width, height=self.height)
+  def generate_task(self):
 
     # connect all rooms
     self.connect_all()
@@ -125,6 +123,7 @@ class GotoAvoidEnv(KitchenLevel):
         if start_room is self.locked_room:
             continue
         break
+    self.check_objs_reachable()
 
   def reset(self):
     obs = super().reset()
@@ -156,67 +155,6 @@ class GotoAvoidEnv(KitchenLevel):
 
       return reward
     return 0.0
-
-  def place_obj(self,
-    obj,
-    top=None,
-    size=None,
-    reject_fn=None,
-    max_tries=math.inf
-   ):
-    """
-    Place an object at an empty position in the grid
-
-    :param top: top-left position of the rectangle where to place
-    :param size: size of the rectangle where to place
-    :param reject_fn: function to filter out potential positions
-    """
-
-    if top is None:
-        top = (0, 0)
-    else:
-        top = (max(top[0], 0), max(top[1], 0))
-
-    if size is None:
-        size = (self.grid.width, self.grid.height)
-
-    num_tries = 0
-
-    while True:
-        # This is to handle with rare cases where rejection sampling
-        # gets stuck in an infinite loop
-        if num_tries > max_tries:
-            raise RecursionError('rejection sampling failed in place_obj')
-
-        num_tries += 1
-
-        pos = np.array((
-            self._rand_int(top[0], min(top[0] + size[0], self.grid.width)),
-            self._rand_int(top[1], min(top[1] + size[1], self.grid.height))
-        ))
-
-        # Don't place the object on top of another object
-        if self.grid.get(*pos) != None:
-            continue
-
-        # Don't place the object where the agent is
-        if np.array_equal(pos, self.agent_pos):
-            continue
-
-
-        # # Check if there is a filtering criterion
-        # if reject_fn and reject_fn(self, pos):
-        #     continue
-
-        break
-
-    self.grid.set(*pos, obj)
-
-    if obj is not None:
-        obj.init_pos = pos
-        obj.cur_pos = pos
-
-    return pos
 
   def step(self, action):
     """Copied from: 
@@ -276,8 +214,7 @@ class GotoAvoidEnv(KitchenLevel):
         done = True
 
     # if no task objects remaining, done
-    remaining = self.remaining[self._task_oidxs].sum()
-    if remaining < 1e-5:
+    if self.total_remaining < 1e-5:
       done = True
 
     obs = self.gen_obs()
@@ -287,6 +224,10 @@ class GotoAvoidEnv(KitchenLevel):
 
     return obs, reward, done, info
 
+  @property
+  def total_remaining(self):
+    return self.remaining[self._task_oidxs].sum()
+  
 if __name__ == '__main__':
     import gym_minigrid.window
     import time
@@ -308,9 +249,9 @@ if __name__ == '__main__':
         agent_view_size=5,
         object2reward={
             "pan" : 1,
-            "plates" : 0,
-            "tomato" : 0,
-            "knife" : 0,
+            "plates" : -1,
+            "tomato" : 1,
+            "knife" : -1,
             },
         respawn=False,
         pickup_required=True,
@@ -332,7 +273,7 @@ if __name__ == '__main__':
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.show_img(combine(full, obs['image']))
 
-    for _ in tqdm.tqdm(range(3)):
+    for _ in tqdm.tqdm(range(1000)):
       obs = env.reset()
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.set_caption(obs['mission'])
@@ -340,7 +281,7 @@ if __name__ == '__main__':
 
       rewards = []
       # print("Initial occurrences:", env.object_occurrences)
-      for step in range(25):
+      for step in range(1):
           obs, reward, done, info = env.step(env.action_space.sample())
           rewards.append(reward)
           full = env.render('rgb_array', tile_size=tile_size, highlight=True)
@@ -352,5 +293,7 @@ if __name__ == '__main__':
       normalized_reward = total_reward/env.object_occurrences[0]
       # print("Final occurrences:", env.object_occurrences)
       print(f"Total reward: {total_reward}")
+      print(f"Left: {env.remaining}")
+      print(f"Total Left: {env.total_remaining}")
       # print(f"Normalized reward: {normalized_reward}")
-      import ipdb; ipdb.set_trace()
+    import ipdb; ipdb.set_trace()
