@@ -45,7 +45,7 @@ flags.DEFINE_string('folder', 'set', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
 flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_string('search', 'baselines', 'which search to use.')
-flags.DEFINE_float('num_gpus', 1, 'number of gpus per job. accepts fractions.')
+flags.DEFINE_float('num_gpus', .5, 'number of gpus per job. accepts fractions.')
 
 FLAGS = flags.FLAGS
 
@@ -56,11 +56,19 @@ def main(_):
   num_gpus = FLAGS.num_gpus
 
   search = FLAGS.search
-  if search == 'baselines':
+  if search == 'baselines1':
     space = {
-        "seed": tune.grid_search([1,2,3]),
+        "seed": tune.grid_search([1,2]),
         "agent": tune.grid_search(
-          ['r2d1', 'r2d1_noise_eval', 'usfa', 'r2d1_farm']),
+          ['r2d1', 'r2d1_noise_eval']),
+        "setting": tune.grid_search(['large']),
+    }
+    experiment='baselines'
+  elif search == 'baselines2':
+    space = {
+        "seed": tune.grid_search([1,2]),
+        "agent": tune.grid_search(
+          ['usfa', 'r2d1_farm']),
         "setting": tune.grid_search(['large']),
     }
     experiment='baselines'
