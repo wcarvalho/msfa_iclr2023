@@ -30,7 +30,7 @@ from agents import td_agent
 from projects.msf import helpers
 from projects.msf.environment_loop import EnvironmentLoop
 from utils import make_logger, gen_log_dir
-import pickle
+from utils import data as data_utils
 
 
 # -----------------------
@@ -45,7 +45,9 @@ flags.DEFINE_bool('wandb', False, 'whether to log.')
 
 FLAGS = flags.FLAGS
 
-def build_program(agent, num_actors,
+def build_program(
+  agent,
+  num_actors,
   use_wandb=False,
   setting='small',
   experiment=None,
@@ -67,6 +69,7 @@ def build_program(agent, num_actors,
   # load agent/network stuff
   # -----------------------
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
+
 
   def network_factory(spec):
     return td_agent.make_networks(
@@ -171,8 +174,11 @@ def build_program(agent, num_actors,
   paths.process_path(log_dir)
   config_path = os.path.join(log_dir, 'config.json')
   data_utils.save_dict(
+    file=config_path,
     dictionary=config.__dict__,
-    file=config_path)
+    agent=agent,
+    setting=setting,
+    experiment=experiment)
 
   # -----------------------
   # build program
