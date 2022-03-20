@@ -182,7 +182,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
 
   elif agent == "r2d1_noise_eval": 
   # UVFA + noise added to goal embedding
-    config = configs.USFAConfig(**default_config)  # for convenience since has var
+    config = configs.NoiseConfig(**default_config)  # for convenience since has var
 
     NetworkCls=nets.r2d1_noise # default: 2M params
     NetKwargs=dict(config=config, env_spec=env_spec, eval_noise=True)
@@ -229,6 +229,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     config = data_utils.merge_configs(
       dataclass_configs=[
         configs.USFAConfig(),
+        configs.QAuxConfig(),
         configs.RewardConfig()],
       dict_configs=default_config
       )
@@ -243,7 +244,11 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     LossFn = td_agent.USFALearning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
-      extract_cumulants=losses.cumulants_from_preds,
+      shorten_data_for_cumulant=True,
+      extract_cumulants=functools.partial(
+        losses.cumulants_from_preds,
+        stop_grad=not config.normalize_cumulants,
+      ),
       aux_tasks=[
         usfa_losses.QLearningAuxLoss(
           coeff=1.0,
@@ -251,6 +256,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
         cumulants.CumulantRewardLoss(
           coeff=config.reward_coeff,
           loss=config.reward_loss,
+          shorten_data_for_cumulant=True,
           ),
       ])
 
