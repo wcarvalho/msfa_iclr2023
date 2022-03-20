@@ -290,13 +290,6 @@ class USFALearning(RecurrentTDLearning):
       target_preds=target_preds, target_state=target_state)
     cumulants = cumulants.astype(online_sf.dtype)
 
-    cumulants_T = cumulants.shape[0]
-    data_T = online_sf.shape[0]
-    if cumulants_T < data_T and self.shorten_data_for_cumulant:
-      online_sf, online_actions, target_sf, target_actions, cumulants, discounts = jax.tree_map(
-        lambda x: x[:cumulants_T],
-        (online_sf, online_actions, target_sf, target_actions, cumulants, discounts))
-
     # Get selector actions from online Q-values for double Q-learning.
     online_q =  (online_sf*online_z).sum(axis=-1) # [T, B, N, A]
     selector_actions = jnp.argmax(online_q, axis=-1) # [T, B, N]
@@ -304,6 +297,14 @@ class USFALearning(RecurrentTDLearning):
 
     # Preprocess discounts & rewards.
     discounts = (data.discount * self.discount).astype(online_q.dtype)
+
+    cumulants_T = cumulants.shape[0]
+    data_T = online_sf.shape[0]
+
+    if cumulants_T < data_T and self.shorten_data_for_cumulant:
+      online_sf, online_actions, target_sf, selector_actions, cumulants, discounts = jax.tree_map(
+        lambda x: x[:cumulants_T],
+        (online_sf, online_actions, target_sf, selector_actions, cumulants, discounts))
 
     # ======================================================
     # Prepare loss (via vmaps)
