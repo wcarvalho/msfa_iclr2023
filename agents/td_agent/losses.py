@@ -147,9 +147,9 @@ class RecurrentTDLearning(learning_lib.LossFn):
         metrics.update(aux_metrics)
         mean_loss = mean_loss + aux_loss
 
-    metrics.update({
-      'loss_total':mean_loss,
-      })
+      metrics.update({
+        'loss_total':mean_loss,
+        })
 
     reverb_update = learning_lib.ReverbUpdate(
         keys=batch.info.key,
@@ -236,9 +236,11 @@ class USFALearning(RecurrentTDLearning):
 
   extract_cumulants: Callable = cumulants_from_env
   shorten_data_for_cumulant: bool = False
+  loss: str = 'n_step_q_learning'
+  lambda_: float  = .9
 
   def error(self, data, online_preds, online_state, target_preds, target_state):
-
+    assert self.loss in ['n_step_q_learning', 'q_lambda'], "loss not recognized"
     # ======================================================
     # Loss for SF
     # ======================================================
@@ -259,20 +261,36 @@ class USFALearning(RecurrentTDLearning):
       # copies selector_actions, online_actions, vmaps over cumulant dim
 
       # go over cumulant axis
-      td_error_fn = jax.vmap(
-        functools.partial(
-            rlax.transformed_n_step_q_learning,
-            n=self.bootstrap_n,
-            tx_pair=self.tx_pair),
-        in_axes=(2, None, 2, None, 1, None), out_axes=1)
+      if self.loss == "n_step_q_learning":
+        td_error_fn = jax.vmap(
+          functools.partial(
+              rlax.transformed_n_step_q_learning,
+              n=self.bootstrap_n,
+              tx_pair=self.tx_pair),
+          in_axes=(2, None, 2, None, 1, None), out_axes=1)
 
-      td_error = td_error_fn(
-        online_sf[:-1],       # [T, A, C] (vmap 2) 
-        online_actions[:-1],  # [T]       (vmap None) 
-        target_sf[1:],        # [T, A, C] (vmap 2) 
-        selector_actions[1:], # [T]       (vmap None) 
-        cumulants[:-1],       # [T, C]    (vmap 1) 
-        discounts[:-1])       # [T]       (vmap None) 
+        td_error = td_error_fn(
+          online_sf[:-1],       # [T, A, C] (vmap 2) 
+          online_actions[:-1],  # [T]       (vmap None) 
+          target_sf[1:],        # [T, A, C] (vmap 2) 
+          selector_actions[1:], # [T]       (vmap None) 
+          cumulants[:-1],       # [T, C]    (vmap 1) 
+          discounts[:-1])       # [T]       (vmap None)
+      elif self.loss == "q_lambda":
+        td_error_fn = jax.vmap(
+          functools.partial(
+              rlax.transformed_q_lambda,
+              lambda_=self.lambda_,
+              tx_pair=self.tx_pair),
+          in_axes=(2, None, 1, None, 2), out_axes=1)
+
+        td_error = td_error_fn(
+          online_sf[:-1],       # [T, A, C] (vmap 2)
+          online_actions[:-1],  # [T]       (vmap None)
+          cumulants[:-1],       # [T, C]    (vmap 1)
+          discounts[:-1],       # [T]       (vmap None)
+          target_sf[1:],        # [T, A, C] (vmap 2)
+        )
 
       return td_error # [T, C]
 
@@ -327,6 +345,7 @@ class USFALearning(RecurrentTDLearning):
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
 
     metrics = {
+      f'loss_sf_{self.loss}': batch_td_error.mean(),
       'z.sf_mean': online_preds.sf.mean(),
       'z.sf_var': online_preds.sf.var(),
       'z.sf_max': online_preds.sf.max(),
