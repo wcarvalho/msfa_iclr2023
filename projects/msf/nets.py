@@ -210,7 +210,8 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False):
     aux_tasks.append(
       CumulantsFromMemoryAuxTask(
         [config.cumulant_hidden_size, state_dim],
-        normalize=config.normalize_cumulants))
+        normalize=config.normalize_cumulants,
+        use_delta=config.delta_cumulant))
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
