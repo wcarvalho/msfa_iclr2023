@@ -8,6 +8,7 @@ import functools
 import haiku as hk
 from utils import data as data_utils
 
+from modules.basic_archs import AuxilliaryTask
 from modules.embedding import OneHotTask
 from modules.duelling import DuellingSfQNet
 from utils import vmap
@@ -331,15 +332,25 @@ class UniqueStatePolicyPairs(StatePolicyCombination):
     w = jax.vmap(repeat)(w)
     return w
 
-class CumulantsFromMemoryAuxTask(hk.Module):
+class CumulantsFromMemoryAuxTask(AuxilliaryTask):
   """docstring for Cumulants"""
-  def __init__(self, *args, normalize=False, **kwargs):
-    super(CumulantsFromMemoryAuxTask, self).__init__()
+  def __init__(self, *args, use_delta=False, normalize=False, **kwargs):
+    super(CumulantsFromMemoryAuxTask, self).__init__(
+      unroll_only=True, timeseries=True)
     self.cumulant_fn = hk.nets.MLP(*args, **kwargs)
     self.normalize = normalize
+    self.use_delta = use_delta
 
   def __call__(self, memory_out, **kwargs):
-    cumulants = self.cumulant_fn(memory_out)
+    if self.use_delta:
+      states = memory_out[:-1]  # [T, B, N, D]
+      next_states = memory_out[1:]  # [T, B, N, D]
+      cumulants = next_states - states
+    else:
+      cumulants = memory_out
+
+    cumulants = self.cumulant_fn(cumulants)
+
     if self.normalize:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
     return {'cumulants' : cumulants}
