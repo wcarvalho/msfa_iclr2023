@@ -8,7 +8,7 @@ Comand I run:
     CUDA_VISIBLE_DEVICES=0 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
-    python projects/goto_lang_robust/train_distributed.py \
+    python -m ipdb -c continue projects/goto_lang_robust/train_distributed.py \
     --agent r2d1
 """
 
@@ -26,11 +26,12 @@ import acme
 from acme.utils import paths
 import functools
 
+
 from agents import td_agent
 from projects.goto_lang_robust import helpers
 from projects.goto_lang_robust.environment_loop import EnvironmentLoop
 from utils import make_logger, gen_log_dir
-import pickle
+from utils import data as data_utils
 
 
 # -----------------------
@@ -48,17 +49,27 @@ FLAGS = flags.FLAGS
 def build_program(agent, num_actors,
   use_wandb=False,
   setting=1,
+  room_size=6,
+  num_dists=1,
+  instr='goto',
   experiment=None,
   log_every=30.0, # how often to log
   config_kwargs=None, # config
   path='.', # path that's being run from
   log_dir=None,
   hourminute=True):
+
   # -----------------------
   # load env stuff
   # -----------------------
   environment_factory = lambda is_eval: helpers.make_environment(
-    evaluation=is_eval, path=path, setting=setting)
+    evaluation=is_eval,
+    path=path,
+    setting=setting,
+    room_size=room_size,
+    num_dists=num_dists,
+    instr=instr,
+    )
   env = environment_factory(False)
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   env_spec = acme.make_environment_spec(env)
@@ -116,8 +127,10 @@ def build_program(agent, num_actors,
   # save config
   # -----------------------
   paths.process_path(log_dir)
-  with open(os.path.join(log_dir, 'config.pickle'), 'wb') as handle:
-    pickle.dump(config, handle, protocol=pickle.HIGHEST_PROTOCOL)
+  config_path = os.path.join(log_dir, 'config.json')
+  data_utils.save_dict(
+    dictionary=config.__dict__,
+    file=config_path)
 
   # -----------------------
   # build program

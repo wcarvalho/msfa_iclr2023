@@ -15,7 +15,7 @@ from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding, LanguageTaskEmbedder
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
-from modules.vision import AtariVisionTorso
+from modules.vision import AtariVisionTorso, BabyAIVisionTorso
 from modules.usfa import ConcatFlatStatePolicy
 
 from utils import data as data_utils
@@ -41,7 +41,7 @@ def embed_task(inputs, task_embedder):
   task = inputs.observation.task
   has_time = len(task.shape) == 3
   batchfn = hk.BatchApply if has_time else lambda x:x
-  return batchfn(task_embedder)(task.astype(jnp.int32))
+  return batchfn(task_embedder)(task.astype(jnp.uint8))
 
 def prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
   """
@@ -50,66 +50,122 @@ def prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
   task = embed_task(inputs, task_embedder)
   return jnp.concatenate((memory_out, task), axis=-1)
 
+
+class GatedAttention(hk.Module):
+  """Chaplot.
+  """
+  def __init__(self):
+    super(GatedAttention, self).__init__()
+
+  def __call__(
+      self,
+      task: jnp.ndarray, # [B, D]
+      image: jnp.ndarray, # [B, H, W, C]
+  ) -> jnp.ndarray:
+
+    dim = image.shape[-1]
+
+    # ======================================================
+    # compute coefficients
+    # ======================================================
+    coefficients = hk.Linear(dim)(task)
+    coefficients = jnp.expand_dims(coefficients, (-3,-2)) # [B, H, W, D]
+    coefficients = jax.nn.sigmoid(coefficients)
+
+    # ======================================================
+    # attend + projections
+    # ======================================================
+    image = image*coefficients
+    image = hk.Conv2D(dim, [1, 1], 1)(image)
+    return image
+
 # ======================================================
 # Networks
 # ======================================================
 
+def build_vision_net(config):
+  if config.vision_torso == 'atari':
+    vision = AtariVisionTorso(conv_dim=0, out_dim=config.vision_size)
+  elif config.vision_torso == 'babyai':
+    vision = BabyAIVisionTorso()
+  else:
+    raise NotImplementedError
+  return vision
+
+def build_task_embedder(config):
+  return LanguageTaskEmbedder(
+        vocab_size=config.max_vocab_size,
+        word_dim=config.word_dim,
+        task_dim=config.word_dim,
+        initializer=config.word_initializer,
+        compress=config.word_compress)
+
 def r2d1(config, env_spec):
   num_actions = env_spec.actions.num_values
+
+  vision = build_vision_net(config)
+  task_embedder = build_task_embedder(config)
+
+  embedder = OAREmbedding(num_actions=num_actions)
+  def task_in_memory_prep_fn(inputs, obs):
+    task = embed_task(inputs, task_embedder)
+    oar = embedder(inputs, obs)
+    return jnp.concatenate((oar, task), axis=-1)
+
+  if config.task_in_memory:
+    memory_prep_fn=task_in_memory_prep_fn
+    pred_prep_fn=None # just use memory output
+  else:
+    memory_prep_fn=embedder
+    pred_prep_fn=functools.partial(prediction_prep_fn,
+      task_embedder=task_embedder)
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    vision=vision,
+    memory_prep_fn=memory_prep_fn,
     memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=functools.partial(prediction_prep_fn,
-      task_embedder=LanguageTaskEmbedder(
-        vocab_size=config.max_vocab_size,
-        word_dim=config.word_dim,
-        task_dim=config.word_dim),
-      ),
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+    prediction_prep_fn=pred_prep_fn,
+    prediction=DuellingMLP(num_actions,
+      hidden_sizes=[config.out_hidden_size])
   )
 
 def r2d1_noise(config, env_spec):
   num_actions = env_spec.actions.num_values
+  variance = config.variance
 
-  def add_noise_concat(inputs, memory_out, task_embedder, **kwargs):
+  task_embedder = build_task_embedder(config)
+  embedder = OAREmbedding(num_actions=num_actions)
+  def noisy_task_in_memory_prep_fn(inputs, obs):
     """
     1. embed task
     2. Concat [task + noise] with memory output.
     """
     task = embed_task(inputs, task_embedder)
     noise = jax.random.normal(hk.next_rng_key(), task.shape)
-    task =  task + jnp.sqrt(config.variance) * noise
-    return jnp.concatenate((memory_out, task), axis=-1)
+    task =  task + jnp.sqrt(variance) * noise
+    oar = embedder(inputs, obs)
+    return jnp.concatenate((oar, task), axis=-1)
 
-  new_add_noise_concat=functools.partial(add_noise_concat, # add noise
-      task_embedder=LanguageTaskEmbedder(
-        vocab_size=config.max_vocab_size,
-        word_dim=config.word_dim,
-        task_dim=config.word_dim),
-    )
+  if config.task_in_memory:
+    memory_prep_fn=noisy_task_in_memory_prep_fn
+    pred_prep_fn=None # just use memory output
 
-  if config.eval_network:
-    # seperate eval network that doesn't use noise
-    evaluation_prep_fn=functools.partial(prediction_prep_fn, # don't add noise
-        task_embedder=LanguageTaskEmbedder(
-          vocab_size=config.max_vocab_size,
-          word_dim=config.word_dim,
-          task_dim=config.word_dim),
-      )
+    if config.eval_network:
+      raise NotImplementedError("Need settings that create jax function which doesn't sample before putting into RNN.")
+    else:
+      evaluation_prep_fn = None # just use memory output
   else:
-    evaluation_prep_fn = new_add_noise_concat # add noise
+    raise NotImplementedError
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    vision=build_vision_net(config),
+    memory_prep_fn=memory_prep_fn,
     memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=prediction_prep_fn,
+    prediction_prep_fn=pred_prep_fn,
     evaluation_prep_fn=evaluation_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
@@ -117,6 +173,8 @@ def r2d1_noise(config, env_spec):
 
 def r2d1_noise_ensemble(config, env_spec):
   num_actions = env_spec.actions.num_values
+
+  vision = build_vision_net(config)
 
   def ensemble_prep_fn(inputs, memory_out, task_embedder, **kwargs):
     """
@@ -129,17 +187,28 @@ def r2d1_noise_ensemble(config, env_spec):
       memory_out=memory_out,
       )
 
+  if config.task_in_memory:
+    raise NotImplementedError("Need way to deal with N samples going into RNN....")
+    memory_prep_fn=noisy_task_in_memory_prep_fn
+    pred_prep_fn=None # just use memory output
+    evaluation_prep_fn = None # just use memory output
+
+  else:
+    raise NotImplementedError
+
   prediction_prep_fn = functools.partial(ensemble_prep_fn, # add noise
       task_embedder=LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
-        task_dim=config.word_dim),
+        task_dim=config.word_dim,
+        initializer=config.word_initializer,
+        compress=config.word_compress),
     )
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
+    vision=vision,
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=prediction_prep_fn,
@@ -152,4 +221,77 @@ def r2d1_noise_ensemble(config, env_spec):
       policy_layers=config.policy_layers,
       q_input_fn=ConcatFlatStatePolicy(config.state_hidden_size)
       )
+  )
+
+
+
+
+def r2d1_gated(config, env_spec):
+  num_actions = env_spec.actions.num_values
+  task_embedder = LanguageTaskEmbedder(
+        vocab_size=config.max_vocab_size,
+        word_dim=config.word_dim,
+        task_dim=config.word_dim,
+        initializer=config.word_initializer,
+        compress=config.word_compress)
+
+  if config.vision_torso == 'atari':
+    vision = AtariVisionTorso(
+      flatten=False,
+      conv_dim=16,
+      out_dim=config.vision_size)
+  elif config.vision_torso == 'babyai':
+    vision = BabyAIVisionTorso(
+      flatten=False,
+      conv_dim=16)
+  else:
+    raise NotImplementedError
+
+
+  embedder = OAREmbedding(
+    num_actions=num_actions,
+    concat=False,
+    observation=False)
+  def gated_attn_prep_fn(inputs, obs):
+    task = inputs.observation.task.astype(jnp.uint8)
+    has_time = len(task.shape) == 3
+    batchfn = hk.BatchApply if has_time else lambda x:x
+
+    def apply_attn(obs, task):
+      """Summary
+      
+      Args:
+          obs (TYPE): B x H x W x C
+          task (TYPE): B x D
+      
+      Returns:
+          TYPE: Description
+      """
+      task_embed = task_embedder(task)
+      B, D = task_embed.shape
+      obs = GatedAttention()(task=task_embed, image=obs)
+
+      obs_flat = obs.reshape(B, -1)
+
+      return obs_flat, task_embed
+
+    action_reward = embedder(inputs, obs)
+    obs_flat, task_embed =  batchfn(apply_attn)(obs, task)
+
+    everything = action_reward+[obs_flat, task_embed]
+    everything = jnp.concatenate(everything, axis=-1)
+
+    return everything
+
+  pred_prep_fn=None # just use memory output
+  
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=vision,
+    memory_prep_fn=gated_attn_prep_fn,
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=pred_prep_fn,
+    prediction=DuellingMLP(num_actions,
+      hidden_sizes=[config.out_hidden_size])
   )

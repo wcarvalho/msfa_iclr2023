@@ -5,7 +5,7 @@ from gym import spaces
 
 from gym_minigrid.minigrid import Grid, WorldObj
 from babyai.levels.levelgen import RoomGridLevel, RejectSampling
-from babyai.levels.verifier import GoToInstr, ObjDesc
+from babyai.levels.verifier import GoToInstr, ObjDesc, PickupInstr
 
 class GotoLevel(RoomGridLevel):
     """
@@ -19,15 +19,21 @@ class GotoLevel(RoomGridLevel):
         num_dists=4,
         task_colors=None,
         task_types=None,
+        instr='goto',
         seed=None,
         **kwargs):
       self.all_colors = ['red', 'green', 'blue', 'purple', 'yellow', 'grey']
       self.all_types = ['key', 'box', 'ball']
-
       self.task_types = task_types or self.all_types
       self.task_colors = task_colors or self.all_colors
-
       self.num_dists = num_dists
+
+      instr = instr.lower()
+      assert instr in ("goto", 'pickup')
+      if instr == "goto":
+        self.InstrCls = GoToInstr
+      else:
+        self.InstrCls = PickupInstr
 
       super().__init__(
           num_rows=1,
@@ -98,11 +104,17 @@ class GotoLevel(RoomGridLevel):
 
       dists = self.add_distractors(num_distractors=self.num_dists, all_unique=False, types=distractor_types)
 
+      for dist in dists:
+        overlap = dist.type == obj.type and dist.color == obj.color
+        dist_tuple = (dist.type, dist.color)
+        obj_tuple = (obj.type, obj.color)
+
+        assert overlap is False, f"{obj_tuple}=={dist_tuple}"
 
       # Make sure no unblocking is required
       self.check_objs_reachable()
 
-      self.instrs = GoToInstr(ObjDesc(obj.type, obj.color))
+      self.instrs = self.InstrCls(ObjDesc(obj.type, obj.color))
 
 
 
@@ -115,12 +127,29 @@ if __name__ == '__main__':
     import cv2
 
     tile_size=12
-    train = False
+    train = True
+    check_end=True
+    ntest = 1
+    nresets=10
+    nenv_steps = 100
+
+    instr='pickup'
+    room_size=5
+    num_dists=3
+    agent_view_size=5
+
+
+    all_colors=['green', 'red', 'blue', 'purple', 'yellow', 'grey']
     if train:
-      task_colors = ['red', 'blue', 'purple', 'yellow', 'grey']
+      task_colors = all_colors[ntest:]
     else:
-      task_colors = ['green']
-    env = GotoLevel(room_size=8, task_colors=task_colors)
+      task_colors = all_colors[:ntest]
+    env = GotoLevel(
+      room_size=room_size,
+      agent_view_size=agent_view_size,
+      num_dists=num_dists,
+      instr=instr,
+      task_colors=task_colors)
     env = RGBImgPartialObsWrapper(env, tile_size=tile_size)
 
     def combine(full, partial):
@@ -136,15 +165,24 @@ if __name__ == '__main__':
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.show_img(combine(full, obs['image']))
 
-    obs = env.reset()
-    full = env.render('rgb_array', tile_size=tile_size, highlight=True)
-    window.set_caption(obs['mission'])
-    window.show_img(combine(full, obs['image']))
+    for nenv in range(nresets):
+      obs = env.reset()
+      full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+      window.set_caption(obs['mission'])
+      window.show_img(combine(full, obs['image']))
 
-    for step in range(5):
-        obs, reward, done, info = env.step(env.action_space.sample())
-        obs, reward, done, info = env.step(0)
-        full = env.render('rgb_array', tile_size=tile_size, highlight=True)
-        window.show_img(combine(full, obs['image']))
+      rewards = []
+      for step in range(nenv_steps):
+          obs, reward, done, info = env.step(env.action_space.sample())
+          rewards.append(reward)
+          full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+          window.show_img(combine(full, obs['image']))
+          if done:
+            break
 
+      print(f"Rewards={sum(rewards)}")
+      if check_end:
+        import ipdb; ipdb.set_trace()
     import ipdb; ipdb.set_trace()
+
+

@@ -6,8 +6,10 @@ ACME based experiments
 
 ```bash
 git clone https://github.com/wcarvalho/rljax.git
-conda env create --force -f gpu.yaml
+bash setup.sh gpu # gpu based machine
+bash setup.sh cpu # cpu based machine
 ```
+
 
 # Personal
 

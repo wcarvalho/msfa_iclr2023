@@ -84,6 +84,73 @@ def usfa_reward_vae(config, env_spec):
     aux_tasks=aux_tasks,
   )
 
+def r2d1_dummy_symbolic(config, env_spec):
+  num_actions = env_spec.actions.num_values
+
+  class DummySymbolicTorso(hk.Module):
+    """Flatten."""
+
+    def __call__(self, inputs) -> jnp.ndarray:
+      return jnp.reshape(inputs, [inputs.shape[0], -1])  # [B, D]
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=DummySymbolicTorso(),
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=r2d1_prediction_prep_fn,
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+  )
+
+def r2d1_noise_ensemble(config, env_spec):
+  num_actions = env_spec.actions.num_values
+
+  def prediction_prep_fn(inputs, memory_out, **kwargs):
+    """
+    Concat [task + noise] with memory output.
+    """
+    return QEnsembleInputs(
+      w=inputs.observation.task,
+      memory_out=memory_out,
+      )
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=True),
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=prediction_prep_fn,
+    prediction=QEnsembleHead(
+      num_actions=num_actions,
+      hidden_size=config.out_hidden_size,
+      policy_size=config.policy_size,
+      variance=config.variance,
+      nsamples=config.npolicies,
+      policy_layers=config.policy_layers,
+      q_input_fn=ConcatFlatStatePolicy(config.state_hidden_size)
+      )
+  )
+
+
+def r2d1_farm_model(config, env_spec):
+  num_actions = env_spec.actions.num_values
+
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=False),
+    memory_prep_fn=make_farm_prep_fn(num_actions),
+    memory=build_farm(config),
+    prediction_prep_fn=flatten_structured_memory,
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    aux_tasks=FarmModel(
+      config.model_layers*[config.module_size],
+      num_actions=num_actions,
+      activation=getattr(jax.nn, config.activation)),
+  )
 
 def usfa_farm_model(config, env_spec):
   num_actions = env_spec.actions.num_values
@@ -137,9 +204,87 @@ def usfa_farm_model(config, env_spec):
     aux_tasks=aux_tasks,
   )
 
+def usfa_farmflat(config, env_spec, use_seperate_eval=True):
+  """
+  Vision Net --> Farm Memory --> USFA Predictions
+  """
+  num_actions = env_spec.actions.num_values
+  state_dim = env_spec.observations.observation.state_features.shape[0]
+
+  farm_memory = build_farm(config)
+
+  usfa_head = build_usfa_farm_head(
+    config=config, state_dim=state_dim, num_actions=num_actions,
+    farm_memory=farm_memory, flat=True)
+
+  def prediction_prep_fn(inputs, memory_out, *args, **kwargs):
+    """Concat Farm module-states before passing them."""
+    return usfa_prep_fn(inputs=inputs, 
+      memory_out=flatten_structured_memory(memory_out))
+
+  def evaluation_prep_fn(inputs, memory_out, *args, **kwargs):
+    """Concat Farm module-states before passing them."""
+    return usfa_eval_prep_fn(inputs=inputs, 
+      memory_out=flatten_structured_memory(memory_out))
+
+  if use_seperate_eval:
+    evaluation=usfa_head.evaluation
+  else:
+    evaluation_prep_fn=None
+    evaluation=None
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=False),
+    memory_prep_fn=make_farm_prep_fn(num_actions),
+    memory=farm_memory,
+    prediction_prep_fn=prediction_prep_fn,
+    prediction=usfa_head,
+    evaluation_prep_fn=evaluation_prep_fn,
+    evaluation=evaluation,
+  )
+
 def load_agent_settings(agent, env_spec, config_kwargs=None):
   if agent is None:
     raise RuntimeError
+
+  elif agent == "r2d1_noise":
+    config = configs.USFAConfig(**default_config)  # for convenience since has var
+
+    NetworkCls=nets.r2d1_noise # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
+  elif agent == "r2d1_dummy_symbolic":
+    config = configs.R2D1Config(**default_config)
+
+    NetworkCls=nets.r2d1_dummy_symbolic # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
+  elif agent == "r2d1_noise_ensemble":
+    config = configs.USFAConfig(**default_config)   # for convenience since has var
+    config.loss_coeff = 0 # Turn off main loss
+
+    NetworkCls=nets.r2d1_noise_ensemble # default: 2M params
+    NetKwargs=dict(config=config, env_spec=env_spec)
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      aux_tasks=[
+        QLearningEnsembleLoss(
+          coeff=1.,
+          discount=config.discount)
+      ])
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
 
   elif agent == "r2d1_vae":
     # R2D1 + VAE
@@ -181,6 +326,88 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
                   )])
 
     loss_label = 'r2d1'
+    eval_network = config.eval_network
+
+  elif agent == "usfa_qlearning":
+  # USFA Arch. with Q-learning and no SF loss
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.USFAConfig(),
+        configs.RewardConfig()],
+      dict_configs=default_config
+      )
+    config.loss_coeff = 0 # Turn off USFA Learning
+
+    NetworkCls =  functools.partial(nets.usfa, use_seperate_eval=False)
+    NetKwargs=dict(config=config,env_spec=env_spec)
+
+    LossFn = td_agent.USFALearning
+
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      aux_tasks=[
+        q_aux_loss(config.q_aux)(
+          coeff=1.,
+          discount=config.discount)
+      ])
+    loss_label = 'usfa'
+    eval_network = False
+
+  elif agent == "usfa_farmflat_qlearning":
+  # USFA Arch. + FARM + Q-learning + __no__ SF loss
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.USFAConfig(),
+        configs.FarmConfig(),
+        configs.RewardConfig()],
+      dict_configs=default_config
+      )
+    config.loss_coeff = 0 # Turn off USFA Learning
+
+    NetworkCls =  functools.partial(nets.usfa_farmflat, use_seperate_eval=False)
+    NetKwargs=dict(config=config, env_spec=env_spec)
+
+    LossFn = td_agent.USFALearning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      extract_cumulants=losses.dummy_cumulants_from_env,
+      aux_tasks=[
+        # Q-learning loss
+        q_aux_loss(config.q_aux)(
+          coeff=1.,
+          discount=config.discount)
+      ])
+    loss_label = 'usfa'
+    eval_network = False
+
+  elif agent == "usfa_farm_model":
+    # USFA which learns cumulants with structured transition model
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.ModularUSFAConfig(), configs.FarmConfig(), configs.FarmModelConfig(), configs.RewardConfig()],
+      dict_configs=default_config
+      )
+
+    NetworkCls =  nets.usfa_farm_model
+    NetKwargs=dict(config=config,env_spec=env_spec)
+    
+    LossFn = td_agent.USFALearning
+
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      extract_cumulants=losses.cumulants_from_preds,
+      shorten_data_for_cumulant=True, # needed since using delta for cumulant
+      aux_tasks=[
+        cumulants.CumulantRewardLoss(
+          shorten_data_for_cumulant=True,
+          coeff=config.reward_coeff,  # coefficient for loss
+          loss=config.reward_loss),  # type of loss for reward
+        DeltaContrastLoss(
+                    coeff=config.model_coeff,
+                    extra_negatives=config.extra_negatives,
+                    temperature=config.temperature),
+      ])
+    loss_label = 'usfa'
     eval_network = config.eval_network
 
   elif agent == "usfa_reward":

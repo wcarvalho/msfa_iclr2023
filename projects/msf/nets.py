@@ -17,8 +17,8 @@ from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding
 from modules import farm
 from modules.farm_model import FarmModel, FarmCumulants
-from modules.vision import AtariVisionTorso
-from modules.usfa import UsfaHead, USFAInputs, CumulantsAuxTask, ConcatFlatStatePolicy
+from modules.vision import AtariVisionTorso, BabyAIVisionTorso
+from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, ConcatFlatStatePolicy
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules import usfa as usfa_modules
 from modules import vae as vae_modules
@@ -74,6 +74,25 @@ def memory_prep_fn(num_actions, extract_fn=None):
 
   return prep
 
+def build_vision_net(config, **kwargs):
+  if config.vision_torso == 'atari':
+    vision = AtariVisionTorso(**kwargs)
+  elif config.vision_torso == 'babyai':
+    vision = BabyAIVisionTorso(**kwargs)
+  else:
+    raise NotImplementedError
+  return vision
+
+def build_farm(config, **kwargs):
+  return farm.FarmSharedOutput(
+    module_size=config.module_size,
+    nmodules=config.nmodules,
+    module_attn_heads=config.module_attn_heads,
+    module_attn_size=config.module_attn_size,
+    shared_module_attn=config.shared_module_attn,
+    projection_dim=config.projection_dim,
+    out_layers=config.out_layers,
+    **kwargs)
 # ======================================================
 # R2D1
 # ======================================================
@@ -85,29 +104,10 @@ def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
   task = inputs.observation.task
   return jnp.concatenate((memory_out, task), axis=-1)
 
-def r2d1_dummy_symbolic(config, env_spec):
-  num_actions = env_spec.actions.num_values
-
-  class DummySymbolicTorso(hk.Module):
-    """Flatten."""
-
-    def __call__(self, inputs) -> jnp.ndarray:
-      return jnp.reshape(inputs, [inputs.shape[0], -1])  # [B, D]
-
-  return BasicRecurrent(
-    inputs_prep_fn=convert_floats,
-    vision_prep_fn=get_image_from_inputs,
-    vision=DummySymbolicTorso(),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
-    memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=r2d1_prediction_prep_fn,
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
-  )
-
 def r2d1(config, env_spec):
   num_actions = env_spec.actions.num_values
 
-  return BasicRecurrent(
+  net = BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=True),
@@ -116,8 +116,9 @@ def r2d1(config, env_spec):
     prediction_prep_fn=r2d1_prediction_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
+  return net
 
-def r2d1_noise(config, env_spec):
+def r2d1_noise(config, env_spec, eval_noise=True):
   num_actions = env_spec.actions.num_values
 
   def add_noise_concat(inputs, memory_out, **kwargs):
@@ -129,11 +130,11 @@ def r2d1_noise(config, env_spec):
     task =  task + jnp.sqrt(config.variance) * noise
     return jnp.concatenate((memory_out, task), axis=-1)
 
-  if config.eval_network:
+  if eval_noise:
+    evaluation_prep_fn = add_noise_concat # add noise
+  else:
     # seperate eval network that doesn't use noise
     evaluation_prep_fn = r2d1_prediction_prep_fn # don't add noise
-  else:
-    evaluation_prep_fn = add_noise_concat # add noise
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
@@ -146,36 +147,6 @@ def r2d1_noise(config, env_spec):
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
-def r2d1_noise_ensemble(config, env_spec):
-  num_actions = env_spec.actions.num_values
-
-  def prediction_prep_fn(inputs, memory_out, **kwargs):
-    """
-    Concat [task + noise] with memory output.
-    """
-    return QEnsembleInputs(
-      w=inputs.observation.task,
-      memory_out=memory_out,
-      )
-
-  return BasicRecurrent(
-    inputs_prep_fn=convert_floats,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
-    memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=prediction_prep_fn,
-    prediction=QEnsembleHead(
-    num_actions=num_actions,
-      hidden_size=config.out_hidden_size,
-      policy_size=config.policy_size,
-      variance=config.variance,
-      nsamples=config.npolicies,
-      policy_layers=config.policy_layers,
-      q_input_fn=ConcatFlatStatePolicy(config.state_hidden_size)
-      )
-  )
-
 def r2d1_farm(config, env_spec):
   num_actions = env_spec.actions.num_values
 
@@ -184,33 +155,11 @@ def r2d1_farm(config, env_spec):
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions),
-    memory=farm.FARM(
-      config.module_size, config.nmodules,
-      shared_attn_params=config.shared_attn_params),
+    memory=build_farm(config),
     prediction_prep_fn=flatten_structured_memory,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
-def r2d1_farm_model(config, env_spec):
-  num_actions = env_spec.actions.num_values
-
-
-  return BasicRecurrent(
-    inputs_prep_fn=convert_floats,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=False),
-    memory_prep_fn=make_farm_prep_fn(num_actions),
-    memory=farm.FarmSharedOutput(
-      module_size=config.module_size,
-      nmodules=config.nmodules,
-      out_layers=config.out_layers),
-    prediction_prep_fn=flatten_structured_memory,
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
-    aux_tasks=FarmModel(
-      config.model_layers*[config.module_size],
-      num_actions=num_actions,
-      activation=getattr(jax.nn, config.activation)),
-  )
 
 # ======================================================
 # USFA
@@ -223,16 +172,19 @@ def usfa_prep_fn(inputs, memory_out, *args, **kwargs):
 
 def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
   dim = inputs.observation.task.shape[-1]
-  w_train = jnp.identity(dim)
+  w_train = jnp.identity(dim).astype(jnp.float32)
   return USFAInputs(
     w=inputs.observation.task,
     w_train=w_train,
     memory_out=memory_out,
     )
 
-def usfa(config, env_spec, use_seperate_eval=True):
+def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
+
+  vision_net = build_vision_net(config, flatten=True)
+
   prediction_head=UsfaHead(
       num_actions=num_actions,
       state_dim=state_dim,
@@ -244,6 +196,8 @@ def usfa(config, env_spec, use_seperate_eval=True):
       policy_layers=config.policy_layers,
       z_as_train_task=config.z_as_train_task,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
+      multihead=config.multihead,
+      concat_w=config.concat_w,
       )
 
   if use_seperate_eval:
@@ -253,17 +207,27 @@ def usfa(config, env_spec, use_seperate_eval=True):
     evaluation_prep_fn=None
     evaluation=None
 
-  return BasicRecurrent(
+  aux_tasks = []
+  if predict_cumulants:
+    aux_tasks.append(
+      CumulantsFromMemoryAuxTask(
+        [config.cumulant_hidden_size, state_dim],
+        normalize=config.normalize_cumulants,
+        construction=config.cumulant_const))
+
+  net = BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
+    vision=vision_net,
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=usfa_prep_fn,
     prediction=prediction_head,
     evaluation_prep_fn=evaluation_prep_fn,
     evaluation=evaluation,
+    aux_tasks=aux_tasks,
   )
+  return net
 
 def build_usfa_farm_head(config, state_dim, num_actions, farm_memory, flat=True):
 
@@ -297,15 +261,14 @@ def usfa_farmflat_model(config, env_spec):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
-  farm_memory = farm.FarmSharedOutput(
-      module_size=config.module_size,
-      nmodules=config.nmodules,
-      out_layers=config.out_layers)
+  farm_memory = build_farm(config)
 
   usfa_head = build_usfa_farm_head(
     config=config, state_dim=state_dim, num_actions=num_actions,
     farm_memory=farm_memory, flat=True)
 
+  print("change use_delta to construction")
+  import ipdb; ipdb.set_trace()
   aux_tasks = [
     # takes structured farm input
     FarmModel(
@@ -316,7 +279,9 @@ def usfa_farmflat_model(config, env_spec):
     FarmCumulants(
       out_dim=usfa_head.out_dim,
       hidden_size=config.cumulant_hidden_size,
-      cumtype='concat',
+      aggregation='concat',
+      use_delta=config.delta_cumulant,
+      normalize_delta=config.normalize_delta,
       normalize_cumulants=config.normalize_cumulants),
   ]
 

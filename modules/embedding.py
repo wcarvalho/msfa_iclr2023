@@ -65,11 +65,18 @@ class OneHotTask(hk.Module):
 
 class LanguageTaskEmbedder(hk.Module):
   """Module that embed words and then runs them through GRU."""
-  def __init__(self, vocab_size, word_dim, task_dim, **kwargs):
+  def __init__(self, vocab_size, word_dim, task_dim,
+    initializer='TruncatedNormal', compress='last', **kwargs):
     super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
     self.word_dim = word_dim
-    self.embedder = hk.Embed(vocab_size=vocab_size, embed_dim=word_dim, **kwargs)
+    self.compress = compress
+    initializer = getattr(hk.initializers, initializer)()
+    self.embedder = hk.Embed(
+      vocab_size=vocab_size,
+      embed_dim=word_dim,
+      w_init=initializer,
+      **kwargs)
     self.language_model = hk.GRU(task_dim)
   
   def __call__(self, x : jnp.ndarray):
@@ -86,6 +93,11 @@ class LanguageTaskEmbedder(hk.Module):
     words = self.embedder(x) # B x N x D
     words = jnp.transpose(words, (1,0,2))  # N x B x D
     sentence, _ = hk.static_unroll(self.language_model, words, initial)
-    return sentence[-1] # embedding at end
+    if self.compress == "last":
+      return sentence[-1] # embedding at end
+    elif self.compress == "sum":
+      return sentence.sum(0)
+    else:
+      raise NotImplementedError(self.compress)
 
 

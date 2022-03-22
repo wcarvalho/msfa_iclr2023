@@ -68,4 +68,3 @@ class QLearning:
         selector_actions[1:],
         rewards[:-1],
         discounts[:-1])
-

@@ -133,6 +133,7 @@ class KitchenLevel(RoomGridLevel):
     naction = len(self.actiondict)
     self.action_space = spaces.Discrete(naction)
 
+
     # ======================================================
     # observation space
     # ======================================================

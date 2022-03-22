@@ -1,9 +1,14 @@
 from typing import NamedTuple, Optional, Tuple, List, Sequence, Dict
+
 import dataclasses
 
+import json
 import collections
 import jax
 import jax.numpy as jnp
+
+
+
 def flatten_dict(d, parent_key='', sep='_'):
   items = []
   for k, v in d.items():
@@ -65,6 +70,20 @@ def dictop(dictionary: dict, op, skip=[], verbose=False):
 # ======================================================
 # configs
 # ======================================================
+
+def save_dict(dictionary, file, **kwargs):
+  with open(file, 'w') as handle:
+    new = dictionary
+    new.update(kwargs)
+    def fits(x):
+      y = isinstance(x, str)
+      y = y or isinstance(x, float)
+      y = y or isinstance(x, int)
+      y = y or isinstance(x, bool)
+      return y
+    new = {k:v for k,v in new.items() if fits(v)}
+    json.dump(new, handle)
+    return new
 
 def expand_config_named(config, new):
   config = config.__dict__

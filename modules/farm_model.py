@@ -36,10 +36,27 @@ class FarmModel(AuxilliaryTask):
 
 class FarmCumulants(AuxilliaryTask):
   """docstring for FarmCumulants"""
-  def __init__(self, out_dim=0, hidden_size=0, cumtype='sum', normalize_delta=True, normalize_cumulants=True, **kwargs):
+  def __init__(self,
+    out_dim=0,
+    hidden_size=0,
+    aggregation='sum',
+    use_delta=True,
+    normalize_delta=True,
+    normalize_cumulants=True,
+    **kwargs):
+    """Summary
+    
+    Args:
+        out_dim (int, optional): Description
+        hidden_size (int, optional): Description
+        aggregation (str, optional): how to aggregate modules for cumulant
+        use_delta (bool, optional): whether to use delta between states as cumulant
+        normalize_delta (bool, optional): Description
+        normalize_cumulants (bool, optional): Description
+        **kwargs: Description
+    """
     super(FarmCumulants, self).__init__(
       unroll_only=True, timeseries=True)
-
     if hidden_size:
       layers = [hidden_size, out_dim]
     else:
@@ -51,32 +68,34 @@ class FarmCumulants(AuxilliaryTask):
       self.cumulant_fn = lambda x:x
 
     self.out_dim = out_dim
-    cumtype = cumtype.lower()
-    assert cumtype in ['sum', 'weighted', 'concat']
-    self.cumtype = cumtype
+    aggregation = aggregation.lower()
+    assert aggregation in ['sum', 'weighted', 'concat']
+    self.aggregation = aggregation
     self.normalize_delta = normalize_delta
     self.normalize_cumulants = normalize_cumulants
+    self.use_delta = use_delta
 
   def __call__(self, memory_out, predictions, **kwargs):
 
-    states = memory_out[:-1]  # [T, B, N, D]
-    next_states = memory_out[1:]  # [T, B, N, D]
+    if self.use_delta:
+      states = memory_out[:-1]  # [T, B, N, D]
+      next_states = memory_out[1:]  # [T, B, N, D]
 
-    delta = next_states - states
-    if self.normalize_delta:
-      delta = delta / (1e-5+jnp.linalg.norm(delta, axis=-1, keepdims=True))
+      cumulants = next_states - states
+      if self.normalize_delta:
+        cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
+    else:
+      cumulants = memory_out
 
-    if self.cumtype == "sum":
-      delta = delta.sum(axis=MODULE_AXIS)
-      # assert delta.shape[-1] == states.shape[-1]
-    elif self.cumtype == "concat":
-      delta = delta.reshape(*delta.shape[:2], -1)
-      # assert delta.shape[-1] == states.shape[-1]*states.shape[-2]
-    elif self.cumtype == "weighted":
+    if self.aggregation == "sum":
+      cumulants = cumulants.sum(axis=MODULE_AXIS)
+    elif self.aggregation == "concat":
+      cumulants = cumulants.reshape(*cumulants.shape[:2], -1)
+    elif self.aggregation == "weighted":
       raise NotImplementedError
 
-    # assert len(delta.shape) == 3, "should be T x B x D"
-    cumulants = self.cumulant_fn(delta)
+    cumulants = self.cumulant_fn(cumulants)
     if self.normalize_cumulants:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
+
     return {'cumulants' : cumulants}

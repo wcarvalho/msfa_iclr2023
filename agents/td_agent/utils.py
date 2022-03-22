@@ -83,6 +83,8 @@ def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, eval_networ
     eval_hk = hk.transform(eval_fn)
     evaluation = networks_lib.FeedForwardNetwork(
       init=eval_hk.init, apply=eval_hk.apply)
+  else:
+    raise NotImplementedError
 
 
   # ======================================================
@@ -140,8 +142,11 @@ def make_behavior_policy(
     # -----------------------
     # if evaluating & have seperation evaluation function, use it
     # -----------------------
-    if evaluation and networks.evaluation is not None:
-      forward_fn = networks.evaluation.apply
+    if evaluation:
+      if networks.evaluation is not None:
+        forward_fn = networks.evaluation.apply
+      else:
+        raise NotImplementedError
     else:
       forward_fn = networks.forward.apply
 
