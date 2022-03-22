@@ -105,23 +105,25 @@ class UsfaHead(hk.Module):
     normalize_task: bool = False,
     z_as_train_task: bool = False,
     multihead: bool = False,
+    concat_w: bool = False,
     ):
     """Summary
-
+    
     Args:
         num_actions (int): Description
         state_dim (int): Description
-        hidden_size (int, optional): Description
-        policy_size (int, optional): Description
-        policy_layers (int, optional): Description
-        variance (float, optional): Description
-        nsamples (int, optional): Description
-        sf_input_fn (None, optional): Description
-        task_embed (int, optional): Description
-        duelling (bool, optional): Description
-        normalize_task (bool, optional): Description
+        hidden_size (int, optional): hidden size of SF MLP network
+        policy_size (int, optional): dimensionality of each layer of policy embedding network
+        policy_layers (int, optional): layers for policy embedding net
+        variance (float, optional): variances of sampling
+        nsamples (int, optional): number of policies
+        sf_input_fn (None, optional): module that combines lstm-state h with policy embedding z
+        task_embed (int, optional): whether to embed task vector
+        duelling (bool, optional): whether to use a duelling head
+        normalize_task (bool, optional): whether to normalize task vector
         z_as_train_task (bool, optional): whether to dot-product with z-vector (True) or w-vector (False)
-        multihead (bool, optional): Description
+        multihead (bool, optional): whether to use seperate parameters for each cumulant
+        concat_w (bool, optional): whether to have task w as input to SF (not just policy z)
     
     Raises:
         NotImplementedError: Description
@@ -134,6 +136,7 @@ class UsfaHead(hk.Module):
     self.nsamples = nsamples
     self.z_as_train_task = z_as_train_task
     self.multihead = multihead
+    self.concat_w = concat_w
 
 
     # -----------------------
@@ -214,6 +217,7 @@ class UsfaHead(hk.Module):
     if self.normalize_task:
       w = w/(1e-5+jnp.linalg.norm(w, axis=-1, keepdims=True))
 
+    # train basis (z)
     w_train = jax.vmap(self.task_embed)(inputs.w_train) # [N, D]
     N = w_train.shape[0]
     if self.normalize_task:
@@ -249,7 +253,6 @@ class UsfaHead(hk.Module):
 
     z_embedding = hk.BatchApply(self.policynet)(z) # [B, N, D_z]
     sf_input = self.sf_input_fn(inputs.memory_out, z_embedding) # [B, N, D_s]
-
     # -----------------------
     # prepare task vectors
     # -----------------------
@@ -268,6 +271,10 @@ class UsfaHead(hk.Module):
     # -----------------------
     # compute successor features
     # -----------------------
+    if self.concat_w:
+      data_utils.expand_tile_dim(w, axis=2, size=self.num_actions)
+      sf_input = jnp.concatenate((sf_input, w_expand), axis=-1)
+
     # inputs = [B, N, D_s], [B, N, A, D_w]
     # ouputs = [B, N, A, S], [B, N, A]
     if z_as_task:

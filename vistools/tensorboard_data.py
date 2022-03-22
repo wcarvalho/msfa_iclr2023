@@ -25,6 +25,15 @@ def flatten_dict(d, parent_key='', sep='_'):
 import tensorflow as tf
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
+class FalseDict(object):
+    def __getitem__(self,key):
+        return 0
+    def __contains__(self, key):
+        return True
+
 def load_settings(experiment_path, basepath, **kwargs):
     """Summary
 
@@ -40,12 +49,13 @@ def load_settings(experiment_path, basepath, **kwargs):
     """
     path = experiment_path.split(basepath)[1]
     experiment_settings=",".join(path.split("/")[:-1])
-
+    experiment_settings_seed=",".join(path.split("/"))
 
     return dict(
       path=path,
       fullpath=experiment_path,
       experiment_settings=experiment_settings,
+      experiment_settings_seed=experiment_settings_seed,
     )
 
 def glob_format(path):
@@ -65,6 +75,7 @@ class TensorboardData(object):
                  config_file='config.pickle',
                  ):
 
+        self.collected_seeds = set()
         self.log_events = log_events or collections.defaultdict(list)
         self.data_df = data_df or {}
         self.config_file = config_file
@@ -103,6 +114,7 @@ class TensorboardData(object):
         for path_info in path_infos:
             path = path_info['fullpath']
             experiment_settings = path_info['experiment_settings']
+            experiment_settings_seed = path_info['experiment_settings_seed']
             # path_info['experiment_settings'] = experiment_settings
             # settings = path_info['settings']
 
@@ -120,8 +132,11 @@ class TensorboardData(object):
                   # keep track of new path information
                   if not experiment_settings in self.log_events:
                       new_path_info.append(path_info)
-                  accumulator = EventAccumulator(run)
-                  self.log_events[experiment_settings].append(accumulator)
+
+                  if not experiment_settings_seed in self.collected_seeds:
+                    accumulator = EventAccumulator(run, size_guidance=FalseDict())
+                    self.log_events[experiment_settings].append(accumulator)
+                    self.collected_seeds.add(experiment_settings_seed)
 
 
         # ======================================================

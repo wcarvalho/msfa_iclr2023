@@ -17,12 +17,12 @@ class R2D1Config:
 
   # Learner options
   burn_in_length: int = 0  # burn in during learning
-  trace_length: int = 20  # how long training should be
+  trace_length: int = 40  # how long training should be
   sequence_period: int = 40  # how often to add
-  learning_rate: float = 5e-5
+  learning_rate: float = 1e-3
   bootstrap_n: int = 5
   seed: int = 1
-  max_number_of_steps: int = 3_000_000
+  max_number_of_steps: int = 2_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -43,7 +43,7 @@ class R2D1Config:
   replay_table_name: str = adders_reverb.DEFAULT_PRIORITY_TABLE
 
   # Priority options
-  importance_sampling_exponent: float = 0.6
+  importance_sampling_exponent: float = 0.0
   priority_exponent: float = 0.9
   max_priority_weight: float = 0.9
 
@@ -52,6 +52,11 @@ class R2D1Config:
   out_hidden_size = 128
   eval_network: bool = True
   vision_torso: str = 'atari'
+
+@dataclasses.dataclass
+class NoiseConfig(R2D1Config):
+  """Extra configuration options for R2D1 + noise agent."""
+  variance: float = 0.5
 
 
 @dataclasses.dataclass
@@ -62,7 +67,7 @@ class USFAConfig(R2D1Config):
   # Network hps
   policy_size = 32
   policy_layers = 0
-  batch_size: int = 20
+  batch_size: int = 32
   cumulant_hidden_size: int=128 # hidden size for cumulant pred
   embed_task: bool = False  # whether to embed task
   normalize_task: bool = False # whether to normalize task embedding
@@ -72,6 +77,13 @@ class USFAConfig(R2D1Config):
   z_as_train_task: bool = False  # whether to dot-product SF with z-vector (True) or w-vector (False)
   state_hidden_size: int = 0
   multihead: bool = False
+  concat_w: bool = False
+  sf_loss: str = 'n_step_q_learning_regular' # whether to use q_lambda or n-step q-learning for objective
+  lambda_: float = .9 # lambda for q-lambda
+
+@dataclasses.dataclass
+class QAuxConfig:
+  """Extra configuration options when doing QAux loss over SF."""
   loss_coeff: float = 1e-2
 
 
@@ -83,14 +95,14 @@ class RewardConfig:
   reward_loss: str = 'binary' # type of regression. L2 vs. binary cross entropy
   q_aux: str="ensemble"
   normalize_cumulants: bool = True # whether to normalize cumulants
-
+  delta_cumulant: bool=True  # whether to use delta between states as cumulant
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
   mixture: str='unique'  # how to mix FARM modules
   aggregation: str='sum'  # how to aggregate modules for cumulant
-  delta_cumulant: bool=True  # whether to use delta between states as cumulant
+  
   normalize_delta: bool = True # whether to normalize delta between states
 
 
@@ -105,7 +117,7 @@ class FarmConfig:
   out_layers: int = 0
   shared_attn_params: bool = False
   module_attn_size: int = 64
-  module_attn_heads: int = 0
+  module_attn_heads: int = 0  # how many attention heads between modules
   shared_module_attn: bool = False
   projection_dim: int = 16
 

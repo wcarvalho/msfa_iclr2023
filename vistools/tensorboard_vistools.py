@@ -12,6 +12,8 @@ from inspect import getfullargspec
 
 from vistools.tensorboard_data import flatten_dict
 import expt
+import warnings
+warnings.filterwarnings("ignore")
 
 def save__init__args(values, underscore=False, overwrite=False, subclass_only=False):
     """
@@ -38,6 +40,10 @@ def save__init__args(values, underscore=False, overwrite=False, subclass_only=Fa
 def expt_plot(ax, all_x, all_y, label, **kwargs):
   runs = []
   for x, y in zip(all_x, all_y):
+    if len(x) > len(y):
+      x = x[:len(y)]
+    elif len(y) > len(x):
+      y = y[:len(x)]
     df = pd.DataFrame.from_dict(dict(x=x,y=y))
     runs.append(expt.Run(path='', df=df))
 
@@ -46,24 +52,6 @@ def expt_plot(ax, all_x, all_y, label, **kwargs):
   h = expt.Hypothesis(label, rl)
 
   return h.plot(ax=ax, x='x', y='y', **kwargs)
-
-
-
-# from launchers.sfgen_babyai.launch_individual import load_task_info
-
-
-# def joint_array(*arrays):
-#     """
-#     create array of data using minimum length
-#     Args:
-#         *arrays: Description
-    
-#     Returns:
-#         TYPE: Description
-#     """
-#     lengths = [len(d) for d in arrays]
-#     min_length = min(lengths)
-#     return np.array([d[:min_length] for d in arrays])
 
 
 class VisDataObject:
@@ -82,18 +70,9 @@ class VisDataObject:
         ):
         save__init__args(locals())
 
-
-        # self.tensorboard_data = tensorboard_data
         self.settings_df = tensorboard_data.settings_df
         self.data_df = tensorboard_data.data_df
-        # self.settings = settings
 
-        # self.color = color
-        # self.label = label
-        # self.marker = marker
-        # self.markersize = markersize
-        # self.linestyle = linestyle
-        # self.alpha = alpha
         self.colors = self.defaultcolors()
         self.colororder = self.defaultcolororder()
 
@@ -104,7 +83,7 @@ class VisDataObject:
         else:
             self.plot_mean_stderr(ax, key, **kwargs)
 
-    def plot_mean_stderr(self, ax, key, datapoint=0, n_samples=10, xlabel_key=None, settings_idx=-1, label_settings=[], **kwargs):
+    def plot_mean_stderr(self, ax, key, datapoint=0, xlabel_key=None, err_style='fill', settings_idx=-1, label_settings=[], **kwargs):
         df, all_data = self.tensorboard_data[key]
         settings = df['experiment_settings'].tolist()
 
@@ -137,7 +116,7 @@ class VisDataObject:
                 idx=settings_idx,
                 )
 
-            ax = expt_plot(ax=ax, all_x=x, all_y=y, n_samples=n_samples, err_style="fill", **plot_kwargs)
+            ax = expt_plot(ax=ax, all_x=x, all_y=y, err_style=err_style, **kwargs, **plot_kwargs)
 
     def plot_individual_lines(self, ax, key, datapoint=0, xlabel_key=None, settings_idx=-1, label_settings=[], **kwargs):
         df, all_data = self.tensorboard_data[key]
@@ -429,7 +408,12 @@ class Vistool(object):
 
         if data_filters is None:
             data_filter_space = flatten_dict(data_filter_space, sep=":")
-            settings = ParameterGrid(data_filter_space)
+            _data_filter_space=dict()
+            for k, v in data_filter_space.items():
+              if v is None:
+                v = list(self.tensorboard_data.settings_df[k].unique())
+              _data_filter_space[k] = v
+            settings = ParameterGrid(_data_filter_space)
             data_filters = [dict(settings=s) for s in settings]
         else:
             data_filters=[f if 'settings' in f else dict(settings=f) for f in data_filters]
@@ -742,11 +726,14 @@ def display_metadata(vis_objects, settings=[], stats=[], data_key=None):
     except Exception as e:
       pass
 
-    if data_key is None:
-        data_key = vis_objects[0].tensorboard_data.keys_like('return')[0]
-    data_df = pd.concat([o.data_df[data_key]
-                            for o in vis_objects])[stats]
-    display(pd.concat([data_df, settings_df], axis=1))
+    if data_key is not None:
+      data_df = pd.concat([o.data_df[data_key]
+                              for o in vis_objects])[stats]
+      data_df = data_df.reset_index(drop=True)
+      settings_df = settings_df.reset_index(drop=True)
+      display(pd.concat([data_df, settings_df], axis=1))
+    else:
+      display(pd.concat([settings_df], axis=1))
 
 
 # ======================================================
@@ -904,6 +891,11 @@ def finish_plotting_ax(
             _legend_kwargs=dict(
                 loc='upper left',
                 bbox_to_anchor=(1,1), 
+                )
+        elif legend_kwargs.lower() == "bottom":
+            _legend_kwargs=dict(
+                loc='lower left',
+                bbox_to_anchor=(0,-.5),
                 )
     elif isinstance (legend_kwargs, dict):
         _legend_kwargs.update(legend_kwargs)

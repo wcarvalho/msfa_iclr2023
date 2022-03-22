@@ -18,6 +18,10 @@ import tree
 
 from agents.td_agent.types import TDNetworkFns, Predictions
 
+def masked_mean(x, mask):
+  batch_loss = x*mask
+  return batch_loss.sum(0)/(mask.sum(0)+1e-5)
+
 
 @dataclasses.dataclass
 class RecurrentTDLearning(learning_lib.LossFn):
@@ -119,6 +123,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
     mean_loss = self.loss_coeff*jnp.mean(importance_weights * batch_loss)
     metrics.update({
       'loss_main':mean_loss,
+      'z.importance': importance_weights.mean(),
       'z.reward' :data.reward.mean()
       })
 
@@ -148,7 +153,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
         mean_loss = mean_loss + aux_loss
 
       metrics.update({
-        'loss_total':mean_loss,
+        'loss_w_aux':mean_loss,
         })
 
     reverb_update = learning_lib.ReverbUpdate(
@@ -205,7 +210,12 @@ class R2D2Learning(RecurrentTDLearning):
         selector_actions[1:],
         rewards[:-1],
         discounts[:-1])
-    batch_loss = 0.5 * jnp.square(batch_td_error).mean(axis=0)
+
+    mask=(discounts > 0).astype(jnp.float32)[1:]
+    # average over {T} --> # [B]
+    batch_loss = masked_mean(
+      x=(0.5 * jnp.square(batch_td_error)),
+      mask=mask)
 
     metrics = {
       'z.q_mean': online_preds.q.mean(),
@@ -240,7 +250,7 @@ class USFALearning(RecurrentTDLearning):
   lambda_: float  = .9
 
   def error(self, data, online_preds, online_state, target_preds, target_state):
-    assert self.loss in ['n_step_q_learning', 'q_lambda'], "loss not recognized"
+    assert self.loss in ['n_step_q_learning', 'q_lambda', 'q_lambda_regular', 'n_step_q_learning_regular'], "loss not recognized"
     # ======================================================
     # Loss for SF
     # ======================================================
@@ -276,12 +286,42 @@ class USFALearning(RecurrentTDLearning):
           selector_actions[1:], # [T]       (vmap None) 
           cumulants[:-1],       # [T, C]    (vmap 1) 
           discounts[:-1])       # [T]       (vmap None)
+
+      elif self.loss == "n_step_q_learning_regular":
+        td_error_fn = jax.vmap(
+          functools.partial(
+              rlax.transformed_n_step_q_learning,
+              n=self.bootstrap_n),
+          in_axes=(2, None, 2, None, 1, None), out_axes=1)
+
+        td_error = td_error_fn(
+          online_sf[:-1],       # [T, A, C] (vmap 2) 
+          online_actions[:-1],  # [T]       (vmap None) 
+          target_sf[1:],        # [T, A, C] (vmap 2) 
+          selector_actions[1:], # [T]       (vmap None) 
+          cumulants[:-1],       # [T, C]    (vmap 1) 
+          discounts[:-1])       # [T]       (vmap None)
+
       elif self.loss == "q_lambda":
         td_error_fn = jax.vmap(
           functools.partial(
               rlax.transformed_q_lambda,
               lambda_=self.lambda_,
               tx_pair=self.tx_pair),
+          in_axes=(2, None, 1, None, 2), out_axes=1)
+
+        td_error = td_error_fn(
+          online_sf[:-1],       # [T, A, C] (vmap 2)
+          online_actions[:-1],  # [T]       (vmap None)
+          cumulants[:-1],       # [T, C]    (vmap 1)
+          discounts[:-1],       # [T]       (vmap None)
+          target_sf[1:],        # [T, A, C] (vmap 2)
+        )
+      elif self.loss == "q_lambda_regular":
+        td_error_fn = jax.vmap(
+          functools.partial(
+              rlax.q_lambda,
+              lambda_=self.lambda_),
           in_axes=(2, None, 1, None, 2), out_axes=1)
 
         td_error = td_error_fn(
@@ -340,15 +380,23 @@ class USFALearning(RecurrentTDLearning):
       cumulants,        # [T, B, C]       (vmap None,1)
       discounts)        # [T, B]          (vmap None,1)
 
-    # average over {T, N, C}
-    batch_loss = 0.5 * jnp.square(batch_td_error).mean(axis=(0, 2, 3)) # [B]
+    mask=(discounts > 0).astype(jnp.float32)[1:]
+    # average over {T, N, C} --> # [B]
+    batch_loss = masked_mean(
+      x=(0.5 * jnp.square(batch_td_error)).mean(axis=(2,3)),
+      mask=mask)
+
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
 
     metrics = {
-      f'loss_sf_{self.loss}': batch_td_error.mean(),
-      'z.sf_mean': online_preds.sf.mean(),
-      'z.sf_var': online_preds.sf.var(),
-      'z.sf_max': online_preds.sf.max(),
-      'z.sf_min': online_preds.sf.min()}
+      'z.sf_mean': online_sf.mean(),
+      'z.sf_var': online_sf.var(),
+      'z.sf_max': online_sf.max(),
+      'z.sf_min': online_sf.min()}
 
+    C = online_sf.shape[4]
+    for idx in range(C):
+      metrics.update({
+      f'z.sf_max_c{idx}': online_sf[:,:,:,:,idx].max(),
+      })
     return batch_td_error, batch_loss, metrics # [T, B], [B]

@@ -156,7 +156,7 @@ def main(_):
       log_dir=log_dir)
 
     if program is None: return
-    lp.launch(program, lp.LaunchType.LOCAL_MULTI_THREADING, terminal='current_terminal', 
+    lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING, terminal='current_terminal', 
       # local_resources = { # minimize GPU footprint
       # 'actor':
       #     PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),

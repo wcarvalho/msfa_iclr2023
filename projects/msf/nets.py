@@ -107,7 +107,7 @@ def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
 def r2d1(config, env_spec):
   num_actions = env_spec.actions.num_values
 
-  return BasicRecurrent(
+  net = BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=True),
@@ -116,6 +116,7 @@ def r2d1(config, env_spec):
     prediction_prep_fn=r2d1_prediction_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
+  return net
 
 def r2d1_noise(config, env_spec, eval_noise=True):
   num_actions = env_spec.actions.num_values
@@ -196,6 +197,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False):
       z_as_train_task=config.z_as_train_task,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       multihead=config.multihead,
+      concat_w=config.concat_w,
       )
 
   if use_seperate_eval:
@@ -213,7 +215,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False):
         normalize=config.normalize_cumulants,
         use_delta=config.delta_cumulant))
 
-  return BasicRecurrent(
+  net = BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=vision_net,
@@ -225,6 +227,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False):
     evaluation=evaluation,
     aux_tasks=aux_tasks,
   )
+  return net
 
 def build_usfa_farm_head(config, state_dim, num_actions, farm_memory, flat=True):
 

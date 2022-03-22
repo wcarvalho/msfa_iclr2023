@@ -211,7 +211,7 @@ def main(_):
     use_wandb=FLAGS.wandb, config_kwargs=config_kwargs)
 
   # Launch experiment.
-  lp.launch(program, lp.LaunchType.LOCAL_MULTI_THREADING,
+  lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
     terminal='current_terminal',
     local_resources = {
       'actor':

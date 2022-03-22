@@ -84,7 +84,7 @@ class GotoAvoidEnv(KitchenLevel):
         low=0,
         high=255,
         shape=(len(self.object2reward),),
-        dtype='uint8'
+        dtype='int32'
     )
 
   @property
@@ -106,7 +106,7 @@ class GotoAvoidEnv(KitchenLevel):
     # -----------------------
     # spawn objects
     # -----------------------
-    self.object_occurrences = np.zeros(len(self.object2reward), dtype=np.uint8)
+    self.object_occurrences = np.zeros(len(self.object2reward), dtype=np.int32)
     for object_type in types_to_place:
         object_idx = self.type2idx[object_type]
         self.object_occurrences[object_idx] += 1
@@ -128,7 +128,7 @@ class GotoAvoidEnv(KitchenLevel):
   def reset(self):
     obs = super().reset()
     assert self.carrying is None
-    obs['pickup'] = np.zeros(len(self.object2reward), dtype=np.uint8)
+    obs['pickup'] = np.zeros(len(self.object2reward), dtype=np.int32)
     obs['mission'] = self.mission_arr
 
 
@@ -168,7 +168,7 @@ class GotoAvoidEnv(KitchenLevel):
     self.step_count += 1
 
     reward = 0.0
-    pickup = np.zeros(len(self.object2reward), dtype=np.uint8)
+    pickup = np.zeros(len(self.object2reward), dtype=np.int32)
     done = False
 
     # Get the position in front of the agent

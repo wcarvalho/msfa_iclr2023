@@ -53,6 +53,9 @@ def make_environment(evaluation: bool = False,
     large_nopickup=dict(
       room_size=8, nobjects=3,
       pickup_required=False),
+    large_respawn=dict(
+      room_size=9, nobjects=3,
+      respawn=True),
     )
   if evaluation:
     obj2rew={
@@ -219,6 +222,36 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
 
     LossFn = td_agent.USFALearning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      loss=config.sf_loss,
+      lambda_=config.lambda_,
+      )
+
+    loss_label = 'usfa'
+    eval_network = config.eval_network
+
+  elif agent == "usfa_qlearning":
+  # USFA
+
+    config = configs.USFAConfig(**default_config)
+
+    NetworkCls=nets.usfa # default: 2M params
+    NetKwargs=dict(
+      config=config,
+      env_spec=env_spec,
+      use_seperate_eval=True)
+
+    LossFn = td_agent.USFALearning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      loss=config.sf_loss,
+      lambda_=config.lambda_,
+      aux_tasks=[
+        usfa_losses.QLearningEnsembleAuxLoss(
+          coeff=1.0,
+          discount=config.discount),
+      ]
+      )
 
     loss_label = 'usfa'
     eval_network = config.eval_network
@@ -250,7 +283,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
         stop_grad=not config.normalize_cumulants,
       ),
       aux_tasks=[
-        usfa_losses.QLearningAuxLoss(
+        usfa_losses.QLearningEnsembleAuxLoss(
           coeff=1.0,
           discount=config.discount),
         cumulants.CumulantRewardLoss(
@@ -285,7 +318,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
       extract_cumulants=losses.cumulants_from_preds,
       shorten_data_for_cumulant=True, # needed since using delta for cumulant
       aux_tasks=[
-        usfa_losses.QLearningAuxLoss(
+        usfa_losses.QLearningEnsembleAuxLoss(
           coeff=config.value_coeff,
           discount=config.discount),
         cumulants.CumulantRewardLoss(
@@ -327,7 +360,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
           coeff=config.model_coeff,
           extra_negatives=config.extra_negatives,
           temperature=config.temperature),
-        usfa_losses.QLearningAuxLoss(
+        usfa_losses.QLearningEnsembleAuxLoss(
           coeff=config.value_coeff,
           discount=config.discount)
       ])

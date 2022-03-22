@@ -52,6 +52,8 @@ def main(_):
     config.min_replay_size = 100
     config.npolicies = 2
     config.variance = 0.1
+    config.batch_size = 2
+
   # -----------------------
   # logger
   # -----------------------
