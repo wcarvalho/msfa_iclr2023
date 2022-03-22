@@ -32,7 +32,8 @@ class CumulantRewardLoss:
       error = -distrax.Bernoulli(logits=reward_pred).log_prob(rewards)
 
     if self.balance:
-      raise RuntimeError
+      import ipdb; ipdb.set_trace()
+      # raise RuntimeError
       # error = error.reshape(-1)
       # import ipdb; ipdb.set_trace()
       # nonzero = rewards != 0 

@@ -211,7 +211,7 @@ class R2D2Learning(RecurrentTDLearning):
         rewards[:-1],
         discounts[:-1])
 
-    mask=(discounts > 0).astype(jnp.float32)[1:]
+    mask=(discounts > 0).astype(jnp.float32)[:-1]
     # average over {T} --> # [B]
     batch_loss = masked_mean(
       x=(0.5 * jnp.square(batch_td_error)),
@@ -380,7 +380,7 @@ class USFALearning(RecurrentTDLearning):
       cumulants,        # [T, B, C]       (vmap None,1)
       discounts)        # [T, B]          (vmap None,1)
 
-    mask=(discounts > 0).astype(jnp.float32)[1:]
+    mask=(discounts > 0).astype(jnp.float32)[:-1]
     # average over {T, N, C} --> # [B]
     batch_loss = masked_mean(
       x=(0.5 * jnp.square(batch_td_error)).mean(axis=(2,3)),

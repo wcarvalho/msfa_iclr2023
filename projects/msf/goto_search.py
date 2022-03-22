@@ -54,12 +54,13 @@ def main(_):
   experiment=None
   num_cpus = 3
   num_gpus = FLAGS.num_gpus
+  DEFAULT_ENV_SETTING = 'large_respawn'
+  DEFAULT_NUM_ACTORS = 4
 
   search = FLAGS.search
-
   if search == 'baselines':
     space = {
-        "seed": tune.grid_search([1, 2]),
+        "seed": tune.grid_search([1, 2, 3, 4, 5]),
         "agent": tune.grid_search(
           ['usfa', 'r2d1', 'r2d1_noise_eval']),
         "setting": tune.grid_search(['large_respawn']),
@@ -74,9 +75,7 @@ def main(_):
         "delta_cumulant": tune.grid_search([False]),
         "reward_loss": tune.grid_search(['l2']),
         "reward_coeff": tune.grid_search([1e-1, 1e-2]),
-        "sf_loss": tune.grid_search([
-          'q_lambda_regular',
-          'n_step_q_learning_regular']),
+        "value_coeff": tune.grid_search([0, 1.0]),
     }
     experiment='fixed_env_1'
   elif search == 'usfa_farm_qlearning':
@@ -131,8 +130,8 @@ def main(_):
     """Create and run launchpad program
     """
     agent = config.pop('agent', 'r2d1')
-    num_actors = config.pop('num_actors', 9)
-    setting = config.pop('setting', 'large')
+    num_actors = config.pop('num_actors', DEFAULT_NUM_ACTORS)
+    setting = config.pop('setting', DEFAULT_ENV_SETTING)
 
 
     # get log dir for experiment

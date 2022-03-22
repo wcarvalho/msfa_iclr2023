@@ -71,7 +71,6 @@ class USFAConfig(R2D1Config):
   cumulant_hidden_size: int=128 # hidden size for cumulant pred
   embed_task: bool = False  # whether to embed task
   normalize_task: bool = False # whether to normalize task embedding
-  balance_reward: bool = False # whether to normalize task embedding
   eval_network: bool = True
   duelling: bool = False
   z_as_train_task: bool = False  # whether to dot-product SF with z-vector (True) or w-vector (False)
@@ -93,9 +92,10 @@ class RewardConfig:
   reward_coeff: float = 1e-3 # coefficient for reward loss
   value_coeff: float = 1. # coefficient for value loss
   reward_loss: str = 'binary' # type of regression. L2 vs. binary cross entropy
+  balance_reward: bool = True # whether to balance dataset of rewards somehow
   q_aux: str="ensemble"
   normalize_cumulants: bool = True # whether to normalize cumulants
-  delta_cumulant: bool=True  # whether to use delta between states as cumulant
+  cumulant_const: str='concat'  # whether to use delta between states as cumulant
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):

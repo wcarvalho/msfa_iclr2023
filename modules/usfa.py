@@ -341,18 +341,23 @@ class UniqueStatePolicyPairs(StatePolicyCombination):
 
 class CumulantsFromMemoryAuxTask(AuxilliaryTask):
   """docstring for Cumulants"""
-  def __init__(self, *args, use_delta=False, normalize=False, **kwargs):
+  def __init__(self, *args, construction='timestep', normalize=False, **kwargs):
     super(CumulantsFromMemoryAuxTask, self).__init__(
       unroll_only=True, timeseries=True)
     self.cumulant_fn = hk.nets.MLP(*args, **kwargs)
     self.normalize = normalize
-    self.use_delta = use_delta
+    self.construction = construction.lower()
+    assert self.construction in ['timestep', 'delta', 'concat']
 
   def __call__(self, memory_out, **kwargs):
-    if self.use_delta:
+    if self.construction == 'delta':
       states = memory_out[:-1]  # [T, B, N, D]
       next_states = memory_out[1:]  # [T, B, N, D]
       cumulants = next_states - states
+    elif self.construction == 'concat':
+      states = memory_out[:-1]  # [T, B, N, D]
+      next_states = memory_out[1:]  # [T, B, N, D]
+      cumulants = jnp.concatenate((next_states, states), axis=-1)
     else:
       cumulants = memory_out
 

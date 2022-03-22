@@ -37,13 +37,19 @@ def save__init__args(values, underscore=False, overwrite=False, subclass_only=Fa
         if arg in values and (not hasattr(self, attr) or overwrite):
             setattr(self, attr, values[arg])
 
-def expt_plot(ax, all_x, all_y, label, **kwargs):
+def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
   runs = []
   for x, y in zip(all_x, all_y):
     if len(x) > len(y):
       x = x[:len(y)]
     elif len(y) > len(x):
       y = y[:len(x)]
+
+    if xmax is not None:
+      keep = x < xmax
+      y = y[keep]
+      x = x[keep]
+
     df = pd.DataFrame.from_dict(dict(x=x,y=y))
     runs.append(expt.Run(path='', df=df))
 
@@ -83,7 +89,7 @@ class VisDataObject:
         else:
             self.plot_mean_stderr(ax, key, **kwargs)
 
-    def plot_mean_stderr(self, ax, key, datapoint=0, xlabel_key=None, err_style='fill', settings_idx=-1, label_settings=[], **kwargs):
+    def plot_mean_stderr(self, ax, key, datapoint=0, xlabel_key=None, err_style='fill', settings_idx=-1, label_settings=[],**kwargs):
         df, all_data = self.tensorboard_data[key]
         settings = df['experiment_settings'].tolist()
 
@@ -102,6 +108,7 @@ class VisDataObject:
                 _, xdata = self.tensorboard_data[xlabel_key]
                 # all same, so pick 1st
                 x = xdata[setting]
+
 
             # -----------------------
             # compute plot/fill kwargs

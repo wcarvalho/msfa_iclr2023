@@ -213,7 +213,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False):
       CumulantsFromMemoryAuxTask(
         [config.cumulant_hidden_size, state_dim],
         normalize=config.normalize_cumulants,
-        use_delta=config.delta_cumulant))
+        construction=config.cumulant_const))
 
   net = BasicRecurrent(
     inputs_prep_fn=convert_floats,
@@ -267,6 +267,8 @@ def usfa_farmflat_model(config, env_spec):
     config=config, state_dim=state_dim, num_actions=num_actions,
     farm_memory=farm_memory, flat=True)
 
+  print("change use_delta to construction")
+  import ipdb; ipdb.set_trace()
   aux_tasks = [
     # takes structured farm input
     FarmModel(

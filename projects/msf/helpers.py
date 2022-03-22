@@ -284,12 +284,13 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
       ),
       aux_tasks=[
         usfa_losses.QLearningEnsembleAuxLoss(
-          coeff=1.0,
+          coeff=config.value_coeff,
           discount=config.discount),
         cumulants.CumulantRewardLoss(
           coeff=config.reward_coeff,
           loss=config.reward_loss,
           shorten_data_for_cumulant=True,
+          balance=config.balance_reward,
           ),
       ])
 
