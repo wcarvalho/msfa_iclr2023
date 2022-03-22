@@ -349,16 +349,26 @@ if __name__ == '__main__':
 
     os.chdir('../..')
 
-    tile_size = 40
+    tile_size = 10
 
+    # env = MultiroomGoto(
+    #     agent_view_size=5,
+    #     objectlist=[{'pan':4,'pot':4,'stove':1}, {'tomato':1,'potato':10}, {'orange':5,'apple':2}],
+    #     pickup_required=False,
+    #     tile_size=tile_size,
+    #     epsilon = .1,
+    #     room_size=10,
+    #     doors_start_open=False,
+    #     stop_when_gone=True
+    # )
     env = MultiroomGoto(
         agent_view_size=5,
-        objectlist=[{'pan':4,'pot':4,'stove':1}, {'tomato':1,'potato':10}, {'orange':5,'apple':2}],
+        objectlist=[{'pan': 1}, {'tomato': 1}, {'knife':1}],
         pickup_required=False,
         tile_size=tile_size,
-        epsilon = .1,
-        room_size=10,
-        doors_start_open=False,
+        epsilon=0.0,
+        room_size=5,
+        doors_start_open=True,
         stop_when_gone=True
     )
 
@@ -414,7 +424,7 @@ if __name__ == '__main__':
         ipdb.set_trace()
 
 """NOTES:
-** Do a pull request with rljax
+** Do a pull request with rljax DONE
   - gotolang robust train py is the file to model stuff off of
   - make your own version of it
   - r2d1 with 1 object per room, then add objects per room

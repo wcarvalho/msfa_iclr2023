@@ -113,4 +113,3 @@ class FarmModelConfig(FarmConfig):
   model_layers: int = 2
   batch_size: int = 16
   activation: str='relu'
-
