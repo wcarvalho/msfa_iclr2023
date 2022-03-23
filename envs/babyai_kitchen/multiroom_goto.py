@@ -4,9 +4,10 @@ from gym import spaces
 import math
 import numpy as np
 import copy
-from rljax.envs.babyai_kitchen.world import Kitchen
-from rljax.envs.babyai_kitchen.levelgen import KitchenLevel
+from envs.babyai_kitchen.world import Kitchen
+from envs.babyai_kitchen.levelgen import KitchenLevel
 import functools
+import acme
 
 
 MANUAL_TEST = False
@@ -22,10 +23,7 @@ _____________________
 |_____|_______|_____|
 
 """
-
-#TODO: make size adjustable eventually
-
-class MultiroomGoto(KitchenLevel):
+class MultiroomGotoEnv(KitchenLevel):
     def __init__(self,
                  *args,
                  objectlist,
@@ -62,10 +60,11 @@ class MultiroomGoto(KitchenLevel):
         self.objectlist = objectlist
         self.stop_when_gone = stop_when_gone
         self.doors_start_open = doors_start_open
-        self._task_objects = functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[])
+        self._task_objects = functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[]) #Rename this
         self.num_objects = len(self._task_objects)
         self.pickup_required = pickup_required
         self.epsilon = epsilon
+        self.verbosity = verbosity
 
         #the mission array will just be one-hot over all the objects
         #stored in self.mission_arr
@@ -103,7 +102,7 @@ class MultiroomGoto(KitchenLevel):
             shape=(self.num_objects,),
             dtype='uint8'
         )
-        self.observation_space.spaces['goto'] = spaces.Box(
+        self.observation_space.spaces['pickup'] = spaces.Box(
             low=0,
             high=255,
             shape=(self.num_objects,),
@@ -115,7 +114,8 @@ class MultiroomGoto(KitchenLevel):
         self.mission_arr = np.zeros([self.num_objects],dtype=np.uint8)
         goal_idx = np.random.choice(range(self.num_objects))
         self.mission_arr[goal_idx] = 1
-        print("Goal is to " + ("pickup " if self.pickup_required else "goto ") + self._task_objects[goal_idx])
+        if self.verbosity==1:
+            print("Goal is to " + ("pickup " if self.pickup_required else "goto ") + self._task_objects[goal_idx])
 
     @property
     def task_objects(self):
@@ -372,6 +372,8 @@ if __name__ == '__main__':
         stop_when_gone=True
     )
 
+    print(env.observation_spec)
+
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)
 
     env = RGBImgPartialObsWrapper(env, tile_size=tile_size)
@@ -424,12 +426,26 @@ if __name__ == '__main__':
         ipdb.set_trace()
 
 """NOTES:
-** Do a pull request with rljax DONE
-  - gotolang robust train py is the file to model stuff off of
-  - make your own version of it
-  - r2d1 with 1 object per room, then add objects per room
-  **keep things small
-  **use working branch
+evaluate on tasks separately to see how well it does each task
+look at vmap in losses usfa **this is confusing**
+when you read papers highlighting problems can be a handy thing (and share them with Wilka)
+
  Sanity check has none colocated, just single object in each room (or just one room is fine)
  Start with just 2 rooms other than start room, 2-3 objects per room to compare new algo with existing
+ 
+ 
+     
+     walkthrough of usfa train code
+        look at msf nets.py
+        w_train is all the w's
+        by default during test time we GPI over all the w's
+        by default task embed is identity
+        ***In Jax you can't, just, uh, build stuff*** you gotta do it inside a ~Transform~ function
+        
+    code style stuff:
+        lots of copy-paste and edit in projects folder
+        envs he likes subclassing
+     
+     github organization stuff
+      - small pull requests
 """

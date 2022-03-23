@@ -50,7 +50,7 @@ def main(_):
   # -----------------------
   # environment
   # -----------------------
-  env = helpers.make_environment_sanity_check(simple=flags.super_simple) #3 objects if super simple, otherwise 2-3 types
+  env = helpers.make_environment_sanity_check(simple=FLAGS.super_simple) #3 objects if super simple, otherwise 2-3 types
   env_spec = acme.make_environment_spec(env)
 
   import ipdb; ipdb.set_trace()
@@ -64,7 +64,7 @@ def main(_):
   # network
   # -----------------------
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings(
-    FLAGS.agent, env_spec,
+    'usfa_variant', env_spec,
     config_kwargs=dict(batch_size=FLAGS.batch_size))
 
 

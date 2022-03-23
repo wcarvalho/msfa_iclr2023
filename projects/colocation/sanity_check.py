@@ -7,7 +7,9 @@ TASK1: With some colocation (2-3 objects per room), doors open by default, train
 #SETUP THINGS
 #conda activate acmejax
 #conda develop /path/to/rljax
-#Export LD_LIBRARY_PATH=/home/nameer/miniconda3/envs/acmejax/lib
+#export LD_LIBRARY_PATH=/home/nameer/miniconda3/envs/acmejax/lib
+#cd successor_features/rljax
+#python projects/colocation/sanity_check.py
 
 import os
 os.environ['LD_LIBRARY_PATH'] = "/home/nameer/miniconda3/envs/acmejax/lib"
@@ -31,17 +33,17 @@ from utils import make_logger, gen_log_dir
 # flags
 # -----------------------
 flags.DEFINE_bool('super_simple',True,'1 object per room, or a bit of colocation?')
-flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
+flags.DEFINE_integer('num_episodes', 10000, 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
 
 FLAGS = flags.FLAGS
 
 def main(_):
-  env = helpers.make_environment_sanity_check(simple=flags.super_simple) #3 objects if super simple, otherwise 2-3 types
+  env = helpers.make_environment_sanity_check(simple=FLAGS.super_simple) #3 objects if super simple, otherwise 2-3 types
   env_spec = acme.make_environment_spec(env)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings(FLAGS.agent, env_spec, setting=FLAGS.env_setting)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings_sanity_check(env_spec)
 
   # -----------------------
   # logger
