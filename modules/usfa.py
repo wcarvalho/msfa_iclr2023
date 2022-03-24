@@ -341,13 +341,21 @@ class UniqueStatePolicyPairs(StatePolicyCombination):
 
 class CumulantsFromMemoryAuxTask(AuxilliaryTask):
   """docstring for Cumulants"""
-  def __init__(self, *args, construction='timestep', normalize=False, **kwargs):
+  def __init__(self, *args, construction='timestep', normalize=False, activation='none', **kwargs):
     super(CumulantsFromMemoryAuxTask, self).__init__(
       unroll_only=True, timeseries=True)
     self.cumulant_fn = hk.nets.MLP(*args, **kwargs)
     self.normalize = normalize
+
     self.construction = construction.lower()
     assert self.construction in ['timestep', 'delta', 'concat']
+
+    assert activation in ['identity', 'sigmoid']
+    if activation == 'identity':
+      activation = lambda x:x
+    elif activation == 'sigmoid':
+      activation = jax.nn.sigmoid
+    self.activation = activation
 
   def __call__(self, memory_out, **kwargs):
     if self.construction == 'delta':
@@ -362,6 +370,7 @@ class CumulantsFromMemoryAuxTask(AuxilliaryTask):
       cumulants = memory_out
 
     cumulants = self.cumulant_fn(cumulants)
+    cumulants = self.activation(cumulants)
 
     if self.normalize:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))

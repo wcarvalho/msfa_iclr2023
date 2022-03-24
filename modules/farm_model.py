@@ -40,7 +40,7 @@ class FarmCumulants(AuxilliaryTask):
     out_dim=0,
     hidden_size=0,
     aggregation='sum',
-    use_delta=True,
+    construction='timestep',
     normalize_delta=True,
     normalize_cumulants=True,
     **kwargs):
@@ -71,20 +71,28 @@ class FarmCumulants(AuxilliaryTask):
     aggregation = aggregation.lower()
     assert aggregation in ['sum', 'weighted', 'concat']
     self.aggregation = aggregation
+
     self.normalize_delta = normalize_delta
     self.normalize_cumulants = normalize_cumulants
-    self.use_delta = use_delta
+
+    self.construction = construction.lower()
+    assert self.construction in ['timestep', 'delta', 'concat']
 
   def __call__(self, memory_out, predictions, **kwargs):
 
-    if self.use_delta:
+    if self.construction == 'delta':
       states = memory_out[:-1]  # [T, B, N, D]
       next_states = memory_out[1:]  # [T, B, N, D]
 
       cumulants = next_states - states
       if self.normalize_delta:
         cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
-    else:
+    elif self.construction == 'concat':
+      states = memory_out[:-1]  # [T, B, N, D]
+      next_states = memory_out[1:]  # [T, B, N, D]
+      cumulants = jnp.concatenate((next_states, states), axis=-1)
+
+    elif self.construction == 'timestep':
       cumulants = memory_out
 
     if self.aggregation == "sum":

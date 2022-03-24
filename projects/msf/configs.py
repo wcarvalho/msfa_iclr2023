@@ -91,18 +91,18 @@ class RewardConfig:
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 1e-3 # coefficient for reward loss
   value_coeff: float = 1. # coefficient for value loss
-  reward_loss: str = 'binary' # type of regression. L2 vs. binary cross entropy
-  balance_reward: bool = True # whether to balance dataset of rewards somehow
+  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
+  balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
   q_aux: str="ensemble"
-  normalize_cumulants: bool = True # whether to normalize cumulants
+  normalize_cumulants: bool = False # whether to normalize cumulants
+  cumulant_act: str = 'identity' # activation on cumulants
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
   mixture: str='unique'  # how to mix FARM modules
-  aggregation: str='sum'  # how to aggregate modules for cumulant
-  
+  aggregation: str='concat'  # how to aggregate modules for cumulant
   normalize_delta: bool = True # whether to normalize delta between states
 
 
@@ -120,6 +120,7 @@ class FarmConfig:
   module_attn_heads: int = 0  # how many attention heads between modules
   shared_module_attn: bool = False
   projection_dim: int = 16
+  farm_vmap: bool = False
 
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):

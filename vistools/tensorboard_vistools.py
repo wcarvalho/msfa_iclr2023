@@ -704,11 +704,11 @@ def get_vis_objects(tensorboard_data, data_filters, common_settings, filter_key,
             topk=topk,
             verbose=verbosity,
             **filter_kwargs,
-        )[0]
+        )
 
-        if match is not None:
+        if match is not None and len(match):
             vis_object = VisDataObject(
-                tensorboard_data=match,
+                tensorboard_data=match[0],
                 **data_filter,
                 )
             vis_objects.append(vis_object)

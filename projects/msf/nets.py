@@ -47,32 +47,36 @@ def make_farm_prep_fn(num_actions):
   """
   embedder = OAREmbedding(
     num_actions=num_actions,
-    observation=False)
+    observation=False,
+    concat=False)
   def prep(inputs, obs):
+    task = inputs.observation.task
+    vector = [task] + embedder(inputs)
+    vector = jnp.concatenate(vector, axis=-1)
     return farm.FarmInputs(
-      image=obs, vector=embedder(inputs))
+      image=obs, vector=vector)
 
   return prep
 
 def flatten_structured_memory(memory_out, **kwargs):
   return memory_out.reshape(*memory_out.shape[:-2], -1)
 
-def memory_prep_fn(num_actions, extract_fn=None):
-  """Combine vae samples w/ action + reward"""
-  embedder = OAREmbedding(
-    num_actions=num_actions,
-    observation=True,
-    concat=False)
-  def prep(inputs, obs):
-    if extract_fn:
-      items = [extract_fn(inputs, obs)]
-    else:
-      items = []
-    items.extend(embedder(inputs, obs))
+# def memory_prep_fn(num_actions, extract_fn=None):
+#   """Combine vae samples w/ action + reward"""
+#   embedder = OAREmbedding(
+#     num_actions=num_actions,
+#     observation=True,
+#     concat=False)
+#   def prep(inputs, obs):
+#     if extract_fn:
+#       items = [extract_fn(inputs, obs)]
+#     else:
+#       items = []
+#     items.extend(embedder(inputs, obs))
 
-    return jnp.concatenate(items, axis=-1)
+#     return jnp.concatenate(items, axis=-1)
 
-  return prep
+#   return prep
 
 def build_vision_net(config, **kwargs):
   if config.vision_torso == 'atari':
@@ -91,6 +95,7 @@ def build_farm(config, **kwargs):
     module_attn_size=config.module_attn_size,
     shared_module_attn=config.shared_module_attn,
     projection_dim=config.projection_dim,
+    vmap=config.farm_vmap,
     out_layers=config.out_layers,
     **kwargs)
 # ======================================================
@@ -150,13 +155,18 @@ def r2d1_noise(config, env_spec, eval_noise=True):
 def r2d1_farm(config, env_spec):
   num_actions = env_spec.actions.num_values
 
+  def prediction_prep_fn(inputs, memory_out, **kwargs):
+    memory_out = flatten_structured_memory(memory_out)
+    return r2d1_prediction_prep_fn(
+      inputs=inputs, memory_out=memory_out)
+
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions),
     memory=build_farm(config),
-    prediction_prep_fn=flatten_structured_memory,
+    prediction_prep_fn=prediction_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
@@ -213,6 +223,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False):
       CumulantsFromMemoryAuxTask(
         [config.cumulant_hidden_size, state_dim],
         normalize=config.normalize_cumulants,
+        activation=config.cumulant_act,
         construction=config.cumulant_const))
 
   net = BasicRecurrent(
@@ -257,7 +268,7 @@ def build_usfa_farm_head(config, state_dim, num_actions, farm_memory, flat=True)
       )
   return usfa_head
 
-def usfa_farmflat_model(config, env_spec):
+def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=True):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
@@ -267,23 +278,26 @@ def usfa_farmflat_model(config, env_spec):
     config=config, state_dim=state_dim, num_actions=num_actions,
     farm_memory=farm_memory, flat=True)
 
-  print("change use_delta to construction")
-  import ipdb; ipdb.set_trace()
-  aux_tasks = [
+  aux_tasks = []
+  if learn_model:
     # takes structured farm input
-    FarmModel(
-      config.model_layers*[config.module_size],
-      num_actions=num_actions,
-      activation=getattr(jax.nn, config.activation)),
+    aux_tasks.append(
+      FarmModel(
+        config.model_layers*[config.module_size],
+        num_actions=num_actions,
+        activation=getattr(jax.nn, config.activation)),
+      )
+  if predict_cumulants:
     # takes structured farm input
-    FarmCumulants(
-      out_dim=usfa_head.out_dim,
-      hidden_size=config.cumulant_hidden_size,
-      aggregation='concat',
-      use_delta=config.delta_cumulant,
-      normalize_delta=config.normalize_delta,
-      normalize_cumulants=config.normalize_cumulants),
-  ]
+    aux_tasks.append(
+      FarmCumulants(
+        out_dim=usfa_head.out_dim,
+        hidden_size=config.cumulant_hidden_size,
+        aggregation='concat',
+        construction=config.cumulant_const,
+        normalize_delta=config.normalize_delta,
+        normalize_cumulants=config.normalize_cumulants)
+    )
 
   def prediction_prep_fn(inputs, memory_out, *args, **kwargs):
     """Concat Farm module-states before passing them."""

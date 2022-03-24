@@ -41,11 +41,24 @@ def multihead(x, fn):
     return x
 
 
-def batch_multihead(x, fn):
+def batch_multihead(x : jnp.ndarray, fn : hk.Module, vmap: bool=True):
     """See multihead. Wrapper for B x N x D data.
+    
+    Args:
+        x (jnp.ndrray): data
+        fn (hk.Module): function to make apply in parallel
+        vmap (bool, optional): whether to use vmap (True) or simple for loop (False)
+    
+    Returns:
+        TYPE: Description
     """
     # vmap over dimension 0 = batch
     # only know how to vmap over data. make fn part of function specification
-    vmap_func = functools.partial(multihead, fn=fn)
-    return hk.vmap(vmap_func, in_axes=0)(x)
+    if vmap:
+      vmap_func = functools.partial(multihead, fn=fn)
+      return hk.vmap(vmap_func, in_axes=0)(x)
+    else:
+      N = x.shape[1]
+      outs = [fn()(x[:, idx]) for idx in jnp.arange(N)]
+      return jnp.stack(outs, axis=1)
 
