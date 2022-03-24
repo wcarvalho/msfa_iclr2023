@@ -3,6 +3,8 @@ import jax.numpy as jnp
 import distrax
 import haiku as hk
 
+from losses.utils import episode_mean 
+
 class DeltaContrastLoss:
   """"""
   def __init__(self, coeff: float, temperature: float = 0.01, extra_negatives: int = 10):
@@ -21,9 +23,9 @@ class DeltaContrastLoss:
     # -----------------------
     # L2 norm
     # -----------------------
-
-    delta = delta / jnp.linalg.norm(delta, axis=-1, keepdims=True)
-    delta_preds = delta_preds / jnp.linalg.norm(delta_preds, axis=-1, keepdims=True)
+    # [T-1, B, N, D]
+    delta = delta / (1e-5+jnp.linalg.norm(delta, axis=-1, keepdims=True))
+    delta_preds = delta_preds / (1e-5+jnp.linalg.norm(delta_preds, axis=-1, keepdims=True))
 
     def contrastive_loss(anchors, positives):
       # logits
@@ -55,10 +57,13 @@ class DeltaContrastLoss:
 
     positive_logits = jnp.diagonal(logits, axis1=2, axis2=3)
 
-    batch_loss = -likelihood.mean()
+    # output is [B]
+    batch_loss = episode_mean(
+      x=(-likelihood.mean(-1)),
+      done=data.discount[:-1]).mean()
 
     metrics = {
-      'loss_contrast': batch_loss.mean(),
+      'loss_contrast': batch_loss,
       'z.contrast.negative_logits' : negative_logits.mean(),
       'z.contrast.positive_logits' : positive_logits.mean(),
     }

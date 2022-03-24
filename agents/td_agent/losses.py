@@ -142,12 +142,19 @@ class RecurrentTDLearning(learning_lib.LossFn):
       if not isinstance(aux_tasks, list): aux_tasks = [aux_tasks]
 
       for aux_task in aux_tasks:
+        # does this aux task need a random key?
+        kwargs=dict()
+        if hasattr(aux_task, 'random') and aux_task.random:
+          key_grad, key = jax.random.split(key_grad, 2)
+          kwargs['key'] = key
+
         aux_loss, aux_metrics = aux_task(
           data=data,
           online_preds=online_preds,
           online_state=online_state,
           target_preds=target_preds,
-          target_state=target_state)
+          target_state=target_state,
+          **kwargs)
 
         metrics.update(aux_metrics)
         mean_loss = mean_loss + aux_loss
@@ -394,9 +401,4 @@ class USFALearning(RecurrentTDLearning):
       'z.sf_max': online_sf.max(),
       'z.sf_min': online_sf.min()}
 
-    C = online_sf.shape[4]
-    for idx in range(C):
-      metrics.update({
-      f'z.sf_max_c{idx}': online_sf[:,:,:,:,idx].max(),
-      })
     return batch_td_error, batch_loss, metrics # [T, B], [B]

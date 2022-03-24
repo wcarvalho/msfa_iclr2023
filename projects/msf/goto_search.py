@@ -52,7 +52,7 @@ FLAGS = flags.FLAGS
 def main(_):
   mp.set_start_method('spawn')
   experiment=None
-  num_cpus = 3
+  num_cpus = 4
   num_gpus = FLAGS.num_gpus
   DEFAULT_ENV_SETTING = 'large_respawn'
   DEFAULT_NUM_ACTORS = 4
@@ -60,60 +60,39 @@ def main(_):
   search = FLAGS.search
   if search == 'baselines':
     space = {
-        "seed": tune.grid_search([1, 2, 3, 4, 5]),
+        "seed": tune.grid_search([1, 2, 3, 4]),
         "agent": tune.grid_search(
-          ['usfa', 'r2d1', 'r2d1_noise_eval']),
+          ['usfa', 'r2d1', 'r2d1_noise_eval', 'usfa_lstm', 'r2d1_farm']),
         "setting": tune.grid_search(['large_respawn']),
         "importance_sampling_exponent": tune.grid_search([0.0]),
     }
     experiment='baselines'
-  elif search == 'usfa_lstm':
+  elif search == 'baselines_norespawn':
+    space = {
+        "seed": tune.grid_search([1, 2, 3, 4]),
+        "agent": tune.grid_search(
+          ['usfa', 'r2d1', 'r2d1_noise_eval']),
+        "setting": tune.grid_search(['large']),
+    }
+    experiment='baselines_norespawn'
+  elif search == 'no_oracle':
+    space = {
+        "seed": tune.grid_search([1, 2, 3, 4]),
+        "agent": tune.grid_search(
+          ['usfa_lstm', 'usfa_farmflat']),
+        "setting": tune.grid_search(['large_respawn']),
+        "importance_sampling_exponent": tune.grid_search([0.0]),
+    }
+    experiment='baselines'
+  elif search == 'usfa_farmflat_model':
     space = {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa_lstm']),
-        "normalize_cumulants": tune.grid_search([False]),
-        "delta_cumulant": tune.grid_search([False]),
-        "reward_loss": tune.grid_search(['l2']),
-        "reward_coeff": tune.grid_search([1e-1, 1e-2]),
-        "value_coeff": tune.grid_search([0, 1.0]),
+        "agent": tune.grid_search(['usfa_farmflat_model']),
+        "extra_negatives": tune.grid_search([1, 4]),
+        "reward_coeff": tune.grid_search([1e-3, 1e-4]),
+        "model_coeff": tune.grid_search([10, 1, 1e-1]),
     }
-    experiment='fixed_env_1'
-  elif search == 'usfa_farm_qlearning':
-    space = {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa_farmflat_qlearning']),
-        "module_attn_heads": tune.grid_search([0, 4]),
-        "shared_module_attn": tune.grid_search([True, False]),
-
-    }
-    experiment='usfa_farm_q1'
-  elif search == 'usfa_farm_nomodel':
-    space = {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa_farmflat']),
-        "model_coeff": tune.grid_search([0.]),
-        "value_coeff": tune.grid_search([1.]), # Q-learning
-        "loss_coeff": tune.grid_search([1e-1, 1e-2, 1e-3]), # SF
-        "reward_coeff": tune.grid_search([1e-1, 1e-2, 1e-3]), # reward coeff
-        "delta_cumulant": tune.grid_search([False]),
-
-    }
-    experiment='no_model'
-  elif search == 'usfa_farm':
-    space = {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa_farmflat']),
-        # "model_coeff": tune.grid_search([1e-1, 1e-2]),
-        # "value_coeff": tune.grid_search([100., 1000.0]),
-        # "reward_coeff": tune.grid_search([1.]),
-        # "loss_coeff": tune.grid_search([1e-1, 1e-2]),
-        "model_coeff": tune.grid_search([0.]),
-        "value_coeff": tune.grid_search([100., 1000.0]),
-        "reward_coeff": tune.grid_search([0.]),
-        "loss_coeff": tune.grid_search([0.]),
-
-    }
-    experiment='no_model'
+    experiment='search3'
   else:
     raise NotImplementedError(search)
 
@@ -125,7 +104,7 @@ def main(_):
   root_path = FLAGS.root if FLAGS.root else str(Path().absolute())
   folder=FLAGS.folder if FLAGS.folder else "results/msf/refactor"
   use_date = FLAGS.date
-
+  use_wandb = FLAGS.wandb
   def create_and_run_program(config):
     """Create and run launchpad program
     """
@@ -158,7 +137,7 @@ def main(_):
     # launch experiment
     program = build_program(
       agent=agent, num_actors=num_actors,
-      use_wandb=False,
+      use_wandb=use_wandb,
       setting=setting,
       config_kwargs=config, 
       path=root_path,

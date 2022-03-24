@@ -43,7 +43,7 @@ class StructuredLSTM(hk.RNNCore):
   This acts as N indepedently updating RNNs.
   """
 
-  def __init__(self, hidden_size: int, nmodules: int, name: Optional[str] = None):
+  def __init__(self, hidden_size: int, nmodules: int, vmap: bool = True,name: Optional[str] = None):
     """Constructs an LSTM.
     Args:
       hidden_size: Hidden layer size.
@@ -52,6 +52,7 @@ class StructuredLSTM(hk.RNNCore):
     super().__init__(name=name)
     self.hidden_size = hidden_size
     self.nmodules = nmodules
+    self.vmap = vmap
 
   def __call__(
       self,
@@ -68,7 +69,8 @@ class StructuredLSTM(hk.RNNCore):
 
     gated = vmap.batch_multihead(
       fn=lambda: hk.Linear(4 * self.hidden_size),
-      x=x_and_h
+      x=x_and_h,
+      vmap=self.vmap,
     )
 
     # TODO(slebedev): Consider aligning the order of gates with Sonnet.
@@ -91,33 +93,30 @@ class FeatureAttention(hk.Module):
   """FeatureAttention from Feature-Attending Recurrent Modules. f_att from paper.
   Each module has its own attention parameters.
   """
-  def __init__(self, dim=16):
+  def __init__(self, dim=16, vmap=True):
     super(FeatureAttention, self).__init__()
     self.dim = dim
+    self.vmap = vmap
 
   def __call__(
       self,
       queries: jnp.ndarray, # [B, N, D]
-      image: jnp.ndarray, # [B, N, H, W, C]
+      image: jnp.ndarray, # [B, H, W, C]
   ) -> jnp.ndarray:
 
     B, N, D = queries.shape
-    if len(image.shape) == 4:
-      image = expand_tile_dim(image, dim=1, size=N)
-    elif len(image.shape) == 5: # already expanded
-      pass
-    else:
-      raise ValueError("image input must be rank-5 or rank-6.")
-
     # ======================================================
     # compute coefficients
     # ======================================================
     # function will create N copies
     coefficients = vmap.batch_multihead(
       fn=lambda: hk.Linear(self.dim),
-      x=queries)
-    coefficients = jnp.expand_dims(coefficients, (2,3)) # [B, N, H, W, D]
+      x=queries,
+      vmap=self.vmap)
+    # [B, N, D]
     coefficients = jax.nn.sigmoid(coefficients)
+    # [B, N, H, W, D]
+    coefficients = jnp.expand_dims(coefficients, (2,3)) 
 
     # ======================================================
     # attend + projections
@@ -125,8 +124,9 @@ class FeatureAttention(hk.Module):
     # first projection
     image = hk.BatchApply(hk.Conv2D(self.dim, [1, 1], 1))(image)
 
-    # attend
-    image = image*coefficients
+    # [B, H, W, C], [B, N, C]
+    multiply = jax.vmap(jnp.multiply, in_axes=(None, 1), out_axes=1)
+    image = multiply(image, coefficients)
 
     # second projection
     image = hk.BatchApply(hk.Conv2D(self.dim, [1, 1], 1))(image)
@@ -275,13 +275,24 @@ class FARM(hk.RNNCore):
     module_attn_heads: int=4,
     shared_module_attn: bool=True,
     projection_dim: int=16,
+    vmap: bool = True,
     name: Optional[str] = None):
     """
+    Args:
+        module_size (int): Description
+        nmodules (int): Description
+        module_attn_size (int, optional): Description
+        module_attn_heads (int, optional): Description
+        shared_module_attn (bool, optional): Description
+        projection_dim (int, optional): Description
+        vmap (bool, optional): whether to vmap over modules or use for loops. currently for loops faster... need to investigate...
+        name (Optional[str], optional): Description
     """
     super().__init__(name=name)
     self.module_attn_heads = module_attn_heads
-    self.memory = StructuredLSTM(module_size, nmodules)
-    self._feature_attention = FeatureAttention(projection_dim)
+    self.memory = StructuredLSTM(module_size, nmodules, vmap=vmap)
+    self._feature_attention = FeatureAttention(projection_dim, vmap=vmap)
+    self.vmap = vmap
 
     if module_attn_heads > 0:
       self._module_attention = ModuleAttention(
@@ -299,10 +310,11 @@ class FARM(hk.RNNCore):
       prev_state: LSTMState, # [B, N, D]
   ) -> Tuple[jnp.ndarray, LSTMState]:
 
-    vector_tiled = expand_tile_dim(inputs.vector, dim=1,
-      size=self.nmodules)
-    query = jnp.concatenate((prev_state.hidden, vector_tiled),
-      axis=-1)
+    def concat(x,y):
+      return jnp.concatenate((x, y), axis=-1)
+    query = jax.vmap(concat, 
+      in_axes=(1, None), out_axes=1)( # go N of q, copy vector
+        prev_state.hidden, inputs.vector)
 
     # [B, N , D]
     image_attn = self.image_attention(query, inputs.image)

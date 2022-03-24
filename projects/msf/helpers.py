@@ -230,32 +230,6 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     loss_label = 'usfa'
     eval_network = config.eval_network
 
-  elif agent == "usfa_qlearning":
-  # USFA
-
-    config = configs.USFAConfig(**default_config)
-
-    NetworkCls=nets.usfa # default: 2M params
-    NetKwargs=dict(
-      config=config,
-      env_spec=env_spec,
-      use_seperate_eval=True)
-
-    LossFn = td_agent.USFALearning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(
-      loss=config.sf_loss,
-      lambda_=config.lambda_,
-      aux_tasks=[
-        usfa_losses.QLearningEnsembleAuxLoss(
-          coeff=1.0,
-          discount=config.discount),
-      ]
-      )
-
-    loss_label = 'usfa'
-    eval_network = config.eval_network
-
   elif agent == "usfa_lstm":
   # USFA + cumulants from LSTM + Q-learning
 
@@ -298,7 +272,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     eval_network = config.eval_network
 
   elif agent == "usfa_farmflat":
-  # USFA Arch. + FARM + Q-learning + SF loss
+  # USFA + cumulants from FARM + Q-learning
     config = data_utils.merge_configs(
       dataclass_configs=[
         configs.ModularUSFAConfig(),
@@ -306,11 +280,14 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
         configs.RewardConfig()],
       dict_configs=default_config
       )
-    config.model_coeff = 0.0
-    # config.delta_cumulant = False # don't use delta
 
     NetworkCls =  nets.usfa_farmflat_model
-    NetKwargs=dict(config=config,env_spec=env_spec)
+    NetKwargs=dict(
+      config=config,
+      env_spec=env_spec,
+      predict_cumulants=True,
+      learn_model=False,
+      )
 
     LossFn = td_agent.USFALearning
 
@@ -326,6 +303,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
           shorten_data_for_cumulant=True,
           coeff=config.reward_coeff,
           loss=config.reward_loss,
+          balance=config.balance_reward,
           ),
       ])
     loss_label = 'usfa'
@@ -356,6 +334,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
           shorten_data_for_cumulant=True,
           coeff=config.reward_coeff,
           loss=config.reward_loss,
+          balance=config.balance_reward,
           ),
         DeltaContrastLoss(
           coeff=config.model_coeff,
