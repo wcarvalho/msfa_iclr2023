@@ -4,8 +4,8 @@ from gym import spaces
 import math
 import numpy as np
 import copy
-from rljax.envs.babyai_kitchen.world import Kitchen
-from rljax.envs.babyai_kitchen.levelgen import KitchenLevel
+from envs.babyai_kitchen.world import Kitchen
+from envs.babyai_kitchen.levelgen import KitchenLevel
 import functools
 
 
@@ -340,14 +340,12 @@ class MultiroomGoto(KitchenLevel):
 if __name__ == '__main__':
     import gym_minigrid.window
     import time
-    from rljax.envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, RGBImgFullyObsWrapper
+    from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, RGBImgFullyObsWrapper
     import matplotlib.pyplot as plt
     import cv2
     import tqdm
     import os
     from babyai.levels.iclr19_levels import Level_GoToImpUnlock
-
-    os.chdir('../..')
 
     tile_size = 40
 
