@@ -99,7 +99,7 @@ class UsfaHead(hk.Module):
     policy_layers : int=2,
     variance: float=0.1,
     nsamples: int=30,
-    sf_input_fn = None,
+    sf_input_fn: hk.Module = None,
     task_embed: int = 0,
     duelling: bool = False,
     normalize_task: bool = False,
@@ -276,7 +276,7 @@ class UsfaHead(hk.Module):
       sf_input = jnp.concatenate((sf_input, w_expand), axis=-1)
 
     # inputs = [B, N, D_s], [B, N, A, D_w]
-    # ouputs = [B, N, A, S], [B, N, A]
+    # ouputs = [B, N, A, D_w], [B, N, A]
     if z_as_task:
       sf, q_values = hk.BatchApply(self.sf_q_net)(sf_input, z)
     else:
@@ -290,16 +290,15 @@ class UsfaHead(hk.Module):
     q_values = jnp.max(q_values, axis=1)
 
     return USFAPreds(
-      sf=sf,
-      z=z,
-      q=q_values,
-      w=w)
+      sf=sf,       # [B, N, A, D_w]
+      z=z,         # [B, N, A, D_w]
+      q=q_values,  # [B, N, A]
+      w=w)         # [B, D_w]
 
 
   @property
   def out_dim(self):
     return self.sf_out_dim
-  
 
 class StatePolicyCombination(hk.Module):
   def __call__(self, memory_out, z_embedding):
@@ -327,9 +326,14 @@ class ConcatFlatStatePolicy(StatePolicyCombination):
 
     return jnp.concatenate((state, z_embedding), axis=-1)
 
-class UniqueStatePolicyPairs(StatePolicyCombination):
+class UniqueStatePolicyPairs(ConcatFlatStatePolicy):
+  """For {z_1, ..., z_m}, {h_1, ..., h_n}, create m x n pairs:
+  {(z_1, h_1), ..., (z_m, h_n)}
+  """
+
   def __call__(self, memory_out, z_embedding):
-    return jax.vmap(data_utils.meshgrid)(memory_out, z_embedding)
+    state = self.statefn(memory_out)
+    return jax.vmap(data_utils.meshgrid)(state, z_embedding)
 
   def augment_task(self, memory_out, w):
     repeat = functools.partial(
