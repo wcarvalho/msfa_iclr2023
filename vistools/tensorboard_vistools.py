@@ -16,26 +16,26 @@ import warnings
 warnings.filterwarnings("ignore")
 
 def save__init__args(values, underscore=False, overwrite=False, subclass_only=False):
-    """
-    Use in `__init__()` only; assign all args/kwargs to instance attributes.
-    To maintain precedence of args provided to subclasses, call this in the
-    subclass before `super().__init__()` if `save__init__args()` also appears
-    in base class, or use `overwrite=True`.  With `subclass_only==True`, only
-    args/kwargs listed in current subclass apply.
-    """
-    prefix = "_" if underscore else ""
-    self = values['self']
-    args = list()
-    Classes = type(self).mro()
-    if subclass_only:
-        Classes = Classes[:1]
-    for Cls in Classes:  # class inheritances
-        if '__init__' in vars(Cls):
-            args += getfullargspec(Cls.__init__).args[1:]
-    for arg in args:
-        attr = prefix + arg
-        if arg in values and (not hasattr(self, attr) or overwrite):
-            setattr(self, attr, values[arg])
+  """
+  Use in `__init__()` only; assign all args/kwargs to instance attributes.
+  To maintain precedence of args provided to subclasses, call this in the
+  subclass before `super().__init__()` if `save__init__args()` also appears
+  in base class, or use `overwrite=True`.  With `subclass_only==True`, only
+  args/kwargs listed in current subclass apply.
+  """
+  prefix = "_" if underscore else ""
+  self = values['self']
+  args = list()
+  Classes = type(self).mro()
+  if subclass_only:
+      Classes = Classes[:1]
+  for Cls in Classes:  # class inheritances
+      if '__init__' in vars(Cls):
+          args += getfullargspec(Cls.__init__).args[1:]
+  for arg in args:
+      attr = prefix + arg
+      if arg in values and (not hasattr(self, attr) or overwrite):
+          setattr(self, attr, values[arg])
 
 def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
   runs = []
@@ -59,6 +59,19 @@ def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
 
   return h.plot(ax=ax, x='x', y='y', **kwargs)
 
+def expand_filters(filters, df):
+  _filters = []
+  for f in filters:
+    settings = f.pop('settings')
+    for k, v in settings.items():
+        if v is None:
+          settings[k] = list(df[k].unique())
+        else:
+          settings[k] = [v]
+    settings = list(ParameterGrid(settings))
+    for setting in settings:
+        _filters.append(dict(settings=setting, **f))
+  return _filters
 
 class VisDataObject:
     """docstring for VisDataObject"""
@@ -424,6 +437,8 @@ class Vistool(object):
             data_filters = [dict(settings=s) for s in settings]
         else:
             data_filters=[f if 'settings' in f else dict(settings=f) for f in data_filters]
+            data_filters = expand_filters(filters=data_filters, df=self.tensorboard_data.settings_df)
+
         # ======================================================
         # get 1 object with data per available data filter
         # ======================================================
@@ -711,6 +726,7 @@ def get_vis_objects(tensorboard_data, data_filters, common_settings, filter_key,
                 tensorboard_data=match[0],
                 **data_filter,
                 )
+
             vis_objects.append(vis_object)
 
     return vis_objects
