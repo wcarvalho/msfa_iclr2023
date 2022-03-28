@@ -11,13 +11,21 @@ TASK1: With some colocation (2-3 objects per room), doors open by default, train
 #cd successor_features/rljax
 #python projects/colocation/sanity_check.py
 
-import os
-os.environ['LD_LIBRARY_PATH'] = "/home/nameer/miniconda3/envs/acmejax/lib"
-os.environ["PYTHONPATH"]="${PYTHONPATH}:/home/nameer/successor_features/rljax"
-os.environ['CUDA_VISIBLE_DEVICES']="0"
-os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+"""Comand I run:
+  PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
+    CUDA_VISIBLE_DEVICES=0 \
+    XLA_PYTHON_CLIENT_PREALLOCATE=false \
+    TF_FORCE_GPU_ALLOW_GROWTH=true \
+    python projects/colocation/sanity_check.py"""
 
+import os
+#os.environ['LD_LIBRARY_PATH'] = "/home/nameer/miniconda3/envs/acmejax/lib"
+#os.environ["PYTHONPATH"]="${PYTHONPATH}:/home/nameer/successor_features/rljax"
+#os.environ['CUDA_VISIBLE_DEVICES']="0"
+#os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+#os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+print(os.environ['LD_LIBRARY_PATH'])
 
 from absl import app
 from absl import flags
@@ -40,10 +48,10 @@ flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
 FLAGS = flags.FLAGS
 
 def main(_):
-  env = helpers.make_environment_sanity_check(simple=FLAGS.super_simple) #3 objects if super simple, otherwise 2-3 types
+  env = helpers.make_environment_sanity_check(evaluation=False, simple=FLAGS.super_simple) #3 objects if super simple, otherwise 2-3 types
   env_spec = acme.make_environment_spec(env)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = helpers.load_agent_settings_sanity_check(env_spec)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs,_,_ = helpers.load_agent_settings_sanity_check(env_spec)
 
   # -----------------------
   # logger

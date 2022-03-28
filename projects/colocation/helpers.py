@@ -14,7 +14,7 @@ import dm_env
 from projects.colocation import nets
 from projects.colocation import configs
 
-def make_environment_sanity_check(simple: bool = True):
+def make_environment_sanity_check(evaluation: bool = False, simple: bool = True):
     if simple:
         objs = [{'pan': 1}, {'tomato': 1}, {'knife':1}]
     else:
@@ -40,7 +40,6 @@ def make_environment_sanity_check(simple: bool = True):
     ]
     return wrappers.wrap_all(env, wrapper_list)
 
-
 def load_agent_settings_sanity_check(env_spec, config_kwargs=None):
     default_config = dict()
     default_config.update(config_kwargs or {})
@@ -51,6 +50,10 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None):
     NetKwargs=dict(config=config, env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    loss_label = 'r2d1'
+    eval_network= config.eval_network
 
-    return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs
+    return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
+
+
 

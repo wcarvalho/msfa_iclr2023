@@ -7,7 +7,6 @@ import copy
 from envs.babyai_kitchen.world import Kitchen
 from envs.babyai_kitchen.levelgen import KitchenLevel
 import functools
-import acme
 
 
 MANUAL_TEST = False
@@ -347,7 +346,7 @@ if __name__ == '__main__':
     import os
     from babyai.levels.iclr19_levels import Level_GoToImpUnlock
 
-    os.chdir('../..')
+    #os.chdir('../..')
 
     tile_size = 10
 
@@ -361,7 +360,7 @@ if __name__ == '__main__':
     #     doors_start_open=False,
     #     stop_when_gone=True
     # )
-    env = MultiroomGoto(
+    env = MultiroomGotoEnv(
         agent_view_size=5,
         objectlist=[{'pan': 1}, {'tomato': 1}, {'knife':1}],
         pickup_required=False,
@@ -371,8 +370,6 @@ if __name__ == '__main__':
         doors_start_open=True,
         stop_when_gone=True
     )
-
-    print(env.observation_spec)
 
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)
 
@@ -433,7 +430,9 @@ when you read papers highlighting problems can be a handy thing (and share them 
  Sanity check has none colocated, just single object in each room (or just one room is fine)
  Start with just 2 rooms other than start room, 2-3 objects per room to compare new algo with existing
  
- 
+ Next round Q's:
+    how does logging work? Can I use WANDB?
+    
      
      walkthrough of usfa train code
         look at msf nets.py
@@ -442,10 +441,8 @@ when you read papers highlighting problems can be a handy thing (and share them 
         by default task embed is identity
         ***In Jax you can't, just, uh, build stuff*** you gotta do it inside a ~Transform~ function
         
-    code style stuff:
-        lots of copy-paste and edit in projects folder
-        envs he likes subclassing
-     
-     github organization stuff
-      - small pull requests
+use distributed train
+multiprocessing and not multithreading
+burn-in 0
+episode length tuning
 """
