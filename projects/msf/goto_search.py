@@ -35,7 +35,7 @@ from ray import tune
 import multiprocessing as mp
 import jax
 import time
-
+from pprint import pprint
 from utils import gen_log_dir
 import os
 
@@ -52,17 +52,27 @@ FLAGS = flags.FLAGS
 def main(_):
   mp.set_start_method('spawn')
   experiment=None
-  num_cpus = 4
+  num_cpus = 2
   num_gpus = FLAGS.num_gpus
   DEFAULT_ENV_SETTING = 'large_respawn'
   DEFAULT_NUM_ACTORS = 4
 
   search = FLAGS.search
-  if search == 'baselines':
+  if search == 'agent':
+    space = {
+        "seed": tune.grid_search([1, 2, 3, 4]),
+        "agent": tune.grid_search([FLAGS.agent]),
+        "setting": tune.grid_search(['large_respawn']),
+        "q_aux": tune.grid_search(['single']),
+        "loss_coeff": tune.grid_search([1]),
+        "num_sgd_steps_per_step": tune.grid_search([4])
+    }
+    experiment='baselines'
+  elif search == 'baselines':
     space = {
         "seed": tune.grid_search([1, 2, 3, 4]),
         "agent": tune.grid_search(
-          ['usfa', 'r2d1', 'r2d1_noise_eval', 'usfa_lstm', 'r2d1_farm']),
+          ['usfa', 'r2d1', 'r2d1_noise_eval', 'r2d1_no_task', 'usfa_lstm', 'r2d1_farm']),
         "setting": tune.grid_search(['large_respawn']),
         "importance_sampling_exponent": tune.grid_search([0.0]),
     }
@@ -75,29 +85,32 @@ def main(_):
         "setting": tune.grid_search(['large']),
     }
     experiment='baselines_norespawn'
-  elif search == 'no_oracle':
+  elif search == 'usfa_unsup':
     space = {
         "seed": tune.grid_search([1, 2, 3, 4]),
         "agent": tune.grid_search(
-          ['usfa_lstm', 'usfa_farmflat']),
+          ['usfa_farm', 'usfa_farmflat']),
         "setting": tune.grid_search(['large_respawn']),
-        "importance_sampling_exponent": tune.grid_search([0.0]),
+        "q_aux": tune.grid_search(['single']),
+        "loss_coeff": tune.grid_search([1]),
+        "num_sgd_steps_per_step": tune.grid_search([4])
     }
     experiment='baselines'
-  elif search == 'usfa_farmflat_model':
+  elif search == 'usfa_farm_model':
     space = {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa_farmflat_model']),
-        "extra_negatives": tune.grid_search([1, 4]),
-        "reward_coeff": tune.grid_search([1e-3, 1e-4]),
-        "model_coeff": tune.grid_search([10, 1, 1e-1]),
+        "agent": tune.grid_search(['usfa_farm_model']),
+        "extra_negatives": tune.grid_search([4]),
+        "reward_coeff": tune.grid_search([1e-4]),
+        "model_coeff": tune.grid_search([1e-1]),
+        "cumulant_const" : tune.grid_search(['concat', 'delta']),
+        "out_layers" : tune.grid_search([0, 2]),
     }
     experiment='search3'
   else:
     raise NotImplementedError(search)
 
-
-
+  pprint(space)
   # root_path is needed to tell program absolute path
   # this is used for BabyAI
 

@@ -22,11 +22,13 @@ class R2D1Config:
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
   seed: int = 1
-  max_number_of_steps: int = 2_000_000
+  max_number_of_steps: int = 3_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
   loss_coeff: float = 1.0
+  schedule_end: int = None
+  final_lr_scale: float = 0.0
 
   # How many gradient updates to perform per learner step.
   num_sgd_steps_per_step: int = 4
@@ -79,11 +81,13 @@ class USFAConfig(R2D1Config):
   concat_w: bool = False
   sf_loss: str = 'n_step_q_learning_regular' # whether to use q_lambda or n-step q-learning for objective
   lambda_: float = .9 # lambda for q-lambda
+  tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
 
 @dataclasses.dataclass
 class QAuxConfig:
   """Extra configuration options when doing QAux loss over SF."""
-  loss_coeff: float = 1e-2
+  loss_coeff: float = 1.0
+  q_aux_anneal: int = 10_000
 
 
 @dataclasses.dataclass
@@ -93,7 +97,7 @@ class RewardConfig:
   value_coeff: float = 1. # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
-  q_aux: str="ensemble"
+  q_aux: str="single"
   normalize_cumulants: bool = False # whether to normalize cumulants
   cumulant_act: str = 'identity' # activation on cumulants
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
@@ -106,7 +110,6 @@ class ModularUSFAConfig(USFAConfig):
   normalize_delta: bool = True # whether to normalize delta between states
 
 
-
 @dataclasses.dataclass
 class FarmConfig:
   """Extra configuration options for FARM module."""
@@ -115,26 +118,26 @@ class FarmConfig:
   module_size: int = 128
   nmodules: int = 4
   out_layers: int = 0
-  shared_attn_params: bool = False
   module_attn_size: int = 64
   module_attn_heads: int = 0  # how many attention heads between modules
-  shared_module_attn: bool = False
+  shared_module_attn: bool = False # share params for module attention
   projection_dim: int = 16
   farm_vmap: bool = False
+  farm_task_input: bool = True
+  farm_policy_task_input: bool = False
 
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):
   """Extra configuration options for FARM module."""
 
   # Network hps
-  extra_negatives: int = 10
+  extra_negatives: int = 4
   temperature: float = 0.01
-  model_coeff: float = 1
+  model_coeff: float = .1
+  reward_coeff: float = 1e-4 # coefficient for reward loss
   out_layers: int = 2
   model_layers: int = 2
-  batch_size: int = 16
   activation: str='relu'
-
 
 
 

@@ -263,7 +263,7 @@ class USFALearning(RecurrentTDLearning):
 
   extract_cumulants: Callable = cumulants_from_env
   shorten_data_for_cumulant: bool = False
-  loss: str = 'n_step_q_learning'
+  loss: str = 'n_step_q_learning_regular'
   lambda_: float  = .9
 
   def error(self, data, online_preds, online_state, target_preds, target_state, **kwargs):

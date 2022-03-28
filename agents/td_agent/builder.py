@@ -24,7 +24,6 @@ from acme.adders import reverb as adders_reverb
 from acme.agents.jax import actors
 from acme.agents.jax import builders
 from acme.agents.jax import r2d2
-from acme.agents.jax.dqn import learning_lib
 from acme.agents.jax.r2d2 import actor as r2d2_actor
 from acme.agents.jax.r2d2 import config as r2d2_config
 from acme.agents.jax.r2d2 import learning as r2d2_learning
@@ -39,6 +38,7 @@ import jax
 import optax
 import reverb
 
+from agents.td_agent import learning_lib
 from agents.td_agent.losses import R2D2Learning
 
 class TDBuilder(r2d2.R2D2Builder):
@@ -70,13 +70,23 @@ class TDBuilder(r2d2.R2D2Builder):
 
     # The learner updates the parameters (and initializes them).
     logger = self._logger_fn()
+    optimizer_chain = [
+      optax.clip_by_global_norm(self._config.max_gradient_norm),
+      optax.adam(self._config.learning_rate, eps=1e-3),
+    ]
+
+    if self._config.schedule_end is not None and self._config.schedule_end > 0:
+      optimizer_chain.append(optax.scale_by_schedule(
+              optax.linear_schedule(
+                init_value=1.0,
+                end_value=self._config.final_lr_scale,
+                transition_steps=self._config.schedule_end))
+        )
+
     return learning_lib.SGDLearner(
         network=networks,
         random_key=random_key,
-        optimizer=optax.chain(
-            optax.clip_by_global_norm(self._config.max_gradient_norm),
-            optax.adam(self._config.learning_rate, eps=1e-3),
-        ),
+        optimizer=optax.chain(*optimizer_chain),
         target_update_period=self._config.target_update_period,
         data_iterator=dataset,
         loss_fn=self.loss_fn,
