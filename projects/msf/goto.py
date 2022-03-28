@@ -35,7 +35,7 @@ flags.DEFINE_string('env_setting', 'small', 'which environment setting.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('wandb', False, 'whether to log.')
-flags.DEFINE_bool('test', False, 'whether to log.')
+flags.DEFINE_bool('test', False, 'whether using test/train policy.')
 flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
 
 FLAGS = flags.FLAGS
@@ -52,7 +52,7 @@ def main(_):
     config.min_replay_size = 100
     config.npolicies = 2
     config.variance = 0.1
-    config.batch_size = 2
+    config.batch_size = 4
 
   # -----------------------
   # logger
