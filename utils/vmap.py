@@ -59,6 +59,8 @@ def batch_multihead(x : jnp.ndarray, fn : hk.Module, vmap: bool=True):
       return hk.vmap(vmap_func, in_axes=0)(x)
     else:
       N = x.shape[1]
-      outs = [fn()(x[:, idx]) for idx in jnp.arange(N)]
+      outs = []
+      for idx in jnp.arange(N):
+        outs.append(fn()(x[:, idx]))
       return jnp.stack(outs, axis=1)
 
