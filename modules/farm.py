@@ -4,20 +4,12 @@ import jax
 import jax.numpy as jnp
 
 from utils import vmap
+from utils import data as data_utils
 
 def add_batch(nest, batch_size: Optional[int]):
   """Adds a batch dimension at axis 0 to the leaves of a nested structure."""
   broadcast = lambda x: jnp.broadcast_to(x, (batch_size,) + x.shape)
   return jax.tree_map(broadcast, nest)
-
-
-def expand_tile_dim(x, dim, size):
-  """E.g. shape=[1,128] --> [1,10,128] if dim=1, size=10
-  """
-  ndims = len(x.shape)
-  x = jnp.expand_dims(x, dim)
-  tiling = [1]*dim + [size] + [1]*(ndims-dim)
-  return jnp.tile(x, tiling)
 
 
 class LSTMState(NamedTuple):
@@ -292,7 +284,6 @@ class FARM(hk.RNNCore):
     self.module_attn_heads = module_attn_heads
     self.memory = StructuredLSTM(module_size, nmodules, vmap=vmap)
     self._feature_attention = FeatureAttention(projection_dim, vmap=vmap)
-    self.vmap = vmap
 
     if module_attn_heads > 0:
       self._module_attention = ModuleAttention(
@@ -308,12 +299,13 @@ class FARM(hk.RNNCore):
       self,
       inputs: FarmInputs,
       prev_state: LSTMState, # [B, N, D]
-  ) -> Tuple[jnp.ndarray, LSTMState]:
+      ) -> Tuple[jnp.ndarray, LSTMState]:
 
     def concat(x,y):
       return jnp.concatenate((x, y), axis=-1)
     query = jax.vmap(concat, 
-      in_axes=(1, None), out_axes=1)( # go N of q, copy vector
+      in_axes=(1, None), out_axes=1)( # dim N of h, copy vector N times
+        # [B, N, D]        [B, D]
         prev_state.hidden, inputs.vector)
 
     # [B, N , D]
