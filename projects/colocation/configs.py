@@ -53,3 +53,23 @@ class R2D1Config:
   eval_network: bool = True
   # max_vocab_size: int = 30
   # word_dim: int = 128  # dimension of both word and task (sentence) embeddings
+
+
+@dataclasses.dataclass
+class USFAConfig(R2D1Config):
+  """Extra configuration options for USFA agent."""
+  npolicies: int = 10 # number of policies to sample
+  variance: float = 0.5
+  # Network hps
+  policy_size = 32
+  policy_layers = 0
+  batch_size: int = 20
+  cumulant_hidden_size: int=128 # hidden size for cumulant pred
+  embed_task: bool = False  # whether to embed task
+  normalize_task: bool = False # whether to normalize task embedding
+  normalize_cumulants: bool = True # whether to normalize task embedding
+  balance_reward: bool = False # whether to normalize task embedding
+  eval_network: bool = True
+  duelling: bool = False
+  z_as_train_task: bool = True
+  state_hidden_size: int = 0

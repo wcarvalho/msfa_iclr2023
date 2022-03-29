@@ -25,7 +25,6 @@ import os
 #os.environ['CUDA_VISIBLE_DEVICES']="0"
 #os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 #os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-print(os.environ['LD_LIBRARY_PATH'])
 
 from absl import app
 from absl import flags
@@ -40,6 +39,7 @@ from utils import make_logger, gen_log_dir
 # -----------------------
 # flags
 # -----------------------
+flags.DEFINE_string('agent','usfa','what kind of agent? r2d1 or usfa available now')
 flags.DEFINE_bool('super_simple',True,'1 object per room, or a bit of colocation?')
 flags.DEFINE_integer('num_episodes', 10000, 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
@@ -48,21 +48,21 @@ flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
 FLAGS = flags.FLAGS
 
 def main(_):
-  env = helpers.make_environment_sanity_check(evaluation=False, simple=FLAGS.super_simple) #3 objects if super simple, otherwise 2-3 types
+  env = helpers.make_environment_sanity_check(evaluation=False, simple=FLAGS.super_simple,agent=FLAGS.agent) #3 objects if super simple, otherwise 2-3 types
   env_spec = acme.make_environment_spec(env)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs,_,_ = helpers.load_agent_settings_sanity_check(env_spec)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs,_,_ = helpers.load_agent_settings_sanity_check(env_spec,agent=FLAGS.agent)
 
   # -----------------------
   # logger
   # -----------------------
   log_dir = gen_log_dir(
     base_dir="results/colocation_sanity_check/local",
-    agent='r2d1',
+    agent=FLAGS.agent,
     seed=config.seed)
 
   logger_fn = lambda : make_logger(
-    log_dir=log_dir, label='r2d1')
+    log_dir=log_dir, label=FLAGS.agent)
 
 
   # -----------------------

@@ -2,7 +2,7 @@
 Run Successor Feature based agents and baselines on
   BabyAI derivative environments.
 
-Comand I run:
+Command I run for r2d1:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
     CUDA_VISIBLE_DEVICES=3 \
@@ -10,6 +10,16 @@ Comand I run:
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/colocation/train_distributed.py \
     --agent r2d1
+
+Command for usfa
+
+  PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
+    CUDA_VISIBLE_DEVICES=0 \
+    XLA_PYTHON_CLIENT_PREALLOCATE=false \
+    TF_FORCE_GPU_ALLOW_GROWTH=true \
+    python projects/colocation/train_distributed.py \
+    --agent usfa
 """
 
 # Do not preallocate GPU memory for JAX.
@@ -39,7 +49,7 @@ import pickle
 # -----------------------
 flags.DEFINE_string('experiment', None, 'experiment_name.')
 flags.DEFINE_bool('simple',True, 'should the environment be simple or have some colocation')
-flags.DEFINE_string('agent', 'r2d1', 'which agent.')
+flags.DEFINE_string('agent', 'usfa', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
@@ -59,7 +69,7 @@ def build_program(agent, num_actors,
   # -----------------------
   # load env stuff
   # -----------------------
-  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=is_simple)
+  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=is_simple, agent=agent)
   env = environment_factory(False)
   env_spec = acme.make_environment_spec(env)
   del env
@@ -73,7 +83,7 @@ def build_program(agent, num_actors,
   # -----------------------
   #TODO: make a function that can do USFA or R2D1 agents
   #config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec, agent=FLAGS.agent)
 
   def network_factory(spec):
     return td_agent.make_networks(

@@ -14,7 +14,7 @@ import dm_env
 from projects.colocation import nets
 from projects.colocation import configs
 
-def make_environment_sanity_check(evaluation: bool = False, simple: bool = True):
+def make_environment_sanity_check( evaluation: bool = False, simple: bool = True, agent='r2d1'):
     if simple:
         objs = [{'pan': 1}, {'tomato': 1}, {'knife':1}]
     else:
@@ -32,26 +32,52 @@ def make_environment_sanity_check(evaluation: bool = False, simple: bool = True)
       functools.partial(RGBImgPartialObsWrapper, tile_size=10)]
     )
 
-    wrapper_list = [
-        functools.partial(ObservationRemapWrapper,
-                          remap=dict(mission='task')),
-        wrappers.ObservationActionRewardWrapper,
-        wrappers.SinglePrecisionWrapper,
-    ]
+
+    if agent=='usfa':
+        print("USFA Agent baybee!!!")
+        wrapper_list = [
+            functools.partial(ObservationRemapWrapper,
+                              remap=dict(mission='task', pickup='state_features')),
+            wrappers.ObservationActionRewardWrapper,
+            wrappers.SinglePrecisionWrapper,
+        ]
+    else:
+        wrapper_list = [
+            functools.partial(ObservationRemapWrapper,
+                              remap=dict(mission='task')),
+            wrappers.ObservationActionRewardWrapper,
+            wrappers.SinglePrecisionWrapper,
+        ]
     return wrappers.wrap_all(env, wrapper_list)
 
-def load_agent_settings_sanity_check(env_spec, config_kwargs=None):
+def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1"):
     default_config = dict()
     default_config.update(config_kwargs or {})
+    if agent=='r2d1':
+        config = configs.R2D1Config(**default_config)
 
-    config = configs.R2D1Config(**default_config)
+        NetworkCls=nets.r2d1 # default: 2M params
+        NetKwargs=dict(config=config, env_spec=env_spec)
+        LossFn = td_agent.R2D2Learning
+        LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+        loss_label = 'r2d1'
+        eval_network= config.eval_network
+    elif agent=='usfa':
+        state_dim = env_spec.observations.observation.state_features.shape[0]
 
-    NetworkCls=nets.r2d1 # default: 2M params
-    NetKwargs=dict(config=config, env_spec=env_spec)
-    LossFn = td_agent.R2D2Learning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    loss_label = 'r2d1'
-    eval_network= config.eval_network
+        config = configs.USFAConfig(**default_config)
+        config.state_dim = state_dim
+
+        NetworkCls = nets.usfa  # default: 2M params
+        NetKwargs = dict(config=config, env_spec=env_spec)
+
+        LossFn = td_agent.USFALearning
+        LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+
+        loss_label = 'usfa'
+        eval_network = config.eval_network
+    else:
+        raise ValueError("Please specify a valid agent type")
 
     return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
 
