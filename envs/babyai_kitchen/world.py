@@ -404,7 +404,6 @@ class Kitchen(object):
                 properties=['sliced'],
                 visible_properties=['sliced'],
                 ),
-
     ]
 
 if __name__ == '__main__':
