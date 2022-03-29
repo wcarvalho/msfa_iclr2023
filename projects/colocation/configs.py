@@ -35,7 +35,7 @@ class R2D1Config:
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 0.0 # 0.0=single process
   min_replay_size: int = 10_000
-  max_replay_size: int = 200_000
+  max_replay_size: int = 100_000
   batch_size: int = 32
   store_lstm_state: bool = True
   prefetch_size: int = 0
@@ -50,9 +50,9 @@ class R2D1Config:
   # Network hps
   memory_size = 512
   out_hidden_size = 128
-  eval_network: bool = False
-  max_vocab_size: int = 30
-  word_dim: int = 128  # dimension of both word and task (sentence) embeddings
+  eval_network: bool = True
+  # max_vocab_size: int = 30
+  # word_dim: int = 128  # dimension of both word and task (sentence) embeddings
 
 
 @dataclasses.dataclass
@@ -73,43 +73,3 @@ class USFAConfig(R2D1Config):
   duelling: bool = False
   z_as_train_task: bool = True
   state_hidden_size: int = 0
-
-
-@dataclasses.dataclass
-class RewardConfig:
-  """Extra configuration options for USFA agent."""
-  reward_coeff: float = 1. # coefficient for reward loss
-  value_coeff: float = 1. # coefficient for value loss
-  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
-  q_aux: str="ensemble"
-
-
-@dataclasses.dataclass
-class ModularUSFAConfig(USFAConfig):
-  """Extra configuration options for USFA agent."""
-  mixture: str='unique'
-  cumtype: str='sum'
-
-
-
-@dataclasses.dataclass
-class FarmConfig:
-  """Extra configuration options for FARM module."""
-
-  # Network hps
-  module_size: int = 128
-  nmodules: int = 4
-  out_layers: int = 0
-
-@dataclasses.dataclass
-class FarmModelConfig(FarmConfig):
-  """Extra configuration options for FARM module."""
-
-  # Network hps
-  extra_negatives: int = 4
-  temperature: float = 0.01
-  model_coeff: float = 1e-5
-  out_layers: int = 2
-  model_layers: int = 2
-  batch_size: int = 16
-  activation: str='relu'
