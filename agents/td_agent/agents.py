@@ -44,14 +44,15 @@ from agents.td_agent.types import TDNetworkFns
 
 NetworkFactory = Callable[[specs.EnvironmentSpec], TDNetworkFns]
 
+
 def evaluator_custom_env_loop(
-  environment_factory: distributed_layout.EnvironmentFactory,
+  environment_factory: types.EnvironmentFactory,
   network_factory: distributed_layout.NetworkFactory,
   builder: builders.GenericActorLearnerBuilder,
   policy_factory: distributed_layout.PolicyFactory,
   log_to_bigtable: bool = False,
   EnvLoopCls = environment_loop.EnvironmentLoop,
-  logger_fn=None) -> types.EvaluatorFactory:
+  logger_fn=None) -> distributed_layout.EvaluatorFactory:
   """Returns a default evaluator process."""
   def evaluator(
       random_key: networks_lib.PRNGKey,
