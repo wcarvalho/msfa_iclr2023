@@ -4,8 +4,8 @@ from gym import spaces
 import math
 import numpy as np
 import copy
-from envs.babyai_kitchen.world import Kitchen
-from envs.babyai_kitchen.levelgen import KitchenLevel
+from rljax.envs.babyai_kitchen.world import Kitchen
+from rljax.envs.babyai_kitchen.levelgen import KitchenLevel
 import functools
 
 
@@ -15,14 +15,17 @@ Assumptions:
 6 rooms, agent always starts in bottom center room
 2 rooms empty, only 3 have stuff
 doors always have same colors, empty rooms are locked
-_____________________
+_____________________       
 |empty|       |empty|
 |_____|_______|_____|
 |     | start |     |
 |_____|_______|_____|
 
 """
-class MultiroomGotoEnv(KitchenLevel):
+
+#TODO: make size adjustable eventually
+
+class MultiroomGoto(KitchenLevel):
     def __init__(self,
                  *args,
                  objectlist,
@@ -59,11 +62,10 @@ class MultiroomGotoEnv(KitchenLevel):
         self.objectlist = objectlist
         self.stop_when_gone = stop_when_gone
         self.doors_start_open = doors_start_open
-        self._task_objects = functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[]) #Rename this
+        self._task_objects = functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[])
         self.num_objects = len(self._task_objects)
         self.pickup_required = pickup_required
         self.epsilon = epsilon
-        self.verbosity = verbosity
 
         #the mission array will just be one-hot over all the objects
         #stored in self.mission_arr
@@ -101,7 +103,7 @@ class MultiroomGotoEnv(KitchenLevel):
             shape=(self.num_objects,),
             dtype='uint8'
         )
-        self.observation_space.spaces['pickup'] = spaces.Box(
+        self.observation_space.spaces['goto'] = spaces.Box(
             low=0,
             high=255,
             shape=(self.num_objects,),
@@ -113,8 +115,7 @@ class MultiroomGotoEnv(KitchenLevel):
         self.mission_arr = np.zeros([self.num_objects],dtype=np.uint8)
         goal_idx = np.random.choice(range(self.num_objects))
         self.mission_arr[goal_idx] = 1
-        if self.verbosity==1:
-            print("Goal is to " + ("pickup " if self.pickup_required else "goto ") + self._task_objects[goal_idx])
+        print("Goal is to " + ("pickup " if self.pickup_required else "goto ") + self._task_objects[goal_idx])
 
     @property
     def task_objects(self):
@@ -346,28 +347,18 @@ if __name__ == '__main__':
     import os
     from babyai.levels.iclr19_levels import Level_GoToImpUnlock
 
-    #os.chdir('../..')
+    os.chdir('../..')
 
-    tile_size = 10
+    tile_size = 40
 
-    # env = MultiroomGoto(
-    #     agent_view_size=5,
-    #     objectlist=[{'pan':4,'pot':4,'stove':1}, {'tomato':1,'potato':10}, {'orange':5,'apple':2}],
-    #     pickup_required=False,
-    #     tile_size=tile_size,
-    #     epsilon = .1,
-    #     room_size=10,
-    #     doors_start_open=False,
-    #     stop_when_gone=True
-    # )
-    env = MultiroomGotoEnv(
+    env = MultiroomGoto(
         agent_view_size=5,
-        objectlist=[{'pan': 1}, {'tomato': 1}, {'knife':1}],
+        objectlist=[{'pan':4,'pot':4,'stove':1}, {'tomato':1,'potato':10}, {'orange':5,'apple':2}],
         pickup_required=False,
         tile_size=tile_size,
-        epsilon=0.0,
-        room_size=5,
-        doors_start_open=True,
+        epsilon = .1,
+        room_size=10,
+        doors_start_open=False,
         stop_when_gone=True
     )
 
@@ -422,53 +413,13 @@ if __name__ == '__main__':
 
         ipdb.set_trace()
 
-"""
-Advice:
- - change 1 thing at a time, record clearly how it works
- - r2d1_noise can make r2d1 noisier and get reward
- - do prioritized replay
- - maybe get rid of walls? --> make sure agent can see deep into rooms if you do this
- - Maybe do frequent updates?
- -
-
-Q's:
-    how do you evaluate on each task separately?
-    USFA bug from slack
-    error about ordering: why doesn't it break things?? How to fix?
-    [actor/0] The table signature is:
-[actor/0]     0: Tensor<name: 'observation/observation/image/0/observations/observation/image', dtype: uint8, shape: [?,50,50,3]>, 1: Tensor<name: 'observation/observation/pickup/0/observations/observation/pickup', dtype: uint8, shape: [?,3]>, 2: Tensor<name: 'observation/observation/task/0/observations/observation/task', dtype: uint8, shape: [?,3]>, 3: Tensor<name: 'observation/action/0/observations/action', dtype: int32, shape: [?]>, 4: Tensor<name: 'observation/reward/0/observations/reward', dtype: float, shape: [?]>, 5: Tensor<name: 'action/0/actions', dtype: int32, shape: [?]>, 6: Tensor<name: 'reward/0/rewards', dtype: float, shape: [?]>, 7: Tensor<name: 'discount/0/discounts', dtype: float, shape: [?]>, 8: Tensor<name: 'start_of_episode/start_of_episode', dtype: bool, shape: [?]>, 9: Tensor<name: 'extras/core_state/hidden/1/core_state/hidden', dtype: float, shape: [?,512]>, 10: Tensor<name: 'extras/core_state/cell/1/core_state/cell', dtype: float, shape: [?,512]>
-[actor/0]
-[actor/0] The provided trajectory signature is:
-[actor/0]     0: Tensor<name: '0', dtype: uint8, shape: [31,3]>, 1: Tensor<name: '1', dtype: uint8, shape: [31,50,50,3]>, 2: Tensor<name: '2', dtype: uint8, shape: [31,3]>, 3: Tensor<name: '3', dtype: int32, shape: [31]>, 4: Tensor<name: '4', dtype: float, shape: [31]>, 5: Tensor<name: '5', dtype: int32, shape: [31]>, 6: Tensor<name: '6', dtype: float, shape: [31]>, 7: Tensor<name: '7', dtype: float, shape: [31]>, 8: Tensor<name: '8', dtype: bool, shape: [31]>, 9: Tensor<name: '9', dtype: float, shape: [31,512]>, 10: Tensor<name: '10', dtype: float, shape: [31,512]>.
-[actor/0]
-
-Ideas to make agent learn better:
-Hyperparams:
- - bigger replay size, because reward is achieved so infrequently
- - change priority weight to get more samples with reward --> it's turned off rn
- - WILKA THINGS THIS WON'T MATTER: update the learner more frequently later on - variable_update period
- - Maybe use longer sequences??? Iffy on this
- - bigger area the agent sees
-
-Objective function:
- - reward for entering the room the object is in?
- - some reward just for any kind of object interaction?
-
-Architecture:
- - FARM? RIMS?
- - don't just concatenate the z vector, but do something fancier with it, attention?
-    
- walkthrough of usfa train code
-    look at msf nets.py
-    w_train is all the w's
-    by default during test time we GPI over all the w's
-    by default task embed is identity
-    ***In Jax you can't, just, uh, build stuff*** you gotta do it inside a ~Transform~ function
- 
-TODOs:
-    multiprocessing and not multithreading
-    burn-in 0
-    episode length tuning
-    evaluate on tasks separately to see how well it does each task
-    look at vmap in losses usfa **this is confusing**
+"""NOTES:
+** Do a pull request with rljax
+  - gotolang robust train py is the file to model stuff off of
+  - make your own version of it
+  - r2d1 with 1 object per room, then add objects per room
+  **keep things small
+  **use working branch
+ Sanity check has none colocated, just single object in each room (or just one room is fine)
+ Start with just 2 rooms other than start room, 2-3 objects per room to compare new algo with existing
 """
