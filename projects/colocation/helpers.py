@@ -6,6 +6,7 @@ from envs.acme.multiroom_goto import MultiroomGoto
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, MissionIntegerWrapper
 import tensorflow as tf
 import dm_env
+from utils import data as data_utils
 
 
 # -----------------------
@@ -63,7 +64,10 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
         loss_label = 'r2d1'
         eval_network= config.eval_network
     elif agent=='r2d1_noise':
-        config = configs.USFAConfig(**default_config)  # for convenience since has var
+        config = data_utils.merge_configs(
+            dataclass_configs=[configs.NoiseConfig()],
+            dict_configs=default_config
+        )
 
         NetworkCls = nets.r2d1_noise  # default: 2M params
         NetKwargs = dict(config=config, env_spec=env_spec)
