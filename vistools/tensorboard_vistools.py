@@ -49,7 +49,7 @@ def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
       keep = x < xmax
       y = y[keep]
       x = x[keep]
-
+    # import ipdb; ipdb.set_trace()
     df = pd.DataFrame.from_dict(dict(x=x,y=y))
     runs.append(expt.Run(path='', df=df))
 
@@ -115,7 +115,7 @@ class VisDataObject:
             # this is a list of all the lines
             y = all_data[setting]
             if xlabel_key is None:
-                raise NotImplementedError
+                x = [np.arange(len(_y)) for _y in y]
             else:
                 # use key as x-axis
                 _, xdata = self.tensorboard_data[xlabel_key]
@@ -340,7 +340,12 @@ class VisDataObject:
             'black',
             'orange',
             'purple',
-            'green',
+            'dark_green',
+            'light_red',
+            'light_blue',
+            'light_purple',
+            'light_green',
+            'light_orange',
             'grey',
             'dark_grey',
             'dark_green',
@@ -348,11 +353,6 @@ class VisDataObject:
             'dark_blue',
             'dark_red',
             'dark_orange',
-            'light_green',
-            'light_blue',
-            'light_purple',
-            'light_red',
-            'light_orange',
 
         ]
 

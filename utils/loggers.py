@@ -24,7 +24,7 @@ try:
 except ImportError:
   WANDB_AVAILABLE=False
 
-def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, **kwargs):
+def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, return_kwpath=False, **kwargs):
 
   strkey = '%Y.%m.%d'
   if hourminute:
@@ -39,8 +39,11 @@ def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, **kw
 
   if seed is not None:
     path = path.joinpath(f'seed={seed}')
-  return str(path)
 
+  if return_kwpath:
+    return str(path), kwpath
+  else:
+    return str(path)
 
 def make_logger(
   log_dir: str,

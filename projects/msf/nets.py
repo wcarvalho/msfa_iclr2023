@@ -77,6 +77,7 @@ def build_farm(config, **kwargs):
   return farm.FarmSharedOutput(
     module_size=config.module_size,
     nmodules=config.nmodules,
+    image_attn=config.image_attn,
     module_attn_heads=config.module_attn_heads,
     module_attn_size=config.module_attn_size,
     shared_module_attn=config.shared_module_attn,
@@ -300,9 +301,10 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
         module_cumulants=usfa_head.out_dim,
         hidden_size=config.cumulant_hidden_size,
         aggregation='concat',
-        construction=config.cumulant_const,
+        normalize_cumulants=config.normalize_cumulants,
         normalize_delta=config.normalize_delta,
-        normalize_cumulants=config.normalize_cumulants)
+        construction=config.cumulant_const,
+        )
     )
 
   def prediction_prep_fn(inputs, memory_out, *args, **kwargs):
@@ -346,7 +348,8 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True):
       variance=config.variance,
       nsamples=config.npolicies,
       policy_layers=config.policy_layers,
-      multihead=True, # seperate params per cumulants
+      multihead=config.seperate_value_params, # seperate params per cumulants
+      vmap_multihead=config.farm_vmap,
       )
 
   assert state_dim == usfa_head.cumulants_per_module*farm_memory.nmodules
@@ -358,6 +361,7 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True):
       FarmModel(
         config.model_layers*[config.module_size],
         num_actions=num_actions,
+        seperate_params=config.seperate_model_params,
         activation=getattr(jax.nn, config.activation)),
       )
   if predict_cumulants:
@@ -366,6 +370,7 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True):
       FarmIndependentCumulants(
         module_cumulants=cumulants_per_module,
         hidden_size=config.cumulant_hidden_size,
+        seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
         normalize_delta=config.normalize_delta,
         normalize_cumulants=config.normalize_cumulants)

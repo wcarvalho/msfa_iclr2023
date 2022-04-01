@@ -19,6 +19,16 @@ class AuxilliaryTask(hk.Module):
 def overlapping(dict1, dict2):
   return set(dict1.keys()).intersection(dict2.keys())
 
+class AttrDict(dict):
+    def __getattr__(self, attr):
+      try:
+        return self[attr]
+      except Exception as e:
+        getattr(self, attr)
+
+    def __setattr__(self, attr, value):
+      self[attr] = value
+
 class BasicRecurrent(hk.Module):
   """docstring for BasicRecurrent"""
   def __init__(self,
@@ -105,7 +115,7 @@ class BasicRecurrent(hk.Module):
     unroll = setting == "unroll"
     batchfn = hk.BatchApply if unroll else lambda x:x
 
-    all_preds = {}
+    all_preds = AttrDict()
     if self.inputs_prep_fn:
       inputs = self.inputs_prep_fn(inputs)
 
@@ -195,6 +205,8 @@ class BasicRecurrent(hk.Module):
 
     Predictions = collections.namedtuple('Predictions', all_preds.keys())
     all_preds = Predictions(**all_preds)
+    # print(all_preds)
+    # import ipdb; ipdb.set_trace()
 
     return all_preds, new_state
 

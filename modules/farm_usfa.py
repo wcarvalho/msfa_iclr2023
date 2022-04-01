@@ -21,7 +21,7 @@ class FarmUsfaHead(UsfaHead):
 
   def __init__(self,
     cumulants_per_module: int,
-    vmap_multihead: bool = False,
+    vmap_multihead: str = 'switch',
     **kwargs,
     ):
     super(FarmUsfaHead, self).__init__(

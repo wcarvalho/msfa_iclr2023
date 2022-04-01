@@ -13,26 +13,46 @@ from utils.vmap import batch_multihead
 
 class FarmModel(AuxilliaryTask):
   """docstring for FarmModel"""
-  def __init__(self, *args, num_actions, **kwargs):
+  def __init__(self, *args, num_actions, seperate_params=False, **kwargs):
     super(FarmModel, self).__init__(unroll_only=True, timeseries=True)
-    self.model = hk.nets.MLP(*args, **kwargs)
+    self.model_factory = lambda: hk.nets.MLP(*args, **kwargs)
     self.num_actions = num_actions
+    self.seperate_params = seperate_params
 
 
   def __call__(self, inputs, memory_out, predictions, **kwargs):
     """Apply model to each module memory.
     """
-    module_states = memory_out[:-1]  # [T, B, M, D]
+    if hk.running_init():
+      # during init, T=1
+      module_states = memory_out  # [T, B, M, D]
+      # [T, B, A]
+      chosen_actions = jax.nn.one_hot(inputs.action,
+        num_classes=self.num_actions)
+    else:
+      module_states = memory_out[:-1]  # [T, B, M, D]
+      chosen_actions = jax.nn.one_hot(inputs.action[1:],
+        num_classes=self.num_actions)
+
     T, B, M, D = module_states.shape
 
-    # [T, B, A]
-    chosen_actions = jax.nn.one_hot(inputs.action[1:],
-      num_classes=self.num_actions)
+
     # [T, B, M, A]
     chosen_actions = data_utils.expand_tile_dim(chosen_actions, axis=2, size=M)
 
+    # [T, B, M, D+A]
     model_input = jnp.concatenate((module_states, chosen_actions), axis=-1)
-    model_outputs = hk.BatchApply(self.model, num_dims=3)(model_input)
+
+    if self.seperate_params:
+      # [T, B, M, D]
+      model_outputs = batch_multihead(
+        x=model_input,
+        fn=lambda: self.model_factory(),
+        wrap_vmap=lambda fn: hk.BatchApply(fn),
+        )
+    else:
+      # [T, B, M, D]
+      model_outputs = hk.BatchApply(self.model_factory(), num_dims=3)(model_input)
 
     return {'model_outputs' : model_outputs}
 
@@ -80,6 +100,9 @@ class FarmCumulants(AuxilliaryTask):
     assert self.construction in ['timestep', 'delta', 'concat']
 
   def __call__(self, memory_out, predictions, **kwargs):
+    if hk.running_init():
+      # during init, T=1
+      memory_out = jnp.concatenate((memory_out, memory_out), axis=0)
 
     if self.construction == 'delta':
       states = memory_out[:-1]  # [T, B, M, D]
@@ -111,12 +134,17 @@ class FarmCumulants(AuxilliaryTask):
 
     return {'cumulants' : cumulants}
 
-
-
 class FarmIndependentCumulants(FarmCumulants):
   """Each FARM module predicts its own set of cumulants"""
 
+  def __init__(self, *args, seperate_params ,**kwargs):
+    super(FarmIndependentCumulants, self).__init__(*args, **kwargs)
+    self.seperate_params = seperate_params
+
   def __call__(self, memory_out, predictions, **kwargs):
+    if hk.running_init():
+      # during init, T=1
+      memory_out = jnp.concatenate((memory_out, memory_out), axis=0)
 
     if self.construction == 'delta':
       states = memory_out[:-1]  # [T, B, M, D]
@@ -133,13 +161,20 @@ class FarmIndependentCumulants(FarmCumulants):
     elif self.construction == 'timestep':
       cumulants = memory_out
 
-    _cumulants = []
-    M = cumulants.shape[2]
-    for idx in range(M):
-      c = hk.BatchApply(self.cumulant_fn_factory())(cumulants[:,:, idx])
-      _cumulants.append(c)
-    # M x [T, B, D] --> [T, B, M*D]
-    cumulants = jnp.concatenate(_cumulants, axis=2)
+    if self.seperate_params:
+      cumulants = batch_multihead(
+        x=cumulants,
+        fn=lambda: self.cumulant_fn_factory(),
+        wrap_vmap=lambda fn: hk.BatchApply(fn),
+        )
+      # [T, B, M, D] --> [T, B, M*D]
+      cumulants = cumulants.reshape(*cumulants.shape[:2], -1)
+    else:
+      cumlant_fn = self.cumulant_fn_factory()
+      cumulants = hk.BatchApply(cumlant_fn, num_dims=3)(cumulants)
+      # [T, B, M, D] --> [T, B, M*D]
+      cumulants = cumulants.reshape(*cumulants.shape[:2], -1)
+
 
     if self.normalize_cumulants:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))

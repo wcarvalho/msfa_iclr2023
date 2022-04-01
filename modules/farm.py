@@ -35,7 +35,7 @@ class StructuredLSTM(hk.RNNCore):
   This acts as N indepedently updating RNNs.
   """
 
-  def __init__(self, hidden_size: int, nmodules: int, vmap: bool = True,name: Optional[str] = None):
+  def __init__(self, hidden_size: int, nmodules: int, vmap: str = 'switch',name: Optional[str] = None):
     """Constructs an LSTM.
     Args:
       hidden_size: Hidden layer size.
@@ -85,7 +85,7 @@ class FeatureAttention(hk.Module):
   """FeatureAttention from Feature-Attending Recurrent Modules. f_att from paper.
   Each module has its own attention parameters.
   """
-  def __init__(self, dim=16, vmap=True):
+  def __init__(self, dim=16, vmap: str="switch"):
     super(FeatureAttention, self).__init__()
     self.dim = dim
     self.vmap = vmap
@@ -267,7 +267,8 @@ class FARM(hk.RNNCore):
     module_attn_heads: int=4,
     shared_module_attn: bool=True,
     projection_dim: int=16,
-    vmap: bool = True,
+    image_attn: bool=True,
+    vmap: str = 'switch',
     name: Optional[str] = None):
     """
     Args:
@@ -284,6 +285,7 @@ class FARM(hk.RNNCore):
     self.module_attn_heads = module_attn_heads
     self.memory = StructuredLSTM(module_size, nmodules, vmap=vmap)
     self._feature_attention = FeatureAttention(projection_dim, vmap=vmap)
+    self.image_attn = image_attn
 
     if module_attn_heads > 0:
       self._module_attention = ModuleAttention(
@@ -303,8 +305,9 @@ class FARM(hk.RNNCore):
 
     def concat(x,y):
       return jnp.concatenate((x, y), axis=-1)
-    query = jax.vmap(concat, 
-      in_axes=(1, None), out_axes=1)( # dim N of h, copy vector N times
+
+    # vmap dim N of hidden, copy inputs.vector N times
+    query = jax.vmap(concat, in_axes=(1, None), out_axes=1)(
         # [B, N, D]        [B, D]
         prev_state.hidden, inputs.vector)
 
@@ -328,9 +331,15 @@ class FARM(hk.RNNCore):
 
   def image_attention(self, query, image):
     """Apply attention and flatten output"""
-    attn_out = self._feature_attention(query, image)
-    B, N = attn_out.shape[:2]
-    return attn_out.reshape(B, N, -1)
+    if self.image_attn:
+      attn_out = self._feature_attention(query, image)
+      B, N = attn_out.shape[:2]
+      return attn_out.reshape(B, N, -1)
+    else:
+      B, N = query.shape[:2]
+      image = image.reshape(B, -1)
+      attn_out = data_utils.expand_tile_dim(image, axis=1, size=N)
+      return attn_out
 
   def module_attention(self, query, hidden_states):
     return self._module_attention(query, hidden_states)

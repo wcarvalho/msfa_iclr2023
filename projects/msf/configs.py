@@ -2,12 +2,12 @@
 import dataclasses
 
 from acme.adders import reverb as adders_reverb
-from acme.agents.jax.r2d2 import config as r2d2_config
+from agents.td_agent import configs
 import rlax
 
 
 @dataclasses.dataclass
-class R2D1Config:
+class R2D1Config(configs.R2D1Config):
   """Configuration options for R2D2 agent."""
   discount: float = 0.99
   target_update_period: int = 2500
@@ -21,8 +21,8 @@ class R2D1Config:
   sequence_period: int = 40  # how often to add
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
-  seed: int = 1
-  max_number_of_steps: int = 3_000_000
+  seed: int = 3
+  max_number_of_steps: int = 10_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -122,9 +122,12 @@ class FarmConfig:
   module_attn_heads: int = 0  # how many attention heads between modules
   shared_module_attn: bool = False # share params for module attention
   projection_dim: int = 16
-  farm_vmap: bool = False
-  farm_task_input: bool = True
-  farm_policy_task_input: bool = False
+  farm_vmap: str = "lift"  # vmap over different parameter sets 
+  image_attn: bool = True # whether to use feature attention on image
+  farm_task_input: bool = True # give task as input to FARM
+  farm_policy_task_input: bool = False # give task as input to FARM policy
+  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
+  seperate_value_params: bool=True # seperate parameters per SF set
 
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):
@@ -135,9 +138,11 @@ class FarmModelConfig(FarmConfig):
   temperature: float = 0.01
   model_coeff: float = .1
   reward_coeff: float = 1e-4 # coefficient for reward loss
-  out_layers: int = 2
+  out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'
+  cumulant_const: str='delta'  # whether to use delta between states as cumulant
+  seperate_model_params: bool=True # seperate parameters per transition fn
 
 
 

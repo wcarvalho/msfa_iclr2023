@@ -121,6 +121,16 @@ class SGDLearner(learning_lib.SGDLearner):
     self._replay_client = replay_client
     self._async_priority_updater = async_utils.AsyncExecutor(update_priorities)
 
+  # def run(self):
+  #   try:
+  #     super().run()
+  #   except Exception as e:
+  #     traceback.print_exception(*sys.exc_info())
+  #     print("\n\nTerminating the runtime....")
+  #     import launchpad as lp
+  #     lp.stop()
+
+
   def step(self):
     """Takes one SGD step on the learner."""
     with jax.profiler.StepTraceAnnotation('step',

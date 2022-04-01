@@ -218,9 +218,9 @@ def usfa_farm(default_config, env_spec, flat=True, predict_cumulants=True, learn
 
   LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
   LossFnKwargs.update(
-    extract_cumulants=losses.cumulants_from_preds,
     loss=config.sf_loss,
     shorten_data_for_cumulant=True, # needed since using delta for cumulant
+    extract_cumulants=losses.cumulants_from_preds,
     aux_tasks=aux_tasks)
 
   loss_label = 'usfa'
@@ -235,7 +235,10 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
   agent = agent.lower()
   if agent == "r2d1":
   # Recurrent DQN/UVFA
-    config = configs.R2D1Config(**default_config)
+    config = data_utils.merge_configs(
+      dataclass_configs=[configs.R2D1Config()],
+      dict_configs=default_config
+    )
 
     NetworkCls=nets.r2d1 # default: 2M params
     NetKwargs=dict(config=config, env_spec=env_spec)
@@ -246,7 +249,10 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
 
   elif agent == "r2d1_no_task": 
   # UVFA + noise added to goal embedding
-    config = configs.NoiseConfig(**default_config)  # for convenience since has var
+    config = data_utils.merge_configs(
+      dataclass_configs=[configs.R2D1Config()],
+      dict_configs=default_config
+    )
 
     NetworkCls=nets.r2d1 # default: 2M params
     NetKwargs=dict(config=config, env_spec=env_spec, task_input=False)
@@ -257,7 +263,10 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
 
   elif agent == "r2d1_noise_eval": 
   # UVFA + noise added to goal embedding
-    config = configs.NoiseConfig(**default_config)  # for convenience since has var
+    config = data_utils.merge_configs(
+      dataclass_configs=[configs.NoiseConfig()],
+      dict_configs=default_config
+    )
 
     NetworkCls=nets.r2d1_noise # default: 2M params
     NetKwargs=dict(config=config, env_spec=env_spec, eval_noise=True)
@@ -284,7 +293,10 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
   elif agent == "usfa":
   # USFA
 
-    config = configs.USFAConfig(**default_config)
+    config = data_utils.merge_configs(
+      dataclass_configs=[configs.USFAConfig()],
+      dict_configs=default_config
+      )
 
     NetworkCls=nets.usfa # default: 2M params
     NetKwargs=dict(
@@ -327,14 +339,14 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
       shorten_data_for_cumulant=True,
       extract_cumulants=functools.partial(
         losses.cumulants_from_preds,
-        stop_grad=not config.normalize_cumulants,
+        stop_grad=True,
       ),
       aux_tasks=[
         q_aux_loss(config),
         cumulants.CumulantRewardLoss(
+          shorten_data_for_cumulant=True,
           coeff=config.reward_coeff,
           loss=config.reward_loss,
-          shorten_data_for_cumulant=True,
           balance=config.balance_reward,
           ),
       ])

@@ -7,6 +7,10 @@ import collections
 import jax
 import jax.numpy as jnp
 
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
 
 
 def flatten_dict(d, parent_key='', sep='_'):
@@ -86,12 +90,14 @@ def save_dict(dictionary, file, **kwargs):
     return new
 
 def expand_config_named(config, new):
-  config = config.__dict__
+  config = AttrDict(**config.__dict__)
   config.update(new)
   # original_fields = set(config.keys()).add(new.keys())
-
-  Config = collections.namedtuple('Config', config.keys())
-  return Config(**config)
+  print(config)
+  import ipdb; ipdb.set_trace()
+  return config
+  # Config = AttrDict()
+  # return Config(**config)
 
 def merge_configs(dataclass_configs, dict_configs):
 

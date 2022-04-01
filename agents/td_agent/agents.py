@@ -58,9 +58,10 @@ def evaluator_custom_env_loop(
       random_key: networks_lib.PRNGKey,
       variable_source: core.VariableSource,
       counter: counting.Counter,
+      make_actor: distributed_layout.MakeActorFn,
   ):
     """The evaluation process."""
-
+    del make_actor
     # Create environment and evaluator networks
     environment = environment_factory()
     networks = network_factory(specs.make_environment_spec(environment))
@@ -100,7 +101,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       actor_logger_fn = None,
       evaluator_logger_fn = None,
       EnvLoopCls = environment_loop.EnvironmentLoop,
-      workdir: Optional[str] = '~/acme',
+      # workdir: Optional[str] = '~/acme',
       device_prefetch: bool = False,
       log_to_bigtable: bool = True,
       log_every: float = 10.0,
@@ -160,7 +161,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
         log_to_bigtable=log_to_bigtable,
         actor_logger_fn=actor_logger_fn,
         prefetch_size=config.prefetch_size,
-        workdir=workdir,
+        # workdir=workdir,
         multithreading_colocate_learner_and_reverb=multithreading_colocate_learner_and_reverb,
         **kwargs)
 

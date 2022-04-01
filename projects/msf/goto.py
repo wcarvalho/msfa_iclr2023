@@ -24,7 +24,7 @@ import functools
 
 from agents import td_agent
 from projects.msf import helpers
-from projects.msf.environment_loop import EnvironmentLoop
+from projects.common.train import run
 from utils import make_logger, gen_log_dir
 
 # -----------------------
@@ -61,52 +61,21 @@ def main(_):
     base_dir="results/msf/local",
     agent=FLAGS.agent,
     seed=config.seed)
-  if FLAGS.wandb:
-    import wandb
-    wandb.init(project="msf", entity="wcarvalho92")
-    wandb.config = config.__dict__
 
-  logger_fn = lambda : make_logger(
-    wandb=FLAGS.wandb,
-    log_dir=log_dir, label=loss_label)
-
-
-  # -----------------------
-  # agent
-  # -----------------------
-  builder=functools.partial(td_agent.TDBuilder,
-      LossFn=LossFn, LossFnKwargs=LossFnKwargs,
-      logger_fn=logger_fn)
-
-  kwargs={}
-  if FLAGS.evaluate:
-    kwargs['behavior_policy_constructor'] = functools.partial(td_agent.make_behavior_policy, evaluation=True)
-  agent = td_agent.TDAgent(
-      env_spec,
-      networks=td_agent.make_networks(
-        batch_size=config.batch_size,
-        env_spec=env_spec,
-        NetworkCls=NetworkCls,
-        NetKwargs=NetKwargs,
-        eval_network=True),
-      builder=builder,
-      workdir=log_dir,
-      config=config,
-      seed=FLAGS.seed,
-      **kwargs,
-      )
-
-  # -----------------------
-  # make env + run
-  # -----------------------
-  env_logger = make_logger(
+  run(
+    env=env,
+    env_spec=env_spec,
+    config=config,
+    NetworkCls=NetworkCls,
+    NetKwargs=NetKwargs,
+    LossFn=LossFn,
+    LossFnKwargs=LossFnKwargs,
+    loss_label=loss_label,
     log_dir=log_dir,
-    wandb=FLAGS.wandb,
-    label='actor',
-    steps_key="steps")
-
-  loop = EnvironmentLoop(env, agent, logger=env_logger)
-  loop.run(FLAGS.num_episodes)
+    evaluate=FLAGS.evaluate,
+    seed=FLAGS.seed,
+    num_episodes=FLAGS.num_episodes,
+    )
 
 
 if __name__ == '__main__':

@@ -56,7 +56,7 @@ def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, eval_networ
     return initial_state_hk.init(rng, batch_size)
   dummy_obs_batch = utils.tile_nested(
       utils.zeros_like(env_spec.observations), batch_size)
-  dummy_length = 4
+  dummy_length = 1
   dummy_obs_sequence = utils.tile_nested(dummy_obs_batch, dummy_length)
 
   def unroll_init_fn(rng, initial_state):
@@ -66,9 +66,11 @@ def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, eval_networ
 
   # Make FeedForwardNetworks.
   forward = networks_lib.FeedForwardNetwork(
-      init=forward_hk.init, apply=forward_hk.apply)
+      init=forward_hk.init, 
+      apply=jax.jit(forward_hk.apply, backend='cpu'))
   unroll = networks_lib.FeedForwardNetwork(
-      init=unroll_init_fn, apply=unroll_hk.apply)
+      init=unroll_init_fn, 
+      apply=jax.jit(unroll_hk.apply))
   initial_state = networks_lib.FeedForwardNetwork(
       init=initial_state_init_fn, apply=initial_state_hk.apply)
 
@@ -82,7 +84,8 @@ def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, eval_networ
       return model.evaluate(x, s, k)
     eval_hk = hk.transform(eval_fn)
     evaluation = networks_lib.FeedForwardNetwork(
-      init=eval_hk.init, apply=eval_hk.apply)
+      init=eval_hk.init, 
+      apply=jax.jit(eval_hk.apply, backend='cpu'))
   else:
     raise NotImplementedError
 
