@@ -34,6 +34,7 @@ class MultiroomGotoEnv(KitchenLevel):
                  room_size = 8,
                  doors_start_open = False,
                  stop_when_gone = False,
+                 walls_gone = False,
                  **kwargs):
         """Summary
 
@@ -57,6 +58,7 @@ class MultiroomGotoEnv(KitchenLevel):
         #define all the objects in our world
         #any object can be an objective in this environment, so we don't need to keep track of which are pick-up-able
         self.objectlist = objectlist
+        self.walls_gone = walls_gone
         self.stop_when_gone = stop_when_gone
         self.doors_start_open = doors_start_open
         self._task_objects = functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[]) #Rename this
@@ -168,15 +170,22 @@ class MultiroomGotoEnv(KitchenLevel):
         #create the 3 doors to the starting room
         room_to_door = {(0,1):2,(1,0):3,(2,1):0}
 
-        door1, _ = self.add_door(1,1,room_to_door[tuple(VALID_ROOMS[0])],DOOR_COLORS[0],locked=False)
-        door2, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[1])],DOOR_COLORS[1],locked=False)
-        door3, _ =self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[2])],DOOR_COLORS[2],locked=False)
 
-        #potentially start with the doors open
-        if self.doors_start_open:
-            door1.is_open = True
-            door2.is_open = True
-            door3.is_open = True
+
+        if self.walls_gone:
+            self.remove_wall(1,1,0)
+            self.remove_wall(1, 1, 2)
+            self.remove_wall(1, 1, 3)
+        else:
+            door1, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[0])], DOOR_COLORS[0], locked=False)
+            door2, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[1])], DOOR_COLORS[1], locked=False)
+            door3, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[2])], DOOR_COLORS[2], locked=False)
+
+            #potentially start with the doors open
+            if self.doors_start_open:
+                door1.is_open = True
+                door2.is_open = True
+                door3.is_open = True
 
 
     def reset(self):
@@ -368,7 +377,8 @@ if __name__ == '__main__':
         epsilon=0.0,
         room_size=5,
         doors_start_open=True,
-        stop_when_gone=True
+        stop_when_gone=True,
+        walls_gone=True
     )
 
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)
@@ -424,16 +434,15 @@ if __name__ == '__main__':
 
 """
 Advice:
- - change 1 thing at a time, record clearly how it works
- - r2d1_noise can make r2d1 noisier and get reward
- - do prioritized replay
+ - change 1 thing at a time, record clearly how it works YEP
+ - r2d1_noise can make r2d1 noisier and get reward DONE
+ - do prioritized replay DONE
  - maybe get rid of walls? --> make sure agent can see deep into rooms if you do this
  - Maybe do frequent updates?
  -
 
 Q's:
     how do you evaluate on each task separately?
-    USFA bug from slack
     error about ordering: why doesn't it break things?? How to fix?
     [actor/0] The table signature is:
 [actor/0]     0: Tensor<name: 'observation/observation/image/0/observations/observation/image', dtype: uint8, shape: [?,50,50,3]>, 1: Tensor<name: 'observation/observation/pickup/0/observations/observation/pickup', dtype: uint8, shape: [?,3]>, 2: Tensor<name: 'observation/observation/task/0/observations/observation/task', dtype: uint8, shape: [?,3]>, 3: Tensor<name: 'observation/action/0/observations/action', dtype: int32, shape: [?]>, 4: Tensor<name: 'observation/reward/0/observations/reward', dtype: float, shape: [?]>, 5: Tensor<name: 'action/0/actions', dtype: int32, shape: [?]>, 6: Tensor<name: 'reward/0/rewards', dtype: float, shape: [?]>, 7: Tensor<name: 'discount/0/discounts', dtype: float, shape: [?]>, 8: Tensor<name: 'start_of_episode/start_of_episode', dtype: bool, shape: [?]>, 9: Tensor<name: 'extras/core_state/hidden/1/core_state/hidden', dtype: float, shape: [?,512]>, 10: Tensor<name: 'extras/core_state/cell/1/core_state/cell', dtype: float, shape: [?,512]>
@@ -447,16 +456,8 @@ Hyperparams:
  - bigger replay size, because reward is achieved so infrequently
  - change priority weight to get more samples with reward --> it's turned off rn
  - WILKA THINGS THIS WON'T MATTER: update the learner more frequently later on - variable_update period
- - Maybe use longer sequences??? Iffy on this
  - bigger area the agent sees
 
-Objective function:
- - reward for entering the room the object is in?
- - some reward just for any kind of object interaction?
-
-Architecture:
- - FARM? RIMS?
- - don't just concatenate the z vector, but do something fancier with it, attention?
     
  walkthrough of usfa train code
     look at msf nets.py
@@ -466,9 +467,17 @@ Architecture:
     ***In Jax you can't, just, uh, build stuff*** you gotta do it inside a ~Transform~ function
  
 TODOs:
-    multiprocessing and not multithreading
-    burn-in 0
-    episode length tuning
+    make actual metrics for how well thing is learning
+    make it learn
     evaluate on tasks separately to see how well it does each task
     look at vmap in losses usfa **this is confusing**
+    
+Learning Metrics:
+Mean episode return for actor and evaluator after 10M epochs
+Mean episode return per-task for actor and evaluator after 10M epochs
+Same after 2M epochs
+Loss of learner... but this one doesn't seem to be a problem
+Once colocation is introduced:
+    correlation coefs between colocated object returns versus non-colocated returns
+    
 """

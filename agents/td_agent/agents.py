@@ -46,7 +46,7 @@ NetworkFactory = Callable[[specs.EnvironmentSpec], TDNetworkFns]
 
 
 def evaluator_custom_env_loop(
-  environment_factory: types.EnvironmentFactory,
+  environment_factory,#: types.EnvironmentFactory,
   network_factory: distributed_layout.NetworkFactory,
   builder: builders.GenericActorLearnerBuilder,
   policy_factory: distributed_layout.PolicyFactory,

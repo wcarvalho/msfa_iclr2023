@@ -15,7 +15,7 @@ from utils import data as data_utils
 from projects.colocation import nets
 from projects.colocation import configs
 
-def make_environment_sanity_check( evaluation: bool = False, simple: bool = True, agent='r2d1'):
+def make_environment_sanity_check( evaluation: bool = False, simple: bool = True, agent='r2d1', nowalls: bool = False):
     if simple:
         objs = [{'pan': 1}, {'tomato': 1}, {'knife':1}]
     else:
@@ -29,6 +29,7 @@ def make_environment_sanity_check( evaluation: bool = False, simple: bool = True
         room_size=5,
         doors_start_open=True,
         stop_when_gone=True,
+        walls_gone=nowalls,
         wrappers=[ # wrapper for babyAI gym env
       functools.partial(RGBImgPartialObsWrapper, tile_size=10)]
     )
@@ -76,16 +77,23 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
         loss_label = 'r2d1'
         eval_network = config.eval_network
     elif agent=='usfa':
-        state_dim = env_spec.observations.observation.state_features.shape[0]
-
-        config = configs.USFAConfig(**default_config)
-        config.state_dim = state_dim
+        config = data_utils.merge_configs(
+            dataclass_configs=[configs.USFAConfig()],
+            dict_configs=default_config
+        )
 
         NetworkCls = nets.usfa  # default: 2M params
-        NetKwargs = dict(config=config, env_spec=env_spec)
+        NetKwargs = dict(
+            config=config,
+            env_spec=env_spec,
+            use_seperate_eval=True)
 
         LossFn = td_agent.USFALearning
         LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+        LossFnKwargs.update(
+            loss=config.sf_loss,
+            lambda_=config.lambda_,
+        )
 
         loss_label = 'usfa'
         eval_network = config.eval_network

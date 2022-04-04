@@ -16,7 +16,7 @@ from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding, LanguageTaskEmbedder
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules.vision import AtariVisionTorso
-from modules.usfa import UsfaHead, USFAInputs, CumulantsAuxTask, ConcatFlatStatePolicy
+from modules.usfa import UsfaHead, USFAInputs, ConcatFlatStatePolicy
 from acme.adders import reverb as adders_reverb
 
 from utils import data as data_utils

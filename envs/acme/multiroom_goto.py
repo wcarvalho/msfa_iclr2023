@@ -36,6 +36,7 @@ class MultiroomGoto(dm_env.Environment):
                doors_start_open=False,
                stop_when_gone=False,
                wrappers=None,
+               walls_gone=False,
     **kwargs):
     """Initializes a new MultiroomGotoEnv
 
@@ -64,7 +65,8 @@ class MultiroomGoto(dm_env.Environment):
             epsilon=epsilon,
             room_size=room_size,
             doors_start_open=doors_start_open,
-            stop_when_gone=stop_when_gone
+            stop_when_gone=stop_when_gone,
+            walls_gone=walls_gone
         )
 
     self.env = MultiLevel(
