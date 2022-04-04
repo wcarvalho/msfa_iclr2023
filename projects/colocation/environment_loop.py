@@ -36,6 +36,9 @@ class EnvironmentLoop(acme.EnvironmentLoop):
                                         self._environment.reward_spec())
     timestep = self._environment.reset()
 
+    task_returns = [tree.map_structure(_generate_zeros_from_spec,
+                                        self._environment.reward_spec()) for _ in range(self._environment.env.num_objects)]
+
     # Make the first observation.
     self._actor.observe_first(timestep)
 
@@ -62,6 +65,11 @@ class EnvironmentLoop(acme.EnvironmentLoop):
                                           episode_return,
                                           timestep.reward)
 
+      index = np.argmax(timestep.observation.observation.task)
+      task_returns[index] = tree.map_structure(operator.iadd,
+                                          episode_return,
+                                          timestep.reward)
+
     # Record counts.
     counts = self._counter.increment(episodes=1, steps=episode_steps)
 
@@ -73,6 +81,8 @@ class EnvironmentLoop(acme.EnvironmentLoop):
         'steps_per_second' : steps_per_second,
         'episode_length': episode_steps,
     }
+    for idx, return_val in enumerate(task_returns):
+        result['task_return' + str(idx)] = return_val
     result.update(counts)
     return result
 

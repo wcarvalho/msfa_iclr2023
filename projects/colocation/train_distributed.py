@@ -5,7 +5,7 @@ Run Successor Feature based agents and baselines on
 Command I run for r2d1:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=2 \
+    CUDA_VISIBLE_DEVICES=0 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/colocation/train_distributed.py \
@@ -27,6 +27,7 @@ ssh -L 16006:127.0.0.1:6006 nameer@deeplearn9.eecs.umich.edu
 source ~/.bashrc; conda activate acmejax; cd ~/successor_features/rljax/results/colocation/distributed/
 tensorboard --logdir .
 """
+#most recent 2 are r2d1 and then r2d1_noise, both with no walls, 6 objects
 
 # Do not preallocate GPU memory for JAX.
 import os
@@ -57,7 +58,7 @@ from projects.common.train_distributed import build_common_program
 flags.DEFINE_string('experiment', None, 'experiment_name.')
 flags.DEFINE_bool('simple',True, 'should the environment be simple or have some colocation')
 flags.DEFINE_bool('nowalls',False,'No doors in environment')
-flags.DEFINE_string('agent', 'r2d1_noise', 'which agent.')
+flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
@@ -116,7 +117,7 @@ def build_program(
 
   if not log_dir:
     log_dir, config_path_str = gen_log_dir(
-      base_dir=f"{path}/results/msf/distributed/{group}",
+      base_dir=f"{path}/results/colocation/distributed/{group}",
       hourminute=hourminute,
       return_kwpath=True,
       seed=config.seed,
@@ -139,6 +140,7 @@ def build_program(
     num_actors=num_actors,
     save_config_dict=save_config_dict,
     log_every=log_every,
+    envloop_class=EnvironmentLoop,
     )
 
 def main(_):

@@ -7,6 +7,7 @@ from dm_env import specs
 
 from acme import types
 from acme.wrappers import GymWrapper
+import functools
 
 import numpy as np
 
@@ -54,6 +55,7 @@ class MultiroomGoto(dm_env.Environment):
           stop_when_gone (bool, optional): should we stop the episode when all the objects with reward associated are gone?
           **kwargs: Description
       """
+    #TODO: Make this not assume one level always
     all_level_kwargs = dict()
     for key, objectlist in objectlists.items():
         all_level_kwargs[key]=dict(
@@ -68,6 +70,7 @@ class MultiroomGoto(dm_env.Environment):
             stop_when_gone=stop_when_gone,
             walls_gone=walls_gone
         )
+    self.num_objects = len(set(functools.reduce(lambda x,y: x + list(y.keys()),list(objectlists.values())[0],[])))
 
     self.env = MultiLevel(
         LevelCls=MultiroomGotoEnv,

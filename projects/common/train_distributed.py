@@ -29,6 +29,7 @@ def build_common_program(
   loss_label,
   wandb_init_kwargs=None,
   log_every=30.0, # how often to log
+  envloop_class=EnvironmentLoop
   ):
 
   def network_factory(spec):
@@ -110,7 +111,7 @@ def build_common_program(
       logger_fn=logger_fn,
       actor_logger_fn=actor_logger_fn,
       evaluator_logger_fn=evaluator_logger_fn,
-      EnvLoopCls=EnvironmentLoop,
+      EnvLoopCls=envloop_class,
       config=config,
       # workdir=log_dir,
       seed=config.seed,

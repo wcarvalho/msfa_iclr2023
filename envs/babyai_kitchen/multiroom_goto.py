@@ -9,7 +9,7 @@ from envs.babyai_kitchen.levelgen import KitchenLevel
 import functools
 
 
-MANUAL_TEST = False
+MANUAL_TEST = True
 """
 Assumptions:
 6 rooms, agent always starts in bottom center room
@@ -61,19 +61,15 @@ class MultiroomGotoEnv(KitchenLevel):
         self.walls_gone = walls_gone
         self.stop_when_gone = stop_when_gone
         self.doors_start_open = doors_start_open
-        self._task_objects = functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[]) #Rename this
-        self.num_objects = len(self._task_objects)
+        all_objects = set(functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[]))
+        self.num_objects = len(all_objects)
         self.pickup_required = pickup_required
         self.epsilon = epsilon
         self.verbosity = verbosity
 
-        #the mission array will just be one-hot over all the objects
-        #stored in self.mission_arr
-        self.select_mission()
-
         #initialize the big objects we need
         kitchen = Kitchen(
-            objects=self._task_objects,
+            objects=all_objects,
             tile_size=tile_size,
             rootdir=rootdir,
             verbosity=verbosity,
@@ -82,6 +78,10 @@ class MultiroomGotoEnv(KitchenLevel):
         self.default_objects = copy.deepcopy(kitchen.objects)
         self._task_objects = [o.name for o in self.default_objects]
         self.type2idx = {o: i for i, o in enumerate(self._task_objects)}
+
+        #the mission array will just be one-hot over all the objects
+        #stored in self.mission_arr
+        self.select_mission()
 
         kwargs["task_kinds"] = ['goto','pickup']
         kwargs['actions'] = ['left', 'right', 'forward', 'open','pickup_contents']
@@ -117,6 +117,7 @@ class MultiroomGotoEnv(KitchenLevel):
         self.mission_arr[goal_idx] = 1
         if self.verbosity==1:
             print("Goal is to " + ("pickup " if self.pickup_required else "goto ") + self._task_objects[goal_idx])
+            #print("mission: " + str(self.mission_arr))
 
     @property
     def task_objects(self):
@@ -141,7 +142,7 @@ class MultiroomGotoEnv(KitchenLevel):
 
         #place all of the objects
         for room_idx, room_objects in enumerate(self.objectlist):
-            for obj_idx,(obj, num_to_place) in enumerate(room_objects.items()):
+            for (obj, num_to_place) in room_objects.items():
                 placeable_obj = self.default_objects[self.type2idx[obj]]
 
                 for _ in range(num_to_place):
@@ -189,8 +190,8 @@ class MultiroomGotoEnv(KitchenLevel):
 
 
     def reset(self):
-        obs = super().reset()
         self.select_mission()
+        obs = super().reset()
         assert self.carrying is None
         obs['pickup'] = np.zeros(self.num_objects, dtype=np.uint8)
         obs['mission'] = self.mission_arr
@@ -207,11 +208,11 @@ class MultiroomGotoEnv(KitchenLevel):
             obj_idx = self.type2idx[obj_type]
 
             pickup_vector[obj_idx] = 1
-
             reward = float(self.mission_arr[obj_idx])
             self.grid.set(*fwd_pos, None)
 
-            self.remaining[obj_idx] -= 1
+            if self.remaining[obj_idx]>0:
+                self.remaining[obj_idx] -= 1
 
             return reward
         return 0.0
@@ -323,6 +324,7 @@ class MultiroomGotoEnv(KitchenLevel):
             if object_infront and self.pickup_required:
                 # get reward
                 reward = self.remove_object(fwd_pos, pickup)
+        # print("remaining: " + str(self.remaining))
 
         # ======================================================
         # copied from RoomGridLevel
@@ -359,16 +361,7 @@ if __name__ == '__main__':
 
     tile_size = 10
 
-    # env = MultiroomGoto(
-    #     agent_view_size=5,
-    #     objectlist=[{'pan':4,'pot':4,'stove':1}, {'tomato':1,'potato':10}, {'orange':5,'apple':2}],
-    #     pickup_required=False,
-    #     tile_size=tile_size,
-    #     epsilon = .1,
-    #     room_size=10,
-    #     doors_start_open=False,
-    #     stop_when_gone=True
-    # )
+
     env = MultiroomGotoEnv(
         agent_view_size=5,
         objectlist=[{'pan': 1}, {'tomato': 1}, {'knife':1}],
@@ -378,7 +371,8 @@ if __name__ == '__main__':
         room_size=5,
         doors_start_open=True,
         stop_when_gone=True,
-        walls_gone=True
+        walls_gone=True,
+        verbosity=1
     )
 
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)
@@ -479,5 +473,4 @@ Same after 2M epochs
 Loss of learner... but this one doesn't seem to be a problem
 Once colocation is introduced:
     correlation coefs between colocated object returns versus non-colocated returns
-    
 """
