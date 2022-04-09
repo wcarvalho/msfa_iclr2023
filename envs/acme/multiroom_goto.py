@@ -19,8 +19,8 @@ from envs.babyai_kitchen.multiroom_goto import MultiroomGotoEnv
 
 class GotoObs(NamedTuple):
   """Container for (Observation, Action, Reward) tuples."""
-  pickup: types.Nest
   image: types.Nest
+  pickup: types.Nest
   mission: types.Nest
 
 
@@ -84,7 +84,7 @@ class MultiroomGoto(dm_env.Environment):
     else:
       self.default_env = GymWrapper(self.env)
 
-    self.keys = ['pickup','image' , 'mission']
+    self.keys = ['image', 'pickup' , 'mission']
 
 
   def reset(self) -> dm_env.TimeStep:

@@ -37,19 +37,6 @@ def convert_floats(inputs):
 def get_image_from_inputs(inputs : observation_action_reward.OAR):
   return inputs.observation.image/255.0
 
-def embed_task(inputs, task_embedder):
-  #literally just grab the task vector
-  task = inputs.observation.task
-  return task_embedder(task).astype(jnp.int32)
-
-def prediction_prep_fn(inputs, memory_out, task_embedder, **kwargs):
-  """
-  Concat task with memory output.
-  """
-  task = embed_task(inputs, task_embedder)
-  return jnp.concatenate((memory_out, task), axis=-1)
-
-
 def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
   """
   Concat task with memory output.
@@ -70,9 +57,7 @@ def r2d1(config, env_spec):
     vision=AtariVisionTorso(flatten=True),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
-    prediction_prep_fn=functools.partial(prediction_prep_fn,
-      task_embedder=lambda x: x #stupid simple task embedder lol
-      ),
+    prediction_prep_fn=r2d1_prediction_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 

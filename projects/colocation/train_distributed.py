@@ -57,7 +57,7 @@ from projects.common.train_distributed import build_common_program
 
 flags.DEFINE_string('experiment', None, 'experiment_name.')
 flags.DEFINE_bool('simple',True, 'should the environment be simple or have some colocation')
-flags.DEFINE_bool('nowalls',False,'No doors in environment')
+flags.DEFINE_bool('nowalls',True,'No doors in environment')
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')

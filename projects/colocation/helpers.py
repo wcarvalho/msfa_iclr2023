@@ -35,21 +35,20 @@ def make_environment_sanity_check( evaluation: bool = False, simple: bool = True
     )
 
 
-    if agent=='usfa':
-        print("USFA Agent baybee!!!")
-        wrapper_list = [
-            functools.partial(ObservationRemapWrapper,
-                              remap=dict(mission='task', pickup='state_features')),
-            wrappers.ObservationActionRewardWrapper,
-            wrappers.SinglePrecisionWrapper,
-        ]
-    else:
-        wrapper_list = [
-            functools.partial(ObservationRemapWrapper,
-                              remap=dict(mission='task')),
-            wrappers.ObservationActionRewardWrapper,
-            wrappers.SinglePrecisionWrapper,
-        ]
+    #if agent=='usfa':
+    wrapper_list = [
+        functools.partial(ObservationRemapWrapper,
+                          remap=dict(mission='task', pickup='state_features')),
+        wrappers.ObservationActionRewardWrapper,
+        wrappers.SinglePrecisionWrapper,
+    ]
+    # else:
+    #     wrapper_list = [
+    #         functools.partial(ObservationRemapWrapper,
+    #                           remap=dict(mission='task')),
+    #         wrappers.ObservationActionRewardWrapper,
+    #         wrappers.SinglePrecisionWrapper,
+    #     ]
     return wrappers.wrap_all(env, wrapper_list)
 
 def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1"):

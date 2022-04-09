@@ -67,7 +67,7 @@ class EnvironmentLoop(acme.EnvironmentLoop):
 
       index = np.argmax(timestep.observation.observation.task)
       task_returns[index] = tree.map_structure(operator.iadd,
-                                          episode_return,
+                                          task_returns[index],
                                           timestep.reward)
 
     # Record counts.

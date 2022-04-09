@@ -396,7 +396,7 @@ if __name__ == '__main__':
         window.show_img(combine(full, obs['image']))
 
 
-    for _ in tqdm.tqdm(range(3)):
+    for _ in tqdm.tqdm(range(100)):
         obs = env.reset()
         full = env.render('rgb_array', tile_size=tile_size, highlight=True)
         window.set_caption(obs['mission'])
@@ -473,4 +473,14 @@ Same after 2M epochs
 Loss of learner... but this one doesn't seem to be a problem
 Once colocation is introduced:
     correlation coefs between colocated object returns versus non-colocated returns
+    
+    
+Bug Fixes:
+ - run a bunch of times to make sure it's not random (both distributed and single) DONE: no randomness, error only on distributed
+ - rework nets file (int casting is suspicious) (also check out BasicRecurrent class) DONE FOR R2D1 VANILLA
+ - print out specs all over the place NO NEED
+ - add a bunch of assertions in environment and sample many episodes with those in there
+ - potentially simplify to one room
+ 
+  - transfer ideas to skill discovery
 """
