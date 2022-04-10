@@ -7,6 +7,7 @@ from absl import logging
 from acme.utils import loggers
 from acme.utils.loggers import base
 from acme.utils.loggers import asynchronous as async_logger
+from acme.jax import utils as jax_utils
 
 from utils.tf_summary import TFSummaryLogger
 
@@ -52,6 +53,7 @@ def make_logger(
   asynchronous: bool = False,
   tensorboard=True,
   wandb=False,
+  time_delta: float=10.0,
   steps_key: str=None) -> loggers.Logger:
   """Creates ACME loggers as we wish.
   Features:
@@ -66,6 +68,8 @@ def make_logger(
   if save_data:
     _loggers.append(loggers.CSVLogger(log_dir, label=label, add_uid=False))
 
+
+
   if tensorboard:
     _loggers.append(
       TFSummaryLogger(log_dir, label=label, steps_key=steps_key))
@@ -74,14 +78,14 @@ def make_logger(
     _loggers.append(WandbLogger(label=label, steps_key=steps_key))
 
   # Dispatch to all writers and filter Nones.
-  logger = loggers.Dispatcher(_loggers, loggers.to_numpy)  # type: ignore
+  logger = loggers.Dispatcher(_loggers, jax_utils.fetch_devicearray)  # type: ignore
   logger = loggers.NoneFilter(logger)
 
   if asynchronous:
     logger = async_logger.AsyncLogger(logger)
 
   # filter by time: Print logs almost every 10 seconds.
-  logger = loggers.TimeFilter(logger, time_delta=10.0)
+  logger = loggers.TimeFilter(logger, time_delta=time_delta)
 
 
   return logger
