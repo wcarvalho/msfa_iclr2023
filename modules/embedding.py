@@ -11,14 +11,15 @@ import numpy as np
 Images = jnp.ndarray
 
 
-@dataclasses.dataclass
+
 class OAREmbedding(hk.Module):
   """Module for embedding (observation, action, reward, task) inputs together."""
 
-  num_actions: int
-  concat: bool=True
-  observation: bool=True
-
+  def __init__(self, num_actions, concat=True, observation=True, **kwargs):
+    super(OAREmbedding, self).__init__()
+    self.num_actions = num_actions
+    self.concat = concat
+    self.observation = observation
 
   def __call__(self,
     inputs: observation_action_reward.OAR, obs: jnp.array=None) -> jnp.ndarray:
