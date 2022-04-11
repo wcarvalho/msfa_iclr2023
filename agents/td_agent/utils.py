@@ -72,7 +72,8 @@ def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, eval_networ
       init=unroll_init_fn, 
       apply=jax.jit(unroll_hk.apply))
   initial_state = networks_lib.FeedForwardNetwork(
-      init=initial_state_init_fn, apply=initial_state_hk.apply)
+      init=initial_state_init_fn,
+      apply=initial_state_hk.apply)
 
   # -----------------------
   # optional evaluation network
@@ -86,8 +87,6 @@ def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, eval_networ
     evaluation = networks_lib.FeedForwardNetwork(
       init=eval_hk.init, 
       apply=jax.jit(eval_hk.apply, backend='cpu'))
-  else:
-    raise NotImplementedError
 
 
   # ======================================================
@@ -149,7 +148,7 @@ def make_behavior_policy(
       if networks.evaluation is not None:
         forward_fn = networks.evaluation.apply
       else:
-        raise NotImplementedError
+        forward_fn = networks.forward.apply
     else:
       forward_fn = networks.forward.apply
 
