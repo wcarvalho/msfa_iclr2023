@@ -43,6 +43,7 @@ class BasicRecurrent(hk.Module):
     memory_proc_fn : Callable=None,
     prediction_prep_fn : Callable=None,
     evaluation_prep_fn : Callable=None,
+    PredCls: NamedTuple=None,
     ):
     super(BasicRecurrent, self).__init__()
     self.vision = vision
@@ -60,7 +61,7 @@ class BasicRecurrent(hk.Module):
     if evaluation_prep_fn is None:
         evaluation_prep_fn = prediction_prep_fn
     self.evaluation_prep_fn = evaluation_prep_fn
-
+    self.PredCls = PredCls
 
     # -----------------------
     # auxilliary tasks
@@ -203,10 +204,12 @@ class BasicRecurrent(hk.Module):
         assert len(overlapping_keys) == 0, "replacing values?"
         all_preds.update(aux_pred)
 
-    Predictions = collections.namedtuple('Predictions', all_preds.keys())
-    all_preds = Predictions(**all_preds)
-    # print(all_preds)
-    # import ipdb; ipdb.set_trace()
+    if self.PredCls is not None:
+      all_preds = self.PredCls(**all_preds)
+    else:
+      # ONLY use this during creation. Constantly creating namedtuples can cause a memory leak.
+      PredCls = collections.namedtuple('Predictions', all_preds.keys())
+      all_preds = PredCls(**all_preds)
 
     return all_preds, new_state
 
