@@ -14,11 +14,13 @@ from acme.utils import counting
 from acme.utils import loggers
 import jax
 import jax.numpy as jnp
+from jax._src.lib import xla_bridge # for clearing cache
 import optax
 import reverb
 import rlax
 import tree
 import typing_extensions
+
 
 LossFn = learning_lib.LossFn
 TrainingState = learning_lib.TrainingState
@@ -43,9 +45,11 @@ class SGDLearner(learning_lib.SGDLearner):
                replay_table_name: str = adders.DEFAULT_PRIORITY_TABLE,
                counter: Optional[counting.Counter] = None,
                logger: Optional[loggers.Logger] = None,
-               num_sgd_steps_per_step: int = 1):
+               num_sgd_steps_per_step: int = 1,
+               clear_sgd_cache_period: int = 0):
     """Initialize the SGD learner."""
     self.network = network
+    self._clear_sgd_cache_period = clear_sgd_cache_period
 
     # Internalize the loss_fn with network.
     self._loss = jax.jit(functools.partial(loss_fn, self.network))
@@ -83,7 +87,9 @@ class SGDLearner(learning_lib.SGDLearner):
       sgd_step,
       num_sgd_steps_per_step,
       postprocess_aux)
-    self._sgd_step = jax.jit(sgd_step)
+
+    self.make_sgd_step = lambda: jax.jit(sgd_step)
+    self._sgd_step = self.make_sgd_step()
 
     # Internalise agent components
     self._data_iterator = utils.prefetch(data_iterator)
@@ -155,3 +161,8 @@ class SGDLearner(learning_lib.SGDLearner):
           steps=self._num_sgd_steps_per_step, walltime=elapsed)
       result.update(extra.metrics)
       self._logger.write(result)
+
+      if self._clear_sgd_cache_period > 0:
+        if self._state.steps % self._clear_sgd_cache_period*self._state.steps == 0:
+          # clear cache
+          self._sgd_step = self.make_sgd_step()
