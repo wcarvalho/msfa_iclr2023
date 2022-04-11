@@ -72,7 +72,6 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       multithreading_colocate_learner_and_reverb=False,
       **kwargs,
   ):
-    # self.EnvLoopCls = EnvLoopCls
     observers = observers or ()
     # -----------------------
     # logger fns
@@ -98,11 +97,11 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
     # -----------------------
     policy_network_factory = (
         lambda n: behavior_policy_constructor(n, config))
-    evaluator_policy_network_factory = (
-        lambda n: behavior_policy_constructor(n, config, True))
 
     evaluator_factories = []
     if evaluator:
+      evaluator_policy_network_factory = (
+          lambda n: behavior_policy_constructor(n, config, True))
       evaluator_factories = [
         distributed_layout.default_evaluator_factory(
             environment_factory=lambda 
