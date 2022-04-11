@@ -102,10 +102,10 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
     if evaluator:
       evaluator_policy_network_factory = (
           lambda n: behavior_policy_constructor(n, config, True))
+      eval_env_factory=lambda key: environment_factory(True)
       evaluator_factories = [
         distributed_layout.default_evaluator_factory(
-            environment_factory=lambda 
-              key: environment_factory(False),
+            environment_factory=eval_env_factory,
             network_factory=network_factory,
             policy_factory=evaluator_policy_network_factory,
             observers=observers,
