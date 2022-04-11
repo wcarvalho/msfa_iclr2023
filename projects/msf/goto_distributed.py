@@ -30,6 +30,7 @@ from utils import data as data_utils
 
 from projects.msf import helpers
 from projects.common.train_distributed import build_common_program
+from projects.common.observers import LevelReturnObserver
 
 # -----------------------
 # flags
@@ -39,6 +40,7 @@ flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 1, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
 # WANDB
+flags.DEFINE_bool('debug', False, 'whether to debug.')
 flags.DEFINE_bool('wandb', False, 'whether to log.')
 flags.DEFINE_string('wandb_project', 'msf2', 'wand project.')
 flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
@@ -59,6 +61,8 @@ def build_program(
   config_kwargs=None, # config
   path='.', # path that's being run from
   log_dir=None, # where to save everything
+  debug: bool=False,
+  **kwargs,
   ):
   # -----------------------
   # load env stuff
@@ -74,6 +78,18 @@ def build_program(
   # -----------------------
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
 
+  if debug:
+      config.batch_size = 32
+      config.burn_in_length = 0
+      config.trace_length = 20 # shorter
+      config.sequence_period = 40
+      config.prefetch_size = 0
+      config.samples_per_insert_tolerance_rate = 0.1
+      config.samples_per_insert = 0.0 # different
+      config.num_parallel_calls = 1
+      config.min_replay_size = 1_000 # smaller
+      config.max_replay_size = 10_000 # smaller
+
   # -----------------------
   # define dict to save. add some extra stuff here
   # -----------------------
@@ -85,7 +101,9 @@ def build_program(
   )
 
   # -----------------------
-  # construct log directory if necessary
+  # data stuff:
+  #   construct log directory if necessary
+  #   + observer of data
   # -----------------------
   if not log_dir:
     log_dir, config_path_str = gen_log_dir(
@@ -97,7 +115,8 @@ def build_program(
 
     if wandb_init_kwargs and update_wandb_name:
       wandb_init_kwargs['name'] = config_path_str
-
+  
+  observers = [LevelReturnObserver()]
   # -----------------------
   # wandb settup
   # -----------------------
@@ -116,6 +135,8 @@ def build_program(
     num_actors=num_actors,
     save_config_dict=save_config_dict,
     log_every=log_every,
+    observers=observers,
+    **kwargs,
     )
 
 def main(_):
@@ -136,6 +157,7 @@ def main(_):
     num_actors=FLAGS.num_actors,
     config_kwargs=config_kwargs,
     wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
+    debug=FLAGS.debug,
     )
 
   # Launch experiment.
