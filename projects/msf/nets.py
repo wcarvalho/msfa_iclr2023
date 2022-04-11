@@ -96,7 +96,7 @@ def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
   task = inputs.observation.task
   return jnp.concatenate((memory_out, task), axis=-1)
 
-def r2d1(config, env_spec, task_input=True):
+def r2d1(config, env_spec, task_input=True, **kwargs):
   num_actions = env_spec.actions.num_values
   if task_input:
     prediction_prep_fn=r2d1_prediction_prep_fn
@@ -110,11 +110,12 @@ def r2d1(config, env_spec, task_input=True):
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=prediction_prep_fn,
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    **kwargs
   )
   return net
 
-def r2d1_noise(config, env_spec, eval_noise=True):
+def r2d1_noise(config, env_spec, eval_noise=True, **net_kwargs):
   num_actions = env_spec.actions.num_values
 
   def add_noise_concat(inputs, memory_out, **kwargs):
@@ -140,10 +141,11 @@ def r2d1_noise(config, env_spec, eval_noise=True):
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=add_noise_concat, # add noise
     evaluation_prep_fn=evaluation_prep_fn, # (maybe) don't add noise
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    **net_kwargs
   )
 
-def r2d1_farm(config, env_spec):
+def r2d1_farm(config, env_spec, **net_kwargs):
   num_actions = env_spec.actions.num_values
 
   def r2d1_farm_prediction_prep_fn(inputs, memory_out, **kwargs):
@@ -165,7 +167,8 @@ def r2d1_farm(config, env_spec):
       task_input=config.farm_task_input),
     memory=build_farm(config),
     prediction_prep_fn=prediction_prep_fn,
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    **net_kwargs
   )
 
 
@@ -187,7 +190,7 @@ def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
     memory_out=memory_out,
     )
 
-def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False):
+def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False, **net_kwargs):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
@@ -236,6 +239,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False):
     evaluation_prep_fn=evaluation_prep_fn,
     evaluation=evaluation,
     aux_tasks=aux_tasks,
+    **net_kwargs
   )
   return net
 
@@ -270,7 +274,7 @@ def build_usfa_farm_head(config, state_dim, num_actions, farm_memory, sf_input_f
       )
   return usfa_head
 
-def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=True):
+def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
@@ -329,10 +333,11 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
     evaluation_prep_fn=evaluation_prep_fn,
     evaluation=usfa_head.evaluation,
     aux_tasks=aux_tasks,
+    **net_kwargs
   )
 
 
-def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True):
+def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
@@ -396,4 +401,5 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True):
     evaluation_prep_fn=evaluation_prep_fn,
     evaluation=usfa_head.evaluation,
     aux_tasks=aux_tasks,
+    **net_kwargs
   )
