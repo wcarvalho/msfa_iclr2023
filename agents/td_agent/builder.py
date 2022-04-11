@@ -50,9 +50,7 @@ class TDBuilder(r2d2.R2D2Builder):
                logger_fn: Callable[[], loggers.Logger] = lambda: None,
                LossFn: learning_lib.LossFn=R2D2Learning,
                LossFnKwargs=None,
-               learner_kwargs=None,
-               take_sgd_step=True,
-               cycle_batches=True):
+               learner_kwargs=None):
     super().__init__(networks=networks, config=config, logger_fn=logger_fn)
 
     LossFnKwargs = LossFnKwargs or dict()
