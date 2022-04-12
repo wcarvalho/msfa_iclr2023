@@ -12,15 +12,6 @@ Comand I run:
     --date=False \
     --search baselines_small \
     --num_gpus 1
-
-  PYTHONPATH=$PYTHONPATH:. \
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7" \
-    XLA_PYTHON_CLIENT_PREALLOCATE=false \
-    TF_FORCE_GPU_ALLOW_GROWTH=true \
-    python projects/msf/goto_search.py \
-    --folder 'results/msf/refactor' \
-    --search usfa_lstm
 """
 
 from absl import app
@@ -55,7 +46,7 @@ def main(_):
   num_cpus = 3
   num_gpus = FLAGS.num_gpus
   DEFAULT_ENV_SETTING = 'large_respawn'
-  DEFAULT_NUM_ACTORS = 8
+  DEFAULT_NUM_ACTORS = 4
   name_kwargs=[]
 
   search = FLAGS.search
@@ -65,6 +56,16 @@ def main(_):
         "agent": tune.grid_search([FLAGS.agent]),
         "reward_coeff": tune.grid_search([1e-4]),
         "out_layers" : tune.grid_search([0]),
+    }
+    experiment='baselines'
+    name_kwargs=[]
+  elif search == 'test':
+    space = {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(
+          ['usfa', 'r2d1']),
+        "setting": tune.grid_search(['large_respawn']),
+        "max_number_of_steps" : tune.grid_search([2_000_000]),
     }
     experiment='baselines'
     name_kwargs=[]
@@ -109,70 +110,36 @@ def main(_):
         # "farm_vmap" : tune.grid_search(["lift"]),
     }
 
-  elif search == 'usfa_farm_model_v1':
-    space = {
+  elif search == 'usfa_farm_model':
+    shared = {
         "agent": tune.grid_search(['usfa_farm_model']),
         "seed": tune.grid_search([1,2,3]),
-        "reward_coeff": tune.grid_search([1e-4]),
-        "max_number_of_steps" : tune.grid_search([3_000_000]),
-        "setting": tune.grid_search(["small"]),
+        "cumulant_const" : tune.grid_search(['delta']),
+        "q_aux_anneal" : tune.grid_search([0, 10_000]),
+      }
+    space = [
+      # {
+      #   **shared,
+      #   "seperate_cumulant_params" : tune.grid_search([False]),
+      #   "seperate_model_params" : tune.grid_search([True]),
+      #   "seperate_value_params" : tune.grid_search([False]),
+      # },
+      {
+        **shared,
         "seperate_cumulant_params" : tune.grid_search([True]),
         "seperate_model_params" : tune.grid_search([False]),
         "seperate_value_params" : tune.grid_search([True]),
-    }
-    name_kwargs=[
-      "seperate_cumulant_params",
-      "seperate_model_params",
-      "seperate_value_params",
-    ]
-  elif search == 'usfa_farm_model_v2':
-    space = {
-        "agent": tune.grid_search(['usfa_farm_model']),
-        "seed": tune.grid_search([1,2,3]),
-        "reward_coeff": tune.grid_search([1e-4]),
-        "max_number_of_steps" : tune.grid_search([3_000_000]),
-        "setting": tune.grid_search(["small"]),
-        "seperate_cumulant_params" : tune.grid_search([False]),
-        "seperate_model_params" : tune.grid_search([True]),
-        "seperate_value_params" : tune.grid_search([False]),
-    }
-    name_kwargs=[
-      "seperate_cumulant_params",
-      "seperate_model_params",
-      "seperate_value_params",
-    ]
-  elif search == 'usfa_farm_model_v3':
-    space = {
-        "agent": tune.grid_search(['usfa_farm_model']),
-        "seed": tune.grid_search([1,2,3]),
-        "reward_coeff": tune.grid_search([1e-4]),
-        "max_number_of_steps" : tune.grid_search([3_000_000]),
-        "setting": tune.grid_search(["small"]),
-        "seperate_cumulant_params" : tune.grid_search([False]),
-        "seperate_model_params" : tune.grid_search([True]),
-        "seperate_value_params" : tune.grid_search([True]),
-    }
-    name_kwargs=[
-      "seperate_cumulant_params",
-      "seperate_model_params",
-      "seperate_value_params",
-    ]
-  elif search == 'usfa_farm_model_v4':
-    space = {
-        "agent": tune.grid_search(['usfa_farm_model']),
-        "seed": tune.grid_search([1,2,3]),
-        "reward_coeff": tune.grid_search([1e-4]),
-        "max_number_of_steps" : tune.grid_search([3_000_000]),
-        "setting": tune.grid_search(["small"]),
-        "seperate_cumulant_params" : tune.grid_search([True]),
-        "seperate_model_params" : tune.grid_search([False]),
-        "seperate_value_params" : tune.grid_search([False]),
-    }
-    name_kwargs=[
-      "seperate_cumulant_params",
-      "seperate_model_params",
-      "seperate_value_params",
-    ]
+      },
+      ]
+    # name_kwargs=[
+    #   "seperate_cumulant_params",
+    #   "seperate_model_params",
+    #   "seperate_value_params",
+    #   "schedule_end",
+    #   "cumulant_const"
+    #   "loss_coeff"
+    # ]
+
   else:
     raise NotImplementedError(search)
 
@@ -188,8 +155,9 @@ def main(_):
     project=FLAGS.wandb_project,
     entity=FLAGS.wandb_entity,
     group=FLAGS.group, # overall group
-    notes=FLAGS.wandb_notes,
+    notes=FLAGS.notes,
     config=dict(space=space),
+    save_code=True,
   )
 
   def create_and_run_program(config):
@@ -233,7 +201,9 @@ def main(_):
         name = [f'{k}={log_path_config[k]}' for k in name_kwargs]
         name = ','.join(name)
       except Exception as e:
+        print("="*25, "name kwargs error", "="*25)
         print(e)
+        print("="*25)
         name = config_path_str
     else:
       name = config_path_str
@@ -279,14 +249,23 @@ def main(_):
     p.join() # this blocks until the process terminates
     # this will call right away and end.
 
-  experiment_spec = tune.Experiment(
-      name="goto",
-      run=train_function,
-      config=space,
-      resources_per_trial={"cpu": num_cpus, "gpu": num_gpus}, 
-      local_dir='/tmp/ray',
-    )
-  all_trials = tune.run_experiments(experiment_spec)
+  if isinstance(space, dict):
+    space = [space]
+  elif isinstance(space, list):
+    assert isinstance(space[0], dict)
+  else:
+    raise RuntimeError(type(space))
+
+
+  experiment_specs = [tune.Experiment(
+        name="goto",
+        run=train_function,
+        config=s,
+        resources_per_trial={"cpu": num_cpus, "gpu": num_gpus}, 
+        local_dir='/tmp/ray',
+      ) for s in space
+  ]
+  all_trials = tune.run_experiments(experiment_specs)
 
 
 if __name__ == '__main__':

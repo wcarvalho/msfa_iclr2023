@@ -35,7 +35,7 @@ flags.DEFINE_string('env_setting', 'small', 'which environment setting.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('wandb', False, 'whether to log.')
-flags.DEFINE_bool('test', False, 'whether using test/train policy.')
+flags.DEFINE_bool('test', True, 'whether testing.')
 flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
 
 FLAGS = flags.FLAGS

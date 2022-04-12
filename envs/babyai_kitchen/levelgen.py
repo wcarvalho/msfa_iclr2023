@@ -547,7 +547,7 @@ class KitchenLevel(RoomGridLevel):
     width, height, channels = obs.shape
     assert channels == 3
 
-    vis_mask = np.ones(shape=(width, height), dtype=np.bool)
+    vis_mask = np.ones(shape=(width, height), dtype=np.bool_)
 
     grid = Grid(width, height)
     for i in range(width):

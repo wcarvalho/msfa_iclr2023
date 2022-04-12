@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import haiku as hk
 from agents.td_agent import losses
 from utils import data as data_utils
-
+import optax
 from losses import nstep
 from losses.utils import episode_mean
 
@@ -19,13 +19,18 @@ class QLearningAuxLoss(nstep.QLearning):
     *args,
     sched_end=None,
     sched_start_val=1.,
-    sched_end_val=0.,
+    sched_end_val=1e-2,
     **kwargs):
     super().__init__(*args, **kwargs)
     self.coeff = coeff
     self.sched_end = sched_end
     self.sched_start_val = sched_start_val
     self.sched_end_val = sched_end_val
+    if sched_end:
+      self.schedule = optax.linear_schedule(
+                  init_value=sched_start_val,
+                  end_value=sched_end_val,
+                  transition_steps=sched_end)
 
   def __call__(self, data, online_preds, target_preds, steps, **kwargs):
 
@@ -52,15 +57,20 @@ class QLearningAuxLoss(nstep.QLearning):
       done=data.discount[:-1])
     batch_loss = batch_loss.mean()
 
+    coeff = self.coeff
+    if self.sched_end is not None and self.sched_end > 0:
+      coeff = self.schedule(steps)*coeff
 
     metrics = {
       'loss_qlearning_sf': batch_loss,
+      'z.q_sf_coeff': coeff,
       'z.q_sf_mean': online_q.mean(),
       'z.q_sf_var': online_q.var(),
       'z.q_sf_max': online_q.max(),
       'z.q_sf_min': online_q.min()}
 
-    loss = self.coeff*batch_loss
+
+    loss = coeff*batch_loss
     return loss, metrics
 
 

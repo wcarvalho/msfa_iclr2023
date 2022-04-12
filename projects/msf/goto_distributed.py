@@ -45,7 +45,7 @@ flags.DEFINE_bool('wandb', False, 'whether to log.')
 flags.DEFINE_string('wandb_project', 'msf2', 'wand project.')
 flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
 flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
-flags.DEFINE_string('wandb_notes', '', 'notes for wandb.')
+flags.DEFINE_string('notes', '', 'notes for wandb.')
 
 FLAGS = flags.FLAGS
 
@@ -57,7 +57,7 @@ def build_program(
   setting='small',
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
-  log_every=30.0, # how often to log
+  log_every=5.0, # how often to log
   config_kwargs=None, # config
   path='.', # path that's being run from
   log_dir=None, # where to save everything
@@ -115,7 +115,7 @@ def build_program(
 
     if wandb_init_kwargs and update_wandb_name:
       wandb_init_kwargs['name'] = config_path_str
-  
+
   observers = [LevelReturnObserver()]
   # -----------------------
   # wandb settup
@@ -149,7 +149,7 @@ def main(_):
     project=FLAGS.wandb_project,
     entity=FLAGS.wandb_entity,
     group=FLAGS.group if FLAGS.group else FLAGS.agent, # organize individual runs into larger experiment
-    notes=FLAGS.wandb_notes,
+    notes=FLAGS.notes,
   )
 
   program = build_program(

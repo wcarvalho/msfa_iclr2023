@@ -22,22 +22,22 @@ class R2D1Config(configs.R2D1Config):
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
   seed: int = 3
-  max_number_of_steps: int = 10_000_000
+  max_number_of_steps: int = 6_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
   loss_coeff: float = 1.0
   schedule_end: int = None
-  final_lr_scale: float = 0.0
+  final_lr_scale: float = 1e-5
 
   # How many gradient updates to perform per learner step.
   num_sgd_steps_per_step: int = 4
 
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
-  samples_per_insert: float = 0.0 # 0.0=single process
-  min_replay_size: int = 10_000
-  max_replay_size: int = 100_000
+  samples_per_insert: float = 6.0 # 0.0=single process
+  min_replay_size: int = 1_000
+  max_replay_size: int = 200_000
   batch_size: int = 32
   store_lstm_state: bool = True
   prefetch_size: int = 0
@@ -87,7 +87,7 @@ class USFAConfig(R2D1Config):
 class QAuxConfig:
   """Extra configuration options when doing QAux loss over SF."""
   loss_coeff: float = 1.0
-  q_aux_anneal: int = 10_000
+  q_aux_anneal: int = 20_000
 
 
 @dataclasses.dataclass

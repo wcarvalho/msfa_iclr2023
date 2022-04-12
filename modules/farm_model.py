@@ -97,13 +97,14 @@ class FarmCumulants(AuxilliaryTask):
     self.normalize_cumulants = normalize_cumulants
 
     self.construction = construction.lower()
-    assert self.construction in ['timestep', 'delta', 'concat']
+    self.construction_options = ['timestep', 'delta', 'concat']
 
   def __call__(self, memory_out, predictions, **kwargs):
     if hk.running_init():
       # during init, T=1
       memory_out = jnp.concatenate((memory_out, memory_out), axis=0)
 
+    assert self.construction in self.construction_options
     if self.construction == 'delta':
       states = memory_out[:-1]  # [T, B, M, D]
       next_states = memory_out[1:]  # [T, B, M, D]
@@ -140,6 +141,7 @@ class FarmIndependentCumulants(FarmCumulants):
   def __init__(self, *args, seperate_params ,**kwargs):
     super(FarmIndependentCumulants, self).__init__(*args, **kwargs)
     self.seperate_params = seperate_params
+    self.construction_options = ['timestep', 'delta', 'concat', 'delta_concat']
 
   def __call__(self, memory_out, predictions, **kwargs):
     if hk.running_init():
@@ -153,6 +155,16 @@ class FarmIndependentCumulants(FarmCumulants):
       cumulants = next_states - states
       if self.normalize_delta:
         cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
+
+    elif self.construction == 'delta_concat':
+      states = memory_out[:-1]  # [T, B, M, D]
+      next_states = memory_out[1:]  # [T, B, M, D]
+
+      cumulants = next_states - states
+      if self.normalize_delta:
+        cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
+
+      cumulants = jnp.concatenate((states, cumulants), axis=-1)
     elif self.construction == 'concat':
       states = memory_out[:-1]  # [T, B, M, D]
       next_states = memory_out[1:]  # [T, B, M, D]

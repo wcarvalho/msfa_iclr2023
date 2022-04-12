@@ -30,7 +30,7 @@ def build_common_program(
   LossFnKwargs,
   loss_label,
   wandb_init_kwargs=None,
-  log_every=30.0, # how often to log
+  log_every=5.0, # how often to log
   colocate_learner_replay=True,
   observers=None,
   ):
@@ -121,8 +121,6 @@ def build_common_program(
   # -----------------------
   # build program
   # -----------------------
-  print("multithreading_colocate_learner_and_reverb", multithreading_colocate_learner_and_reverb)
-  import ipdb; ipdb.set_trace()
   return td_agent.DistributedTDAgent(
       environment_factory=environment_factory,
       environment_spec=env_spec,
