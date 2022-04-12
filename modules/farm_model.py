@@ -9,35 +9,57 @@ MODULE_AXIS=2
 FEATURE_AXIS=3
 
 from utils import data as data_utils
+from utils.vmap import batch_multihead
 
 class FarmModel(AuxilliaryTask):
   """docstring for FarmModel"""
-  def __init__(self, *args, num_actions, **kwargs):
+  def __init__(self, *args, num_actions, seperate_params=False, **kwargs):
     super(FarmModel, self).__init__(unroll_only=True, timeseries=True)
-    self.model = hk.nets.MLP(*args, **kwargs)
+    self.model_factory = lambda: hk.nets.MLP(*args, **kwargs)
     self.num_actions = num_actions
+    self.seperate_params = seperate_params
 
 
   def __call__(self, inputs, memory_out, predictions, **kwargs):
+    """Apply model to each module memory.
+    """
+    if hk.running_init():
+      # during init, T=1
+      module_states = memory_out  # [T, B, M, D]
+      # [T, B, A]
+      chosen_actions = jax.nn.one_hot(inputs.action,
+        num_classes=self.num_actions)
+    else:
+      module_states = memory_out[:-1]  # [T, B, M, D]
+      chosen_actions = jax.nn.one_hot(inputs.action[1:],
+        num_classes=self.num_actions)
 
-    module_states = memory_out[:-1]  # [T, B, N, D]
-    T, B, N, D = module_states.shape
+    T, B, M, D = module_states.shape
 
-    # [T, B, A]
-    chosen_actions = jax.nn.one_hot(inputs.action[1:],
-      num_classes=self.num_actions)
-    # [T, B, N, A]
-    chosen_actions = data_utils.expand_tile_dim(chosen_actions, axis=-2, size=N)
 
+    # [T, B, M, A]
+    chosen_actions = data_utils.expand_tile_dim(chosen_actions, axis=2, size=M)
+
+    # [T, B, M, D+A]
     model_input = jnp.concatenate((module_states, chosen_actions), axis=-1)
-    model_outputs = hk.BatchApply(self.model, num_dims=3)(model_input)
+
+    if self.seperate_params:
+      # [T, B, M, D]
+      model_outputs = batch_multihead(
+        x=model_input,
+        fn=lambda: self.model_factory(),
+        wrap_vmap=lambda fn: hk.BatchApply(fn),
+        )
+    else:
+      # [T, B, M, D]
+      model_outputs = hk.BatchApply(self.model_factory(), num_dims=3)(model_input)
 
     return {'model_outputs' : model_outputs}
 
 class FarmCumulants(AuxilliaryTask):
   """docstring for FarmCumulants"""
   def __init__(self,
-    out_dim=0,
+    module_cumulants=0,
     hidden_size=0,
     aggregation='sum',
     construction='timestep',
@@ -47,7 +69,7 @@ class FarmCumulants(AuxilliaryTask):
     """Summary
     
     Args:
-        out_dim (int, optional): Description
+        module_cumulants (int, optional): Description
         hidden_size (int, optional): Description
         aggregation (str, optional): how to aggregate modules for cumulant
         use_delta (bool, optional): whether to use delta between states as cumulant
@@ -58,16 +80,15 @@ class FarmCumulants(AuxilliaryTask):
     super(FarmCumulants, self).__init__(
       unroll_only=True, timeseries=True)
     if hidden_size:
-      layers = [hidden_size, out_dim]
+      layers = [hidden_size, module_cumulants]
     else:
-      layers = [out_dim]
+      layers = [module_cumulants]
 
-    if out_dim > 0:
-      self.cumulant_fn = hk.nets.MLP(layers)
-    else:
-      self.cumulant_fn = lambda x:x
+    if module_cumulants > 0:
+      self.cumulant_fn_factory = lambda: hk.nets.MLP(layers)
 
-    self.out_dim = out_dim
+    self.module_cumulants = module_cumulants
+    self.hidden_size = hidden_size
     aggregation = aggregation.lower()
     assert aggregation in ['sum', 'weighted', 'concat']
     self.aggregation = aggregation
@@ -76,20 +97,24 @@ class FarmCumulants(AuxilliaryTask):
     self.normalize_cumulants = normalize_cumulants
 
     self.construction = construction.lower()
-    assert self.construction in ['timestep', 'delta', 'concat']
+    self.construction_options = ['timestep', 'delta', 'concat']
 
   def __call__(self, memory_out, predictions, **kwargs):
+    if hk.running_init():
+      # during init, T=1
+      memory_out = jnp.concatenate((memory_out, memory_out), axis=0)
 
+    assert self.construction in self.construction_options
     if self.construction == 'delta':
-      states = memory_out[:-1]  # [T, B, N, D]
-      next_states = memory_out[1:]  # [T, B, N, D]
+      states = memory_out[:-1]  # [T, B, M, D]
+      next_states = memory_out[1:]  # [T, B, M, D]
 
       cumulants = next_states - states
       if self.normalize_delta:
         cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
     elif self.construction == 'concat':
-      states = memory_out[:-1]  # [T, B, N, D]
-      next_states = memory_out[1:]  # [T, B, N, D]
+      states = memory_out[:-1]  # [T, B, M, D]
+      next_states = memory_out[1:]  # [T, B, M, D]
       cumulants = jnp.concatenate((next_states, states), axis=-1)
 
     elif self.construction == 'timestep':
@@ -102,7 +127,67 @@ class FarmCumulants(AuxilliaryTask):
     elif self.aggregation == "weighted":
       raise NotImplementedError
 
-    cumulants = self.cumulant_fn(cumulants)
+    if self.module_cumulants > 0:
+      cumulants = self.cumulant_fn_factory()(cumulants)
+
+    if self.normalize_cumulants:
+      cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
+
+    return {'cumulants' : cumulants}
+
+class FarmIndependentCumulants(FarmCumulants):
+  """Each FARM module predicts its own set of cumulants"""
+
+  def __init__(self, *args, seperate_params ,**kwargs):
+    super(FarmIndependentCumulants, self).__init__(*args, **kwargs)
+    self.seperate_params = seperate_params
+    self.construction_options = ['timestep', 'delta', 'concat', 'delta_concat']
+
+  def __call__(self, memory_out, predictions, **kwargs):
+    if hk.running_init():
+      # during init, T=1
+      memory_out = jnp.concatenate((memory_out, memory_out), axis=0)
+
+    if self.construction == 'delta':
+      states = memory_out[:-1]  # [T, B, M, D]
+      next_states = memory_out[1:]  # [T, B, M, D]
+
+      cumulants = next_states - states
+      if self.normalize_delta:
+        cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
+
+    elif self.construction == 'delta_concat':
+      states = memory_out[:-1]  # [T, B, M, D]
+      next_states = memory_out[1:]  # [T, B, M, D]
+
+      cumulants = next_states - states
+      if self.normalize_delta:
+        cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
+
+      cumulants = jnp.concatenate((states, cumulants), axis=-1)
+    elif self.construction == 'concat':
+      states = memory_out[:-1]  # [T, B, M, D]
+      next_states = memory_out[1:]  # [T, B, M, D]
+      cumulants = jnp.concatenate((next_states, states), axis=-1)
+
+    elif self.construction == 'timestep':
+      cumulants = memory_out
+
+    if self.seperate_params:
+      cumulants = batch_multihead(
+        x=cumulants,
+        fn=lambda: self.cumulant_fn_factory(),
+        wrap_vmap=lambda fn: hk.BatchApply(fn),
+        )
+      # [T, B, M, D] --> [T, B, M*D]
+      cumulants = cumulants.reshape(*cumulants.shape[:2], -1)
+    else:
+      cumlant_fn = self.cumulant_fn_factory()
+      cumulants = hk.BatchApply(cumlant_fn, num_dims=3)(cumulants)
+      # [T, B, M, D] --> [T, B, M*D]
+      cumulants = cumulants.reshape(*cumulants.shape[:2], -1)
+
+
     if self.normalize_cumulants:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
 

@@ -19,6 +19,7 @@ dependencies:
     - matplotlib
     - numpy
     - gym[atari]
+    - wandb
 
     - tensorflow-probability==0.15.0
 
@@ -31,7 +32,7 @@ dependencies:
     - atari-py # new
     - bsuite # new
     - dm-env
-    - dm-haiku # new
+    - dm-haiku==0.0.6 # new
     - dm-sonnet # new
     - dm-tree # new
     - flax # new

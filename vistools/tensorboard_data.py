@@ -475,7 +475,7 @@ class TensorboardData(object):
 # for getting matches in dataframe
 # -----------------------
 def condition_met_in_df(df, key, value):
-    if value is None or (isinstance(value, str) and value.lower() == 'none'):
+    if value is None or value!=value or (isinstance(value, str) and value.lower() == 'none'):
         x = df[key] == 'none'
         y = df[key].isnull()
         return x | y

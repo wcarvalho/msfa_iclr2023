@@ -13,6 +13,11 @@ import envs.babyai_kitchen.tasks
 
 TILE_PIXELS = 32
 
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
 
 class KitchenLevel(RoomGridLevel):
   """
@@ -118,12 +123,12 @@ class KitchenLevel(RoomGridLevel):
     if candrop:
       backwards['drop'] =  self.actiondict['place']
 
-    ActionCls = collections.namedtuple('Action', actions 
-      + ['pickup', 'done'] 
-      + (['drop'] if candrop else []))
+    # ActionCls = collections.namedtuple('Action', actions 
+    #   + ['pickup', 'done'] 
+    #   + (['drop'] if candrop else []))
 
     backwards_action_dict = {**self.actiondict, **backwards}
-    self.actions = ActionCls(**backwards_action_dict)
+    self.actions = AttrDict(**backwards_action_dict)
 
     # -----------------------
     # below is used by this class
@@ -542,7 +547,7 @@ class KitchenLevel(RoomGridLevel):
     width, height, channels = obs.shape
     assert channels == 3
 
-    vis_mask = np.ones(shape=(width, height), dtype=np.bool)
+    vis_mask = np.ones(shape=(width, height), dtype=np.bool_)
 
     grid = Grid(width, height)
     for i in range(width):
