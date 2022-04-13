@@ -8,7 +8,8 @@ from acme.utils import loggers
 from acme.utils.loggers import base
 from acme.utils.loggers import asynchronous as async_logger
 from acme.jax import utils as jax_utils
-
+import jax
+import numpy as np
 from utils.tf_summary import TFSummaryLogger
 
 import datetime
@@ -46,6 +47,9 @@ def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, retu
   else:
     return str(path)
 
+def copy_numpy(values):
+  return jax.tree_map(np.array, values)
+
 def make_logger(
   log_dir: str,
   label: str,
@@ -65,6 +69,7 @@ def make_logger(
   _loggers = [
       loggers.TerminalLogger(label=label, print_fn=rich_print or print),
   ]
+
   if save_data:
     _loggers.append(loggers.CSVLogger(log_dir, label=label, add_uid=False))
 
@@ -78,7 +83,7 @@ def make_logger(
     _loggers.append(WandbLogger(label=label, steps_key=steps_key))
 
   # Dispatch to all writers and filter Nones.
-  logger = loggers.Dispatcher(_loggers, jax_utils.fetch_devicearray)  # type: ignore
+  logger = loggers.Dispatcher(_loggers, copy_numpy)  # type: ignore
   logger = loggers.NoneFilter(logger)
 
   if asynchronous:
@@ -137,6 +142,5 @@ class WandbLogger(base.Logger):
     self._iter += 1
 
   def close(self):
-    self.summary.close()
-
+    pass
 

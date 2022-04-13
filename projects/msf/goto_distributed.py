@@ -37,10 +37,11 @@ from projects.common.observers import LevelReturnObserver
 # -----------------------
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
-flags.DEFINE_integer('num_actors', 1, 'Number of actors.')
+flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
 # WANDB
 flags.DEFINE_bool('debug', False, 'whether to debug.')
+flags.DEFINE_bool('custom_loggers', True, 'whether to use custom loggers.')
 flags.DEFINE_bool('wandb', False, 'whether to log.')
 flags.DEFINE_string('wandb_project', 'msf2', 'wand project.')
 flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
@@ -89,6 +90,7 @@ def build_program(
       config.num_parallel_calls = 1
       config.min_replay_size = 1_000 # smaller
       config.max_replay_size = 10_000 # smaller
+      kwargs['colocate_learner_replay'] = False
 
   # -----------------------
   # define dict to save. add some extra stuff here
@@ -158,6 +160,7 @@ def main(_):
     config_kwargs=config_kwargs,
     wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
     debug=FLAGS.debug,
+    custom_loggers=FLAGS.custom_loggers,
     )
 
   # Launch experiment.
@@ -165,9 +168,9 @@ def main(_):
     terminal='current_terminal',
     local_resources = {
       'actor':
-          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='')),
+          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='-1')),
       'evaluator':
-          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES=''))}
+          PythonProcess(env=dict(CUDA_VISIBLE_DEVICES='-1'))}
   )
   controller.wait()
 

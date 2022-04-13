@@ -31,8 +31,9 @@ def build_common_program(
   loss_label,
   wandb_init_kwargs=None,
   log_every=5.0, # how often to log
-  colocate_learner_replay=True,
+  colocate_learner_replay=False,
   observers=None,
+  custom_loggers=True,
   ):
 
   # -----------------------
@@ -58,53 +59,57 @@ def build_common_program(
   # -----------------------
   # loggers + observers
   # -----------------------
-  use_wandb = True if wandb_init_kwargs is not None else False
-  logger_fn = lambda : make_logger(
-        log_dir=log_dir,
-        label=loss_label,
-        time_delta=log_every,
-        wandb=use_wandb,
-        asynchronous=True)
-
-  actor_logger_fn = lambda actor_id: make_logger(
-                  log_dir=log_dir, label='actor',
-                  time_delta=log_every,
-                  wandb=use_wandb,
-                  save_data=actor_id == 0,
-                  steps_key="actor_steps",
-                  )
-  evaluator_logger_fn = lambda label, steps_key: make_logger(
-                  log_dir=log_dir, label='evaluator',
-                  time_delta=log_every,
-                  wandb=use_wandb,
-                  steps_key="evaluator_steps",
-                  )
-
   observers = observers or [LevelReturnObserver()]
-  # -----------------------
-  # wandb setup
-  # -----------------------
-  if wandb_init_kwargs:
-    # add config to wandb
-    wandb_config = wandb_init_kwargs.get("config", {})
-    wandb_config.update(save_config_dict)
-    wandb_init_kwargs['config'] = wandb_config
+  logger_fn = None
+  actor_logger_fn = None
+  evaluator_logger_fn = None
+  if custom_loggers:
+    use_wandb = True if wandb_init_kwargs is not None else False
+    logger_fn = lambda : make_logger(
+          log_dir=log_dir,
+          label=loss_label,
+          time_delta=log_every,
+          wandb=use_wandb,
+          asynchronous=True)
 
-  def wandb_wrap_logger(_logger_fn):
-    """This will start wandb inside each child process"""
-    def make_logger(*args, **kwargs):
+    actor_logger_fn = lambda actor_id: make_logger(
+                    log_dir=log_dir, label='actor',
+                    time_delta=log_every,
+                    wandb=use_wandb,
+                    save_data=actor_id == 0,
+                    steps_key="actor_steps",
+                    )
+    evaluator_logger_fn = lambda label, steps_key: make_logger(
+                    log_dir=log_dir, label='evaluator',
+                    time_delta=log_every,
+                    wandb=use_wandb,
+                    steps_key="evaluator_steps",
+                    )
+
+    # -----------------------
+    # wandb setup
+    # -----------------------
+    if wandb_init_kwargs:
+      # add config to wandb
+      wandb_config = wandb_init_kwargs.get("config", {})
+      wandb_config.update(save_config_dict)
+      wandb_init_kwargs['config'] = wandb_config
+
+    def wandb_wrap_logger(_logger_fn):
+      """This will start wandb inside each child process"""
+      def make_logger(*args, **kwargs):
+        import wandb
+        wandb.init(**wandb_init_kwargs)
+        return _logger_fn(*args, **kwargs)
+      return make_logger
+
+    if wandb_init_kwargs is not None:
       import wandb
       wandb.init(**wandb_init_kwargs)
-      return _logger_fn(*args, **kwargs)
-    return make_logger
 
-  if wandb_init_kwargs is not None:
-    import wandb
-    wandb.init(**wandb_init_kwargs)
-
-    logger_fn = wandb_wrap_logger(logger_fn)
-    actor_logger_fn = wandb_wrap_logger(actor_logger_fn)
-    evaluator_logger_fn = wandb_wrap_logger(evaluator_logger_fn)
+      logger_fn = wandb_wrap_logger(logger_fn)
+      actor_logger_fn = wandb_wrap_logger(actor_logger_fn)
+      evaluator_logger_fn = wandb_wrap_logger(evaluator_logger_fn)
 
   # -----------------------
   # save config

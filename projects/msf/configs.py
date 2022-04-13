@@ -87,7 +87,7 @@ class USFAConfig(R2D1Config):
 class QAuxConfig:
   """Extra configuration options when doing QAux loss over SF."""
   loss_coeff: float = 1.0
-  q_aux_anneal: int = 20_000
+  q_aux_anneal: int = 100_000
 
 
 @dataclasses.dataclass

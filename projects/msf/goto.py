@@ -34,9 +34,18 @@ flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_string('env_setting', 'small', 'which environment setting.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
-flags.DEFINE_bool('wandb', False, 'whether to log.')
 flags.DEFINE_bool('test', True, 'whether testing.')
 flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
+
+# -----------------------
+# wandb
+# -----------------------
+flags.DEFINE_bool('wandb', False, 'whether to log.')
+flags.DEFINE_string('wandb_project', 'msf_sync', 'wand project.')
+flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
+flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
+flags.DEFINE_string('notes', '', 'notes for wandb.')
+
 
 FLAGS = flags.FLAGS
 
@@ -62,6 +71,13 @@ def main(_):
     agent=FLAGS.agent,
     seed=config.seed)
 
+  wandb_init_kwargs=dict(
+    project=FLAGS.wandb_project,
+    entity=FLAGS.wandb_entity,
+    group=FLAGS.group if FLAGS.group else FLAGS.agent, # organize individual runs into larger experiment
+    notes=FLAGS.notes,
+  )
+
   run(
     env=env,
     env_spec=env_spec,
@@ -75,6 +91,7 @@ def main(_):
     evaluate=FLAGS.evaluate,
     seed=FLAGS.seed,
     num_episodes=FLAGS.num_episodes,
+    wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
     )
 
 

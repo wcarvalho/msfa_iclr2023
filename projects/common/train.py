@@ -70,15 +70,31 @@ def run(env,
     evaluate: bool=False,
     seed: int=1,
     num_episodes: int=1_000,
-    observers=None):
+    log_every=5.0,
+    observers=None,
+    wandb_init_kwargs=None):
 
   # -----------------------
   # loggers + observers
   # -----------------------
-  logger_fn = lambda : make_logger(
-    wandb=False,
+  use_wandb = True if wandb_init_kwargs is not None else False
+  logger_fn = lambda: make_logger(
+        log_dir=log_dir,
+        label=loss_label,
+        time_delta=log_every,
+        wandb=use_wandb,
+        asynchronous=True)
+
+  env_logger = make_logger(
     log_dir=log_dir,
-    label=loss_label)
+    label='actor',
+    wandb=use_wandb,
+    time_delta=log_every,
+    steps_key="steps")
+
+  if wandb_init_kwargs is not None:
+    import wandb
+    wandb.init(**wandb_init_kwargs)
 
   observers = observers or [LevelReturnObserver()]
   # -----------------------
@@ -119,11 +135,6 @@ def run(env,
   # -----------------------
   # make env + run
   # -----------------------
-  env_logger = make_logger(
-    log_dir=log_dir,
-    wandb=False,
-    label='actor',
-    steps_key="steps")
 
   loop = EnvironmentLoop(
     env,

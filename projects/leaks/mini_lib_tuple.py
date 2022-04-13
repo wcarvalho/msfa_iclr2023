@@ -170,7 +170,8 @@ class TDBuilder(r2d2.R2D2Builder):
                config: r2d2_config.R2D2Config,
                LossFn=R2D2Learning,
                LossFnKwargs=None,
-               logger_fn: Callable[[], loggers.Logger] = lambda: None,):
+               logger_fn: Callable[[], loggers.Logger] = lambda: None,
+               **kwargs):
     super().__init__(networks=networks, config=config, logger_fn=logger_fn)
     LossFnKwargs = LossFnKwargs or dict()
     self.loss_fn = LossFn(**LossFnKwargs)
@@ -294,6 +295,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       log_to_bigtable: bool = True,
       evaluator: bool = True,
       log_every: float = 10.0,
+      **kwargs,
   ):
 
     # -----------------------
@@ -346,7 +348,8 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
         device_prefetch=device_prefetch,
         log_to_bigtable=log_to_bigtable,
         actor_logger_fn=actor_logger_fn,
-        prefetch_size=config.prefetch_size)
+        prefetch_size=config.prefetch_size,
+        **kwargs)
 
 
 # ======================================================

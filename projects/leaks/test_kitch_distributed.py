@@ -44,18 +44,19 @@ from projects.msf import helpers
 from agents import td_agent
 
 
+flags.DEFINE_string('env', 'kitchen', '')
+flags.DEFINE_string('agent', 'r2d1', '')
+flags.DEFINE_string('netfn', 'default', '')
 
 flags.DEFINE_bool('evaluator', True, '')
-flags.DEFINE_string('env', 'babyai', '')
-flags.DEFINE_string('netfn', 'minilib', '')
+flags.DEFINE_bool('colocate', False, '')
 flags.DEFINE_string('behavior_policy', 'minilib', '')
 flags.DEFINE_string('loss_fn', 'minilib', '')
 flags.DEFINE_string('make_nets', 'minilib', '')
-flags.DEFINE_string('builder', 'default', '')
-flags.DEFINE_string('program', 'default', '')
+flags.DEFINE_string('builder', 'minilib', '')
+flags.DEFINE_string('program', 'minilib', '')
 flags.DEFINE_integer('clear_cache', 0, '')
 flags.DEFINE_bool('cuda_actors', False, '')
-
 
 FLAGS = flags.FLAGS
 
@@ -67,7 +68,7 @@ def distributed():
     make_env = mlt_agent.make_babyai_environment
   elif FLAGS.env == "bsuite":
     make_env = mlt_agent.make_babyai_environment
-  elif FLAGS.env == "default":
+  elif FLAGS.env == "kitchen":
     make_env = helpers.make_environment
   else:
     raise NotImplementedError
@@ -77,7 +78,7 @@ def distributed():
   env_spec = acme.make_environment_spec(env)
   del env
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = helpers.load_agent_settings(agent='r2d1', env_spec=env_spec, config_kwargs=None)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = helpers.load_agent_settings(agent=FLAGS.agent, env_spec=env_spec, config_kwargs=None)
 
   config.batch_size = 32
   config.burn_in_length = 0
@@ -201,7 +202,9 @@ def distributed():
       num_actors=1,
       evaluator=FLAGS.evaluator,
       max_number_of_steps=10e6,
-      log_every=1.0).build()
+      log_every=1.0,
+      multithreading_colocate_learner_and_reverb=FLAGS.colocate,
+      ).build()
 
   import launchpad as lp
   from launchpad.nodes.python.local_multi_processing import PythonProcess

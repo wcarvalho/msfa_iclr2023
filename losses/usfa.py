@@ -61,8 +61,11 @@ class QLearningAuxLoss(nstep.QLearning):
     if self.sched_end is not None and self.sched_end > 0:
       coeff = self.schedule(steps)*coeff
 
+    loss = coeff*batch_loss
+
     metrics = {
-      'loss_qlearning_sf': batch_loss,
+      'loss_qlearning_sf_raw': batch_loss,
+      'loss_qlearning_sf': loss,
       'z.q_sf_coeff': coeff,
       'z.q_sf_mean': online_q.mean(),
       'z.q_sf_var': online_q.var(),
@@ -70,7 +73,6 @@ class QLearningAuxLoss(nstep.QLearning):
       'z.q_sf_min': online_q.min()}
 
 
-    loss = coeff*batch_loss
     return loss, metrics
 
 
