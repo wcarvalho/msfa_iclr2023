@@ -138,10 +138,12 @@ class FarmCumulants(AuxilliaryTask):
 class FarmIndependentCumulants(FarmCumulants):
   """Each FARM module predicts its own set of cumulants"""
 
-  def __init__(self, *args, seperate_params ,**kwargs):
+  def __init__(self, *args, seperate_params,
+    normalize_state=False, **kwargs):
     super(FarmIndependentCumulants, self).__init__(*args, **kwargs)
     self.seperate_params = seperate_params
     self.construction_options = ['timestep', 'delta', 'concat', 'delta_concat']
+    self.normalize_state = normalize_state
 
   def __call__(self, memory_out, predictions, **kwargs):
     if hk.running_init():
@@ -163,8 +165,10 @@ class FarmIndependentCumulants(FarmCumulants):
       cumulants = next_states - states
       if self.normalize_delta:
         cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
-
+      if self.normalize_state:
+        states = states / (1e-5+jnp.linalg.norm(states, axis=-1, keepdims=True))
       cumulants = jnp.concatenate((states, cumulants), axis=-1)
+
     elif self.construction == 'concat':
       states = memory_out[:-1]  # [T, B, M, D]
       next_states = memory_out[1:]  # [T, B, M, D]

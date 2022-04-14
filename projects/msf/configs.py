@@ -22,7 +22,7 @@ class R2D1Config(configs.R2D1Config):
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
   seed: int = 3
-  max_number_of_steps: int = 6_000_000
+  max_number_of_steps: int = 4_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -36,8 +36,8 @@ class R2D1Config(configs.R2D1Config):
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 6.0 # 0.0=single process
-  min_replay_size: int = 1_000
-  max_replay_size: int = 200_000
+  min_replay_size: int = 10_000
+  max_replay_size: int = 100_000
   batch_size: int = 32
   store_lstm_state: bool = True
   prefetch_size: int = 0
@@ -87,7 +87,8 @@ class USFAConfig(R2D1Config):
 class QAuxConfig:
   """Extra configuration options when doing QAux loss over SF."""
   loss_coeff: float = 1.0
-  q_aux_anneal: int = 100_000
+  q_aux_anneal: int = 0
+  q_aux_end_val: float = 1e-2
 
 
 @dataclasses.dataclass
@@ -135,14 +136,18 @@ class FarmModelConfig(FarmConfig):
 
   # Network hps
   extra_negatives: int = 4
+  time_negatives: int = 4
   temperature: float = 0.01
   model_coeff: float = .1
+  module_model_coeff: float = .1
   reward_coeff: float = 1e-4 # coefficient for reward loss
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'
-  cumulant_const: str='delta'  # whether to use delta between states as cumulant
+  cumulant_const: str='delta_concat'  # whether to use delta between states as cumulant
   seperate_model_params: bool=True # seperate parameters per transition fn
+  module_model_loss: bool=True
+  normalize_step: bool=False # whether to normalize delta step in ModuleContrastLoss
 
 
 

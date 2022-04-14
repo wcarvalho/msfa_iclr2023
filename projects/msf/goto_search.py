@@ -4,9 +4,9 @@ Param search.
 Comand I run:
   PYTHONPATH=$PYTHONPATH:. \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES="0,1,2,3" \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
+    CUDA_VISIBLE_DEVICES="0,1,2,3" \
     python projects/msf/goto_search.py \
     --folder 'results/msf/final/goto_avoid' \
     --date=False \
@@ -71,11 +71,32 @@ def main(_):
     name_kwargs=[]
   elif search == 'baselines':
     space = {
-        "seed": tune.grid_search([1, 2, 3, 4]),
+        "seed": tune.grid_search([1, 2, 3]),
         "agent": tune.grid_search(
-          ['usfa', 'r2d1', 'r2d1_noise_eval', 'r2d1_no_task', 'usfa_lstm', 'r2d1_farm']),
+          ['usfa',
+          'r2d1']),
         "setting": tune.grid_search(['large_respawn']),
-        "importance_sampling_exponent": tune.grid_search([0.0]),
+    }
+    experiment='baselines'
+    name_kwargs=[]
+  elif search == 'baselines_phi':
+    space = {
+        "seed": tune.grid_search([1, 2, 3]),
+        "agent": tune.grid_search(
+          ['usfa_lstm', 'usfa_farmflat']),
+        "setting": tune.grid_search(['large_respawn']),
+    }
+    experiment='baselines'
+    name_kwargs=[]
+  elif search == 'baselines_noise':
+    space = {
+        "seed": tune.grid_search([1, 2, 3]),
+        "agent": tune.grid_search(
+          [
+          'r2d1_noise_eval',
+          'r2d1_no_task'
+          ]),
+        "setting": tune.grid_search(['large_respawn']),
     }
     experiment='baselines'
     name_kwargs=[]
@@ -114,8 +135,14 @@ def main(_):
     shared = {
         "agent": tune.grid_search(['usfa_farm_model']),
         "seed": tune.grid_search([1,2,3]),
-        "cumulant_const" : tune.grid_search(['delta']),
-        "q_aux_anneal" : tune.grid_search([0, 10_000]),
+        "cumulant_const" : tune.grid_search(['delta_concat']),
+        # "q_aux_anneal" : tune.grid_search([0.0]),
+        "q_aux_anneal" : tune.grid_search([100_000]),
+        # "module_model_loss" : tune.grid_search([True]),
+        # "normalize_step" : tune.grid_search([False]),
+        # "module_model_coeff" : tune.grid_search([.1]),
+        # "q_aux_end_val" : tune.grid_search([1e-1]),
+        # "max_number_of_steps" : tune.grid_search([2_000_000]),
       }
     space = [
       # {
@@ -128,8 +155,14 @@ def main(_):
         **shared,
         "seperate_cumulant_params" : tune.grid_search([True]),
         "seperate_model_params" : tune.grid_search([False]),
-        "seperate_value_params" : tune.grid_search([True]),
+        "seperate_value_params" : tune.grid_search([False]),
       },
+      # {
+      #   **shared,
+      #   "seperate_cumulant_params" : tune.grid_search([True]),
+      #   "seperate_model_params" : tune.grid_search([False]),
+      #   "seperate_value_params" : tune.grid_search([True]),
+      # },
       ]
     # name_kwargs=[
     #   "seperate_cumulant_params",

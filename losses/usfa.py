@@ -19,7 +19,7 @@ class QLearningAuxLoss(nstep.QLearning):
     *args,
     sched_end=None,
     sched_start_val=1.,
-    sched_end_val=1e-2,
+    sched_end_val=1e-4,
     **kwargs):
     super().__init__(*args, **kwargs)
     self.coeff = coeff

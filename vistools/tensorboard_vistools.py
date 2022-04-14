@@ -335,11 +335,11 @@ class VisDataObject:
     @staticmethod
     def defaultcolororder():
         return [
-            'blue',
-            'red',
+            'dark_blue',
+            'dark_red',
             'black',
             'orange',
-            'purple',
+            'dark_purple',
             'dark_green',
             'light_red',
             'light_blue',
@@ -744,6 +744,13 @@ def display_metadata(vis_objects, settings=[], stats=[], data_key=None):
         settings = list(settings.keys())
 
     settings_df = pd.concat([o.settings_df for o in vis_objects])
+    columns = settings_df.columns
+    columns = [c for c in columns if not c in ['agent', 'path', 'fullpath', 'experiment_settings', 'experiment_settings_seed']]
+    vals = {c: set([u for u in settings_df[c].unique() if u==u and u is not None]) - set([None, np.nan]) for c in columns}
+    unique = {c:v for c,v in vals.items() if len(v) > 1}
+
+    settings = list(set(settings).union(set(unique.keys())))
+
     try:
       settings_df = settings_df[settings]
     except Exception as e:

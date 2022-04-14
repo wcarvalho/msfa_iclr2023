@@ -38,7 +38,7 @@ class TFSummaryLogger(base.Logger):
       self,
       logdir: str,
       label: str = 'Logs',
-      flush_period: int=1000,
+      flush_period: int=500,
       steps_key: Optional[str] = None
   ):
     """Initializes the logger.
@@ -74,7 +74,7 @@ class TFSummaryLogger(base.Logger):
     self._iter += 1
 
     if self._iter % self.flush_period == 0:
-      tf.summary.flush(self.writer)
+      tf.summary.flush(self.summary)
 
   def close(self):
     self.summary.close()

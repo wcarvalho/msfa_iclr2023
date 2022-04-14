@@ -378,6 +378,7 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
         normalize_delta=config.normalize_delta,
+        normalize_state=config.module_model_loss,
         normalize_cumulants=config.normalize_cumulants)
     )
 
