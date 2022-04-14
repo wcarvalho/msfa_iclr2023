@@ -100,47 +100,17 @@ def main(_):
     }
     experiment='baselines'
     name_kwargs=[]
-  elif search == 'baselines_norespawn':
-    space = {
-        "seed": tune.grid_search([1, 2, 3, 4]),
-        "agent": tune.grid_search(
-          ['usfa', 'r2d1', 'r2d1_noise_eval']),
-        "setting": tune.grid_search(['large']),
-    }
-    experiment='baselines_norespawn'
-    name_kwargs=[]
-  elif search == 'usfa_unsup':
-    space = {
-        "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(
-          ['usfa_farm_model', 'usfa_farmflat_model']),
-        "setting": tune.grid_search(['large_respawn']),
-        "q_aux": tune.grid_search(['single']),
-        "loss_coeff": tune.grid_search([1]),
-        "num_sgd_steps_per_step": tune.grid_search([4])
-    }
-    experiment='baselines'
-    name_kwargs=[]
-  elif search == 'usfa_farm_speed':
-    space = {
-        "agent": tune.grid_search(['usfa', 'r2d1', 'usfa_farm']),
-        "seed": tune.grid_search([1]),
-        # "image_attn" : tune.grid_search([True]),
-        # "nmodules" : tune.grid_search([4]),
-        "samples_per_insert" : tune.grid_search([6.0, 8.0]),
-        # "farm_vmap" : tune.grid_search(["lift"]),
-    }
 
   elif search == 'usfa_farm_model':
     shared = {
         "agent": tune.grid_search(['usfa_farm_model']),
         "seed": tune.grid_search([1,2,3]),
-        "cumulant_const" : tune.grid_search(['delta_concat']),
+        "cumulant_const" : tune.grid_search(['concat']),
         # "q_aux_anneal" : tune.grid_search([0.0]),
-        "q_aux_anneal" : tune.grid_search([100_000]),
+        # "q_aux_anneal" : tune.grid_search([100_000]),
         # "module_model_loss" : tune.grid_search([True]),
         # "normalize_step" : tune.grid_search([False]),
-        # "module_model_coeff" : tune.grid_search([.1]),
+        "model_coeff" : tune.grid_search([0.0]),
         # "q_aux_end_val" : tune.grid_search([1e-1]),
         # "max_number_of_steps" : tune.grid_search([2_000_000]),
       }
@@ -173,6 +143,37 @@ def main(_):
     #   "loss_coeff"
     # ]
 
+  elif search == 'usfa_farmflat_model':
+    shared = {
+        "agent": tune.grid_search(['usfa_farmflat_model']),
+        "seed": tune.grid_search([1,2,3]),
+        "seperate_cumulant_params" : tune.grid_search([True]),
+        "seperate_model_params" : tune.grid_search([False]),
+        "seperate_value_params" : tune.grid_search([False]),
+      }
+    space = [
+      {
+        **shared,
+        "model_coeff" : tune.grid_search([.1]),
+        "module_model_coeff" : tune.grid_search([0.0]),
+        # "cumulant_const" : tune.grid_search(['delta_concat']),
+      },
+      # {
+      #   **shared,
+      #   "model_coeff" : tune.grid_search([0.]),
+      #   "module_model_coeff" : tune.grid_search([.1]),
+      #   # "cumulant_const" : tune.grid_search(['delta_concat']),
+      # },
+    ]
+    # name_kwargs=[
+    #   "seperate_cumulant_params",
+    #   "seperate_model_params",
+    #   "seperate_value_params",
+    #   "schedule_end",
+    #   "cumulant_const"
+    #   "loss_coeff"
+    # ]
+
   else:
     raise NotImplementedError(search)
 
@@ -183,11 +184,11 @@ def main(_):
   folder=FLAGS.folder if FLAGS.folder else "results/msf/refactor"
   use_date = FLAGS.date
   use_wandb = FLAGS.wandb
-  group = FLAGS.group # overall group
+  group = FLAGS.group if FLAGS.group else FLAGS.search # overall group
   wandb_init_kwargs=dict(
     project=FLAGS.wandb_project,
     entity=FLAGS.wandb_entity,
-    group=FLAGS.group, # overall group
+    group=group, # overall group
     notes=FLAGS.notes,
     config=dict(space=space),
     save_code=True,

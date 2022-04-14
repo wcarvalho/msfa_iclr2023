@@ -295,21 +295,34 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
       FarmModel(
         config.model_layers*[config.module_size],
         num_actions=num_actions,
+        seperate_params=config.seperate_model_params,
         activation=getattr(jax.nn, config.activation)),
       )
 
   if predict_cumulants:
     # takes structured farm input
-    aux_tasks.append(
-      FarmCumulants(
-        module_cumulants=usfa_head.out_dim,
-        hidden_size=config.cumulant_hidden_size,
-        aggregation='concat',
-        normalize_cumulants=config.normalize_cumulants,
-        normalize_delta=config.normalize_delta,
-        construction=config.cumulant_const,
-        )
-    )
+    if config.seperate_cumulant_params:
+      cumulants_per_module = state_dim//farm_memory.nmodules
+      aux_tasks.append(
+        FarmIndependentCumulants(
+          module_cumulants=cumulants_per_module,
+          hidden_size=config.cumulant_hidden_size,
+          seperate_params=config.seperate_cumulant_params,
+          construction=config.cumulant_const,
+          normalize_delta=config.normalize_delta,
+          normalize_state=config.module_model_loss and config.module_model_loss,
+          normalize_cumulants=config.normalize_cumulants
+          ))
+    else:
+      aux_tasks.append(
+        FarmCumulants(
+          module_cumulants=usfa_head.out_dim,
+          hidden_size=config.cumulant_hidden_size,
+          aggregation='concat',
+          normalize_cumulants=config.normalize_cumulants,
+          normalize_delta=config.normalize_delta,
+          construction=config.cumulant_const,
+          ))
 
   def prediction_prep_fn(inputs, memory_out, *args, **kwargs):
     """Concat Farm module-states before passing them."""
