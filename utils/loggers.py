@@ -32,7 +32,7 @@ def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, retu
   if hourminute:
     strkey += '-%H.%M'
   job_name = datetime.datetime.now().strftime(strkey)
-  kwpath = ','.join([f'{key}={value}' for key, value in kwargs.items()])
+  kwpath = ','.join([f'{key[:4]}={value}' for key, value in kwargs.items()])
 
   if date:
     path = Path(base_dir).joinpath(job_name).joinpath(kwpath)
