@@ -107,6 +107,7 @@ def main(_):
         # "cumulant_const" : tune.grid_search(['concat']),
         "phi_net" : tune.grid_search(['independent']),
         "sf_net" : tune.grid_search(['relational']),
+        "relate_residual" : tune.grid_search(['gru']),
       }
     space = [
       {
