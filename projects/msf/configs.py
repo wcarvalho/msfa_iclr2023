@@ -109,6 +109,11 @@ class ModularUSFAConfig(USFAConfig):
   mixture: str='unique'  # how to mix FARM modules
   aggregation: str='concat'  # how to aggregate modules for cumulant
   normalize_delta: bool = True # whether to normalize delta between states
+  relational_sf: str = 'shared'
+  relational_sf_heads: int = 2
+
+  relational_phi: str = 'shared'
+  relational_phi_heads: int = 2
 
 
 @dataclasses.dataclass
@@ -135,19 +140,18 @@ class FarmModelConfig(FarmConfig):
   """Extra configuration options for FARM module."""
 
   # Network hps
-  extra_negatives: int = 4
-  time_negatives: int = 4
   temperature: float = 0.01
-  model_coeff: float = .1
-  module_model_coeff: float = .1
   reward_coeff: float = 1e-4 # coefficient for reward loss
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'
   cumulant_const: str='delta_concat'  # whether to use delta between states as cumulant
   seperate_model_params: bool=True # seperate parameters per transition fn
-  module_model_loss: bool=True
   normalize_step: bool=False # whether to normalize delta step in ModuleContrastLoss
+  contrast_module_coeff: float = .1
+  contrast_time_coeff: float = .1 
+  extra_module_negatives: int = 4
+  extra_time_negatives: int = 0
 
 
 

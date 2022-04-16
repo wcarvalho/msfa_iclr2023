@@ -9,7 +9,7 @@ def normalize(x):
   return  x / (1e-5+jnp.linalg.norm(x, axis=-1, keepdims=True))
 
 
-class DeltaContrastLoss:
+class ModuleContrastLoss:
   """"""
   def __init__(self, coeff: float, temperature: float = 0.01, extra_negatives: int = 10):
     self.coeff = coeff
@@ -66,7 +66,7 @@ class DeltaContrastLoss:
 
     # output is [B]
     batch_loss = episode_mean(
-      x=(-likelihood.mean(-1)),
+      x=(-likelihood).mean(-1),
       done=data.discount[:-1]).mean()
 
     metrics = {
@@ -78,11 +78,11 @@ class DeltaContrastLoss:
     return self.coeff*batch_loss, metrics
 
 
-class ModuleContrastLoss:
+class TimeContrastLoss:
   """"""
   def __init__(self, coeff: float,
     temperature: float = 0.01,
-    extra_negatives: int = 4,
+    extra_negatives: int = 0,
     normalize_step: bool=False):
     self.coeff = coeff
     self.temperature = temperature
@@ -135,32 +135,37 @@ class ModuleContrastLoss:
 
         negative_logits = jnp.concatenate((negative_logits, more_negative_logits), axis=-1)
 
-      all_logits = all_logits + 1e-5
       all_logits = all_logits/jnp.exp(self.temperature)
+      all_logits = all_logits + 1e-5
 
       label_idxs = jnp.arange(logits.shape[0])
 
-      likelihood = distrax.Categorical(logits=all_logits).log_prob(label_idxs)
+      log_prob = distrax.Categorical(logits=all_logits).log_prob(label_idxs)
 
-      return positive_logits, negative_logits, likelihood
+      return positive_logits, negative_logits, log_prob
 
     contrastive_loss = jax.vmap(contrastive_loss, in_axes=1, out_axes=1) # B
     contrastive_loss = jax.vmap(contrastive_loss, in_axes=2, out_axes=2) # N
-    positive_logits, negative_logits, likelihood = contrastive_loss(predictions, labels)
+    positive_logits, negative_logits, log_prob = contrastive_loss(predictions,
+      labels)
 
-    
-
-    # output is [B]
+    # input is [T, B, N, D]
+    # output is [B, N]
     batch_loss = episode_mean(
-      x=(-likelihood.mean(-1)),
+      x=(-log_prob).mean(-1),
       done=data.discount[:-1]).mean()
 
-
+    any_done_zero = (data.discount[:-1].sum(0) == 0.0).any()
     metrics = {
-      'loss_mod_contrast': batch_loss,
-      'z.mod_contrast_likelihood': likelihood.mean(),
-      'z.done_percent' : data.discount[:-1].mean(),
-      'z.mod_contrast.positive_logits' : positive_logits.mean(),
-      'z.mod_contrast.negative_logits' : negative_logits.mean(),
+      'loss_time_contrast': batch_loss,
+      # 'z.time_contrast_prob': jnp.log(log_prob).mean(),
+      'z.any_nodata' : any_done_zero.mean(),
+      'z.time.positive_logits' : positive_logits.mean(),
+      'z.time.negative_logits' : negative_logits.mean(),
+      'z.time.delta_preds_mean' : delta_preds.mean(),
+      'z.time.delta_preds_var' : delta_preds.var(),
+      'z.time.state_mean' : state.mean(),
+      'z.time.state_var' : state.var(),
     }
+
     return self.coeff*batch_loss, metrics

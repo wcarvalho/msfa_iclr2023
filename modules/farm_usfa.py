@@ -21,7 +21,8 @@ class FarmUsfaHead(UsfaHead):
 
   def __init__(self,
     cumulants_per_module: int,
-    vmap_multihead: str = 'switch',
+    vmap_multihead: str = 'lift',
+    relational_net = lambda x:x,
     **kwargs,
     ):
     super(FarmUsfaHead, self).__init__(
@@ -29,6 +30,7 @@ class FarmUsfaHead(UsfaHead):
       **kwargs)
 
     self.vmap_multihead = vmap_multihead
+    self.relational_net = relational_net
     self.cumulants_per_module = cumulants_per_module
     self.sf_factory = lambda: hk.nets.MLP([self.hidden_size, self.num_actions*cumulants_per_module])
 
@@ -94,7 +96,8 @@ class FarmUsfaHead(UsfaHead):
       in_axes=(None, 1, None), out_axes=1)
 
     # [B, N, A, D_w], [B, N, A]
-    sf, q_values = compute_sf(inputs.memory_out, z_embedding, w)
+    memory_out = self.relational_net(inputs.memory_out)
+    sf, q_values = compute_sf(memory_out, z_embedding, w)
 
     # -----------------------
     # GPI

@@ -100,6 +100,41 @@ def main(_):
     }
     experiment='baselines'
     name_kwargs=[]
+  elif search == 'usfa_farm':
+    shared = {
+        "agent": tune.grid_search(['usfa_farm']),
+        "seed": tune.grid_search([1,2,3]),
+        "cumulant_const" : tune.grid_search(['concat']),
+        "contrast_module_coeff" : tune.grid_search([0.0]),
+        "contrast_time_coeff" : tune.grid_search([0.0]),
+        "reward_coeff" : tune.grid_search([1e-3]),
+        "relational_sf" : tune.grid_search(['shared']),
+        "relational_phi" : tune.grid_search(['shared']),
+        # "q_aux_end_val" : tune.grid_search([1e-1]),
+        # "max_number_of_steps" : tune.grid_search([2_000_000]),
+      }
+    space = [
+      {
+        **shared,
+        "seperate_cumulant_params" : tune.grid_search([True]),
+        "seperate_model_params" : tune.grid_search([False]),
+        "seperate_value_params" : tune.grid_search([False]),
+      },
+      # {
+      #   **shared,
+      #   "seperate_cumulant_params" : tune.grid_search([True]),
+      #   "seperate_model_params" : tune.grid_search([False]),
+      #   "seperate_value_params" : tune.grid_search([True]),
+      # },
+      ]
+    # name_kwargs=[
+    #   "seperate_cumulant_params",
+    #   "seperate_model_params",
+    #   "seperate_value_params",
+    #   "schedule_end",
+    #   "cumulant_const"
+    #   "loss_coeff"
+    # ]
 
   elif search == 'usfa_farm_model':
     shared = {
@@ -110,7 +145,8 @@ def main(_):
         # "q_aux_anneal" : tune.grid_search([100_000]),
         # "module_model_loss" : tune.grid_search([True]),
         # "normalize_step" : tune.grid_search([False]),
-        "model_coeff" : tune.grid_search([0.0]),
+        "contrast_module_coeff" : tune.grid_search([0.0]),
+        "reward_coeff" : tune.grid_search([1e-3]),
         # "q_aux_end_val" : tune.grid_search([1e-1]),
         # "max_number_of_steps" : tune.grid_search([2_000_000]),
       }
@@ -154,8 +190,8 @@ def main(_):
     space = [
       {
         **shared,
-        "model_coeff" : tune.grid_search([.1]),
-        "module_model_coeff" : tune.grid_search([0.0]),
+        "contrast_time_coeff" : tune.grid_search([.1]),
+        "contrast_module_coeff" : tune.grid_search([0.0]),
         # "cumulant_const" : tune.grid_search(['delta_concat']),
       },
       # {
@@ -232,7 +268,7 @@ def main(_):
     # -----------------------
     if name_kwargs:
       try:
-        name = [f'{k}={log_path_config[k]}' for k in name_kwargs]
+        name = [f'{k[:4]}={log_path_config[k]}' for k in name_kwargs]
         name = ','.join(name)
       except Exception as e:
         print("="*25, "name kwargs error", "="*25)

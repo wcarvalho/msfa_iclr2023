@@ -16,6 +16,7 @@ from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding
 from modules import farm
+from modules.relational import RelationalLayer
 from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulants
 from modules.farm_usfa import FarmUsfaHead
 
@@ -310,7 +311,7 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
           seperate_params=config.seperate_cumulant_params,
           construction=config.cumulant_const,
           normalize_delta=config.normalize_delta,
-          normalize_state=config.module_model_loss and config.module_model_loss,
+          normalize_state=getattr(config, "contrast_time_coeff", 0) > 0,
           normalize_cumulants=config.normalize_cumulants
           ))
     else:
@@ -356,6 +357,19 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
 
   farm_memory = build_farm(config)
 
+  def relational_layer(setting, num_heads):
+    if setting == "none":
+      return lambda x: x
+    elif setting == "shared":
+      return RelationalLayer(
+        num_heads=num_heads)
+    elif setting == "independent":
+      return RelationalLayer(
+        num_heads=num_heads,
+        shared_parameters=False)
+    else:
+      raise NotImplementedError
+
 
   cumulants_per_module = state_dim//farm_memory.nmodules
   usfa_head = FarmUsfaHead(
@@ -365,6 +379,9 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
       policy_size=config.policy_size,
       variance=config.variance,
       nsamples=config.npolicies,
+      relational_net=relational_layer(
+        setting=config.relational_sf,
+        num_heads=config.relational_sf_heads),
       policy_layers=config.policy_layers,
       multihead=config.seperate_value_params, # seperate params per cumulants
       vmap_multihead=config.farm_vmap,
@@ -390,8 +407,11 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
         hidden_size=config.cumulant_hidden_size,
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
+        relational_net=relational_layer(
+          setting=config.relational_phi,
+          num_heads=config.relational_phi_heads),
         normalize_delta=config.normalize_delta,
-        normalize_state=config.module_model_loss,
+        normalize_state=getattr(config, "contrast_time_coeff", 0) > 0,
         normalize_cumulants=config.normalize_cumulants)
     )
 

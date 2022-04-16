@@ -139,11 +139,14 @@ class FarmIndependentCumulants(FarmCumulants):
   """Each FARM module predicts its own set of cumulants"""
 
   def __init__(self, *args, seperate_params,
-    normalize_state=False, **kwargs):
+    normalize_state=False,
+    relational_net=lambda x:x,
+    **kwargs):
     super(FarmIndependentCumulants, self).__init__(*args, **kwargs)
     self.seperate_params = seperate_params
     self.construction_options = ['timestep', 'delta', 'concat', 'delta_concat']
     self.normalize_state = normalize_state
+    self.relational_net = relational_net
 
   def __call__(self, memory_out, predictions, **kwargs):
     if hk.running_init():
@@ -152,7 +155,7 @@ class FarmIndependentCumulants(FarmCumulants):
 
     if self.construction == 'delta':
       states = memory_out[:-1]  # [T, B, M, D]
-      next_states = memory_out[1:]  # [T, B, M, D]
+      next_states = memory_out[1:]  # [T, B, M, 2D]
 
       cumulants = next_states - states
       if self.normalize_delta:
@@ -160,7 +163,7 @@ class FarmIndependentCumulants(FarmCumulants):
 
     elif self.construction == 'delta_concat':
       states = memory_out[:-1]  # [T, B, M, D]
-      next_states = memory_out[1:]  # [T, B, M, D]
+      next_states = memory_out[1:]  # [T, B, M, 2D]
 
       cumulants = next_states - states
       if self.normalize_delta:
@@ -171,11 +174,13 @@ class FarmIndependentCumulants(FarmCumulants):
 
     elif self.construction == 'concat':
       states = memory_out[:-1]  # [T, B, M, D]
-      next_states = memory_out[1:]  # [T, B, M, D]
+      next_states = memory_out[1:]  # [T, B, M, 2D]
       cumulants = jnp.concatenate((next_states, states), axis=-1)
 
     elif self.construction == 'timestep':
       cumulants = memory_out
+
+    cumulants = hk.BatchApply(self.relational_net)(cumulants)
 
     if self.seperate_params:
       cumulants = batch_multihead(

@@ -15,7 +15,7 @@ from agents.td_agent import losses
 
 from losses import usfa as usfa_losses
 from losses.vae import VaeAuxLoss
-from losses.contrastive_model import DeltaContrastLoss, ModuleContrastLoss
+from losses.contrastive_model import ModuleContrastLoss, TimeContrastLoss
 from losses import cumulants
 from modules.ensembles import QLearningEnsembleLoss
 
@@ -211,17 +211,18 @@ def usfa_farm(default_config, env_spec, flat=True, predict_cumulants=True, learn
         balance=config.balance_reward))
 
   if learn_model:
-    aux_tasks.append(
-        DeltaContrastLoss(
-          coeff=config.model_coeff,
-          extra_negatives=config.extra_negatives,
-          temperature=config.temperature)
-        )
-    if config.module_model_loss:
+    if config.contrast_module_coeff > 0:
       aux_tasks.append(
           ModuleContrastLoss(
-            coeff=config.module_model_coeff,
-            extra_negatives=config.time_negatives,
+            coeff=config.contrast_module_coeff,
+            extra_negatives=config.extra_module_negatives,
+            temperature=config.temperature)
+          )
+    if config.contrast_time_coeff > 0:
+      aux_tasks.append(
+          TimeContrastLoss(
+            coeff=config.contrast_time_coeff,
+            extra_negatives=config.extra_time_negatives,
             temperature=config.temperature,
             normalize_step=config.normalize_step)
           )
