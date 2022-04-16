@@ -109,12 +109,20 @@ class ModularUSFAConfig(USFAConfig):
   mixture: str='unique'  # how to mix FARM modules
   aggregation: str='concat'  # how to aggregate modules for cumulant
   normalize_delta: bool = True # whether to normalize delta between states
-  relational_sf: str = 'shared'
-  relational_sf_heads: int = 2
 
-  relational_phi: str = 'shared'
-  relational_phi_heads: int = 2
+  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
+  seperate_value_params: bool=False # seperate parameters per SF set
 
+  sf_net: str = 'relational'
+  sf_net_heads: int = 2
+  sf_net_key_size: int = 128
+
+  phi_net: str = 'independent'
+  phi_net_heads: int = 2
+  cumulant_const: str='concat'  # whether to use delta between states as cumulant
+
+  relate_w_init: float=2.
+  relate_residual: str="skip"
 
 @dataclasses.dataclass
 class FarmConfig:
@@ -132,8 +140,7 @@ class FarmConfig:
   image_attn: bool = True # whether to use feature attention on image
   farm_task_input: bool = True # give task as input to FARM
   farm_policy_task_input: bool = False # give task as input to FARM policy
-  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
-  seperate_value_params: bool=True # seperate parameters per SF set
+
 
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):
@@ -145,10 +152,9 @@ class FarmModelConfig(FarmConfig):
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'
-  cumulant_const: str='delta_concat'  # whether to use delta between states as cumulant
   seperate_model_params: bool=True # seperate parameters per transition fn
   normalize_step: bool=False # whether to normalize delta step in ModuleContrastLoss
-  contrast_module_coeff: float = .1
+  contrast_module_coeff: float = 0.0
   contrast_time_coeff: float = .1 
   extra_module_negatives: int = 4
   extra_time_negatives: int = 0

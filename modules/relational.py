@@ -1,11 +1,76 @@
 """Vision Modules."""
 
+from typing import Optional
+
 from acme.jax.networks import base
 import haiku as hk
 import jax
 import jax.numpy as jnp
+import numpy as np
 from acme.jax import utils
 
+class MultiHeadAttention(hk.Module):
+  """Multi-headed attention mechanism.
+  As described in the vanilla Transformer paper:
+    "Attention is all you need" https://arxiv.org/abs/1706.03762
+  """
+
+  def __init__(
+      self,
+      num_heads: int,
+      key_size: int,
+      # TODO(romanring, tycai): migrate to a more generic `w_init` initializer.
+      w_init_scale: float,
+      value_size: Optional[int] = None,
+      model_size: Optional[int] = None,
+      name: Optional[str] = None,
+  ):
+    super().__init__(name=name)
+    self.num_heads = num_heads
+    self.key_size = key_size
+    self.value_size = value_size or key_size
+    self.model_size = model_size
+    self.w_init = hk.initializers.VarianceScaling(w_init_scale)
+
+  def __call__(
+      self,
+      query: jnp.ndarray,
+      key: jnp.ndarray,
+      value: jnp.ndarray,
+      mask: Optional[jnp.ndarray] = None,
+  ) -> jnp.ndarray:
+    """Compute (optionally masked) MHA with queries, keys & values."""
+    query_heads = self._linear_projection(query, self.key_size, "query")
+    key_heads = self._linear_projection(key, self.key_size, "key")
+    value_heads = self._linear_projection(value, self.value_size, "value")
+
+    attn_logits = jnp.einsum("...thd,...Thd->...htT", query_heads, key_heads)
+    sqrt_key_size = np.sqrt(self.key_size).astype(key.dtype)
+    attn_logits = attn_logits / sqrt_key_size
+    if mask is not None:
+      if mask.ndim != attn_logits.ndim:
+        raise ValueError(f"Mask dimensionality {mask.ndim} must match logits "
+                         f"{attn_logits.ndim}.")
+      attn_logits = jnp.where(mask, attn_logits, -1e30)
+
+    attn_weights = jax.nn.softmax(attn_logits)
+    attn = jnp.einsum("...htT,...Thd->...thd", attn_weights, value_heads)
+    # Concatenate attention matrix of all heads into a single vector.
+    attn_vec = jnp.reshape(attn, (*query.shape[:-1], -1))
+    if self.model_size is not None:
+      return hk.Linear(self.model_size, w_init=self.w_init)(attn_vec)
+    else:
+      return attn_vec
+
+  @hk.transparent
+  def _linear_projection(
+      self,
+      x: jnp.ndarray,
+      head_size: int,
+      name: Optional[str] = None
+  ) -> jnp.ndarray:
+    y = hk.Linear(self.num_heads * head_size, w_init=self.w_init, name=name)(x)
+    return y.reshape((*x.shape[:-1], self.num_heads, head_size))
 
 class RelationalLayer(base.Module):
   """Multi-head attention based relational layer."""
@@ -13,9 +78,9 @@ class RelationalLayer(base.Module):
   def __init__(self,
     num_heads=2,
     w_init_scale=2.,
-    position_embed=32,
+    position_embed=16,
     key_size=64,
-    residual=True,
+    residual='skip',
     shared_parameters=True, name='relational'):
     super().__init__(name=name)
     self.shared_parameters = shared_parameters
@@ -24,6 +89,7 @@ class RelationalLayer(base.Module):
     self.position_embed = position_embed
     self.residual = residual
     self.key_size = key_size
+    self.w_init = hk.initializers.VarianceScaling(w_init_scale)
 
   def __call__(self, factors: jnp.ndarray, queries: jnp.ndarray=None) -> jnp.ndarray:
     """Summary
@@ -40,11 +106,29 @@ class RelationalLayer(base.Module):
 
     if self.shared_parameters:
       values = self.shared_attn(queries, factors)
+      return self.residualfn(factors, values)
     else:
       values = self.independent_attn(queries, factors)
+      return jax.vmap(self.residualfn)(factors, values)
 
-    if self.residual:
-      return factors + values
+  def residualfn(self, factors, values):
+    D = factors.shape[-1]
+    output = hk.Linear(D, w_init=self.w_init)(values)
+
+
+    if self.residual == "skip":
+      return factors + output
+
+    elif self.residual == "concat":
+      return jnp.concatenate((factors, output), axis=-1)
+
+    elif self.residual == "gru":
+      gate = jax.nn.sigmoid(hk.Linear(D, w_init=self.w_init)(values))
+      output = jax.nn.tanh(output)*gate
+      return factors + output
+
+    elif self.residual == "none":
+      return output
     else:
       raise NotImplementedError
 
@@ -62,8 +146,17 @@ class RelationalLayer(base.Module):
     queries = queries.transpose((1,0,2))  # [N, B, D]
 
     N, B = queries.shape[:2]
-    D = factors.shape[2]
+    if self.position_embed:
+      self.embedder = hk.Embed(
+        vocab_size=N,
+        embed_dim=self.position_embed)
+      embeddings = self.embedder(jnp.arange(N)) # N x D
+      concat = lambda a,b: jnp.concatenate((a, b), axis=-1)
+      factors = jax.vmap(concat, in_axes=(1, None), out_axes=1)(
+        factors, embeddings)
 
+
+    D = factors.shape[2]
     # add zeros for no attention
     zeros = jnp.zeros((1, B, D))
     factors = jnp.concatenate((factors, zeros)) # [N+1, B, D]
@@ -84,27 +177,17 @@ class RelationalLayer(base.Module):
     Returns:
         jnp.ndarray: Description
     """
-    queries, factors = self.prepare_data(queries, factors)
-    N, B, D = factors.shape
-
-    if self.position_embed:
-      self.embedder = hk.Embed(
-        vocab_size=N,
-        embed_dim=self.position_embed)
-      embeddings = self.embedder(jnp.arange(N)) # N x D
-      concat = lambda a,b: jnp.concatenate((a, b), axis=-1)
-      factors = jax.vmap(concat, in_axes=(1, None), out_axes=1)(
-        factors, embeddings)
-
-    attn = hk.MultiHeadAttention(
+    queries_prep, factors_prep = self.prepare_data(queries, factors)
+    D = factors.shape[-1]
+    attn = MultiHeadAttention(
       num_heads=self.num_heads,
       key_size=self.key_size or D,
-      model_size=D,
+      model_size=None,
       w_init_scale=self.w_init_scale,
       )
     attn = jax.vmap(attn, in_axes=(0, None, None))
 
-    out = attn(queries, factors, factors)
+    out = attn(queries_prep, factors_prep, factors_prep)
     out = out.transpose((1,0,2))  # [B, N, D]
     return out
 

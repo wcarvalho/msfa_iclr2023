@@ -100,18 +100,13 @@ def main(_):
     }
     experiment='baselines'
     name_kwargs=[]
-  elif search == 'usfa_farm':
+  elif search == 'msf':
     shared = {
-        "agent": tune.grid_search(['usfa_farm']),
+        "agent": tune.grid_search(['msf']),
         "seed": tune.grid_search([1,2,3]),
-        "cumulant_const" : tune.grid_search(['concat']),
-        "contrast_module_coeff" : tune.grid_search([0.0]),
-        "contrast_time_coeff" : tune.grid_search([0.0]),
-        "reward_coeff" : tune.grid_search([1e-3]),
-        "relational_sf" : tune.grid_search(['shared']),
-        "relational_phi" : tune.grid_search(['shared']),
-        # "q_aux_end_val" : tune.grid_search([1e-1]),
-        # "max_number_of_steps" : tune.grid_search([2_000_000]),
+        # "cumulant_const" : tune.grid_search(['concat']),
+        "phi_net" : tune.grid_search(['independent']),
+        "sf_net" : tune.grid_search(['relational']),
       }
     space = [
       {

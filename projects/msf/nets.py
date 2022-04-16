@@ -191,6 +191,7 @@ def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
     memory_out=memory_out,
     )
 
+
 def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False, **net_kwargs):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
@@ -357,13 +358,13 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
 
   farm_memory = build_farm(config)
 
-  def relational_layer(setting, num_heads):
+  def relational_layer(setting, num_heads=2):
     if setting == "none":
       return lambda x: x
     elif setting == "shared":
       return RelationalLayer(
         num_heads=num_heads)
-    elif setting == "independent":
+    elif setting == "seperate":
       return RelationalLayer(
         num_heads=num_heads,
         shared_parameters=False)
@@ -433,6 +434,149 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
     prediction_prep_fn=prediction_prep_fn,
     prediction=usfa_head,
     evaluation_prep_fn=evaluation_prep_fn,
+    evaluation=usfa_head.evaluation,
+    aux_tasks=aux_tasks,
+    **net_kwargs
+  )
+
+
+def build_msf_head(config, state_dim, num_actions):
+  if config.sf_net == "flat":
+    head = UsfaHead(
+        num_actions=num_actions,
+        state_dim=state_dim,
+        hidden_size=config.out_hidden_size,
+        policy_size=config.policy_size,
+        variance=config.variance,
+        nsamples=config.npolicies,
+        duelling=config.duelling,
+        policy_layers=config.policy_layers,
+        z_as_train_task=config.z_as_train_task,
+        sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
+        multihead=config.multihead,
+        concat_w=config.concat_w,
+        task_embed=task_embed,
+        normalize_task=config.normalize_task and config.embed_task,
+        )
+    def pred_prep_fn(inputs, memory_out, *args, **kwargs):
+      """Concat Farm module-states before passing them."""
+      return usfa_prep_fn(inputs=inputs, 
+        memory_out=flatten_structured_memory(memory_out))
+
+    def eval_prep_fn(inputs, memory_out, *args, **kwargs):
+      """Concat Farm module-states before passing them."""
+      return usfa_eval_prep_fn(inputs=inputs, 
+        memory_out=flatten_structured_memory(memory_out))
+
+  else:
+    if config.sf_net == "independent":
+      relational_net = lambda x: x
+    elif config.sf_net == "relational":
+      relational_net = RelationalLayer(
+        num_heads=config.sf_net_heads,
+        key_size=config.sf_net_key_size,
+        residual=config.relate_residual,
+        w_init_scale=config.relate_w_init,
+        shared_parameters=not config.seperate_value_params)
+    else:
+      raise NotImplementedError(config.sf_net)
+
+    cumulants_per_module = state_dim//config.nmodules
+    head = FarmUsfaHead(
+          num_actions=num_actions,
+          cumulants_per_module=cumulants_per_module,
+          hidden_size=config.out_hidden_size,
+          policy_size=config.policy_size,
+          variance=config.variance,
+          nsamples=config.npolicies,
+          relational_net=relational_net,
+          policy_layers=config.policy_layers,
+          multihead=config.seperate_value_params, # seperate params per cumulants
+          vmap_multihead=config.farm_vmap,
+          )
+    def pred_prep_fn(inputs, memory_out, *args, **kwargs):
+      """Concat Farm module-states before passing them."""
+      return usfa_prep_fn(inputs=inputs, memory_out=memory_out)
+
+    def eval_prep_fn(inputs, memory_out, *args, **kwargs):
+      """Concat Farm module-states before passing them."""
+      return usfa_eval_prep_fn(inputs=inputs, memory_out=memory_out)
+
+  return head, pred_prep_fn, eval_prep_fn
+
+
+def build_msf_phi_net(config, module_cumulants):
+  if config.phi_net == "flat":
+    return FarmCumulants(
+          module_cumulants=module_cumulants*config.nmodules,
+          hidden_size=config.cumulant_hidden_size,
+          aggregation='concat',
+          normalize_cumulants=config.normalize_cumulants,
+          normalize_delta=config.normalize_delta,
+          construction=config.cumulant_const,
+          )
+  else:
+    if config.phi_net == "independent":
+      relational_net = lambda x: x
+    elif config.phi_net == "relational":
+      relational_net = RelationalLayer(
+        num_heads=config.phi_net_heads,
+        residual=config.relate_residual,
+        w_init_scale=config.relate_w_init,
+        shared_parameters=not config.seperate_cumulant_params)
+    else:
+      raise NotImplementedError(config.phi_net)
+
+    return FarmIndependentCumulants(
+        module_cumulants=module_cumulants,
+        hidden_size=config.cumulant_hidden_size,
+        seperate_params=config.seperate_cumulant_params,
+        construction=config.cumulant_const,
+        relational_net=relational_net,
+        normalize_delta=config.normalize_delta,
+        normalize_state=getattr(config, "contrast_time_coeff", 0) > 0,
+        normalize_cumulants=config.normalize_cumulants)
+  raise RuntimeError
+
+def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs):
+  num_actions = env_spec.actions.num_values
+  state_dim = env_spec.observations.observation.state_features.shape[0]
+
+  farm_memory = build_farm(config)
+
+  assert config.sf_net in ['flat', 'independent', 'relational', 'relational']
+  assert config.phi_net in ['flat', 'independent', 'relational']
+
+  usfa_head, pred_prep_fn, eval_prep_fn = build_msf_head(config, state_dim, num_actions)
+  assert state_dim == usfa_head.cumulants_per_module*farm_memory.nmodules
+
+  aux_tasks = []
+  learn_model = learn_model and getattr(config, "contrast_time_coeff", 0) > 0 or getattr(config, "contrast_module_coeff", 0) > 0
+  if learn_model:
+    # takes structured farm input
+    aux_tasks.append(
+      FarmModel(
+        config.model_layers*[config.module_size],
+        num_actions=num_actions,
+        seperate_params=config.seperate_model_params,
+        activation=getattr(jax.nn, config.activation)),
+      )
+
+  if predict_cumulants:
+    # takes structured farm input
+    phi_net = build_msf_phi_net(config, usfa_head.cumulants_per_module)
+    aux_tasks.append(phi_net)
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=False),
+    memory_prep_fn=make_farm_prep_fn(num_actions,
+      task_input=config.farm_task_input),
+    memory=farm_memory,
+    prediction_prep_fn=pred_prep_fn,
+    prediction=usfa_head,
+    evaluation_prep_fn=eval_prep_fn,
     evaluation=usfa_head.evaluation,
     aux_tasks=aux_tasks,
     **net_kwargs

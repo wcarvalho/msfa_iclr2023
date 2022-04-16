@@ -177,7 +177,7 @@ def q_aux_loss(config):
           sched_end_val=config.q_aux_end_val,
           tx_pair=config.tx_pair)
 
-def usfa_farm(default_config, env_spec, flat=True, predict_cumulants=True, learn_model=False):
+def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, learn_model=False):
   config = data_utils.merge_configs(
     dataclass_configs=[
       configs.ModularUSFAConfig(),
@@ -187,10 +187,14 @@ def usfa_farm(default_config, env_spec, flat=True, predict_cumulants=True, learn
     ],
     dict_configs=default_config)
 
-  if flat:
+  if net == "flat":
     NetworkCls =  nets.usfa_farmflat_model
-  else:
+  elif net == "independent":
     NetworkCls =  nets.usfa_farm_model
+  elif net == "msf":
+    NetworkCls =  nets.msf
+  else:
+    raise NotImplementedError
 
   NetKwargs=dict(
     config=config,
@@ -368,31 +372,37 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
   elif agent == "usfa_farmflat":
   # USFA + cumulants from FARM + Q-learning
     return usfa_farm(default_config, env_spec,
-      flat=True,
+      net='flat',
       predict_cumulants=True,
       learn_model=False)
 
   elif agent == "usfa_farmflat_model":
   # USFA + cumulants from FARM + Q-learning + structured model
     return usfa_farm(default_config, env_spec,
-      flat=True,
+      net='flat',
       predict_cumulants=True,
       learn_model=True)
 
   elif agent == "usfa_farm":
   # same as above except each module produces independent cumulants, SFs
     return usfa_farm(default_config, env_spec,
-      flat=False,
+      net="independent",
       predict_cumulants=True,
       learn_model=False)
 
   elif agent == "usfa_farm_model":
   # same as above except each module produces independent cumulants, SFs
     return usfa_farm(default_config, env_spec,
-      flat=False,
+      net="independent",
       predict_cumulants=True,
       learn_model=True)
 
+  elif agent == "msf":
+  # USFA + cumulants from FARM + Q-learning
+    return usfa_farm(default_config, env_spec,
+      net='msf',
+      predict_cumulants=True,
+      learn_model=True)
   else:
     raise NotImplementedError(agent)
 
