@@ -42,6 +42,19 @@ goto_search:
 	--search $(search) \
 	--notes $(notes)
 
+goto_search_rldl:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/msf/goto_search_rldl.py \
+	--folder $(folder) \
+	--num_gpus $(num_gpus) \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project $(project) \
+	--group $(group) \
+	--search $(search) \
+	--notes $(notes)
+
 
 
 
