@@ -78,9 +78,11 @@ class RelationalLayer(base.Module):
   def __init__(self,
     num_heads=2,
     w_init_scale=2.,
+    init_bias=1.,
     position_embed=16,
     key_size=64,
     residual='skip',
+    layernorm=True,
     shared_parameters=True, name='relational'):
     super().__init__(name=name)
     self.shared_parameters = shared_parameters
@@ -89,7 +91,10 @@ class RelationalLayer(base.Module):
     self.position_embed = position_embed
     self.residual = residual
     self.key_size = key_size
+    self.layernorm = layernorm
+    self.init_bias = init_bias
     self.w_init = hk.initializers.VarianceScaling(w_init_scale)
+    self.b_init = hk.initializers.Constant(init_bias)
 
   def __call__(self, factors: jnp.ndarray, queries: jnp.ndarray=None) -> jnp.ndarray:
     """Summary
@@ -101,8 +106,16 @@ class RelationalLayer(base.Module):
     Returns:
         jnp.ndarray: Description
     """
+    if self.layernorm:
+      ln = hk.LayerNorm(axis=-1, param_axis=-1,
+                  create_scale=True, create_offset=True)
+      factors = ln(factors)
+
     if queries is None: 
       queries = factors
+    else:
+      if self.layernorm:
+        queries = ln(queries)
 
     if self.shared_parameters:
       values = self.shared_attn(queries, factors)
@@ -122,10 +135,30 @@ class RelationalLayer(base.Module):
     elif self.residual == "concat":
       return jnp.concatenate((factors, output), axis=-1)
 
-    elif self.residual == "gru":
-      gate = jax.nn.sigmoid(hk.Linear(D, w_init=self.w_init)(values))
-      output = jax.nn.tanh(output)*gate
-      return factors + output
+    elif self.residual == "output":
+      x = factors
+      y = output
+      b = hk.get_parameter("b_gate", [D], x.dtype, init=self.b_init)
+      return x + jax.nn.sigmoid(hk.Linear(D)(x) - b)*y
+
+    elif self.residual == "sigtanh":
+      x = factors
+      y = output
+      init = lambda size: self.init_bias*jnp.ones(size)
+      b = hk.get_parameter("b_gate", [D], x.dtype, init=self.b_init)
+      term1 = jax.nn.sigmoid(hk.Linear(D)(y) - b)
+      term2 = jax.nn.tanh(hk.Linear(y))
+      return x + term1*term2
+
+    # elif self.residual == "gtrxl":
+    #   e = factors
+    #   y_bar = output
+    #   y_hat = e + y_bar
+    #   y = hk.LayerNorm(axis=-1, param_axis=-1,
+    #               create_scale=True,
+    #               create_offset=True)(y_hat)
+    #   y = e + jax.nn.relu(y)
+    #   e = 
 
     elif self.residual == "none":
       return output

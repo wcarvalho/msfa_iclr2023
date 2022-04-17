@@ -105,9 +105,11 @@ def main(_):
         "agent": tune.grid_search(['msf']),
         "seed": tune.grid_search([1,2,3]),
         # "cumulant_const" : tune.grid_search(['concat']),
-        "phi_net" : tune.grid_search(['independent']),
+        "phi_net" : tune.grid_search(['flat']),
         "sf_net" : tune.grid_search(['relational']),
-        "relate_residual" : tune.grid_search(['gru']),
+        "relate_residual" : tune.grid_search(['output']),
+        "relate_b_init" : tune.grid_search([1.]),
+        "layernorm_rel" : tune.grid_search([True]),
       }
     space = [
       {

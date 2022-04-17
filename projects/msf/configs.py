@@ -122,7 +122,9 @@ class ModularUSFAConfig(USFAConfig):
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
 
   relate_w_init: float=2.
-  relate_residual: str="skip"
+  relate_b_init: float=1.
+  relate_residual: str="output"
+  layernorm_rel: bool=True
 
 @dataclasses.dataclass
 class FarmConfig:
