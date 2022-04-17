@@ -475,8 +475,10 @@ def build_msf_head(config, state_dim, num_actions):
       relational_net = RelationalLayer(
         num_heads=config.sf_net_heads,
         key_size=config.sf_net_key_size,
+        layernorm=config.layernorm_rel,
         residual=config.relate_residual,
         w_init_scale=config.relate_w_init,
+        init_bias=config.relate_b_init,
         shared_parameters=not config.seperate_value_params)
     else:
       raise NotImplementedError(config.sf_net)
@@ -522,7 +524,9 @@ def build_msf_phi_net(config, module_cumulants):
       relational_net = RelationalLayer(
         num_heads=config.phi_net_heads,
         residual=config.relate_residual,
+        layernorm=config.layernorm_rel,
         w_init_scale=config.relate_w_init,
+        init_bias=config.relate_b_init,
         shared_parameters=not config.seperate_cumulant_params)
     else:
       raise NotImplementedError(config.phi_net)
