@@ -345,7 +345,7 @@ class UniqueStatePolicyPairs(ConcatFlatStatePolicy):
 
 class CumulantsFromMemoryAuxTask(AuxilliaryTask):
   """docstring for Cumulants"""
-  def __init__(self, *args, construction='timestep', normalize=False, activation='none', **kwargs):
+  def __init__(self, *args, construction='timestep', normalize=False, activation='identity', **kwargs):
     super(CumulantsFromMemoryAuxTask, self).__init__(
       unroll_only=True, timeseries=True)
     self.cumulant_fn = hk.nets.MLP(*args, **kwargs)

@@ -36,7 +36,7 @@ class R2D1Config(configs.R2D1Config):
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 6.0 # 0.0=single process
-  min_replay_size: int = 10_000
+  min_replay_size: int = 1_000
   max_replay_size: int = 100_000
   batch_size: int = 32
   store_lstm_state: bool = True
@@ -104,29 +104,6 @@ class RewardConfig:
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
 
 @dataclasses.dataclass
-class ModularUSFAConfig(USFAConfig):
-  """Extra configuration options for USFA agent."""
-  mixture: str='unique'  # how to mix FARM modules
-  aggregation: str='concat'  # how to aggregate modules for cumulant
-  normalize_delta: bool = True # whether to normalize delta between states
-
-  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
-  seperate_value_params: bool=False # seperate parameters per SF set
-
-  sf_net: str = 'relational'
-  sf_net_heads: int = 2
-  sf_net_key_size: int = 128
-
-  phi_net: str = 'independent'
-  phi_net_heads: int = 2
-  cumulant_const: str='concat'  # whether to use delta between states as cumulant
-
-  relate_w_init: float=2.
-  relate_b_init: float=1.
-  relate_residual: str="output"
-  layernorm_rel: bool=True
-
-@dataclasses.dataclass
 class FarmConfig:
   """Extra configuration options for FARM module."""
 
@@ -145,6 +122,32 @@ class FarmConfig:
 
 
 @dataclasses.dataclass
+class ModularUSFAConfig(USFAConfig):
+  """Extra configuration options for USFA agent."""
+  mixture: str='unique'  # how to mix FARM modules
+  aggregation: str='concat'  # how to aggregate modules for cumulant
+  normalize_delta: bool = True # whether to normalize delta between states
+
+  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
+  seperate_value_params: bool=False # seperate parameters per SF set
+
+  sf_net: str = 'relational'
+  sf_net_heads: int = 2
+  sf_net_key_size: int = 128
+
+  phi_net: str = 'independent'
+  phi_net_heads: int = 2
+  cumulant_const: str='concat'  # whether to use delta between states as cumulant
+
+  relate_w_init: float=2.
+  resid_w_init: float=2.
+  relate_b_init: float=2.
+  relate_residual: str="gru"
+  res_relu_gate: bool=True
+  layernorm_rel: bool=False
+
+
+@dataclasses.dataclass
 class FarmModelConfig(FarmConfig):
   """Extra configuration options for FARM module."""
 
@@ -154,10 +157,10 @@ class FarmModelConfig(FarmConfig):
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'
-  seperate_model_params: bool=True # seperate parameters per transition fn
-  normalize_step: bool=False # whether to normalize delta step in ModuleContrastLoss
-  contrast_module_coeff: float = 0.0
-  contrast_time_coeff: float = .1 
+  seperate_model_params: bool=False # seperate parameters per transition fn
+  normalize_step: bool=False # whether to normalize delta step in TimeContrastLoss
+  contrast_module_coeff: float = 0.1
+  contrast_time_coeff: float = 0.0
   extra_module_negatives: int = 4
   extra_time_negatives: int = 0
 

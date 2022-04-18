@@ -57,6 +57,7 @@ class CumulantRewardLoss:
         f'loss_reward_{self.loss}': final_error,
         f'z.raw_loss_{self.loss}': raw_final_error,
         f'z.reward_pred': reward_pred.mean(),
+        f'z.reward_pred_var': reward_pred.var(),
       }
     else:
       final_error = error.mean()

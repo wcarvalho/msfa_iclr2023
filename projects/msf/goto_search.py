@@ -103,27 +103,39 @@ def main(_):
   elif search == 'msf':
     shared = {
         "agent": tune.grid_search(['msf']),
-        "seed": tune.grid_search([1,2,3]),
+        "seed": tune.grid_search([1,2]),
         # "cumulant_const" : tune.grid_search(['concat']),
-        "phi_net" : tune.grid_search(['flat']),
+        # "phi_net" : tune.grid_search(['independent']),
         "sf_net" : tune.grid_search(['relational']),
-        "relate_residual" : tune.grid_search(['output']),
-        "relate_b_init" : tune.grid_search([1.]),
-        "layernorm_rel" : tune.grid_search([True]),
+        "relate_residual" : tune.grid_search(['sigtanh']),
+        # "relate_b_init" : tune.grid_search([0.]),
+        # "resid_w_init" : tune.grid_search([2.]),
+        # "layernorm_rel" : tune.grid_search([True]),
+        # "cumulant_act" : tune.grid_search(['sigmoid', 'identity']),
+        "max_number_of_steps" : tune.grid_search([4_000_000]),
+        "seperate_cumulant_params" : tune.grid_search([False]),
+        "seperate_model_params" : tune.grid_search([True]),
+        "seperate_value_params" : tune.grid_search([False]),
       }
     space = [
-      {
-        **shared,
-        "seperate_cumulant_params" : tune.grid_search([True]),
-        "seperate_model_params" : tune.grid_search([False]),
-        "seperate_value_params" : tune.grid_search([False]),
-      },
       # {
       #   **shared,
-      #   "seperate_cumulant_params" : tune.grid_search([True]),
-      #   "seperate_model_params" : tune.grid_search([False]),
-      #   "seperate_value_params" : tune.grid_search([True]),
+      #   "cumulant_const" : tune.grid_search(['concat']),
+      #   "contrast_time_coeff" : tune.grid_search([0.1]),
+      #   "contrast_module_coeff" : tune.grid_search([0.0]),
       # },
+      # {
+      #   **shared,
+      #   "cumulant_const" : tune.grid_search(['delta_concat']),
+      #   "contrast_time_coeff" : tune.grid_search([0.0]),
+      #   "contrast_module_coeff" : tune.grid_search([0.1]),
+      # },
+      {
+        **shared,
+        "cumulant_const" : tune.grid_search(['delta_concat']),
+        "contrast_time_coeff" : tune.grid_search([0.1]),
+        "contrast_module_coeff" : tune.grid_search([0.1]),
+      },
       ]
     # name_kwargs=[
     #   "seperate_cumulant_params",

@@ -62,6 +62,7 @@ class FarmCumulants(AuxilliaryTask):
     module_cumulants=0,
     hidden_size=0,
     aggregation='sum',
+    activation='none',
     construction='timestep',
     normalize_delta=True,
     normalize_cumulants=True,
@@ -92,6 +93,13 @@ class FarmCumulants(AuxilliaryTask):
     aggregation = aggregation.lower()
     assert aggregation in ['sum', 'weighted', 'concat']
     self.aggregation = aggregation
+
+    assert activation in ['identity', 'sigmoid']
+    if activation == 'identity':
+      activation = lambda x:x
+    elif activation == 'sigmoid':
+      activation = jax.nn.sigmoid
+    self.activation = activation
 
     self.normalize_delta = normalize_delta
     self.normalize_cumulants = normalize_cumulants
@@ -133,6 +141,7 @@ class FarmCumulants(AuxilliaryTask):
     if self.normalize_cumulants:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
 
+    cumulants = self.activation(cumulants)
     return {'cumulants' : cumulants}
 
 class FarmIndependentCumulants(FarmCumulants):
@@ -200,4 +209,6 @@ class FarmIndependentCumulants(FarmCumulants):
     if self.normalize_cumulants:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
 
+
+    cumulants = self.activation(cumulants)
     return {'cumulants' : cumulants}

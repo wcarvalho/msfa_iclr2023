@@ -72,17 +72,51 @@ class MultiHeadAttention(hk.Module):
     y = hk.Linear(self.num_heads * head_size, w_init=self.w_init, name=name)(x)
     return y.reshape((*x.shape[:-1], self.num_heads, head_size))
 
+class GruGate(object):
+  """docstring for GruGate"""
+  def __init__(self, hidden_size, b_init, w_init):
+    super(GruGate, self).__init__()
+    self.b_init = b_init
+    self.w_init = w_init
+    self.hidden_size = hidden_size
+
+  def __call__(self, queries, values):
+    input_size = values.shape[-1]
+    hidden_size = self.hidden_size
+    w_i = hk.get_parameter("w_i", [input_size, 3 * hidden_size], values.dtype,
+                           init=self.w_init)
+    w_h = hk.get_parameter("w_h", [hidden_size, 3 * hidden_size], values.dtype,
+                           init=self.w_init)
+    b = hk.get_parameter("b", [3 * hidden_size], values.dtype, init=self.b_init)
+    w_h_z, w_h_a = jnp.split(w_h, indices_or_sections=[2 * hidden_size], axis=1)
+    b_z, b_a = jnp.split(b, indices_or_sections=[2 * hidden_size], axis=0)
+
+    gates_x = jnp.matmul(values, w_i)
+    zr_x, a_x = jnp.split(
+        gates_x, indices_or_sections=[2 * hidden_size], axis=-1)
+    zr_h = jnp.matmul(queries, w_h_z)
+    zr = zr_x + zr_h + jnp.broadcast_to(b_z, zr_h.shape)
+    z, r = jnp.split(jax.nn.sigmoid(zr), indices_or_sections=2, axis=-1)
+
+    a_h = jnp.matmul(r * queries, w_h_a)
+    a = jnp.tanh(a_x + a_h + jnp.broadcast_to(b_a, a_h.shape))
+
+    next_queries = (1 - z) * queries + z * a
+    return next_queries
+
 class RelationalLayer(base.Module):
   """Multi-head attention based relational layer."""
 
   def __init__(self,
     num_heads=2,
     w_init_scale=2.,
+    res_w_init_scale=.2,
     init_bias=1.,
     position_embed=16,
     key_size=64,
     residual='skip',
     layernorm=True,
+    relu_gate=True,
     shared_parameters=True, name='relational'):
     super().__init__(name=name)
     self.shared_parameters = shared_parameters
@@ -93,7 +127,9 @@ class RelationalLayer(base.Module):
     self.key_size = key_size
     self.layernorm = layernorm
     self.init_bias = init_bias
+    self.relu_gate = relu_gate
     self.w_init = hk.initializers.VarianceScaling(w_init_scale)
+    self.res_w_init = hk.initializers.VarianceScaling(res_w_init_scale)
     self.b_init = hk.initializers.Constant(init_bias)
 
   def __call__(self, factors: jnp.ndarray, queries: jnp.ndarray=None) -> jnp.ndarray:
@@ -119,46 +155,39 @@ class RelationalLayer(base.Module):
 
     if self.shared_parameters:
       values = self.shared_attn(queries, factors)
-      return self.residualfn(factors, values)
+      return self.residualfn(queries, values)
     else:
       values = self.independent_attn(queries, factors)
-      return jax.vmap(self.residualfn)(factors, values)
+      return jax.vmap(self.residualfn)(queries, values)
 
-  def residualfn(self, factors, values):
-    D = factors.shape[-1]
-    output = hk.Linear(D, w_init=self.w_init)(values)
+  def residualfn(self, queries, values):
+    D = queries.shape[-1]
+    output = hk.Linear(D, w_init=self.res_w_init)(values)
 
+    if self.relu_gate:
+      output = jax.nn.relu(output)
 
     if self.residual == "skip":
-      return factors + output
+      return queries + output
 
     elif self.residual == "concat":
-      return jnp.concatenate((factors, output), axis=-1)
+      return jnp.concatenate((queries, output), axis=-1)
 
     elif self.residual == "output":
-      x = factors
-      y = output
-      b = hk.get_parameter("b_gate", [D], x.dtype, init=self.b_init)
-      return x + jax.nn.sigmoid(hk.Linear(D)(x) - b)*y
+      b = hk.get_parameter("b_gate", [D], queries.dtype, init=self.b_init)
+      gate = jax.nn.sigmoid(hk.Linear(D, w_init=self.res_w_init)(queries) - b)
+      return queries + gate*output
 
     elif self.residual == "sigtanh":
-      x = factors
-      y = output
       init = lambda size: self.init_bias*jnp.ones(size)
-      b = hk.get_parameter("b_gate", [D], x.dtype, init=self.b_init)
-      term1 = jax.nn.sigmoid(hk.Linear(D)(y) - b)
-      term2 = jax.nn.tanh(hk.Linear(y))
-      return x + term1*term2
+      b = hk.get_parameter("b_gate", [D], queries.dtype, init=self.b_init)
+      gate = jax.nn.sigmoid(hk.Linear(D, w_init=self.res_w_init)(output) - b)
+      output = jax.nn.tanh(output)
+      return queries + gate*output
 
-    # elif self.residual == "gtrxl":
-    #   e = factors
-    #   y_bar = output
-    #   y_hat = e + y_bar
-    #   y = hk.LayerNorm(axis=-1, param_axis=-1,
-    #               create_scale=True,
-    #               create_offset=True)(y_hat)
-    #   y = e + jax.nn.relu(y)
-    #   e = 
+    elif self.residual == "gru":
+      gate = GruGate(hidden_size=D, w_init=self.res_w_init, b_init=self.b_init)
+      return gate(queries=queries, values=output)
 
     elif self.residual == "none":
       return output
