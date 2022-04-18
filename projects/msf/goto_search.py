@@ -104,121 +104,32 @@ def main(_):
     shared = {
         "agent": tune.grid_search(['msf']),
         "seed": tune.grid_search([1,2]),
-        # "cumulant_const" : tune.grid_search(['concat']),
-        # "phi_net" : tune.grid_search(['independent']),
         "sf_net" : tune.grid_search(['relational']),
-        "relate_residual" : tune.grid_search(['sigtanh']),
-        # "relate_b_init" : tune.grid_search([0.]),
-        # "resid_w_init" : tune.grid_search([2.]),
-        # "layernorm_rel" : tune.grid_search([True]),
-        # "cumulant_act" : tune.grid_search(['sigmoid', 'identity']),
+        "resid_mlp" : tune.grid_search([True, False]),
+        "sf_net_heads" : tune.grid_search([4]),
+        "position_hidden" : tune.grid_search([False]),
         "max_number_of_steps" : tune.grid_search([4_000_000]),
         "seperate_cumulant_params" : tune.grid_search([False]),
         "seperate_model_params" : tune.grid_search([True]),
         "seperate_value_params" : tune.grid_search([False]),
       }
     space = [
+      {
+        **shared,
+        "relate_residual" : tune.grid_search(['sigtanh']),
+      },
       # {
       #   **shared,
-      #   "cumulant_const" : tune.grid_search(['concat']),
-      #   "contrast_time_coeff" : tune.grid_search([0.1]),
-      #   "contrast_module_coeff" : tune.grid_search([0.0]),
+      #   "relate_residual" : tune.grid_search(['gru']),
       # },
       # {
       #   **shared,
       #   "cumulant_const" : tune.grid_search(['delta_concat']),
-      #   "contrast_time_coeff" : tune.grid_search([0.0]),
+      #   "contrast_time_coeff" : tune.grid_search([0.1]),
       #   "contrast_module_coeff" : tune.grid_search([0.1]),
       # },
-      {
-        **shared,
-        "cumulant_const" : tune.grid_search(['delta_concat']),
-        "contrast_time_coeff" : tune.grid_search([0.1]),
-        "contrast_module_coeff" : tune.grid_search([0.1]),
-      },
       ]
-    # name_kwargs=[
-    #   "seperate_cumulant_params",
-    #   "seperate_model_params",
-    #   "seperate_value_params",
-    #   "schedule_end",
-    #   "cumulant_const"
-    #   "loss_coeff"
-    # ]
 
-  elif search == 'usfa_farm_model':
-    shared = {
-        "agent": tune.grid_search(['usfa_farm_model']),
-        "seed": tune.grid_search([1,2,3]),
-        "cumulant_const" : tune.grid_search(['concat']),
-        # "q_aux_anneal" : tune.grid_search([0.0]),
-        # "q_aux_anneal" : tune.grid_search([100_000]),
-        # "module_model_loss" : tune.grid_search([True]),
-        # "normalize_step" : tune.grid_search([False]),
-        "contrast_module_coeff" : tune.grid_search([0.0]),
-        "reward_coeff" : tune.grid_search([1e-3]),
-        # "q_aux_end_val" : tune.grid_search([1e-1]),
-        # "max_number_of_steps" : tune.grid_search([2_000_000]),
-      }
-    space = [
-      # {
-      #   **shared,
-      #   "seperate_cumulant_params" : tune.grid_search([False]),
-      #   "seperate_model_params" : tune.grid_search([True]),
-      #   "seperate_value_params" : tune.grid_search([False]),
-      # },
-      {
-        **shared,
-        "seperate_cumulant_params" : tune.grid_search([True]),
-        "seperate_model_params" : tune.grid_search([False]),
-        "seperate_value_params" : tune.grid_search([False]),
-      },
-      # {
-      #   **shared,
-      #   "seperate_cumulant_params" : tune.grid_search([True]),
-      #   "seperate_model_params" : tune.grid_search([False]),
-      #   "seperate_value_params" : tune.grid_search([True]),
-      # },
-      ]
-    # name_kwargs=[
-    #   "seperate_cumulant_params",
-    #   "seperate_model_params",
-    #   "seperate_value_params",
-    #   "schedule_end",
-    #   "cumulant_const"
-    #   "loss_coeff"
-    # ]
-
-  elif search == 'usfa_farmflat_model':
-    shared = {
-        "agent": tune.grid_search(['usfa_farmflat_model']),
-        "seed": tune.grid_search([1,2,3]),
-        "seperate_cumulant_params" : tune.grid_search([True]),
-        "seperate_model_params" : tune.grid_search([False]),
-        "seperate_value_params" : tune.grid_search([False]),
-      }
-    space = [
-      {
-        **shared,
-        "contrast_time_coeff" : tune.grid_search([.1]),
-        "contrast_module_coeff" : tune.grid_search([0.0]),
-        # "cumulant_const" : tune.grid_search(['delta_concat']),
-      },
-      # {
-      #   **shared,
-      #   "model_coeff" : tune.grid_search([0.]),
-      #   "module_model_coeff" : tune.grid_search([.1]),
-      #   # "cumulant_const" : tune.grid_search(['delta_concat']),
-      # },
-    ]
-    # name_kwargs=[
-    #   "seperate_cumulant_params",
-    #   "seperate_model_params",
-    #   "seperate_value_params",
-    #   "schedule_end",
-    #   "cumulant_const"
-    #   "loss_coeff"
-    # ]
 
   else:
     raise NotImplementedError(search)

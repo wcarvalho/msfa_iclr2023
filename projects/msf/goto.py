@@ -61,7 +61,8 @@ def main(_):
     config.min_replay_size = 10
     config.npolicies = 2
     config.variance = 0.1
-    config.batch_size = 4
+    config.batch_size = 8
+    config.sf_net_layers = 2
     print("="*20, "testing", "="*20)
 
   # -----------------------

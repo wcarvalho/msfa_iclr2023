@@ -128,6 +128,7 @@ class ModularUSFAConfig(USFAConfig):
   aggregation: str='concat'  # how to aggregate modules for cumulant
   normalize_delta: bool = True # whether to normalize delta between states
   embed_position: int = 16 # whether to add position embeddings to modules
+  position_hidden: bool = False # whether to add position embeddings to modules
 
   seperate_cumulant_params: bool=True # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
@@ -145,7 +146,7 @@ class ModularUSFAConfig(USFAConfig):
   relate_w_init: float=2.
   resid_w_init: float=2.
   relate_b_init: float=2.
-  resid_mlp: bool=True
+  resid_mlp: bool=False
   relate_residual: str="sigtanh"
   res_relu_gate: bool=True
   layernorm_rel: bool=False
@@ -161,7 +162,7 @@ class FarmModelConfig(FarmConfig):
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'
-  seperate_model_params: bool=False # seperate parameters per transition fn
+  seperate_model_params: bool=True # seperate parameters per transition fn
   normalize_step: bool=False # whether to normalize delta step in TimeContrastLoss
   contrast_module_coeff: float = 0.1
   contrast_time_coeff: float = 0.0

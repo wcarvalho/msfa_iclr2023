@@ -295,7 +295,7 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
     # takes structured farm input
     aux_tasks.append(
       FarmModel(
-        output_sizes=config.model_layers*[config.module_size],
+        output_sizes=max(config.model_layers-1, 0)*[config.module_size],
         num_actions=num_actions,
         seperate_params=config.seperate_model_params,
         # activation=getattr(jax.nn, config.activation)
@@ -381,7 +381,7 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
     # takes structured farm input
     aux_tasks.append(
       FarmModel(
-        output_sizes=config.model_layers*[config.module_size],
+        output_sizes=max(config.model_layers-1, 0)*[config.module_size],
         num_actions=num_actions,
         seperate_params=config.seperate_model_params,
         # activation=getattr(jax.nn, config.activation)
@@ -457,6 +457,7 @@ def build_msf_head(config, state_dim, num_actions):
     if config.sf_net == "independent":
       relational_net = lambda x: x
     elif config.sf_net == "relational":
+      position_embed=config.embed_position if not config.position_hidden else 0
       relational_net = RelationalNet(
         layers=config.sf_net_layers,
         num_heads=config.sf_net_heads,
@@ -464,6 +465,7 @@ def build_msf_head(config, state_dim, num_actions):
         layernorm=config.layernorm_rel,
         pos_mlp=config.resid_mlp,
         residual=config.relate_residual,
+        position_embed=position_embed,
         w_init_scale=config.relate_w_init,
         res_w_init_scale=config.resid_w_init,
         init_bias=config.relate_b_init,
@@ -553,13 +555,11 @@ def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs
   learn_model = learn_model and getattr(config, "contrast_time_coeff", 0) > 0 or getattr(config, "contrast_module_coeff", 0) > 0
   if learn_model:
     # takes structured farm input
-    output_sizes=max(config.model_layers-1, 0)*[config.module_size]
     aux_tasks.append(
       FarmModel(
-        output_sizes=output_sizes,
+        output_sizes=max(config.model_layers-1, 0)*[config.module_size],
         num_actions=num_actions,
         seperate_params=config.seperate_model_params,
-        # activation=getattr(jax.nn, config.activation)
         ),
       )
 
@@ -587,7 +587,7 @@ def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs
     memory_prep_fn=make_farm_prep_fn(num_actions,
       task_input=config.farm_task_input),
     memory=farm_memory,
-    memory_proc_fn=add_position_embed if config.embed_position else lambda x:x,
+    memory_proc_fn=add_position_embed if config.position_hidden else lambda x:x,
     prediction_prep_fn=pred_prep_fn,
     prediction=usfa_head,
     evaluation_prep_fn=eval_prep_fn,

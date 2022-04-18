@@ -256,24 +256,23 @@ class RelationalLayer(base.Module):
     # prepare data
     # -----------------------
     # convert things to dims expected by multihead attention
-    factors = factors.transpose((1,0,2))  # [N, B, D]
-    queries = queries.transpose((1,0,2))  # [N, B, D]
+    # factors = factors.transpose((1,0,2))  # [N, B, D]
+    # queries = queries.transpose((1,0,2))  # [N, B, D]
 
-    N, B = queries.shape[:2]
+    B, N = queries.shape[:2]
     if self.position_embed > 0:
       self.embedder = hk.Embed(
         vocab_size=N,
         embed_dim=self.position_embed)
       embeddings = self.embedder(jnp.arange(N)) # N x D
       concat = lambda a,b: jnp.concatenate((a, b), axis=-1)
-      factors = jax.vmap(concat, in_axes=(1, None), out_axes=1)(
+      factors = jax.vmap(concat, in_axes=(0, None), out_axes=0)(
         factors, embeddings)
-
 
     D = factors.shape[2]
     # add zeros for no attention
-    zeros = jnp.zeros((1, B, D))
-    factors = jnp.concatenate((factors, zeros)) # [N+1, B, D]
+    zeros = jnp.zeros((B, 1, D))
+    factors = jnp.concatenate((factors, zeros), axis=1) # [B, N+1, D]
 
     return queries, factors
 
@@ -292,6 +291,7 @@ class RelationalLayer(base.Module):
         jnp.ndarray: Description
     """
     queries_prep, factors_prep = self.prepare_data(queries, factors)
+
     D = factors.shape[-1]
     attn = MultiHeadAttention(
       num_heads=self.num_heads,
@@ -299,10 +299,10 @@ class RelationalLayer(base.Module):
       model_size=None,
       w_init_scale=self.w_init_scale,
       )
-    attn = jax.vmap(attn, in_axes=(0, None, None))
 
-    out = attn(queries_prep, factors_prep, factors_prep)
-    out = out.transpose((1,0,2))  # [B, N, D]
+    attn_vmap = jax.vmap(attn)
+    # B, N, D
+    out = attn_vmap(queries_prep, factors_prep, factors_prep)
     return out
 
   def independent_attn(
@@ -312,7 +312,7 @@ class RelationalLayer(base.Module):
       ) -> jnp.ndarray:
     raise NotImplementedError()
 
-class RelationalNet(RelationalLayer):
+class RelationalNet(base.Module):
   """docstring for RelationalNet"""
   def __init__(self, *args, layers=1, **kwargs):
     super(RelationalNet, self).__init__()
