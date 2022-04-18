@@ -13,9 +13,9 @@ from utils.vmap import batch_multihead
 
 class FarmModel(AuxilliaryTask):
   """docstring for FarmModel"""
-  def __init__(self, *args, num_actions, seperate_params=False, **kwargs):
+  def __init__(self, output_sizes, num_actions, seperate_params=False):
     super(FarmModel, self).__init__(unroll_only=True, timeseries=True)
-    self.model_factory = lambda: hk.nets.MLP(*args, **kwargs)
+    self.output_sizes = output_sizes
     self.num_actions = num_actions
     self.seperate_params = seperate_params
 
@@ -43,16 +43,17 @@ class FarmModel(AuxilliaryTask):
     # [T, B, M, D+A]
     model_input = jnp.concatenate((module_states, chosen_actions), axis=-1)
 
+    model_factory = lambda: hk.nets.MLP(self.output_sizes+[D])
     if self.seperate_params:
       # [T, B, M, D]
       model_outputs = batch_multihead(
         x=model_input,
-        fn=lambda: self.model_factory(),
+        fn=lambda: model_factory(),
         wrap_vmap=lambda fn: hk.BatchApply(fn),
         )
     else:
       # [T, B, M, D]
-      model_outputs = hk.BatchApply(self.model_factory(), num_dims=3)(model_input)
+      model_outputs = hk.BatchApply(model_factory(), num_dims=3)(model_input)
 
     return {'model_outputs' : model_outputs}
 
