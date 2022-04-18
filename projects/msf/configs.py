@@ -127,21 +127,25 @@ class ModularUSFAConfig(USFAConfig):
   mixture: str='unique'  # how to mix FARM modules
   aggregation: str='concat'  # how to aggregate modules for cumulant
   normalize_delta: bool = True # whether to normalize delta between states
+  embed_position: int = 16 # whether to add position embeddings to modules
 
   seperate_cumulant_params: bool=True # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
 
   sf_net: str = 'relational'
   sf_net_heads: int = 2
-  sf_net_key_size: int = 128
+  sf_net_layers: int=1
+  sf_net_attn_size: int = 256
 
   phi_net: str = 'independent'
   phi_net_heads: int = 2
+  phi_net_layers: int=1
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
 
   relate_w_init: float=2.
   resid_w_init: float=2.
   relate_b_init: float=2.
+  resid_mlp: bool=True
   relate_residual: str="gru"
   res_relu_gate: bool=True
   layernorm_rel: bool=False
