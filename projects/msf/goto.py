@@ -62,8 +62,10 @@ def main(_):
     config.npolicies = 2
     config.variance = 0.1
     config.batch_size = 8
-    config.sf_net_layers = 2
+    config.sf_net_heads = 2
+    print("="*50)
     print("="*20, "testing", "="*20)
+    print("="*50)
 
   # -----------------------
   # logger

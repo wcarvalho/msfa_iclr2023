@@ -172,7 +172,7 @@ class RelationalLayer(base.Module):
     init_bias=1.,
     position_embed=0,
     attn_size=256,
-    residual='skip',
+    residual='sigtanh',
     layernorm=True,
     relu_gate=True,
     pos_mlp=False,

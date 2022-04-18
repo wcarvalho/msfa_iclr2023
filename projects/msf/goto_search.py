@@ -105,8 +105,9 @@ def main(_):
         "agent": tune.grid_search(['msf']),
         "seed": tune.grid_search([1,2]),
         "sf_net" : tune.grid_search(['relational']),
-        "resid_mlp" : tune.grid_search([True, False]),
+        "resid_mlp" : tune.grid_search([False]),
         "sf_net_heads" : tune.grid_search([4]),
+        "sf_net_attn_size" : tune.grid_search([512]),
         "position_hidden" : tune.grid_search([False]),
         "max_number_of_steps" : tune.grid_search([4_000_000]),
         "seperate_cumulant_params" : tune.grid_search([False]),
@@ -118,10 +119,10 @@ def main(_):
         **shared,
         "relate_residual" : tune.grid_search(['sigtanh']),
       },
-      # {
-      #   **shared,
-      #   "relate_residual" : tune.grid_search(['gru']),
-      # },
+      {
+        **shared,
+        "relate_residual" : tune.grid_search(['gru']),
+      },
       # {
       #   **shared,
       #   "cumulant_const" : tune.grid_search(['delta_concat']),
