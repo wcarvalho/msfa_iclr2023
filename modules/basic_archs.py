@@ -143,8 +143,10 @@ class BasicRecurrent(hk.Module):
     else:
       memory_out, new_state = self.memory(memory_input, state)
 
+
     if self.memory_proc_fn:
-      memory_out = self.memory_proc_fn(memory_out)
+      memory_out = batchfn(self.memory_proc_fn)(memory_out)
+
     all_preds['memory_out'] = memory_out
   
 
