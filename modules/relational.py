@@ -122,7 +122,7 @@ class Gate(hk.Module):
 
   def __call__(self, queries, values):
     D = queries.shape[-1]
-    output = hk.Linear(D, w_init=self.w_init)(values)
+    output = hk.Linear(D, with_bias=False, w_init=self.w_init)(values)
 
     if self.relu_gate:
       output = jax.nn.relu(output)
@@ -135,12 +135,12 @@ class Gate(hk.Module):
 
     elif self.residual == "output":
       b = hk.get_parameter("b_gate", [D], queries.dtype, init=self.b_init)
-      gate = jax.nn.sigmoid(hk.Linear(D, w_init=self.w_init)(queries) - b)
+      gate = jax.nn.sigmoid(hk.Linear(D, with_bias=False, w_init=self.w_init)(queries) - b)
       output = queries + gate*output
 
     elif self.residual == "sigtanh":
       b = hk.get_parameter("b_gate", [D], queries.dtype, init=self.b_init)
-      gate = jax.nn.sigmoid(hk.Linear(D, w_init=self.w_init)(output) - b)
+      gate = jax.nn.sigmoid(hk.Linear(D, with_bias=False, w_init=self.w_init)(output) - b)
       output = jax.nn.tanh(output)
       output = queries + gate*output
 
@@ -173,9 +173,10 @@ class RelationalLayer(base.Module):
     position_embed=0,
     attn_size=256,
     residual='sigtanh',
-    layernorm=True,
-    relu_gate=True,
+    layernorm=False,
+    relu_gate=False,
     pos_mlp=False,
+    # add_zeros=False,
     shared_parameters=True, name='relational'):
     super().__init__(name=name)
     self.shared_parameters = shared_parameters

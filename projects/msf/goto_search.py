@@ -106,8 +106,8 @@ def main(_):
         "seed": tune.grid_search([1,2]),
         "sf_net" : tune.grid_search(['relational']),
         "resid_mlp" : tune.grid_search([False]),
-        "sf_net_heads" : tune.grid_search([4]),
-        "sf_net_attn_size" : tune.grid_search([512]),
+        "sf_net_heads" : tune.grid_search([2]),
+        "sf_net_attn_size" : tune.grid_search([256]),
         "position_hidden" : tune.grid_search([False]),
         "max_number_of_steps" : tune.grid_search([4_000_000]),
         "seperate_cumulant_params" : tune.grid_search([False]),
@@ -115,13 +115,13 @@ def main(_):
         "seperate_value_params" : tune.grid_search([False]),
       }
     space = [
+      # {
+      #   **shared,
+      #   "relate_residual" : tune.grid_search(['sigtanh']),
+      # },
       {
         **shared,
-        "relate_residual" : tune.grid_search(['sigtanh']),
-      },
-      {
-        **shared,
-        "relate_residual" : tune.grid_search(['gru']),
+        "relate_residual" : tune.grid_search(['gru', 'concat']),
       },
       # {
       #   **shared,

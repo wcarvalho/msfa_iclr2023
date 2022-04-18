@@ -63,6 +63,8 @@ def main(_):
     config.variance = 0.1
     config.batch_size = 8
     config.sf_net_heads = 2
+    config.relate_b_init = 4.0
+    config.res_relu_gate = False
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)
