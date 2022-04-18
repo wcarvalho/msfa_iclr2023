@@ -124,13 +124,11 @@ class FarmConfig:
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
-  mixture: str='unique'  # how to mix FARM modules
-  aggregation: str='concat'  # how to aggregate modules for cumulant
   normalize_delta: bool = True # whether to normalize delta between states
   embed_position: int = 16 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
 
-  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
+  seperate_cumulant_params: bool=False # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
 
   sf_net: str = 'relational'

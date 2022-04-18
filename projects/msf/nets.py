@@ -552,7 +552,7 @@ def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs
   assert state_dim == usfa_head.cumulants_per_module*farm_memory.nmodules
 
   aux_tasks = []
-  learn_model = learn_model and getattr(config, "contrast_time_coeff", 0) > 0 or getattr(config, "contrast_module_coeff", 0) > 0
+  learn_model = learn_model and (getattr(config, "contrast_time_coeff", 0) > 0 or getattr(config, "contrast_module_coeff", 0) > 0)
   if learn_model:
     # takes structured farm input
     aux_tasks.append(
