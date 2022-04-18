@@ -104,25 +104,27 @@ def main(_):
     shared = {
         "agent": tune.grid_search(['msf']),
         "seed": tune.grid_search([1,2]),
-        "sf_net" : tune.grid_search(['relational']),
-        "resid_mlp" : tune.grid_search([False]),
-        "sf_net_heads" : tune.grid_search([2]),
-        "sf_net_attn_size" : tune.grid_search([256]),
-        "position_hidden" : tune.grid_search([False]),
-        "max_number_of_steps" : tune.grid_search([4_000_000]),
-        "seperate_cumulant_params" : tune.grid_search([False]),
-        "seperate_model_params" : tune.grid_search([True]),
-        "seperate_value_params" : tune.grid_search([False]),
+        # "sf_net" : tune.grid_search(['relational']),
+        # "resid_mlp" : tune.grid_search([False]),
+        # "sf_net_heads" : tune.grid_search([2]),
+        # "sf_net_attn_size" : tune.grid_search([256]),
+        # "position_hidden" : tune.grid_search([False]),
+        # "max_number_of_steps" : tune.grid_search([4_000_000]),
+        # "seperate_cumulant_params" : tune.grid_search([False]),
+        # "seperate_model_params" : tune.grid_search([True]),
+        # "seperate_value_params" : tune.grid_search([False]),
       }
     space = [
-      # {
-      #   **shared,
-      #   "relate_residual" : tune.grid_search(['sigtanh']),
-      # },
       {
         **shared,
-        "relate_residual" : tune.grid_search(['gru', 'concat']),
+        "q_aux_anneal" : tune.grid_search([100_000]),
+        "q_aux_end_val" : tune.grid_search([1e-2, 1e-3]),
+        "value_coeff" : tune.grid_search([10.0]),
       },
+      # {
+      #   **shared,
+      #   "relate_residual" : tune.grid_search(['gru', 'concat']),
+      # },
       # {
       #   **shared,
       #   "cumulant_const" : tune.grid_search(['delta_concat']),
