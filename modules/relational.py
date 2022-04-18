@@ -55,6 +55,7 @@ class MultiHeadAttention(hk.Module):
 
     attn_weights = jax.nn.softmax(attn_logits)
     attn = jnp.einsum("...htT,...Thd->...thd", attn_weights, value_heads)
+
     # Concatenate attention matrix of all heads into a single vector.
     attn_vec = jnp.reshape(attn, (*query.shape[:-1], -1))
     if self.model_size is not None:
@@ -72,7 +73,7 @@ class MultiHeadAttention(hk.Module):
     y = hk.Linear(self.num_heads * head_size, w_init=self.w_init, name=name)(x)
     return y.reshape((*x.shape[:-1], self.num_heads, head_size))
 
-class GruGate(object):
+class GruGate(hk.Module):
   """docstring for GruGate"""
   def __init__(self, hidden_size, b_init, w_init):
     super(GruGate, self).__init__()
@@ -104,6 +105,63 @@ class GruGate(object):
     next_queries = (1 - z) * queries + z * a
     return next_queries
 
+class Gate(hk.Module):
+  """docstring for Gate"""
+  def __init__(self,
+    w_init=2.0,
+    init_bias=2.0,
+    residual='sigtanh',
+    relu_gate=False,
+    layernorm=False):
+    super(Gate, self).__init__()
+    self.w_init = hk.initializers.VarianceScaling(w_init)
+    self.b_init = hk.initializers.Constant(init_bias)
+    self.relu_gate = relu_gate
+    self.residual = residual
+    self.layernorm =layernorm
+
+  def __call__(self, queries, values):
+    D = queries.shape[-1]
+    output = hk.Linear(D, w_init=self.w_init)(values)
+
+    if self.relu_gate:
+      output = jax.nn.relu(output)
+
+    if self.residual == "skip":
+      output = queries + output
+
+    elif self.residual == "concat":
+      output = jnp.concatenate((queries, output), axis=-1)
+
+    elif self.residual == "output":
+      b = hk.get_parameter("b_gate", [D], queries.dtype, init=self.b_init)
+      gate = jax.nn.sigmoid(hk.Linear(D, w_init=self.w_init)(queries) - b)
+      output = queries + gate*output
+
+    elif self.residual == "sigtanh":
+      b = hk.get_parameter("b_gate", [D], queries.dtype, init=self.b_init)
+      gate = jax.nn.sigmoid(hk.Linear(D, w_init=self.w_init)(output) - b)
+      output = jax.nn.tanh(output)
+      output = queries + gate*output
+
+    elif self.residual == "gru":
+      gate = GruGate(hidden_size=D, w_init=self.w_init, b_init=self.b_init)
+      output = gate(queries=queries, values=output)
+
+    elif self.residual == "none":
+      output = output
+    else:
+      raise NotImplementedError
+
+    if self.layernorm:
+      output = hk.LayerNorm(
+        axis=-1,
+        param_axis=-1,
+        create_scale=True,
+        create_offset=True)(output)
+
+    return output
+
 class RelationalLayer(base.Module):
   """Multi-head attention based relational layer."""
 
@@ -112,11 +170,12 @@ class RelationalLayer(base.Module):
     w_init_scale=2.,
     res_w_init_scale=.2,
     init_bias=1.,
-    position_embed=16,
-    key_size=64,
+    position_embed=0,
+    attn_size=256,
     residual='skip',
     layernorm=True,
     relu_gate=True,
+    pos_mlp=False,
     shared_parameters=True, name='relational'):
     super().__init__(name=name)
     self.shared_parameters = shared_parameters
@@ -124,13 +183,28 @@ class RelationalLayer(base.Module):
     self.w_init_scale = w_init_scale
     self.position_embed = position_embed
     self.residual = residual
-    self.key_size = key_size
+    self.attn_size = attn_size
+    self.key_size = attn_size // num_heads
     self.layernorm = layernorm
     self.init_bias = init_bias
     self.relu_gate = relu_gate
-    self.w_init = hk.initializers.VarianceScaling(w_init_scale)
-    self.res_w_init = hk.initializers.VarianceScaling(res_w_init_scale)
-    self.b_init = hk.initializers.Constant(init_bias)
+    self.pos_mlp = pos_mlp
+    # self.w_init = hk.initializers.VarianceScaling(w_init_scale)
+    # self.res_w_init = hk.initializers.VarianceScaling(res_w_init_scale)
+    # self.b_init = hk.initializers.Constant(init_bias)
+
+    self.attn_gate = Gate(
+      w_init=res_w_init_scale,
+      init_bias=init_bias,
+      residual=residual,
+      relu_gate=relu_gate,
+      layernorm=layernorm)
+    self.mlp_gate = Gate(
+      w_init=res_w_init_scale,
+      init_bias=init_bias,
+      residual=residual,
+      relu_gate=relu_gate,
+      layernorm=layernorm)
 
   def __call__(self, factors: jnp.ndarray, queries: jnp.ndarray=None) -> jnp.ndarray:
     """Summary
@@ -155,44 +229,22 @@ class RelationalLayer(base.Module):
 
     if self.shared_parameters:
       values = self.shared_attn(queries, factors)
-      return self.residualfn(queries, values)
+      values = self.attn_gate(queries, values)
+
+      if self.pos_mlp:
+        mlp = hk.nets.MLP(
+          output_sizes=[values.shape[-1]]*2,
+          activate_final=self.relu_gate)
+        values_mlp = mlp(values)
+        values = self.mlp_gate(values, values_mlp)
+
+      return values
+
+
     else:
       values = self.independent_attn(queries, factors)
-      return jax.vmap(self.residualfn)(queries, values)
-
-  def residualfn(self, queries, values):
-    D = queries.shape[-1]
-    output = hk.Linear(D, w_init=self.res_w_init)(values)
-
-    if self.relu_gate:
-      output = jax.nn.relu(output)
-
-    if self.residual == "skip":
-      return queries + output
-
-    elif self.residual == "concat":
-      return jnp.concatenate((queries, output), axis=-1)
-
-    elif self.residual == "output":
-      b = hk.get_parameter("b_gate", [D], queries.dtype, init=self.b_init)
-      gate = jax.nn.sigmoid(hk.Linear(D, w_init=self.res_w_init)(queries) - b)
-      return queries + gate*output
-
-    elif self.residual == "sigtanh":
-      init = lambda size: self.init_bias*jnp.ones(size)
-      b = hk.get_parameter("b_gate", [D], queries.dtype, init=self.b_init)
-      gate = jax.nn.sigmoid(hk.Linear(D, w_init=self.res_w_init)(output) - b)
-      output = jax.nn.tanh(output)
-      return queries + gate*output
-
-    elif self.residual == "gru":
-      gate = GruGate(hidden_size=D, w_init=self.res_w_init, b_init=self.b_init)
-      return gate(queries=queries, values=output)
-
-    elif self.residual == "none":
-      return output
-    else:
       raise NotImplementedError
+      return jax.vmap(self.residualfn)(queries, values)
 
   def prepare_data(
       self,
@@ -208,7 +260,7 @@ class RelationalLayer(base.Module):
     queries = queries.transpose((1,0,2))  # [N, B, D]
 
     N, B = queries.shape[:2]
-    if self.position_embed:
+    if self.position_embed > 0:
       self.embedder = hk.Embed(
         vocab_size=N,
         embed_dim=self.position_embed)
@@ -259,3 +311,17 @@ class RelationalLayer(base.Module):
       factors: jnp.ndarray,
       ) -> jnp.ndarray:
     raise NotImplementedError()
+
+class RelationalNet(RelationalLayer):
+  """docstring for RelationalNet"""
+  def __init__(self, *args, layers=1, **kwargs):
+    super(RelationalNet, self).__init__()
+
+    self.layers = [RelationalLayer(*args, **kwargs) for _ in range(layers)]
+
+  def __call__(self, factors: jnp.ndarray) -> jnp.ndarray:
+
+    for idx, layer in enumerate(self.layers):
+      factors = layer(factors)
+
+    return factors
