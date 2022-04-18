@@ -187,6 +187,9 @@ def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, lear
     ],
     dict_configs=default_config)
 
+  if config.cumulant_act == "sigmoid" and config.reward_loss == "l2":
+    config.reward_loss = config.reward_loss*10.0
+
   if net == "flat":
     NetworkCls =  nets.usfa_farmflat_model
   elif net == "independent":

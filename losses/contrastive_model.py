@@ -37,7 +37,13 @@ class ModuleContrastLoss:
       logits = jnp.matmul(anchors, positives.transpose(0, 2, 1)) # [B, N, N]
       B, N = logits.shape[:2]
 
+      identity = jnp.identity(logits.shape[1]).astype(jnp.float32)
+      identity = jnp.expand_dims(identity, axis=0)
+      positive_logits = identity*logits
+      negative_logits = (1 - identity)*logits
+
       all_logits = logits
+      more_negative_logits = negative_logits
       if self.extra_negatives > 0:
         # add extra negatives
         negative_options = positives.reshape(-1, positives.shape[-1])
@@ -47,33 +53,34 @@ class ModuleContrastLoss:
         negative_idx = np.random.randint(nnegatives, size=nnegatives)
         # [B, N, E, D]
         negatives = negative_options[negative_idx].reshape(B, self.extra_negatives, -1)
-        negative_logits = jnp.matmul(anchors, negatives.transpose(0, 2, 1))
+        more_negative_logits = jnp.matmul(anchors, negatives.transpose(0, 2, 1))
+
+        all_logits = jnp.concatenate((logits, more_negative_logits), axis=-1)
         all_logits = all_logits + 1e-5
 
-      all_logits = jnp.concatenate((logits, negative_logits), axis=-1)
       all_logits = all_logits/jnp.exp(self.temperature)
 
       labels = jnp.arange(N)
 
       likelihood = distrax.Categorical(logits=all_logits).log_prob(labels)
 
-      return logits, negative_logits, likelihood
+      return positive_logits, negative_logits, more_negative_logits, likelihood
 
 
-    logits, negative_logits, likelihood = hk.BatchApply(contrastive_loss)(delta_preds, delta)
+    pos_logits, mod_neg_logits, rand_neg_logits, likelihood = hk.BatchApply(contrastive_loss)(delta_preds, delta)
 
-    positive_logits = jnp.diagonal(logits, axis1=2, axis2=3)
 
     # output is [B]
     batch_loss = episode_mean(
       x=(-likelihood).mean(-1),
       done=data.discount[:-1]).mean()
 
+    T, B, N = delta.shape[:3]
     metrics = {
       'loss_contrast': batch_loss,
-      'z.contrast_likelihood': likelihood.mean(),
-      'z.contrast.negative_logits' : negative_logits.mean(),
-      'z.contrast.positive_logits' : positive_logits.mean(),
+      'z.contrast.neg_mod_logits' : mod_neg_logits.mean(),
+      'z.contrast.neg_ran_logits' : rand_neg_logits.mean(),
+      'z.contrast.pos_logits' : pos_logits.sum()/(T*B*N),
     }
     return self.coeff*batch_loss, metrics
 

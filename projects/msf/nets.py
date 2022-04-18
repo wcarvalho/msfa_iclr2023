@@ -307,6 +307,7 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
       cumulants_per_module = state_dim//farm_memory.nmodules
       aux_tasks.append(
         FarmIndependentCumulants(
+          activation=config.cumulant_act,
           module_cumulants=cumulants_per_module,
           hidden_size=config.cumulant_hidden_size,
           seperate_params=config.seperate_cumulant_params,
@@ -318,6 +319,7 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
     else:
       aux_tasks.append(
         FarmCumulants(
+              activation=config.cumulant_act,
           module_cumulants=usfa_head.out_dim,
           hidden_size=config.cumulant_hidden_size,
           aggregation='concat',
@@ -387,11 +389,12 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
     # takes structured farm input
     aux_tasks.append(
       FarmIndependentCumulants(
+        activation=config.cumulant_act,
         module_cumulants=cumulants_per_module,
         hidden_size=config.cumulant_hidden_size,
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
-        normalize_delta=config.normalize_delta,
+        normalize_delta=config.normalize_delta and getattr(config, "contrast_module_coeff", 0) > 0,
         normalize_state=getattr(config, "contrast_time_coeff", 0) > 0,
         normalize_cumulants=config.normalize_cumulants)
     )
@@ -458,7 +461,9 @@ def build_msf_head(config, state_dim, num_actions):
         layernorm=config.layernorm_rel,
         residual=config.relate_residual,
         w_init_scale=config.relate_w_init,
+        res_w_init_scale=config.resid_w_init,
         init_bias=config.relate_b_init,
+        relu_gate=config.res_relu_gate,
         shared_parameters=not config.seperate_value_params)
     else:
       raise NotImplementedError(config.sf_net)
@@ -490,6 +495,7 @@ def build_msf_head(config, state_dim, num_actions):
 def build_msf_phi_net(config, module_cumulants):
   if config.phi_net == "flat":
     return FarmCumulants(
+          activation=config.cumulant_act,
           module_cumulants=module_cumulants*config.nmodules,
           hidden_size=config.cumulant_hidden_size,
           aggregation='concat',
@@ -506,12 +512,15 @@ def build_msf_phi_net(config, module_cumulants):
         residual=config.relate_residual,
         layernorm=config.layernorm_rel,
         w_init_scale=config.relate_w_init,
+        res_w_init_scale=config.resid_w_init,
         init_bias=config.relate_b_init,
+        relu_gate=config.res_relu_gate,
         shared_parameters=not config.seperate_cumulant_params)
     else:
       raise NotImplementedError(config.phi_net)
 
     return FarmIndependentCumulants(
+        activation=config.cumulant_act,
         module_cumulants=module_cumulants,
         hidden_size=config.cumulant_hidden_size,
         seperate_params=config.seperate_cumulant_params,
