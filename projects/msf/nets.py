@@ -16,7 +16,7 @@ from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding
 from modules import farm
-from modules.relational import RelationalLayer
+from modules.relational import RelationalLayer, RelationalNet
 from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulants
 from modules.farm_usfa import FarmUsfaHead
 
@@ -295,10 +295,11 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
     # takes structured farm input
     aux_tasks.append(
       FarmModel(
-        config.model_layers*[config.module_size],
+        output_sizes=config.model_layers*[config.module_size],
         num_actions=num_actions,
         seperate_params=config.seperate_model_params,
-        activation=getattr(jax.nn, config.activation)),
+        # activation=getattr(jax.nn, config.activation)
+        ),
       )
 
   if predict_cumulants:
@@ -397,10 +398,11 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
     # takes structured farm input
     aux_tasks.append(
       FarmModel(
-        config.model_layers*[config.module_size],
+        output_sizes=config.model_layers*[config.module_size],
         num_actions=num_actions,
         seperate_params=config.seperate_model_params,
-        activation=getattr(jax.nn, config.activation)),
+        # activation=getattr(jax.nn, config.activation)
+        ),
       )
   if predict_cumulants:
     # takes structured farm input
@@ -475,10 +477,12 @@ def build_msf_head(config, state_dim, num_actions):
     if config.sf_net == "independent":
       relational_net = lambda x: x
     elif config.sf_net == "relational":
-      relational_net = RelationalLayer(
+      relational_net = RelationalNet(
+        layers=config.sf_net_layers,
         num_heads=config.sf_net_heads,
-        key_size=config.sf_net_key_size,
+        attn_size=config.sf_net_attn_size,
         layernorm=config.layernorm_rel,
+        pos_mlp=config.resid_mlp,
         residual=config.relate_residual,
         w_init_scale=config.relate_w_init,
         res_w_init_scale=config.resid_w_init,
@@ -527,10 +531,12 @@ def build_msf_phi_net(config, module_cumulants):
     if config.phi_net == "independent":
       relational_net = lambda x: x
     elif config.phi_net == "relational":
-      relational_net = RelationalLayer(
+      relational_net = RelationalNet(
+        layers=config.phi_net_layers,
         num_heads=config.phi_net_heads,
         residual=config.relate_residual,
         layernorm=config.layernorm_rel,
+        pos_mlp=config.resid_mlp,
         w_init_scale=config.relate_w_init,
         res_w_init_scale=config.resid_w_init,
         init_bias=config.relate_b_init,
@@ -567,18 +573,32 @@ def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs
   learn_model = learn_model and getattr(config, "contrast_time_coeff", 0) > 0 or getattr(config, "contrast_module_coeff", 0) > 0
   if learn_model:
     # takes structured farm input
+    output_sizes=max(config.model_layers-1, 0)*[config.module_size]
     aux_tasks.append(
       FarmModel(
-        config.model_layers*[config.module_size],
+        output_sizes=output_sizes,
         num_actions=num_actions,
         seperate_params=config.seperate_model_params,
-        activation=getattr(jax.nn, config.activation)),
+        # activation=getattr(jax.nn, config.activation)
+        ),
       )
 
   if predict_cumulants:
     # takes structured farm input
     phi_net = build_msf_phi_net(config, usfa_head.cumulants_per_module)
     aux_tasks.append(phi_net)
+
+  def add_position_embed(memory_out):
+    B, N, D = memory_out.shape
+    embedder = hk.Embed(
+        vocab_size=N,
+        embed_dim=config.embed_position)
+    embeddings = embedder(jnp.arange(N)) # N x D
+    concat = lambda a,b: jnp.concatenate((a, b), axis=-1)
+    concat = jax.vmap(concat, in_axes=(0, None))
+    # concat = jax.vmap(concat, in_axes=(0, None))
+    memory_out = concat(memory_out, embeddings)
+    return memory_out
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
@@ -587,6 +607,7 @@ def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs
     memory_prep_fn=make_farm_prep_fn(num_actions,
       task_input=config.farm_task_input),
     memory=farm_memory,
+    memory_proc_fn=add_position_embed if config.embed_position else lambda x:x,
     prediction_prep_fn=pred_prep_fn,
     prediction=usfa_head,
     evaluation_prep_fn=eval_prep_fn,
