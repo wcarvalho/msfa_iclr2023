@@ -361,20 +361,6 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
 
   farm_memory = build_farm(config)
 
-  def relational_layer(setting, num_heads=2):
-    if setting == "none":
-      return lambda x: x
-    elif setting == "shared":
-      return RelationalLayer(
-        num_heads=num_heads)
-    elif setting == "seperate":
-      return RelationalLayer(
-        num_heads=num_heads,
-        shared_parameters=False)
-    else:
-      raise NotImplementedError
-
-
   cumulants_per_module = state_dim//farm_memory.nmodules
   usfa_head = FarmUsfaHead(
       num_actions=num_actions,
@@ -383,9 +369,6 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
       policy_size=config.policy_size,
       variance=config.variance,
       nsamples=config.npolicies,
-      relational_net=relational_layer(
-        setting=config.relational_sf,
-        num_heads=config.relational_sf_heads),
       policy_layers=config.policy_layers,
       multihead=config.seperate_value_params, # seperate params per cumulants
       vmap_multihead=config.farm_vmap,
@@ -413,9 +396,6 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
         hidden_size=config.cumulant_hidden_size,
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
-        relational_net=relational_layer(
-          setting=config.relational_phi,
-          num_heads=config.relational_phi_heads),
         normalize_delta=config.normalize_delta and getattr(config, "contrast_module_coeff", 0) > 0,
         normalize_state=getattr(config, "contrast_time_coeff", 0) > 0,
         normalize_cumulants=config.normalize_cumulants)

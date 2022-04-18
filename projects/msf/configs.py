@@ -140,13 +140,13 @@ class ModularUSFAConfig(USFAConfig):
   phi_net: str = 'independent'
   phi_net_heads: int = 2
   phi_net_layers: int=1
-  cumulant_const: str='concat'  # whether to use delta between states as cumulant
+  cumulant_const: str='delta_concat'  # whether to use delta between states as cumulant
 
   relate_w_init: float=2.
   resid_w_init: float=2.
   relate_b_init: float=2.
   resid_mlp: bool=True
-  relate_residual: str="gru"
+  relate_residual: str="sigtanh"
   res_relu_gate: bool=True
   layernorm_rel: bool=False
 
