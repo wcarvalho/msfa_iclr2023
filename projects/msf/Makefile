@@ -1,5 +1,5 @@
 agent?=usfa_farm_model
-cuda?=3
+cuda?=2,3
 folder?='results/msf/final'
 wandb?=True
 custom_loggers?=True

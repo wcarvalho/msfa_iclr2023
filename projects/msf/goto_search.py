@@ -14,6 +14,7 @@ Comand I run:
     --num_gpus 1
 """
 
+
 from absl import app
 from absl import flags
 from pathlib import Path
@@ -29,6 +30,7 @@ import time
 from pprint import pprint
 from utils import gen_log_dir
 import os
+import importlib
 
 from projects.msf.goto_distributed import build_program
 
@@ -36,112 +38,23 @@ flags.DEFINE_string('folder', 'set', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
 flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_string('search', 'baselines', 'which search to use.')
+flags.DEFINE_string('spaces', 'brain_search', 'which search to use.')
 flags.DEFINE_float('num_gpus', 1, 'number of gpus per job. accepts fractions.')
 
 FLAGS = flags.FLAGS
 
 def main(_):
   mp.set_start_method('spawn')
-  experiment=None
   num_cpus = 3
   num_gpus = FLAGS.num_gpus
   DEFAULT_ENV_SETTING = 'large_respawn'
   DEFAULT_NUM_ACTORS = 4
   name_kwargs=[]
 
-  search = FLAGS.search
-  if search == 'agent':
-    space = {
-        "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search([FLAGS.agent]),
-        "reward_coeff": tune.grid_search([1e-4]),
-        "out_layers" : tune.grid_search([0]),
-    }
-    experiment='baselines'
-    name_kwargs=[]
-  elif search == 'test':
-    space = {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(
-          ['usfa', 'r2d1']),
-        "setting": tune.grid_search(['large_respawn']),
-        "max_number_of_steps" : tune.grid_search([2_000_000]),
-    }
-    experiment='baselines'
-    name_kwargs=[]
-  elif search == 'baselines':
-    space = {
-        "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(
-          ['usfa',
-          'r2d1']),
-        "setting": tune.grid_search(['large_respawn']),
-    }
-    experiment='baselines'
-    name_kwargs=[]
-  elif search == 'baselines_phi':
-    space = {
-        "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(
-          ['usfa_lstm', 'usfa_farmflat']),
-        "setting": tune.grid_search(['large_respawn']),
-    }
-    experiment='baselines'
-    name_kwargs=[]
-  elif search == 'baselines_noise':
-    space = {
-        "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(
-          [
-          'r2d1_noise_eval',
-          'r2d1_no_task'
-          ]),
-        "setting": tune.grid_search(['large_respawn']),
-    }
-    experiment='baselines'
-    name_kwargs=[]
-  elif search == 'msf':
-    shared = {
-        "agent": tune.grid_search(['msf']),
-        "seed": tune.grid_search([1,2]),
-        # "sf_net" : tune.grid_search(['relational']),
-        # "resid_mlp" : tune.grid_search([False]),
-        # "sf_net_heads" : tune.grid_search([2]),
-        # "sf_net_attn_size" : tune.grid_search([256]),
-        # "position_hidden" : tune.grid_search([False]),
-        # "max_number_of_steps" : tune.grid_search([4_000_000]),
-        # "seperate_cumulant_params" : tune.grid_search([False]),
-        "farm_task_input" : tune.grid_search([False]),
-        # "phi_net" : tune.grid_search(['independent']),
-        "cumulant_hidden_size" : tune.grid_search([256]),
-        "cumulant_layers" : tune.grid_search([1, 2]),
-      }
-    space = [
-      {
-        **shared,
-        # "q_aux_anneal" : tune.grid_search([100_000]),
-        # "q_aux_end_val" : tune.grid_search([1e-2, 1e-3]),
-        # "value_coeff" : tune.grid_search([10.0]),
-      },
-      # {
-      #   **shared,
-      #   "relate_residual" : tune.grid_search(['gru', 'concat']),
-      # },
-      # {
-      #   **shared,
-      #   "cumulant_const" : tune.grid_search(['delta_concat']),
-      #   "contrast_time_coeff" : tune.grid_search([0.1]),
-      #   "contrast_module_coeff" : tune.grid_search([0.1]),
-      # },
-      ]
-
-
-  else:
-    raise NotImplementedError(search)
+  space = importlib.import_module(f'projects.msf.{FLAGS.spaces}').get(FLAGS.search)
 
   # root_path is needed to tell program absolute path
   # this is used for BabyAI
-
   root_path = FLAGS.root if FLAGS.root else str(Path().absolute())
   folder=FLAGS.folder if FLAGS.folder else "results/msf/refactor"
   use_date = FLAGS.date
@@ -169,7 +82,6 @@ def main(_):
     log_path_config=dict(
       agent=agent,
       setting=setting,
-      **({'exp': experiment} if experiment else {}),
       **config
       )
     log_dir, config_path_str = gen_log_dir(
