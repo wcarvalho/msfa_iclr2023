@@ -75,10 +75,10 @@ class MultiHeadAttention(hk.Module):
 
 class GruGate(hk.Module):
   """docstring for GruGate"""
-  def __init__(self, hidden_size, b_init, w_init):
+  def __init__(self, hidden_size, b_init=None, w_init=None):
     super(GruGate, self).__init__()
-    self.b_init = b_init
-    self.w_init = w_init
+    self.b_init = b_init or jnp.zeros
+    self.w_init = w_init or hk.initializers.VarianceScaling()
     self.hidden_size = hidden_size
 
   def __call__(self, queries, values):
