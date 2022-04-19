@@ -62,6 +62,7 @@ class FarmCumulants(AuxilliaryTask):
   def __init__(self,
     module_cumulants=0,
     hidden_size=0,
+    layers=1,
     aggregation='sum',
     activation='none',
     construction='timestep',
@@ -82,7 +83,7 @@ class FarmCumulants(AuxilliaryTask):
     super(FarmCumulants, self).__init__(
       unroll_only=True, timeseries=True)
     if hidden_size:
-      layers = [hidden_size, module_cumulants]
+      layers = [hidden_size]*layers + [module_cumulants]
     else:
       layers = [module_cumulants]
 

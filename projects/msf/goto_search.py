@@ -111,15 +111,17 @@ def main(_):
         # "position_hidden" : tune.grid_search([False]),
         # "max_number_of_steps" : tune.grid_search([4_000_000]),
         # "seperate_cumulant_params" : tune.grid_search([False]),
-        # "seperate_model_params" : tune.grid_search([True]),
-        # "seperate_value_params" : tune.grid_search([False]),
+        "farm_task_input" : tune.grid_search([False]),
+        # "phi_net" : tune.grid_search(['independent']),
+        "cumulant_hidden_size" : tune.grid_search([256]),
+        "cumulant_layers" : tune.grid_search([1, 2]),
       }
     space = [
       {
         **shared,
-        "q_aux_anneal" : tune.grid_search([100_000]),
-        "q_aux_end_val" : tune.grid_search([1e-2, 1e-3]),
-        "value_coeff" : tune.grid_search([10.0]),
+        # "q_aux_anneal" : tune.grid_search([100_000]),
+        # "q_aux_end_val" : tune.grid_search([1e-2, 1e-3]),
+        # "value_coeff" : tune.grid_search([10.0]),
       },
       # {
       #   **shared,

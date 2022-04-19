@@ -225,7 +225,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False, **ne
   if predict_cumulants:
     aux_tasks.append(
       CumulantsFromMemoryAuxTask(
-        [config.cumulant_hidden_size, state_dim],
+        [config.cumulant_hidden_size]*config.cumulant_layers + [state_dim],
         normalize=config.normalize_cumulants,
         activation=config.cumulant_act,
         construction=config.cumulant_const))
@@ -311,6 +311,7 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
           activation=config.cumulant_act,
           module_cumulants=cumulants_per_module,
           hidden_size=config.cumulant_hidden_size,
+          layers=config.cumulant_layers,
           seperate_params=config.seperate_cumulant_params,
           construction=config.cumulant_const,
           normalize_delta=config.normalize_delta,
@@ -323,6 +324,7 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
               activation=config.cumulant_act,
           module_cumulants=usfa_head.out_dim,
           hidden_size=config.cumulant_hidden_size,
+          layers=config.cumulant_layers,
           aggregation='concat',
           normalize_cumulants=config.normalize_cumulants,
           normalize_delta=config.normalize_delta,
@@ -394,6 +396,7 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
         activation=config.cumulant_act,
         module_cumulants=cumulants_per_module,
         hidden_size=config.cumulant_hidden_size,
+        layers=config.cumulant_layers,
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
         normalize_delta=config.normalize_delta and getattr(config, "contrast_module_coeff", 0) > 0,
@@ -504,6 +507,7 @@ def build_msf_phi_net(config, module_cumulants):
           activation=config.cumulant_act,
           module_cumulants=module_cumulants*config.nmodules,
           hidden_size=config.cumulant_hidden_size,
+          layers=config.cumulant_layers,
           aggregation='concat',
           normalize_cumulants=config.normalize_cumulants,
           normalize_delta=config.normalize_delta,
@@ -531,6 +535,7 @@ def build_msf_phi_net(config, module_cumulants):
         activation=config.cumulant_act,
         module_cumulants=module_cumulants,
         hidden_size=config.cumulant_hidden_size,
+        layers=config.cumulant_layers,
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
         relational_net=relational_net,

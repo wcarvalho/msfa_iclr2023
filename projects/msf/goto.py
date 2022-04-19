@@ -62,6 +62,7 @@ def main(_):
     config.npolicies = 2
     config.variance = 0.1
     config.batch_size = 8
+    config.cumulant_layers = 2
     config.sf_net_heads = 2
     config.relate_b_init = 4.0
     config.res_relu_gate = False
