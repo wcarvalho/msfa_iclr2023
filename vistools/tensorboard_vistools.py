@@ -37,9 +37,12 @@ def save__init__args(values, underscore=False, overwrite=False, subclass_only=Fa
       if arg in values and (not hasattr(self, attr) or overwrite):
           setattr(self, attr, values[arg])
 
-def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
+def expt_plot(ax, all_x, all_y, all_steps, label, xmax=None, **kwargs):
   runs = []
-  for x, y in zip(all_x, all_y):
+  for x, y, steps in zip(all_x, all_y, all_steps):
+
+    # import ipdb; ipdb.set_trace()
+    # x_ = x[steps]
     if len(x) > len(y):
       x = x[:len(y)]
     elif len(y) > len(x):
@@ -49,6 +52,8 @@ def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
       keep = x < xmax
       y = y[keep]
       x = x[keep]
+
+
     # import ipdb; ipdb.set_trace()
     df = pd.DataFrame.from_dict(dict(x=x,y=y))
     runs.append(expt.Run(path='', df=df))
@@ -104,6 +109,7 @@ class VisDataObject:
 
     def plot_mean_stderr(self, ax, key, datapoint=0, xlabel_key=None, err_style='fill', settings_idx=-1, label_settings=[],**kwargs):
         df, all_data = self.tensorboard_data[key]
+        _, xdata_steps = self.tensorboard_data[f"{key}_steps"]
         settings = df['experiment_settings'].tolist()
 
         if settings_idx > -1:
@@ -114,14 +120,15 @@ class VisDataObject:
         for idx, setting in enumerate(settings):
             # this is a list of all the lines
             y = all_data[setting]
+            steps = xdata_steps[setting]
             if xlabel_key is None:
                 x = [np.arange(len(_y)) for _y in y]
             else:
                 # use key as x-axis
                 _, xdata = self.tensorboard_data[xlabel_key]
+                
                 # all same, so pick 1st
                 x = xdata[setting]
-
 
             # -----------------------
             # compute plot/fill kwargs
@@ -136,7 +143,7 @@ class VisDataObject:
                 idx=settings_idx,
                 )
 
-            ax = expt_plot(ax=ax, all_x=x, all_y=y, err_style=err_style, **kwargs, **plot_kwargs)
+            ax = expt_plot(ax=ax, all_x=x, all_y=y, all_steps=steps, err_style=err_style, **kwargs, **plot_kwargs)
 
     def plot_individual_lines(self, ax, key, datapoint=0, xlabel_key=None, settings_idx=-1, label_settings=[], **kwargs):
         df, all_data = self.tensorboard_data[key]

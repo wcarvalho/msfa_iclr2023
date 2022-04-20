@@ -36,7 +36,7 @@ class R2D1Config(configs.R2D1Config):
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 6.0 # 0.0=single process
-  min_replay_size: int = 100
+  min_replay_size: int = 10_000
   max_replay_size: int = 100_000
   batch_size: int = 32
   store_lstm_state: bool = True
@@ -54,6 +54,7 @@ class R2D1Config(configs.R2D1Config):
   out_hidden_size = 128
   eval_network: bool = True
   vision_torso: str = 'atari'
+  r2d1_loss: str = 'n_step_q_learning'
 
 @dataclasses.dataclass
 class NoiseConfig(R2D1Config):
@@ -70,8 +71,8 @@ class USFAConfig(R2D1Config):
   policy_size = 32
   policy_layers = 0
   batch_size: int = 32
-  cumulant_hidden_size: int=128 # hidden size for cumulant pred
-  cumulant_layers: int=1 # hidden size for cumulant pred
+  cumulant_hidden_size: int=256 # hidden size for cumulant pred
+  cumulant_layers: int=2 # hidden size for cumulant pred
   embed_task: bool = False  # whether to embed task
   normalize_task: bool = False # whether to normalize task embedding
   eval_network: bool = True
@@ -80,7 +81,7 @@ class USFAConfig(R2D1Config):
   state_hidden_size: int = 0
   multihead: bool = False
   concat_w: bool = False
-  sf_loss: str = 'n_step_q_learning_regular' # whether to use q_lambda or n-step q-learning for objective
+  sf_loss: str = 'n_step_q_learning' # whether to use q_lambda or n-step q-learning for objective
   lambda_: float = .9 # lambda for q-lambda
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
 
@@ -89,7 +90,7 @@ class QAuxConfig:
   """Extra configuration options when doing QAux loss over SF."""
   loss_coeff: float = 1.0
   q_aux_anneal: int = 50_000
-  q_aux_end_val: float = 1e-3
+  q_aux_end_val: float = 0.0
 
 
 @dataclasses.dataclass
@@ -118,7 +119,7 @@ class FarmConfig:
   projection_dim: int = 16
   farm_vmap: str = "lift"  # vmap over different parameter sets 
   image_attn: bool = True # whether to use feature attention on image
-  farm_task_input: bool = True # give task as input to FARM
+  farm_task_input: bool = False # give task as input to FARM
   farm_policy_task_input: bool = False # give task as input to FARM policy
 
 

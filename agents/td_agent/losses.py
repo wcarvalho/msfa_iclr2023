@@ -200,6 +200,9 @@ def r2d2_loss_kwargs(config):
 
 @dataclasses.dataclass
 class R2D2Learning(RecurrentTDLearning):
+
+  loss: str = 'transformed_n_step_q_learning'
+
   def error(self, data, online_preds, online_state, target_preds, target_state, **kwargs):
     """R2D2 learning
     """
@@ -213,11 +216,18 @@ class R2D2Learning(RecurrentTDLearning):
     rewards = rewards.astype(online_preds.q.dtype)
 
     # Get N-step transformed TD error and loss.
+    if self.loss == "transformed_n_step_q_learning":
+      tx_pair = rlax.IDENTITY_PAIR
+    elif self.loss == "n_step_q_learning":
+      tx_pair = rlax.SIGNED_HYPERBOLIC_PAIR
+    else:
+      raise NotImplementedError(self.loss)
+
     batch_td_error_fn = jax.vmap(
         functools.partial(
             rlax.transformed_n_step_q_learning,
             n=self.bootstrap_n,
-            tx_pair=self.tx_pair),
+            tx_pair=tx_pair),
         in_axes=1,
         out_axes=1)
     # TODO(b/183945808): when this bug is fixed, truncations of actions,
@@ -269,7 +279,7 @@ class USFALearning(RecurrentTDLearning):
   lambda_: float  = .9
 
   def error(self, data, online_preds, online_state, target_preds, target_state, **kwargs):
-    assert self.loss in ['n_step_q_learning', 'q_lambda', 'q_lambda_regular', 'n_step_q_learning_regular'], "loss not recognized"
+    assert self.loss in ['transformed_n_step_q_learning', 'transformed_q_lambda', 'q_lambda', 'n_step_q_learning'], "loss not recognized"
     # ======================================================
     # Loss for SF
     # ======================================================
@@ -290,7 +300,7 @@ class USFALearning(RecurrentTDLearning):
       # copies selector_actions, online_actions, vmaps over cumulant dim
 
       # go over cumulant axis
-      if self.loss == "n_step_q_learning":
+      if self.loss == "transformed_n_step_q_learning":
         td_error_fn = jax.vmap(
           functools.partial(
               rlax.transformed_n_step_q_learning,
@@ -306,7 +316,7 @@ class USFALearning(RecurrentTDLearning):
           cumulants[:-1],       # [T, C]    (vmap 1) 
           discounts[:-1])       # [T]       (vmap None)
 
-      elif self.loss == "n_step_q_learning_regular":
+      elif self.loss == "n_step_q_learning":
         td_error_fn = jax.vmap(
           functools.partial(
               rlax.transformed_n_step_q_learning,
@@ -321,7 +331,7 @@ class USFALearning(RecurrentTDLearning):
           cumulants[:-1],       # [T, C]    (vmap 1) 
           discounts[:-1])       # [T]       (vmap None)
 
-      elif self.loss == "q_lambda":
+      elif self.loss == "transformed_q_lambda":
         td_error_fn = jax.vmap(
           functools.partial(
               rlax.transformed_q_lambda,
@@ -336,7 +346,7 @@ class USFALearning(RecurrentTDLearning):
           discounts[:-1],       # [T]       (vmap None)
           target_sf[1:],        # [T, A, C] (vmap 2)
         )
-      elif self.loss == "q_lambda_regular":
+      elif self.loss == "q_lambda":
         td_error_fn = jax.vmap(
           functools.partial(
               rlax.q_lambda,

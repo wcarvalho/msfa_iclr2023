@@ -563,6 +563,7 @@ def reload_event_accumulator(log_event, key_filter=None, val_fn=None):
 
     keys = log_event.Tags()['tensors']
 
+
     if key_filter:
         keys = filter(key_filter, keys)
 
@@ -577,6 +578,7 @@ def reload_event_accumulator(log_event, key_filter=None, val_fn=None):
         # store {setting: [values]}
         # ======================================================
         key2val[key] = np.array([val_fn(v) for v in vals])
+        key2val[f"{key}_steps"] = np.array(step_nums)
 
     return key2val
 

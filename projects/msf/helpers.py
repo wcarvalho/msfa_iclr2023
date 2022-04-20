@@ -3,6 +3,7 @@ import functools
 
 from acme import wrappers
 import dm_env
+import rlax
 
 from envs.acme.goto_avoid import GoToAvoid
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper
@@ -160,7 +161,7 @@ def make_environment(evaluation: bool = False,
 
   return wrappers.wrap_all(env, wrapper_list)
 
-def q_aux_loss(config):
+def q_aux_sf_loss(config):
   """Create auxilliary Q-learning loss for SF
   """
   if config.q_aux == "single":
@@ -170,12 +171,19 @@ def q_aux_loss(config):
   else:
     raise RuntimeError(config.q_aux)
 
+  if config.sf_loss == 'n_step_q_learning':
+    tx_pair = rlax.IDENTITY_PAIR
+  elif config.sf_loss == 'transformed_n_step_q_learning':
+    tx_pair = rlax.SIGNED_HYPERBOLIC_PAIR
+  else:
+    raise NotImplementedError(config.sf_loss)
+
   return loss(
           coeff=config.value_coeff,
           discount=config.discount,
           sched_end=config.q_aux_anneal,
           sched_end_val=config.q_aux_end_val,
-          tx_pair=config.tx_pair)
+          tx_pair=tx_pair)
 
 def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, learn_model=False):
   config = data_utils.merge_configs(
@@ -186,9 +194,6 @@ def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, lear
       configs.FarmModelConfig() if learn_model else configs.FarmConfig(),
     ],
     dict_configs=default_config)
-
-  # if config.cumulant_act == "sigmoid" and config.reward_loss == "l2":
-  #   config.reward_loss = config.reward_loss*10.0
 
   if net == "flat":
     NetworkCls =  nets.usfa_farmflat_model
@@ -207,7 +212,7 @@ def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, lear
 
   LossFn = td_agent.USFALearning
 
-  aux_tasks=[q_aux_loss(config)]
+  aux_tasks=[q_aux_sf_loss(config)]
 
   if predict_cumulants:
     aux_tasks.append(
@@ -251,6 +256,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
   default_config = dict()
   default_config.update(config_kwargs or {})
   agent = agent.lower()
+
   if agent == "r2d1":
   # Recurrent DQN/UVFA
     config = data_utils.merge_configs(
@@ -262,6 +268,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     NetKwargs=dict(config=config, env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
@@ -276,6 +283,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     NetKwargs=dict(config=config, env_spec=env_spec, task_input=False)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
@@ -290,6 +298,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     NetKwargs=dict(config=config, env_spec=env_spec, eval_noise=True)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
@@ -304,6 +313,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     NetKwargs=dict(config=config,env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
 
     loss_label = 'r2d1'
     eval_network = config.eval_network
@@ -360,7 +370,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
         stop_grad=True,
       ),
       aux_tasks=[
-        q_aux_loss(config),
+        q_aux_sf_loss(config),
         cumulants.CumulantRewardLoss(
           shorten_data_for_cumulant=True,
           coeff=config.reward_coeff,
