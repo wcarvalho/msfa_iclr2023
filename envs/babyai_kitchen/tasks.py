@@ -30,54 +30,64 @@ def get_matching_objects(env, object_types=None, matchfn=None):
 
 
 class KitchenTask(Instr):
-    """docstring for KitchenTasks"""
-    def __init__(self, env, argument_options=None):
-        super(KitchenTask, self).__init__()
-        self.argument_options = argument_options or dict(x=[])
-        self._task_objects = []
-        self.env = env
-        self.instruction = self.generate()
+  """docstring for KitchenTasks"""
+  def __init__(self, env, argument_options=None):
+      super(KitchenTask, self).__init__()
+      self.argument_options = argument_options or dict(x=[])
+      self._task_objects = []
+      self.env = env
+      self.finished = False
+      self.instruction = self.generate()
 
-    def generate(self):
-        raise NotImplemented
+  def generate(self):
+      raise NotImplemented
 
-    @property
-    def task_objects(self):
-        return self._task_objects
+  @property
+  def task_objects(self):
+      return self._task_objects
 
-    def surface(self, *args, **kwargs):
-        return self.instruction
+  def surface(self, *args, **kwargs):
+      return self.instruction
 
-    @property
-    def num_navs(self): return 1
+  def terminate(self, *args, **kwargs):
+      self.finished = True
 
-    def __repr__(self):
-        string = self.instruction
-        if self.task_objects:
-            for object in self.task_objects:
-                string += "\n" + str(object)
+  def get_reward_done(self):
+    if self.finished:
+      return False, False
+    else:
+      return self.check_status()
 
-        return string
+  @property
+  def num_navs(self): return 1
 
-    def check_status(self):
-        return False, False
+  def __repr__(self):
+      string = self.instruction
+      if self.task_objects:
+          for object in self.task_objects:
+              string += "\n" + str(object)
 
-    def check_actions(self, actions):
-        for action in self.task_actions():
-            if action == 'pickup':
-                assert 'pickup_contents' in actions or 'pickup_container' in actions
-            elif action == 'pickup_and':
-                assert 'pickup_contents' in actions and 'pickup_container' in actions
-            else:
-                assert action in actions
+      return string
 
-    @staticmethod
-    def task_actions():
-        return [
-            'toggle',
-            'pickup_and',
-            'place'
-            ]
+  def check_status(self):
+      return False, False
+
+  def check_actions(self, actions):
+      for action in self.task_actions():
+          if action == 'pickup':
+              assert 'pickup_contents' in actions or 'pickup_container' in actions
+          elif action == 'pickup_and':
+              assert 'pickup_contents' in actions and 'pickup_container' in actions
+          else:
+              assert action in actions
+
+  @staticmethod
+  def task_actions():
+      return [
+          'toggle',
+          'pickup_and',
+          'place'
+          ]
 
 # ======================================================
 # Length = 1

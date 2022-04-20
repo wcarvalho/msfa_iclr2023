@@ -40,6 +40,7 @@ class KitchenLevel(RoomGridLevel):
     rootdir='.',
     distant_vision=False,
     agent_view_size=7,
+    extra_timesteps=1,
     seed=None,
     verbosity=0,
     **kwargs,
@@ -62,6 +63,7 @@ class KitchenLevel(RoomGridLevel):
 
     self.verbosity = verbosity
     self.locked_room = None
+    self.extra_timesteps = extra_timesteps
 
     assert room_size >= 5, "otherwise can never place objects"
     agent_view_size = min(agent_view_size, room_size)
@@ -514,11 +516,15 @@ class KitchenLevel(RoomGridLevel):
         reward = float(reward)
 
         if task_done:
+          self.task.terminate()
+
+        if task_done:
             info['success'] = True
             self.timesteps_complete += 1
 
+        import ipdb; ipdb.set_trace()
         # in order to complete final states in observation stream
-        if self.timesteps_complete == 2:
+        if self.timesteps_complete > self.extra_timesteps:
           done = True
 
     # if past step count, done
