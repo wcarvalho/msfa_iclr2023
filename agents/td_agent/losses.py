@@ -217,9 +217,9 @@ class R2D2Learning(RecurrentTDLearning):
 
     # Get N-step transformed TD error and loss.
     if self.loss == "transformed_n_step_q_learning":
-      tx_pair = rlax.IDENTITY_PAIR
-    elif self.loss == "n_step_q_learning":
       tx_pair = rlax.SIGNED_HYPERBOLIC_PAIR
+    elif self.loss == "n_step_q_learning":
+      tx_pair = rlax.IDENTITY_PAIR
     else:
       raise NotImplementedError(self.loss)
 
