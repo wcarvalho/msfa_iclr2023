@@ -1,3 +1,9 @@
+_*
+*sublime*
+*wandb*
+*results*
+*mprof*
+
 *.DS_Store 
 
 # Byte-compiled / optimized / DLL files

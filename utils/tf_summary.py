@@ -38,6 +38,7 @@ class TFSummaryLogger(base.Logger):
       self,
       logdir: str,
       label: str = 'Logs',
+      flush_period: int=500,
       steps_key: Optional[str] = None
   ):
     """Initializes the logger.
@@ -50,6 +51,7 @@ class TFSummaryLogger(base.Logger):
     self._time = time.time()
     self.label = label
     self._iter = 0
+    self.flush_period = flush_period
     self.summary = tf.summary.create_file_writer(logdir)
     self._steps_key = steps_key
 
@@ -67,9 +69,12 @@ class TFSummaryLogger(base.Logger):
       # pytype: disable=unsupported-operands
       for key in values.keys() - [self._steps_key]:
         # pytype: enable=unsupported-operands
-        tf.summary.scalar(
-            f'{self.label}/{_format_key(key)}', data=values[key], step=step)
+        label = f'{self.label}/{_format_key(key)}'
+        tf.summary.scalar(label, data=values[key], step=step)
     self._iter += 1
+
+    if self._iter % self.flush_period == 0:
+      tf.summary.flush(self.summary)
 
   def close(self):
     self.summary.close()

@@ -7,7 +7,7 @@ import rlax
 
 
 @dataclasses.dataclass
-class R2D1Config:
+class R2D1Config(r2d2_config.R2D2Config):
   """Configuration options for R2D2 agent."""
   discount: float = 0.997
   target_update_period: int = 2500
@@ -29,6 +29,7 @@ class R2D1Config:
 
   # How many gradient updates to perform per learner step.
   num_sgd_steps_per_step: int = 1
+  clear_sgd_cache_period: int = 0
 
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1

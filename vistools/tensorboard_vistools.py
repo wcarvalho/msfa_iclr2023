@@ -16,26 +16,26 @@ import warnings
 warnings.filterwarnings("ignore")
 
 def save__init__args(values, underscore=False, overwrite=False, subclass_only=False):
-    """
-    Use in `__init__()` only; assign all args/kwargs to instance attributes.
-    To maintain precedence of args provided to subclasses, call this in the
-    subclass before `super().__init__()` if `save__init__args()` also appears
-    in base class, or use `overwrite=True`.  With `subclass_only==True`, only
-    args/kwargs listed in current subclass apply.
-    """
-    prefix = "_" if underscore else ""
-    self = values['self']
-    args = list()
-    Classes = type(self).mro()
-    if subclass_only:
-        Classes = Classes[:1]
-    for Cls in Classes:  # class inheritances
-        if '__init__' in vars(Cls):
-            args += getfullargspec(Cls.__init__).args[1:]
-    for arg in args:
-        attr = prefix + arg
-        if arg in values and (not hasattr(self, attr) or overwrite):
-            setattr(self, attr, values[arg])
+  """
+  Use in `__init__()` only; assign all args/kwargs to instance attributes.
+  To maintain precedence of args provided to subclasses, call this in the
+  subclass before `super().__init__()` if `save__init__args()` also appears
+  in base class, or use `overwrite=True`.  With `subclass_only==True`, only
+  args/kwargs listed in current subclass apply.
+  """
+  prefix = "_" if underscore else ""
+  self = values['self']
+  args = list()
+  Classes = type(self).mro()
+  if subclass_only:
+      Classes = Classes[:1]
+  for Cls in Classes:  # class inheritances
+      if '__init__' in vars(Cls):
+          args += getfullargspec(Cls.__init__).args[1:]
+  for arg in args:
+      attr = prefix + arg
+      if arg in values and (not hasattr(self, attr) or overwrite):
+          setattr(self, attr, values[arg])
 
 def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
   runs = []
@@ -49,7 +49,7 @@ def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
       keep = x < xmax
       y = y[keep]
       x = x[keep]
-
+    # import ipdb; ipdb.set_trace()
     df = pd.DataFrame.from_dict(dict(x=x,y=y))
     runs.append(expt.Run(path='', df=df))
 
@@ -59,6 +59,19 @@ def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
 
   return h.plot(ax=ax, x='x', y='y', **kwargs)
 
+def expand_filters(filters, df):
+  _filters = []
+  for f in filters:
+    settings = f.pop('settings')
+    for k, v in settings.items():
+        if v is None:
+          settings[k] = list(df[k].unique())
+        else:
+          settings[k] = [v]
+    settings = list(ParameterGrid(settings))
+    for setting in settings:
+        _filters.append(dict(settings=setting, **f))
+  return _filters
 
 class VisDataObject:
     """docstring for VisDataObject"""
@@ -102,7 +115,7 @@ class VisDataObject:
             # this is a list of all the lines
             y = all_data[setting]
             if xlabel_key is None:
-                raise NotImplementedError
+                x = [np.arange(len(_y)) for _y in y]
             else:
                 # use key as x-axis
                 _, xdata = self.tensorboard_data[xlabel_key]
@@ -322,12 +335,17 @@ class VisDataObject:
     @staticmethod
     def defaultcolororder():
         return [
-            'blue',
-            'red',
+            'dark_blue',
+            'dark_red',
             'black',
             'orange',
-            'purple',
-            'green',
+            'dark_purple',
+            'dark_green',
+            'light_red',
+            'light_blue',
+            'light_purple',
+            'light_green',
+            'light_orange',
             'grey',
             'dark_grey',
             'dark_green',
@@ -335,11 +353,6 @@ class VisDataObject:
             'dark_blue',
             'dark_red',
             'dark_orange',
-            'light_green',
-            'light_blue',
-            'light_purple',
-            'light_red',
-            'light_orange',
 
         ]
 
@@ -424,6 +437,8 @@ class Vistool(object):
             data_filters = [dict(settings=s) for s in settings]
         else:
             data_filters=[f if 'settings' in f else dict(settings=f) for f in data_filters]
+            data_filters = expand_filters(filters=data_filters, df=self.tensorboard_data.settings_df)
+
         # ======================================================
         # get 1 object with data per available data filter
         # ======================================================
@@ -711,6 +726,7 @@ def get_vis_objects(tensorboard_data, data_filters, common_settings, filter_key,
                 tensorboard_data=match[0],
                 **data_filter,
                 )
+
             vis_objects.append(vis_object)
 
     return vis_objects
@@ -728,6 +744,13 @@ def display_metadata(vis_objects, settings=[], stats=[], data_key=None):
         settings = list(settings.keys())
 
     settings_df = pd.concat([o.settings_df for o in vis_objects])
+    columns = settings_df.columns
+    columns = [c for c in columns if not c in ['agent', 'path', 'fullpath', 'experiment_settings', 'experiment_settings_seed']]
+    vals = {c: set([u for u in settings_df[c].unique() if u==u and u is not None]) - set([None, np.nan]) for c in columns}
+    unique = {c:v for c,v in vals.items() if len(v) > 1}
+
+    settings = list(set(settings).union(set(unique.keys())))
+
     try:
       settings_df = settings_df[settings]
     except Exception as e:

@@ -6,18 +6,33 @@ import jax.numpy as jnp
 import haiku as hk
 from agents.td_agent import losses
 from utils import data as data_utils
-
+import optax
 from losses import nstep
+from losses.utils import episode_mean
 
 def compute_q(sf, w):
   return jnp.sum(sf*w, axis=-1)
 
 class QLearningAuxLoss(nstep.QLearning):
-  def __init__(self, coeff, *args, **kwargs):
+  def __init__(self,
+    coeff,
+    *args,
+    sched_end=None,
+    sched_start_val=1.,
+    sched_end_val=1e-4,
+    **kwargs):
     super().__init__(*args, **kwargs)
     self.coeff = coeff
+    self.sched_end = sched_end
+    self.sched_start_val = sched_start_val
+    self.sched_end_val = sched_end_val
+    if sched_end:
+      self.schedule = optax.linear_schedule(
+                  init_value=sched_start_val,
+                  end_value=sched_end_val,
+                  transition_steps=sched_end)
 
-  def __call__(self, data, online_preds, target_preds, **kwargs):
+  def __call__(self, data, online_preds, target_preds, steps, **kwargs):
 
     w = online_preds.w  # [T, B, C]
     online_sf = online_preds.sf[:,:,0]  # [T, B, A, C]
@@ -29,30 +44,41 @@ class QLearningAuxLoss(nstep.QLearning):
     target_q = compute_q_jax(target_sf, w)
 
     batch_td_error = super().__call__(
-      online_q=online_q,  # [T, B, N, A]
-      target_q=target_q,  # [T, B, N, A]
+      online_q=online_q,  # [T, B, A]
+      target_q=target_q,  # [T, B, A]
       discount=data.discount,  # [T, B]
       rewards=data.reward,  # [T, B]
       actions=data.action)  # [T, B]
 
-    batch_loss = 0.5 * jnp.square(batch_td_error).mean()
+    # output is [B]
+    batch_loss = 0.5 * jnp.square(batch_td_error)
+    batch_loss = episode_mean(
+      x=batch_loss,
+      done=data.discount[:-1])
+    batch_loss = batch_loss.mean()
+
+    coeff = self.coeff
+    if self.sched_end is not None and self.sched_end > 0:
+      coeff = self.schedule(steps)*coeff
+
+    loss = coeff*batch_loss
 
     metrics = {
-      'loss_qlearning_sf': batch_loss,
+      'loss_qlearning_sf_raw': batch_loss,
+      'loss_qlearning_sf': loss,
+      'z.q_sf_coeff': coeff,
       'z.q_sf_mean': online_q.mean(),
       'z.q_sf_var': online_q.var(),
       'z.q_sf_max': online_q.max(),
       'z.q_sf_min': online_q.min()}
 
-    return self.coeff*batch_loss, metrics
+
+    return loss, metrics
 
 
-class QLearningEnsembleAuxLoss(nstep.QLearning):
-  def __init__(self, coeff, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.coeff = coeff
+class QLearningEnsembleAuxLoss(QLearningAuxLoss):
 
-  def __call__(self, data, online_preds, target_preds, **kwargs):
+  def __call__(self, data, online_preds, target_preds, steps, **kwargs):
 
     # [T, B, C]
     w = online_preds.w
@@ -67,7 +93,7 @@ class QLearningEnsembleAuxLoss(nstep.QLearning):
 
     # VMAP over dimension = N
     q_learning = jax.vmap(
-      super().__call__,
+      super(QLearningAuxLoss, self).__call__,
       in_axes=(2, 2, None, None, None))
 
     batch_td_error = q_learning(
@@ -77,7 +103,12 @@ class QLearningEnsembleAuxLoss(nstep.QLearning):
       data.reward,  # [T, B]
       data.action)  # [T, B]
 
-    batch_loss = 0.5 * jnp.square(batch_td_error).mean()
+    # output is [B]
+    batch_loss = 0.5 * jnp.square(batch_td_error).mean(2)
+    batch_loss = episode_mean(
+      x=batch_loss,
+      done=data.discount[:-1])
+    batch_loss = batch_loss.mean()
 
     metrics = {
       'loss_qlearning_sf': batch_loss,
@@ -86,5 +117,5 @@ class QLearningEnsembleAuxLoss(nstep.QLearning):
       'z.q_sf_max': online_q.max(),
       'z.q_sf_min': online_q.min()}
 
-    return self.coeff*batch_loss, metrics
-
+    loss = self.coeff*batch_loss
+    return loss, metrics

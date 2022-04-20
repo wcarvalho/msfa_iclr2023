@@ -2,7 +2,6 @@
 
 from agents.td_agent.agents import DistributedTDAgent
 from agents.td_agent.agents import TDAgent
-from agents.td_agent.agents import evaluator_custom_env_loop
 from agents.td_agent.builder import TDBuilder
 from agents.td_agent.configs import R2D1Config, USFAConfig, USFARewardConfig
 from agents.td_agent.losses import R2D2Learning, r2d2_loss_kwargs

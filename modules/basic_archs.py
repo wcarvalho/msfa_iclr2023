@@ -19,6 +19,16 @@ class AuxilliaryTask(hk.Module):
 def overlapping(dict1, dict2):
   return set(dict1.keys()).intersection(dict2.keys())
 
+class AttrDict(dict):
+    def __getattr__(self, attr):
+      try:
+        return self[attr]
+      except Exception as e:
+        getattr(self, attr)
+
+    def __setattr__(self, attr, value):
+      self[attr] = value
+
 class BasicRecurrent(hk.Module):
   """docstring for BasicRecurrent"""
   def __init__(self,
@@ -33,6 +43,7 @@ class BasicRecurrent(hk.Module):
     memory_proc_fn : Callable=None,
     prediction_prep_fn : Callable=None,
     evaluation_prep_fn : Callable=None,
+    PredCls: NamedTuple=None,
     ):
     super(BasicRecurrent, self).__init__()
     self.vision = vision
@@ -50,7 +61,7 @@ class BasicRecurrent(hk.Module):
     if evaluation_prep_fn is None:
         evaluation_prep_fn = prediction_prep_fn
     self.evaluation_prep_fn = evaluation_prep_fn
-
+    self.PredCls = PredCls
 
     # -----------------------
     # auxilliary tasks
@@ -105,7 +116,7 @@ class BasicRecurrent(hk.Module):
     unroll = setting == "unroll"
     batchfn = hk.BatchApply if unroll else lambda x:x
 
-    all_preds = {}
+    all_preds = AttrDict()
     if self.inputs_prep_fn:
       inputs = self.inputs_prep_fn(inputs)
 
@@ -193,8 +204,12 @@ class BasicRecurrent(hk.Module):
         assert len(overlapping_keys) == 0, "replacing values?"
         all_preds.update(aux_pred)
 
-    Predictions = collections.namedtuple('Predictions', all_preds.keys())
-    all_preds = Predictions(**all_preds)
+    if self.PredCls is not None:
+      all_preds = self.PredCls(**all_preds)
+    else:
+      # ONLY use this during creation. Constantly creating namedtuples can cause a memory leak.
+      PredCls = collections.namedtuple('Predictions', all_preds.keys())
+      all_preds = PredCls(**all_preds)
 
     return all_preds, new_state
 

@@ -33,6 +33,7 @@ from acme.utils import counting
 from acme.utils import loggers
 import dm_env
 import haiku as hk
+import jax
 import rlax
 import reverb
 
@@ -43,41 +44,6 @@ from agents.td_agent.types import TDNetworkFns
 
 
 NetworkFactory = Callable[[specs.EnvironmentSpec], TDNetworkFns]
-
-def evaluator_custom_env_loop(
-  environment_factory: distributed_layout.EnvironmentFactory,
-  network_factory: distributed_layout.NetworkFactory,
-  builder: builders.GenericActorLearnerBuilder,
-  policy_factory: distributed_layout.PolicyFactory,
-  log_to_bigtable: bool = False,
-  EnvLoopCls = environment_loop.EnvironmentLoop,
-  logger_fn=None) -> types.EvaluatorFactory:
-  """Returns a default evaluator process."""
-  def evaluator(
-      random_key: networks_lib.PRNGKey,
-      variable_source: core.VariableSource,
-      counter: counting.Counter,
-  ):
-    """The evaluation process."""
-
-    # Create environment and evaluator networks
-    environment = environment_factory()
-    networks = network_factory(specs.make_environment_spec(environment))
-
-    actor = builder.make_actor(
-        random_key, policy_factory(networks), variable_source=variable_source)
-
-    # Create logger and counter.
-    counter = counting.Counter(counter, 'evaluator')
-    if logger_fn:
-      logger = logger_fn()
-    else:
-      logger = loggers.make_default_logger(
-        'evaluator', log_to_bigtable, steps_key='actor_steps')
-
-    # Create the run loop and return it.
-    return EnvLoopCls(environment, actor, counter, logger)
-  return evaluator
 
 
 
@@ -94,20 +60,19 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       num_actors: int,
       builder = builder.TDBuilder,
       behavior_policy_constructor=make_behavior_policy,
-      max_number_of_steps: Optional[int] = None,
-      logger_fn = None,
-      actor_logger_fn = None,
-      evaluator_logger_fn = None,
-      EnvLoopCls = environment_loop.EnvironmentLoop,
-      workdir: Optional[str] = '~/acme',
+      max_number_of_steps: Optional[int] = None, # DIFFERENT
+      logger_fn = None, # DIFFERENT
+      actor_logger_fn = None, # DIFFERENT
+      evaluator_logger_fn = None, # DIFFERENT
       device_prefetch: bool = False,
+      observers=None,
       log_to_bigtable: bool = True,
+      evaluator: bool = True,
       log_every: float = 10.0,
-      multithreading_colocate_learner_and_reverb=True,
+      multithreading_colocate_learner_and_reverb=False,
       **kwargs,
   ):
-    self.EnvLoopCls = EnvLoopCls
-
+    observers = observers or ()
     # -----------------------
     # logger fns
     # -----------------------
@@ -132,26 +97,29 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
     # -----------------------
     policy_network_factory = (
         lambda n: behavior_policy_constructor(n, config))
-    evaluator_policy_network_factory = (
-        lambda n: behavior_policy_constructor(n, config, True))
 
-
+    evaluator_factories = []
+    if evaluator:
+      evaluator_policy_network_factory = (
+          lambda n: behavior_policy_constructor(n, config, True))
+      eval_env_factory=lambda key: environment_factory(True)
+      evaluator_factories = [
+        distributed_layout.default_evaluator_factory(
+            environment_factory=eval_env_factory,
+            network_factory=network_factory,
+            policy_factory=evaluator_policy_network_factory,
+            observers=observers,
+            log_to_bigtable=log_to_bigtable,
+            logger_fn=evaluator_logger_fn)
+              ]
     super().__init__(
         seed=seed,
-        environment_factory=lambda: environment_factory(False),
+        environment_factory=lambda key: environment_factory(False),
         network_factory=network_factory,
         builder=td_builder,
         policy_network=policy_network_factory,
-        evaluator_factories=[
-            evaluator_custom_env_loop(
-                environment_factory=lambda: environment_factory(True),
-                network_factory=network_factory,
-                builder=td_builder,
-                policy_factory=evaluator_policy_network_factory,
-                EnvLoopCls=EnvLoopCls,
-                log_to_bigtable=log_to_bigtable,
-                logger_fn=evaluator_logger_fn)
-        ],
+        evaluator_factories=evaluator_factories,
+        observers=observers,
         num_actors=num_actors,
         max_number_of_steps=max_number_of_steps,
         environment_spec=environment_spec,
@@ -159,32 +127,9 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
         log_to_bigtable=log_to_bigtable,
         actor_logger_fn=actor_logger_fn,
         prefetch_size=config.prefetch_size,
-        workdir=workdir,
+        # workdir=workdir,
         multithreading_colocate_learner_and_reverb=multithreading_colocate_learner_and_reverb,
         **kwargs)
-
-  def actor(self, random_key: networks_lib.PRNGKey, replay: reverb.Client,
-            variable_source: core.VariableSource, counter: counting.Counter,
-            actor_id: int) -> environment_loop.EnvironmentLoop:
-
-    """The actor process. 
-       Only change from original is to use custom EnvLoopCls."""
-    adder = self._builder.make_adder(replay)
-
-    # Create environment and policy core.
-    environment = self._environment_factory()
-
-    networks = self._network_factory(specs.make_environment_spec(environment))
-    policy_network = self._policy_network(networks)
-    actor = self._builder.make_actor(random_key, policy_network, adder,
-                                     variable_source)
-
-    # Create logger and counter.
-    counter = counting.Counter(counter, 'actor')
-    # Only actor #0 will write to bigtable in order not to spam it too much.
-    logger = self._actor_logger_fn(actor_id)
-    # Create the loop to connect environment and agent.
-    return self.EnvLoopCls(environment, actor, counter, logger)
 
 
 class TDAgent(local_layout.LocalLayout):

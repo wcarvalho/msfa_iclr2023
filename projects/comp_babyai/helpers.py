@@ -38,7 +38,7 @@ def make_environment(evaluation: bool = False,
   settings = dict(
     small_length2_nodist=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_no_dist.yaml",
-      room_size=5,
+      room_size=6,
       ),
     # medium=dict(
     #   tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=3_cook.yaml",

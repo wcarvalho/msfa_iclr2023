@@ -49,7 +49,8 @@ class RecurrentTDLearning(learning_lib.LossFn):
       online_preds : Predictions,
       online_state,
       target_preds : Predictions,
-      target_state):
+      target_state,
+      **kwargs):
     """Summary
     
     Args:
@@ -71,6 +72,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
       target_params: networks_lib.Params,
       batch: reverb.ReplaySample,
       key_grad: networks_lib.PRNGKey,
+      steps: int=None,
     ) -> Tuple[jnp.DeviceArray, learning_lib.LossExtra]:
     """Calculate a loss on a single batch of data."""
 
@@ -113,19 +115,27 @@ class RecurrentTDLearning(learning_lib.LossFn):
     # -----------------------
     # main loss
     # -----------------------
-    batch_td_error, batch_loss, metrics = self.error(data, online_preds, online_state, target_preds, target_state)
+    batch_td_error, batch_loss, metrics = self.error(
+      data=data,
+      online_preds=online_preds,
+      online_state=online_state,
+      target_preds=target_preds,
+      target_state=target_state,
+      steps=steps)
 
     # Importance weighting.
     probs = batch.info.probability
     importance_weights = (1. / (probs + 1e-6)).astype(online_preds.q.dtype)
     importance_weights **= self.importance_sampling_exponent
     importance_weights /= jnp.max(importance_weights)
-    mean_loss = self.loss_coeff*jnp.mean(importance_weights * batch_loss)
-    metrics.update({
+    mean_loss = jnp.mean(importance_weights * batch_loss)
+    metrics={
+      **metrics,
       'loss_main':mean_loss,
       'z.importance': importance_weights.mean(),
       'z.reward' :data.reward.mean()
-      })
+      }
+    mean_loss = self.loss_coeff*mean_loss
 
     # Calculate priorities as a mixture of max and mean sequence errors.
     abs_td_error = jnp.abs(batch_td_error).astype(online_preds.q.dtype)
@@ -154,14 +164,16 @@ class RecurrentTDLearning(learning_lib.LossFn):
           online_state=online_state,
           target_preds=target_preds,
           target_state=target_state,
+          steps=steps,
           **kwargs)
 
-        metrics.update(aux_metrics)
+        metrics={**metrics,**aux_metrics}
         mean_loss = mean_loss + aux_loss
 
-      metrics.update({
+      metrics={
+        **metrics,
         'loss_w_aux':mean_loss,
-        })
+        }
 
     reverb_update = learning_lib.ReverbUpdate(
         keys=batch.info.key,
@@ -188,7 +200,7 @@ def r2d2_loss_kwargs(config):
 
 @dataclasses.dataclass
 class R2D2Learning(RecurrentTDLearning):
-  def error(self, data, online_preds, online_state, target_preds, target_state):
+  def error(self, data, online_preds, online_state, target_preds, target_state, **kwargs):
     """R2D2 learning
     """
     # Get value-selector actions from online Q-values for double Q-learning.
@@ -253,10 +265,10 @@ class USFALearning(RecurrentTDLearning):
 
   extract_cumulants: Callable = cumulants_from_env
   shorten_data_for_cumulant: bool = False
-  loss: str = 'n_step_q_learning'
+  loss: str = 'n_step_q_learning_regular'
   lambda_: float  = .9
 
-  def error(self, data, online_preds, online_state, target_preds, target_state):
+  def error(self, data, online_preds, online_state, target_preds, target_state, **kwargs):
     assert self.loss in ['n_step_q_learning', 'q_lambda', 'q_lambda_regular', 'n_step_q_learning_regular'], "loss not recognized"
     # ======================================================
     # Loss for SF
@@ -396,6 +408,7 @@ class USFALearning(RecurrentTDLearning):
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
 
     metrics = {
+      f'z.loss_{self.loss}_raw': batch_loss.mean(),
       'z.sf_mean': online_sf.mean(),
       'z.sf_var': online_sf.var(),
       'z.sf_max': online_sf.max(),

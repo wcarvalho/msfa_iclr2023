@@ -24,7 +24,7 @@ import functools
 
 from agents import td_agent
 from projects.msf import helpers
-from projects.msf.environment_loop import EnvironmentLoop
+from projects.common.train import run
 from utils import make_logger, gen_log_dir
 
 # -----------------------
@@ -34,9 +34,18 @@ flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_string('env_setting', 'small', 'which environment setting.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
-flags.DEFINE_bool('wandb', False, 'whether to log.')
-flags.DEFINE_bool('test', False, 'whether to log.')
+flags.DEFINE_bool('test', True, 'whether testing.')
 flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
+
+# -----------------------
+# wandb
+# -----------------------
+flags.DEFINE_bool('wandb', False, 'whether to log.')
+flags.DEFINE_string('wandb_project', 'msf_sync', 'wand project.')
+flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
+flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
+flags.DEFINE_string('notes', '', 'notes for wandb.')
+
 
 FLAGS = flags.FLAGS
 
@@ -49,10 +58,11 @@ def main(_):
 
   if FLAGS.test:
     config.max_replay_size = 10_000
-    config.min_replay_size = 100
+    config.min_replay_size = 10
     config.npolicies = 2
     config.variance = 0.1
-    config.batch_size = 2
+    config.batch_size = 4
+    print("="*20, "testing", "="*20)
 
   # -----------------------
   # logger
@@ -61,52 +71,29 @@ def main(_):
     base_dir="results/msf/local",
     agent=FLAGS.agent,
     seed=config.seed)
-  if FLAGS.wandb:
-    import wandb
-    wandb.init(project="msf", entity="wcarvalho92")
-    wandb.config = config.__dict__
 
-  logger_fn = lambda : make_logger(
-    wandb=FLAGS.wandb,
-    log_dir=log_dir, label=loss_label)
+  wandb_init_kwargs=dict(
+    project=FLAGS.wandb_project,
+    entity=FLAGS.wandb_entity,
+    group=FLAGS.group if FLAGS.group else FLAGS.agent, # organize individual runs into larger experiment
+    notes=FLAGS.notes,
+  )
 
-
-  # -----------------------
-  # agent
-  # -----------------------
-  builder=functools.partial(td_agent.TDBuilder,
-      LossFn=LossFn, LossFnKwargs=LossFnKwargs,
-      logger_fn=logger_fn)
-
-  kwargs={}
-  if FLAGS.evaluate:
-    kwargs['behavior_policy_constructor'] = functools.partial(td_agent.make_behavior_policy, evaluation=True)
-  agent = td_agent.TDAgent(
-      env_spec,
-      networks=td_agent.make_networks(
-        batch_size=config.batch_size,
-        env_spec=env_spec,
-        NetworkCls=NetworkCls,
-        NetKwargs=NetKwargs,
-        eval_network=True),
-      builder=builder,
-      workdir=log_dir,
-      config=config,
-      seed=FLAGS.seed,
-      **kwargs,
-      )
-
-  # -----------------------
-  # make env + run
-  # -----------------------
-  env_logger = make_logger(
+  run(
+    env=env,
+    env_spec=env_spec,
+    config=config,
+    NetworkCls=NetworkCls,
+    NetKwargs=NetKwargs,
+    LossFn=LossFn,
+    LossFnKwargs=LossFnKwargs,
+    loss_label=loss_label,
     log_dir=log_dir,
-    wandb=FLAGS.wandb,
-    label='actor',
-    steps_key="steps")
-
-  loop = EnvironmentLoop(env, agent, logger=env_logger)
-  loop.run(FLAGS.num_episodes)
+    evaluate=FLAGS.evaluate,
+    seed=FLAGS.seed,
+    num_episodes=FLAGS.num_episodes,
+    wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
+    )
 
 
 if __name__ == '__main__':
