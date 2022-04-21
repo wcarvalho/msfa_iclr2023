@@ -89,7 +89,7 @@ class USFAConfig(R2D1Config):
 class QAuxConfig:
   """Extra configuration options when doing QAux loss over SF."""
   loss_coeff: float = 1.0
-  q_aux_anneal: int = 50_000
+  q_aux_anneal: int = 0.0
   q_aux_end_val: float = 0.0
 
 
@@ -97,7 +97,7 @@ class QAuxConfig:
 class RewardConfig:
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 1e-3 # coefficient for reward loss
-  value_coeff: float = 10.0 # coefficient for value loss
+  value_coeff: float = 0.5 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
   q_aux: str="single"
