@@ -42,6 +42,12 @@ class EnvironmentLoop(acme.EnvironmentLoop):
     # Make the first observation.
     self._actor.observe_first(timestep)
 
+    #TODO: Get rid of this
+    all_observations = []
+    all_rewards = []
+    all_tasks = []
+    all_actions = []
+
     # Run an episode.
     while not timestep.last():
       # Generate an action from the agent's policy and step the environment.
@@ -70,6 +76,15 @@ class EnvironmentLoop(acme.EnvironmentLoop):
                                           task_returns[index],
                                           timestep.reward)
 
+      # TODO: Get rid of this
+
+      # print(dir(timestep.observation.observation))
+      # np.savez("/home/nameer/successor_features/rljax/results/ENVOUT.npz",img=timestep.observation.observation.image,task=timestep.observation.observation.task)
+      all_observations.append(timestep.observation.observation.image)
+      all_rewards.append(timestep.reward)
+      all_tasks.append(timestep.observation.observation.task)
+      all_actions.append(action)
+
     # Record counts.
     counts = self._counter.increment(episodes=1, steps=episode_steps)
 
@@ -84,5 +99,13 @@ class EnvironmentLoop(acme.EnvironmentLoop):
     for idx, return_val in enumerate(task_returns):
         result['task_return' + str(idx)] = return_val
     result.update(counts)
+
+
+    #randomly write an episode to a file every 20ish episodes
+    print(self._counter.get_counts())
+    if np.random.uniform(0,1)<.05:
+        fname = '/home/nameer/successor_features/rljax/results/env_images/' + str(np.random.random()) + '.npz'
+        np.savez(fname,images=np.asarray(all_observations),tasks=np.asarray(all_tasks), rewards=np.asarray(all_rewards),actions=np.asarray(all_actions))
+
     return result
 

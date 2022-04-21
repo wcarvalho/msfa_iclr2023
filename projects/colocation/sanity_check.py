@@ -48,7 +48,7 @@ flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
 FLAGS = flags.FLAGS
 
 def main(_):
-  env = helpers.make_environment_sanity_check(evaluation=False, simple=FLAGS.super_simple,agent=FLAGS.agent,nowalls=True) #3 objects if super simple, otherwise 2-3 types
+  env = helpers.make_environment_sanity_check(evaluation=False, simple=FLAGS.super_simple,agent=FLAGS.agent,nowalls=True, one_room=True) #3 objects if super simple, otherwise 2-3 types
   env_spec = acme.make_environment_spec(env)
 
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs,_,_ = helpers.load_agent_settings_sanity_check(env_spec,agent=FLAGS.agent)

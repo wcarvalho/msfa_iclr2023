@@ -38,6 +38,7 @@ class MultiroomGoto(dm_env.Environment):
                stop_when_gone=False,
                wrappers=None,
                walls_gone=False,
+               one_room = False,
     **kwargs):
     """Initializes a new MultiroomGotoEnv
 
@@ -68,7 +69,8 @@ class MultiroomGoto(dm_env.Environment):
             room_size=room_size,
             doors_start_open=doors_start_open,
             stop_when_gone=stop_when_gone,
-            walls_gone=walls_gone
+            walls_gone=walls_gone,
+            one_room = one_room,
         )
     self.num_objects = len(set(functools.reduce(lambda x,y: x + list(y.keys()),list(objectlists.values())[0],[])))
 

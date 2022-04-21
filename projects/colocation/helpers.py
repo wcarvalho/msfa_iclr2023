@@ -15,7 +15,7 @@ from utils import data as data_utils
 from projects.colocation import nets
 from projects.colocation import configs
 
-def make_environment_sanity_check( evaluation: bool = False, simple: bool = True, agent='r2d1', nowalls: bool = False):
+def make_environment_sanity_check( evaluation: bool = False, simple: bool = True, agent='r2d1', nowalls: bool = False, one_room:bool=False):
     if simple:
         objs = [{'pan': 1}, {'tomato': 1}, {'knife':1}]
     else:
@@ -24,31 +24,23 @@ def make_environment_sanity_check( evaluation: bool = False, simple: bool = True
         agent_view_size=5,
         objectlists={'level':objs},
         pickup_required=False,
-        tile_size=10,
+        tile_size=8,
         epsilon=0.0,
         room_size=5,
         doors_start_open=True,
         stop_when_gone=True,
         walls_gone=nowalls,
+        one_room=one_room,
         wrappers=[ # wrapper for babyAI gym env
-      functools.partial(RGBImgPartialObsWrapper, tile_size=10)]
+      functools.partial(RGBImgPartialObsWrapper, tile_size=8)]
     )
 
-
-    #if agent=='usfa':
     wrapper_list = [
         functools.partial(ObservationRemapWrapper,
                           remap=dict(mission='task', pickup='state_features')),
         wrappers.ObservationActionRewardWrapper,
         wrappers.SinglePrecisionWrapper,
     ]
-    # else:
-    #     wrapper_list = [
-    #         functools.partial(ObservationRemapWrapper,
-    #                           remap=dict(mission='task')),
-    #         wrappers.ObservationActionRewardWrapper,
-    #         wrappers.SinglePrecisionWrapper,
-    #     ]
     return wrappers.wrap_all(env, wrapper_list)
 
 def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1"):

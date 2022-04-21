@@ -9,22 +9,12 @@ Command I run for r2d1:
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/colocation/train_distributed.py \
-    --agent r2d1 --nowalls True
-
-Command for usfa
-
-  PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=0 \
-    XLA_PYTHON_CLIENT_PREALLOCATE=false \
-    TF_FORCE_GPU_ALLOW_GROWTH=true \
-    python projects/colocation/train_distributed.py \
-    --agent usfa
+    --agent r2d1_noise --simple True --one_room False --nowalls False
 
 
 Command for tensorboard
 ssh -L 16006:127.0.0.1:6006 nameer@deeplearn9.eecs.umich.edu
-source ~/.bashrc; conda activate acmejax; cd ~/successor_features/rljax/results/colocation/distributed/
+source ~/.bashrc; conda activate acmejax; cd ~/successor_features/rljax/results/colocation/distributed/experiments
 tensorboard --logdir .
 """
 #most recent 2 are r2d1 and then r2d1_noise, both with no walls, 6 objects
@@ -58,6 +48,7 @@ from projects.common.train_distributed import build_common_program
 flags.DEFINE_string('experiment', None, 'experiment_name.')
 flags.DEFINE_bool('simple',True, 'should the environment be simple or have some colocation')
 flags.DEFINE_bool('nowalls',True,'No doors in environment')
+flags.DEFINE_bool('one_room',True, 'all in one room')
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
@@ -85,11 +76,12 @@ def build_program(
   log_dir=None, # where to save everything
   is_simple: bool = True,
   nowalls: bool = False,
+  one_room: bool = False,
     ):
   # -----------------------
   # load env stuff
   # -----------------------
-  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=is_simple, agent=agent, nowalls=nowalls)
+  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=is_simple, agent=agent, nowalls=nowalls, one_room=one_room)
   env = environment_factory(False)
   env_spec = acme.make_environment_spec(env)
   del env
@@ -162,7 +154,9 @@ def main(_):
       num_actors=FLAGS.num_actors,
       config_kwargs=config_kwargs,
       wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
-      is_simple=FLAGS.simple
+      is_simple=FLAGS.simple,
+      nowalls=FLAGS.nowalls,
+      one_room=FLAGS.one_room
   )
 
   # Launch experiment.

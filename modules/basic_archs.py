@@ -115,9 +115,19 @@ class BasicRecurrent(hk.Module):
     unroll = setting == "unroll"
     batchfn = hk.BatchApply if unroll else lambda x:x
 
+    DEBUG_SETTING=lambda x: unroll
+    print(setting)
+    DO_DEBUG = DEBUG_SETTING(setting)
+    def describe_tensor(t):
+      return 'shape: ' + str(t.shape) + ', max: ' + str(jax.numpy.max(t)) + ', min: ' + str(jax.numpy.min(t)) + ', dtype: ' + str(t.dtype)
     all_preds = AttrDict()
     if self.inputs_prep_fn:
       inputs = self.inputs_prep_fn(inputs)
+      if DO_DEBUG:
+        print('input_image: ' + describe_tensor(inputs.observation.image))
+        print('input_task: ' + describe_tensor(inputs.observation.task))
+        print('input_action: ' + describe_tensor(inputs.action))
+        print('input_reward: ' + describe_tensor(inputs.reward))
 
     # ======================================================
     # Vision
@@ -126,8 +136,14 @@ class BasicRecurrent(hk.Module):
       vision_input = self.vision_prep_fn(inputs=inputs)
     else:
       vision_input = inputs
+
+    if DO_DEBUG:
+      print('vision_input: ' + describe_tensor(vision_input))
+
     obs = batchfn(self.vision)(vision_input)
     all_preds['obs'] = obs
+    if DO_DEBUG:
+      print('obs: ' + describe_tensor(obs))
 
     # ======================================================
     # Memory
@@ -142,9 +158,16 @@ class BasicRecurrent(hk.Module):
     else:
       memory_out, new_state = self.memory(memory_input, state)
 
+    if DO_DEBUG:
+      print('memory_input: ' + describe_tensor(memory_input))
+      print('memory_out: ' + describe_tensor(memory_out))
+
     if self.memory_proc_fn:
       memory_out = self.memory_proc_fn(memory_out)
     all_preds['memory_out'] = memory_out
+
+    if DO_DEBUG:
+      print('memory_out2: ' + describe_tensor(memory_out))
   
 
     # ======================================================
@@ -166,15 +189,25 @@ class BasicRecurrent(hk.Module):
         prediction_input = memory_out
       pred_fun = functools.partial(self.evaluation, key=key)
 
+    if DO_DEBUG:
+      print('prediction_input: ' + describe_tensor(prediction_input))
+
     predictions = batchfn(pred_fun)(prediction_input)
     predictions = predictions._asdict()
     overlapping_keys = overlapping(predictions, all_preds)
     assert len(overlapping_keys) == 0, "overwriting!"
     all_preds.update(predictions)
 
+    if DO_DEBUG:
+      for k,v in predictions.items():
+
+        print('prediction ' + k + ': ' + describe_tensor(v))
+
     # ======================================================
     # Auxiliary Tasks
     # ======================================================
+
+    assert self.aux_tasks is None
     forward=setting in ['train', 'evaluate']
     if self.aux_tasks:
       for aux_task in self.aux_tasks:

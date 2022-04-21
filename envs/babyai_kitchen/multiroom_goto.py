@@ -35,6 +35,7 @@ class MultiroomGotoEnv(KitchenLevel):
                  doors_start_open = False,
                  stop_when_gone = False,
                  walls_gone = False,
+                 one_room = False,
                  **kwargs):
         """Summary
 
@@ -57,6 +58,9 @@ class MultiroomGotoEnv(KitchenLevel):
 
         #define all the objects in our world
         #any object can be an objective in this environment, so we don't need to keep track of which are pick-up-able
+        self.one_room = one_room
+        if one_room:
+            walls_gone = False
         self.objectlist = objectlist
         self.walls_gone = walls_gone
         self.stop_when_gone = stop_when_gone
@@ -84,7 +88,9 @@ class MultiroomGotoEnv(KitchenLevel):
         self.select_mission()
 
         kwargs["task_kinds"] = ['goto','pickup']
-        kwargs['actions'] = ['left', 'right', 'forward', 'open','pickup_contents']
+        kwargs['actions'] = ['left', 'right', 'forward','pickup_contents']
+        if (not one_room) and (not walls_gone):
+            kwargs['actions'].append('open')
         kwargs['kitchen'] = kitchen
         super().__init__(
             *args,
@@ -124,6 +130,7 @@ class MultiroomGotoEnv(KitchenLevel):
         return self._task_objects
 
     def reset_task(self):
+        self.select_mission()
 
         VALID_ROOMS = np.array([[0, 1], [1, 0], [2, 1]])
         DOOR_COLORS = np.array(['red', 'green', 'blue'])
@@ -146,12 +153,16 @@ class MultiroomGotoEnv(KitchenLevel):
                 placeable_obj = self.default_objects[self.type2idx[obj]]
 
                 for _ in range(num_to_place):
-                    #epsilon chance of random room placement
-                    if np.random.uniform(0,1)<self.epsilon:
-                        random_room = VALID_ROOMS[np.random.choice(range(len(VALID_ROOMS)))]
-                        self.place_in_room(random_room[0], random_room[1], placeable_obj)
+                    #if one room just place all in the same room
+                    if self.one_room:
+                        self.place_in_room(1, 1, placeable_obj)
                     else:
-                        self.place_in_room(VALID_ROOMS[room_idx][0], VALID_ROOMS[room_idx][1], placeable_obj)
+                        #epsilon chance of random room placement
+                        if np.random.uniform(0,1)<self.epsilon:
+                            random_room = VALID_ROOMS[np.random.choice(range(len(VALID_ROOMS)))]
+                            self.place_in_room(random_room[0], random_room[1], placeable_obj)
+                        else:
+                            self.place_in_room(VALID_ROOMS[room_idx][0], VALID_ROOMS[room_idx][1], placeable_obj)
                     if self.stop_when_gone:
                         self.object_occurrences[self.type2idx[obj]]+=self.mission_arr[self.type2idx[obj]]
                     else:
@@ -164,7 +175,6 @@ class MultiroomGotoEnv(KitchenLevel):
             start_room = self.room_from_pos(*self.agent_pos)
             break
 
-
         # arrange the door colors and locks
         # Order of the doors is right, down, left, up
         #we have 3 doors we care about
@@ -173,24 +183,24 @@ class MultiroomGotoEnv(KitchenLevel):
 
 
 
-        if self.walls_gone:
+        if self.walls_gone: #walls are never gone if one room
             self.remove_wall(1,1,0)
             self.remove_wall(1, 1, 2)
             self.remove_wall(1, 1, 3)
         else:
-            door1, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[0])], DOOR_COLORS[0], locked=False)
-            door2, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[1])], DOOR_COLORS[1], locked=False)
-            door3, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[2])], DOOR_COLORS[2], locked=False)
+            if not self.one_room: #if one room, no doors
+                door1, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[0])], DOOR_COLORS[0], locked=False)
+                door2, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[1])], DOOR_COLORS[1], locked=False)
+                door3, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[2])], DOOR_COLORS[2], locked=False)
 
-            #potentially start with the doors open
-            if self.doors_start_open:
-                door1.is_open = True
-                door2.is_open = True
-                door3.is_open = True
+                #potentially start with the doors open
+                if self.doors_start_open:
+                    door1.is_open = True
+                    door2.is_open = True
+                    door3.is_open = True
 
 
     def reset(self):
-        self.select_mission()
         obs = super().reset()
         assert self.carrying is None
         obs['pickup'] = np.zeros(self.num_objects, dtype=np.uint8)
@@ -215,6 +225,7 @@ class MultiroomGotoEnv(KitchenLevel):
                 self.remaining[obj_idx] -= 1
 
             return reward
+        assert obj_type=="wall" or obj_type=="door"
         return 0.0
 
     def place_obj(self,
@@ -329,6 +340,10 @@ class MultiroomGotoEnv(KitchenLevel):
         # ======================================================
         # copied from RoomGridLevel
         # ======================================================
+        if reward>0 and self.stop_when_gone:
+            assert self.remaining.sum()<1e-5
+
+
         info = {}
         # if past step count, done
         if self.step_count >= self.max_steps and self.use_time_limit:
@@ -338,6 +353,9 @@ class MultiroomGotoEnv(KitchenLevel):
         remaining = self.remaining.sum()
         if remaining < 1e-5:
             done = True
+
+        if not done:
+            assert self.remaining.sum()>0
 
         obs = self.gen_obs()
 
@@ -372,7 +390,8 @@ if __name__ == '__main__':
         doors_start_open=True,
         stop_when_gone=True,
         walls_gone=True,
-        verbosity=1
+        verbosity=1,
+        one_room=True
     )
 
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)
@@ -396,24 +415,30 @@ if __name__ == '__main__':
         window.show_img(combine(full, obs['image']))
 
 
-    for _ in tqdm.tqdm(range(100)):
+    for _ in tqdm.tqdm(range(1000)):
         obs = env.reset()
-        full = env.render('rgb_array', tile_size=tile_size, highlight=True)
-        window.set_caption(obs['mission'])
-        window.show_img(combine(full, obs['image']))
+        if MANUAL_TEST:
+            full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+            window.set_caption(obs['mission'])
+            window.show_img(combine(full, obs['image']))
 
         rewards = []
         # print("Initial occurrences:", env.object_occurrences)
-        for step in range(25):
+        test_steps = 25
+        if not MANUAL_TEST:
+            test_steps = 100
+        for step in range(test_steps):
             if MANUAL_TEST:
                 input_action = int(eval(input()))
             else:
                 input_action = env.action_space.sample()
             obs, reward, done, info = env.step(input_action)
-            print("reward: {0}".format(reward))
+            if MANUAL_TEST:
+                print("reward: {0}".format(reward))
             rewards.append(reward)
-            full = env.render('rgb_array', tile_size=tile_size, highlight=True)
-            window.show_img(combine(full, obs['image']))
+            if MANUAL_TEST:
+                full = env.render('rgb_array', tile_size=tile_size, highlight=True)
+                window.show_img(combine(full, obs['image']))
             if done:
                 break
 
@@ -422,9 +447,10 @@ if __name__ == '__main__':
         # print("Final occurrences:", env.object_occurrences)
         print(f"Total reward: {total_reward}")
         # print(f"Normalized reward: {normalized_reward}")
-        import ipdb;
+        if MANUAL_TEST:
+            import ipdb;
 
-        ipdb.set_trace()
+            ipdb.set_trace()
 
 """
 Advice:
@@ -476,10 +502,10 @@ Once colocation is introduced:
     
     
 Bug Fixes:
- - run a bunch of times to make sure it's not random (both distributed and single) DONE: no randomness, error only on distributed
- - rework nets file (int casting is suspicious) (also check out BasicRecurrent class) DONE FOR R2D1 VANILLA
+ - run a bunch of times to make sure it's not random (both distributed and single) DONE
+ - rework nets file (int casting is suspicious) (also check out BasicRecurrent class) DONE FOR R2D1
  - print out specs all over the place NO NEED
- - add a bunch of assertions in environment and sample many episodes with those in there
+ - add a bunch of assertions in environment and sample many episodes with those in there DONE
  - potentially simplify to one room
  
   - transfer ideas to skill discovery

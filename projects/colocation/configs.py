@@ -45,7 +45,7 @@ class R2D1Config(configs.R2D1Config):
     replay_table_name: str = adders_reverb.DEFAULT_PRIORITY_TABLE
 
     # Priority options
-    importance_sampling_exponent: float = 0.5
+    importance_sampling_exponent: float = 0.0
     priority_exponent: float = 0.9
     max_priority_weight: float = 0.9
 
