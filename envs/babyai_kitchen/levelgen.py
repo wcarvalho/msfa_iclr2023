@@ -517,17 +517,16 @@ class KitchenLevel(RoomGridLevel):
     info = {'success': False}
     done = False
     if self.task is not None:
-        reward, task_done = self.task.check_status()
+        reward, task_done = self.task.get_reward_done()
         reward = float(reward)
 
         if task_done:
           self.task.terminate()
 
-        if task_done:
+        if self.task.finished:
             info['success'] = True
             self.timesteps_complete += 1
 
-        import ipdb; ipdb.set_trace()
         # in order to complete final states in observation stream
         if self.timesteps_complete > self.extra_timesteps:
           done = True

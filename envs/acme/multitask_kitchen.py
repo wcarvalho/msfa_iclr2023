@@ -36,7 +36,7 @@ class Observation(NamedTuple):
   mission: types.Nest
 
 def convert_rawobs(obs):
-    obs.pop('mission_idx')
+    obs.pop('mission_idx', None)
     return Observation(**obs)
 
 class MultitaskKitchen(dm_env.Environment):
@@ -98,15 +98,14 @@ class MultitaskKitchen(dm_env.Environment):
     self.env = MultiLevel(
         all_level_kwargs=all_level_kwargs,
         LevelCls=KitchenLevel,
-        # wrappers=wrappers,
+        wrappers=wrappers,
         path=path,
         **kwargs)
 
-    for wrapper in wrappers:
-      self.env = wrapper(self.env)
-
-    self.default_env = GymWrapper(self.env.env)
-
+    if wrappers:
+      self.default_env = GymWrapper(self.env.env)
+    else:
+      self.default_env = GymWrapper(self.env)
 
 
   def reset(self) -> dm_env.TimeStep:

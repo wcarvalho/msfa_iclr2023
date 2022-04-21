@@ -12,3 +12,11 @@ from projects.common.configs import (
   FarmModelConfig,
   NoiseConfig
 )
+
+
+@dataclasses.dataclass
+class LangConfig:
+  max_vocab_size: int = 30
+  word_dim: int = 128  # dimension of both word and task (sentence) embeddings
+  word_initializer: str = 'RandomNormal'
+  word_compress: str = 'last'
