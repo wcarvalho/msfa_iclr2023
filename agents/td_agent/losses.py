@@ -418,7 +418,7 @@ class USFALearning(RecurrentTDLearning):
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
 
     metrics = {
-      f'z.loss_{self.loss}_raw': batch_loss.mean(),
+      f'z.loss_SfMain_{self.loss}': batch_loss.mean(),
       'z.sf_mean': online_sf.mean(),
       'z.sf_var': online_sf.var(),
       'z.sf_max': online_sf.max(),
