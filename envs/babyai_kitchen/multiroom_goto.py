@@ -70,6 +70,7 @@ class MultiroomGotoEnv(KitchenLevel):
         self.pickup_required = pickup_required
         self.epsilon = epsilon
         self.verbosity = verbosity
+        self.room = None #variable to keep track of what the primary room of the target object is
 
         #initialize the big objects we need
         kitchen = Kitchen(
@@ -132,13 +133,13 @@ class MultiroomGotoEnv(KitchenLevel):
     def reset_task(self):
         self.select_mission()
 
-        VALID_ROOMS = np.array([[0, 1], [1, 0], [2, 1]])
+        VALID_ROOMS_ = np.array([[0, 1], [1, 0], [2, 1]])
         DOOR_COLORS = np.array(['red', 'green', 'blue'])
 
 
         #we permute valid rooms and colors:
         perm = np.random.permutation(3)
-        VALID_ROOMS = VALID_ROOMS[perm].tolist()
+        VALID_ROOMS = VALID_ROOMS_[perm].tolist()
         # DOOR_COLORS = DOOR_COLORS[perm].tolist()
 
         # generate grid
@@ -156,7 +157,10 @@ class MultiroomGotoEnv(KitchenLevel):
                     #if one room just place all in the same room
                     if self.one_room:
                         self.place_in_room(1, 1, placeable_obj)
+                        self.room = 0
                     else:
+                        if self.mission_arr[self.type2idx[obj]]==1: #set self.room if this is indeed the reward object
+                            self.room = perm[room_idx] + 1
                         #epsilon chance of random room placement
                         if np.random.uniform(0,1)<self.epsilon:
                             random_room = VALID_ROOMS[np.random.choice(range(len(VALID_ROOMS)))]

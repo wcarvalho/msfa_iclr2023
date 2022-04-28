@@ -89,6 +89,8 @@ class EnvironmentLoop(acme.EnvironmentLoop):
     counts = self._counter.increment(episodes=1, steps=episode_steps)
 
     level = self._environment.env.current_levelname
+    print("Level: " + str(level))
+    print("Room: " + str(self._environment.env.room))
     # Collect the results and combine with counts.
     steps_per_second = episode_steps / (time.time() - start_time)
     result = {
@@ -102,10 +104,10 @@ class EnvironmentLoop(acme.EnvironmentLoop):
 
 
     #randomly write an episode to a file every 20ish episodes
-    print(self._counter.get_counts())
-    if np.random.uniform(0,1)<.05:
-        fname = '/home/nameer/successor_features/rljax/results/env_images/' + str(np.random.random()) + '.npz'
-        np.savez(fname,images=np.asarray(all_observations),tasks=np.asarray(all_tasks), rewards=np.asarray(all_rewards),actions=np.asarray(all_actions))
+    # print(self._counter.get_counts())
+    # if np.random.uniform(0,1)<.05:
+    #     fname = '/home/nameer/successor_features/rljax/results/env_images/' + str(np.random.random()) + '.npz'
+    #     np.savez(fname,images=np.asarray(all_observations),tasks=np.asarray(all_tasks), rewards=np.asarray(all_rewards),actions=np.asarray(all_actions))
 
     return result
 

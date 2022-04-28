@@ -48,7 +48,7 @@ def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
 # Networks
 # ======================================================
 
-def r2d1(config, env_spec):
+def r2d1(config, env_spec, **kwargs):
   num_actions = env_spec.actions.num_values
 
   return BasicRecurrent(
@@ -76,7 +76,7 @@ def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
     memory_out=memory_out,
     )
 
-def usfa(config, env_spec, use_seperate_eval=True):
+def usfa(config, env_spec, use_seperate_eval=True, **kwargs):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
   prediction_head=UsfaHead(
@@ -90,6 +90,8 @@ def usfa(config, env_spec, use_seperate_eval=True):
       policy_layers=config.policy_layers,
       z_as_train_task=config.z_as_train_task,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
+    ##SPECIAL TIME
+      train_task_as_z=config.train_task_as_z
       )
 
   if use_seperate_eval:
@@ -111,7 +113,7 @@ def usfa(config, env_spec, use_seperate_eval=True):
     evaluation=evaluation,
   )
 
-def r2d1_noise(config, env_spec):
+def r2d1_noise(config, env_spec, **kwargs):
   num_actions = env_spec.actions.num_values
 
   def add_noise_concat(inputs, memory_out, **kwargs):

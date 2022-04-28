@@ -72,7 +72,6 @@ class MultiroomGoto(dm_env.Environment):
             walls_gone=walls_gone,
             one_room = one_room,
         )
-    self.num_objects = len(set(functools.reduce(lambda x,y: x + list(y.keys()),list(objectlists.values())[0],[])))
 
     self.env = MultiLevel(
         LevelCls=MultiroomGotoEnv,

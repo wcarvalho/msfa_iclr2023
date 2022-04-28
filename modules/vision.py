@@ -15,9 +15,9 @@ class AtariVisionTorso(base.Module):
   def __init__(self, flatten=True, conv_dim = 16, out_dim=0):
     super().__init__(name='atari_torso')
     layers = [
-        hk.Conv2D(32, [8, 8], 4),
+        hk.Conv2D(32, [8, 8], 4), #shape 9x9
         jax.nn.relu,
-        hk.Conv2D(64, [4, 4], 2),
+        hk.Conv2D(64, [4, 4], 2), #shape 3x3
         jax.nn.relu,
         hk.Conv2D(64, [3, 3], 1),
         jax.nn.relu,
@@ -33,6 +33,7 @@ class AtariVisionTorso(base.Module):
       self.out_net = lambda x:x
 
   def __call__(self, inputs: Images) -> jnp.ndarray:
+    #print(inputs.shape) #(32, 40, 40, 3)
     inputs_rank = jnp.ndim(inputs)
     batched_inputs = inputs_rank == 4
     if inputs_rank < 3 or inputs_rank > 4:

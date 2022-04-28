@@ -5,11 +5,11 @@ Run Successor Feature based agents and baselines on
 Command I run for r2d1:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=0 \
+    CUDA_VISIBLE_DEVICES=3 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/colocation/train_distributed.py \
-    --agent r2d1_noise --simple True --one_room False --nowalls False
+    --agent r2d1_noise --simple False --one_room False --nowalls False
 
 
 Command for tensorboard
@@ -39,6 +39,8 @@ from projects.colocation.environment_loop import EnvironmentLoop
 from utils import make_logger, gen_log_dir
 import pickle
 from projects.common.train_distributed import build_common_program
+from projects.common.observers import LevelReturnObserver
+from projects.colocation.observers import RoomReturnObserver, FullReturnObserver
 
 
 # -----------------------
@@ -46,10 +48,10 @@ from projects.common.train_distributed import build_common_program
 # -----------------------
 
 flags.DEFINE_string('experiment', None, 'experiment_name.')
-flags.DEFINE_bool('simple',True, 'should the environment be simple or have some colocation')
-flags.DEFINE_bool('nowalls',True,'No doors in environment')
-flags.DEFINE_bool('one_room',True, 'all in one room')
-flags.DEFINE_string('agent', 'r2d1', 'which agent.')
+flags.DEFINE_bool('simple',False, 'should the environment be simple or have some colocation')
+flags.DEFINE_bool('nowalls',False,'No doors in environment')
+flags.DEFINE_bool('one_room',False, 'all in one room')
+flags.DEFINE_string('agent', 'usfa', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
@@ -86,18 +88,13 @@ def build_program(
   env_spec = acme.make_environment_spec(env)
   del env
 
-
-  #it wants: pickup (?,3), image (?,50,50,3), task (?,3), action (?), reward (?)
-  #it got (?,50,50,3), (31,3), (31,3)
-
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  #TODO: make a function that can do USFA or R2D1 agents
-  #config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec, agent=FLAGS.agent)
 
-
+  #observers
+  observers = [LevelReturnObserver(), RoomReturnObserver(),FullReturnObserver()]
 
 
   save_config_dict = config.__dict__
@@ -132,7 +129,8 @@ def build_program(
     num_actors=num_actors,
     save_config_dict=save_config_dict,
     log_every=log_every,
-    envloop_class=EnvironmentLoop,
+    observers=observers
+    #envloop_class=EnvironmentLoop,
     )
 
 def main(_):

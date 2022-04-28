@@ -64,25 +64,26 @@ class NoiseConfig(R2D1Config):
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config):
-    """Extra configuration options for USFA agent."""
-    npolicies: int = 10  # number of policies to sample
-    variance: float = 0.5
-    # Network hps
-    policy_size = 32
-    policy_layers = 0
-    batch_size: int = 32
-    cumulant_hidden_size: int = 128  # hidden size for cumulant pred
-    embed_task: bool = False  # whether to embed task
-    normalize_task: bool = False  # whether to normalize task embedding
-    eval_network: bool = True
-    duelling: bool = False
-    z_as_train_task: bool = False  # whether to dot-product SF with z-vector (True) or w-vector (False)
-    state_hidden_size: int = 0
-    multihead: bool = False
-    concat_w: bool = False
-    sf_loss: str = 'n_step_q_learning_regular'  # whether to use q_lambda or n-step q-learning for objective
-    lambda_: float = .9  # lambda for q-lambda
-    tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
+  """Extra configuration options for USFA agent."""
+  npolicies: int = 10 # number of policies to sample
+  variance: float = 0.5
+  # Network hps
+  policy_size = 32
+  policy_layers = 0
+  batch_size: int = 32
+  cumulant_hidden_size: int=128 # hidden size for cumulant pred
+  embed_task: bool = False  # whether to embed task
+  normalize_task: bool = False # whether to normalize task embedding
+  eval_network: bool = True
+  duelling: bool = False
+  z_as_train_task: bool = False  # whether to dot-product SF with z-vector (True) or w-vector (False)
+  state_hidden_size: int = 0
+  multihead: bool = False
+  concat_w: bool = False
+  sf_loss: str = 'n_step_q_learning_regular' # whether to use q_lambda or n-step q-learning for objective
+  lambda_: float = .9 # lambda for q-lambda
+  tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
+  train_task_as_z: bool = False
 
 
 @dataclasses.dataclass

@@ -15,15 +15,15 @@ from utils import data as data_utils
 from projects.colocation import nets
 from projects.colocation import configs
 
-def make_environment_sanity_check( evaluation: bool = False, simple: bool = True, agent='r2d1', nowalls: bool = False, one_room:bool=False):
+def make_environment_sanity_check(evaluation: bool = False, simple: bool = True, agent='r2d1', nowalls: bool = False, one_room:bool=False):
     if simple:
         objs = [{'pan': 1}, {'tomato': 1}, {'knife':1}]
     else:
-        objs = [{'pan': 1,'pot':1,'stove':1}, {'tomato': 1,'lettuce':1}, {'knife':1,'apple':1}]
+        objs = [{'pan': 1,'pot':1,'stove':1}, {'tomato': 1,'lettuce':1, 'onion':1}, {'knife':1,'apple':1, 'orange':1}]
     env = MultiroomGoto(
         agent_view_size=5,
         objectlists={'level':objs},
-        pickup_required=False,
+        pickup_required=True,
         tile_size=8,
         epsilon=0.0,
         room_size=5,

@@ -104,6 +104,7 @@ class UsfaHead(hk.Module):
     duelling: bool = False,
     normalize_task: bool = False,
     z_as_train_task: bool = False,
+    train_task_as_z: bool = False, #sets C = M in the paper
     multihead: bool = False,
     concat_w: bool = False,
     ):
@@ -137,6 +138,7 @@ class UsfaHead(hk.Module):
     self.z_as_train_task = z_as_train_task
     self.multihead = multihead
     self.concat_w = concat_w
+    self.train_task_as_z = train_task_as_z
 
 
     # -----------------------
@@ -195,8 +197,15 @@ class UsfaHead(hk.Module):
     # -----------------------
     # policies + embeddings
     # -----------------------
-    # sample N times: [B, D_w] --> [B, N, D_w]
-    z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples, axis=-2)
+    if self.train_task_as_z:
+      #shape B, N-D_w, D_w
+      z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples-inputs.w.shape[-1], axis=-2) #nz - number of tasks random z's
+      all_tasks = jnp.identity(inputs.w.shape[-1]) #all tasks are identity D_w x D_w. We want to tile to get B, D_w, D_w
+      all_tasks = data_utils.expand_tile_dim(all_tasks, inputs.w.shape[0],axis=0)
+      z_samples = jnp.concatenate([z_samples, all_tasks],axis=1) #now concatenate all the tasks, getting desired shape B, N, D_w
+    else:
+      # sample N times: [B, D_w] --> [B, N, D_w]
+      z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples, axis=-2)
 
     # combine samples with original task vector
     z_base = jnp.expand_dims(w, axis=1) # [B, 1, D_w]
