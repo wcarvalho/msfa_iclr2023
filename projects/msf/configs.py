@@ -36,7 +36,7 @@ class R2D1Config(configs.R2D1Config):
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 6.0 # 0.0=single process
-  min_replay_size: int = 10_000
+  min_replay_size: int = 100
   max_replay_size: int = 100_000
   batch_size: int = 32
   store_lstm_state: bool = True
@@ -89,7 +89,7 @@ class USFAConfig(R2D1Config):
 class QAuxConfig:
   """Extra configuration options when doing QAux loss over SF."""
   loss_coeff: float = 1.0
-  q_aux_anneal: int = 50_000
+  q_aux_anneal: int = 0.0
   q_aux_end_val: float = 0.0
 
 
@@ -97,7 +97,7 @@ class QAuxConfig:
 class RewardConfig:
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 1e-3 # coefficient for reward loss
-  value_coeff: float = 10.0 # coefficient for value loss
+  value_coeff: float = 0.5 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
   q_aux: str="single"
