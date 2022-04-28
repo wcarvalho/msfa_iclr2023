@@ -140,7 +140,7 @@ class GotoAvoidBot(Bot):
     return list(task_objects)
 
 
-  def generate_traj(self, action_taken=None, plot_fn=lambda x:x):
+  def generate_traj(self, action_taken=None, plot_fn=lambda x:x, plot_verb=0):
     """
         - first, pick closest object
         - then replan until get to it
@@ -165,7 +165,8 @@ class GotoAvoidBot(Bot):
 
     def step_update(_action):
       _obs, _reward, _done, _info = env.step(_action)
-      plot_fn(_obs)
+      if plot_verb > 0:
+        plot_fn(_obs)
       all_obs.append(_obs)
       all_action.append(_action)
       all_reward.append(_reward)
@@ -227,6 +228,9 @@ class GotoAvoidBot(Bot):
     while True:
       task_objects = self.get_task_objects()
       closest_object, task2closest = get_closest_object(task_objects)
+      if closest_object is None:
+        print("="*10, "Impossible level", "="*10)
+        return None, None, None, None
 
       self.stack = [GoNextToSubgoal(self, tuple(closest_object.cur_pos))]
       while self.stack:
@@ -236,7 +240,6 @@ class GotoAvoidBot(Bot):
         idx += 1
         if idx > 1000:
           raise RuntimeError("Taking too long")
-
 
         action = self.replan(action_taken)
 
