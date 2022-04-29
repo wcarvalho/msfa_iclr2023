@@ -5,11 +5,11 @@ Run Successor Feature based agents and baselines on
 Command I run for r2d1:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=3 \
+    CUDA_VISIBLE_DEVICES=0 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/colocation/train_distributed.py \
-    --agent r2d1_noise --simple False --one_room False --nowalls False
+    --agent r2d1_noise --simple --nowalls --one_room
 
 
 Command for tensorboard

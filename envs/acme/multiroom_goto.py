@@ -27,7 +27,8 @@ class GotoObs(NamedTuple):
 class MultiroomGoto(dm_env.Environment):
 
   def __init__(self,
-               objectlists,
+               objectlist,
+               mission_objects = None,
                tile_size=8,
                rootdir='.',
                verbosity=0,
@@ -44,7 +45,8 @@ class MultiroomGoto(dm_env.Environment):
 
       Args:
           *args: Description
-          objectlists (TYPE): Each object list is a nested list of [{object_name: object_quantity}] one dictionary for each of the three rooms.
+          objectlist (TYPE): a list of [{object_name: object_quantity}] one dictionary for each of the three rooms.
+          mission_objects: actually defines the levels by giving a mission per level
           We have many of these, one for each level, in dict form
           tile_size (int, optional): how many pixels to use for a tile, I think
           rootdir (str, optional): Just a path for the kitchen env to search for files, probably leave this be
@@ -56,22 +58,39 @@ class MultiroomGoto(dm_env.Environment):
           stop_when_gone (bool, optional): should we stop the episode when all the objects with reward associated are gone?
           **kwargs: Description
       """
-    #TODO: Make this not assume one level always
+    #
     all_level_kwargs = dict()
-    for key, objectlist in objectlists.items():
-        all_level_kwargs[key]=dict(
-            objectlist=objectlist,
-            tile_size=tile_size,
-            rootdir=rootdir,
-            verbosity=verbosity,
-            pickup_required=pickup_required,
-            epsilon=epsilon,
-            room_size=room_size,
-            doors_start_open=doors_start_open,
-            stop_when_gone=stop_when_gone,
-            walls_gone=walls_gone,
-            one_room = one_room,
-        )
+    if mission_objects:
+        for mission_object in mission_objects:
+            all_level_kwargs[mission_object] = dict(
+                objectlist=objectlist,
+                mission_object=mission_object,
+                tile_size=tile_size,
+                rootdir=rootdir,
+                verbosity=verbosity,
+                pickup_required=pickup_required,
+                epsilon=epsilon,
+                room_size=room_size,
+                doors_start_open=doors_start_open,
+                stop_when_gone=stop_when_gone,
+                walls_gone=walls_gone,
+                one_room=one_room,
+            )
+    else:
+        all_level_kwargs['ONLY_LEVEL']  = dict(
+                objectlist=objectlist,
+                tile_size=tile_size,
+                rootdir=rootdir,
+                verbosity=verbosity,
+                pickup_required=pickup_required,
+                epsilon=epsilon,
+                room_size=room_size,
+                doors_start_open=doors_start_open,
+                stop_when_gone=stop_when_gone,
+                walls_gone=walls_gone,
+                one_room=one_room,
+            )
+
 
     self.env = MultiLevel(
         LevelCls=MultiroomGotoEnv,

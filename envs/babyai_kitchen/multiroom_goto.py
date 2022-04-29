@@ -36,6 +36,7 @@ class MultiroomGotoEnv(KitchenLevel):
                  stop_when_gone = False,
                  walls_gone = False,
                  one_room = False,
+                 mission_object = None,
                  **kwargs):
         """Summary
 
@@ -71,6 +72,11 @@ class MultiroomGotoEnv(KitchenLevel):
         self.epsilon = epsilon
         self.verbosity = verbosity
         self.room = None #variable to keep track of what the primary room of the target object is
+
+        self.random_mission = True
+        if mission_object:
+            self.random_mission = False
+            self.mission_object = mission_object
 
         #initialize the big objects we need
         kitchen = Kitchen(
@@ -120,7 +126,10 @@ class MultiroomGotoEnv(KitchenLevel):
     #resets self.mission_arr to a random mission (i.e. random object)
     def select_mission(self):
         self.mission_arr = np.zeros([self.num_objects],dtype=np.uint8)
-        goal_idx = np.random.choice(range(self.num_objects))
+        if self.random_mission:
+            goal_idx = np.random.choice(range(self.num_objects))
+        else:
+            goal_idx = self.type2idx[self.mission_object]
         self.mission_arr[goal_idx] = 1
         if self.verbosity==1:
             print("Goal is to " + ("pickup " if self.pickup_required else "goto ") + self._task_objects[goal_idx])
