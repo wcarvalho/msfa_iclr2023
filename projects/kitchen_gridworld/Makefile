@@ -6,6 +6,7 @@ custom_loggers?=True
 date?=False
 num_gpus?=1
 project?='kitchen_grid1'
+env?='EasyPickup'
 group?=''
 notes?=''
 
@@ -21,7 +22,8 @@ test_sync:
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python -m ipdb -c continue projects/kitchen_gridworld/train.py \
 	--agent $(agent) \
-	--test=True
+	--test=True \
+	--env_setting=$(env)
 
 
 test_async:

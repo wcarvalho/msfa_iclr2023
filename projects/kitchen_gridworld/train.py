@@ -31,7 +31,7 @@ from utils import make_logger, gen_log_dir
 # flags
 # -----------------------
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
-flags.DEFINE_string('env_setting', None, 'which environment setting.')
+flags.DEFINE_string('env_setting', 'EasyPickup', 'which environment setting.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('test', True, 'whether testing.')
@@ -52,26 +52,29 @@ FLAGS = flags.FLAGS
 
 def main(_):
   setting=FLAGS.env_setting
-  if FLAGS.test:
-    setting='EasyPickup'
+
   env = helpers.make_environment(
     setting=setting,
     evaluation=FLAGS.evaluate)
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   env_spec = acme.make_environment_spec(env)
 
+  config=dict()
+  if FLAGS.test:
+    config['max_replay_size'] = 10_000
+    config['min_replay_size'] = 10
+    config['lang_task_dim'] = 32
+    print("="*50)
+    print("="*20, "testing", "="*20)
+    print("="*50)
+
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(
     agent=FLAGS.agent,
     env_spec=env_spec,
     setting=FLAGS.env_setting,
-    max_vocab_size=max_vocab_size)
+    max_vocab_size=max_vocab_size,
+    config_kwargs=config)
 
-  if FLAGS.test:
-    config.max_replay_size = 10_000
-    config.min_replay_size = 10
-    print("="*50)
-    print("="*20, "testing", "="*20)
-    print("="*50)
 
   # -----------------------
   # logger

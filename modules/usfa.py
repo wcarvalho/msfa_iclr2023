@@ -201,6 +201,8 @@ class UsfaHead(hk.Module):
     # combine samples with original task vector
     z_base = jnp.expand_dims(w, axis=1) # [B, 1, D_w]
     z = jnp.concatenate((z_base, z_samples), axis=1)  # [B, N+1, D_w]
+
+
     return self.sfgpi(inputs=inputs, z=z, w=w,
       key=key,
       z_as_task=self.z_as_train_task)

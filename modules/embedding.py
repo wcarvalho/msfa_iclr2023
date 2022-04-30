@@ -63,11 +63,27 @@ class OneHotTask(hk.Module):
     weighted = each*jnp.expand_dims(khot, axis=1)
     return weighted.sum(0)
 
+  @property
+  def out_dim(self):
+    return self.dim
+
+
+class Identity(hk.Module):
+  """docstring for OneHotTask"""
+  def __init__(self, dim):
+    super(Identity, self).__init__()
+    self.dim = dim
+  
+  def __call__(self, x):
+    return x
+
+  @property
+  def out_dim(self):
+    return self.dim
 
 class LanguageTaskEmbedder(hk.Module):
   """Module that embed words and then runs them through GRU."""
-  def __init__(self, vocab_size, word_dim, task_dim,
-    initializer='TruncatedNormal', compress='last', **kwargs):
+  def __init__(self, vocab_size, word_dim, sentence_dim, task_dim=None, initializer='TruncatedNormal', compress='last', **kwargs):
     super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
     self.word_dim = word_dim
@@ -78,7 +94,15 @@ class LanguageTaskEmbedder(hk.Module):
       embed_dim=word_dim,
       w_init=initializer,
       **kwargs)
-    self.language_model = hk.GRU(task_dim)
+    self.sentence_dim = sentence_dim
+    self.language_model = hk.GRU(sentence_dim)
+
+    if task_dim is None or task_dim is 0:
+      self.task_dim = sentence_dim
+      self.task_projection = lambda x:x
+    else:
+      self.task_dim = task_dim
+      self.task_projection = hk.Linear(task_dim)
   
   def __call__(self, x : jnp.ndarray):
     """Embed words, then run through GRU.
@@ -95,10 +119,16 @@ class LanguageTaskEmbedder(hk.Module):
     words = jnp.transpose(words, (1,0,2))  # N x B x D
     sentence, _ = hk.static_unroll(self.language_model, words, initial)
     if self.compress == "last":
-      return sentence[-1] # embedding at end
+      task = sentence[-1] # embedding at end
     elif self.compress == "sum":
-      return sentence.sum(0)
+      task = sentence.sum(0)
     else:
       raise NotImplementedError(self.compress)
 
+    task = self.task_projection(task)
+    return task
 
+
+  @property
+  def out_dim(self):
+    return self.task_dim

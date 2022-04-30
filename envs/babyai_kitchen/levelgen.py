@@ -190,7 +190,6 @@ class KitchenLevel(RoomGridLevel):
         num_distactors (int, optional): Description
     """
     placed_objects = set()
-    # import ipdb; ipdb.set_trace()
     # first place task objects
     if task is not None:
         for obj in task.task_objects:

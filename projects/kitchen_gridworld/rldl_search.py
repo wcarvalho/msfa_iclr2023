@@ -1,19 +1,26 @@
 from ray import tune
 
 def get(search):
-  if search == 'usfa':
-    space = {
-        "seed": tune.grid_search([1, 2, 3, 4]),
-        "agent": tune.grid_search(['usfa']),
-    }
-  elif search == 'r2d1':
+  if search == 'r2d1':
+    """
+    Next:
+    """
     space = [
       {
-        "seed": tune.grid_search([1]),
+        "seed": tune.grid_search([1, 2]),
         "agent": tune.grid_search(['r2d1']),
-        "min_replay_size": tune.grid_search([100]),
-        "out_hidden_size": tune.grid_search([128, 512]),
-        "memory_size": tune.grid_search([512, 1024]),
+        "setting": tune.grid_search(['SmallL2TransferEasy']),
+        },
+    ]
+  elif search == 'usfa_lstm':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['usfa_lstm']),
+        "setting": tune.grid_search(['SmallL2TransferEasy', 'SmallL2Transfer', 'SmallL2SliceChill']),
         },
     ]
 
