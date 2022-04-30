@@ -314,7 +314,7 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
           layers=config.cumulant_layers,
           seperate_params=config.seperate_cumulant_params,
           construction=config.cumulant_const,
-          normalize_delta=config.normalize_delta,
+          normalize_delta=config.normalize_delta and getattr(config, "contrast_module_coeff", 0) > 0,
           normalize_state=getattr(config, "contrast_time_coeff", 0) > 0,
           normalize_cumulants=config.normalize_cumulants
           ))
@@ -430,6 +430,7 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
 
 def build_msf_head(config, state_dim, num_actions):
   if config.sf_net == "flat":
+
     head = UsfaHead(
         num_actions=num_actions,
         state_dim=state_dim,
@@ -443,7 +444,7 @@ def build_msf_head(config, state_dim, num_actions):
         sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
         multihead=config.multihead,
         concat_w=config.concat_w,
-        task_embed=task_embed,
+        task_embed=0,
         normalize_task=config.normalize_task and config.embed_task,
         )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
@@ -502,15 +503,28 @@ def build_msf_head(config, state_dim, num_actions):
 
 
 def build_msf_phi_net(config, module_cumulants):
+  contrast_module = getattr(config, "contrast_module_coeff", 0) > 0
+  contrast_module_delta = getattr(config, "contrast_module_pred", 'delta') == 'delta'
+  contrast_module_state = getattr(config, "contrast_module_pred", 'delta') == 'state'
+  contrast_time = getattr(config, "contrast_time_coeff", 0) > 0
+
+  normalize_delta = contrast_module and contrast_module_delta
+  normalize_state = contrast_module_state or contrast_time
+
+
   if config.phi_net == "flat":
+    if config.sf_net == "flat":
+      module_cumulants = module_cumulants
+    else: # modular
+      module_cumulants = module_cumulants*config.nmodules
     return FarmCumulants(
           activation=config.cumulant_act,
-          module_cumulants=module_cumulants*config.nmodules,
+          module_cumulants=module_cumulants,
           hidden_size=config.cumulant_hidden_size,
           layers=config.cumulant_layers,
           aggregation='concat',
           normalize_cumulants=config.normalize_cumulants,
-          normalize_delta=config.normalize_delta,
+          normalize_delta=normalize_delta,
           construction=config.cumulant_const,
           )
   else:
@@ -531,7 +545,7 @@ def build_msf_phi_net(config, module_cumulants):
     else:
       raise NotImplementedError(config.phi_net)
 
-    return FarmIndependentCumulants(
+    phi_net =  FarmIndependentCumulants(
         activation=config.cumulant_act,
         module_cumulants=module_cumulants,
         hidden_size=config.cumulant_hidden_size,
@@ -539,9 +553,11 @@ def build_msf_phi_net(config, module_cumulants):
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
         relational_net=relational_net,
-        normalize_delta=config.normalize_delta,
-        normalize_state=getattr(config, "contrast_time_coeff", 0) > 0,
+        normalize_delta=normalize_delta,
+        normalize_state=normalize_state,
         normalize_cumulants=config.normalize_cumulants)
+
+    return phi_net
   raise RuntimeError
 
 def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs):
@@ -554,10 +570,10 @@ def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs
   assert config.phi_net in ['flat', 'independent', 'relational']
 
   usfa_head, pred_prep_fn, eval_prep_fn = build_msf_head(config, state_dim, num_actions)
-  assert state_dim == usfa_head.cumulants_per_module*farm_memory.nmodules
 
   aux_tasks = []
   learn_model = learn_model and (getattr(config, "contrast_time_coeff", 0) > 0 or getattr(config, "contrast_module_coeff", 0) > 0)
+
   if learn_model:
     # takes structured farm input
     aux_tasks.append(
@@ -573,18 +589,6 @@ def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs
     phi_net = build_msf_phi_net(config, usfa_head.cumulants_per_module)
     aux_tasks.append(phi_net)
 
-  def add_position_embed(memory_out):
-    B, N, D = memory_out.shape
-    embedder = hk.Embed(
-        vocab_size=N,
-        embed_dim=config.embed_position)
-    embeddings = embedder(jnp.arange(N)) # N x D
-    concat = lambda a,b: jnp.concatenate((a, b), axis=-1)
-    concat = jax.vmap(concat, in_axes=(0, None))
-    # concat = jax.vmap(concat, in_axes=(0, None))
-    memory_out = concat(memory_out, embeddings)
-    return memory_out
-
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
@@ -592,7 +596,6 @@ def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs
     memory_prep_fn=make_farm_prep_fn(num_actions,
       task_input=config.farm_task_input),
     memory=farm_memory,
-    memory_proc_fn=add_position_embed if config.position_hidden else lambda x:x,
     prediction_prep_fn=pred_prep_fn,
     prediction=usfa_head,
     evaluation_prep_fn=eval_prep_fn,

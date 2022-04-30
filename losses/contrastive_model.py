@@ -11,10 +11,13 @@ def normalize(x):
 
 class ModuleContrastLoss:
   """"""
-  def __init__(self, coeff: float, temperature: float = 0.01, extra_negatives: int = 10):
+  def __init__(self, coeff: float, temperature: float = 0.01, extra_negatives: int = 10, prediction='delta'):
     self.coeff = coeff
     self.temperature = temperature
     self.extra_negatives = extra_negatives
+    self.prediction = prediction.lower()
+    assert self.prediction in ['delta', 'state']
+
 
   def __call__(self, data, online_preds, online_state, **kwargs):
 
@@ -22,14 +25,20 @@ class ModuleContrastLoss:
 
     state = online_preds.memory_out[:-1]  # [T, B, N, D]
     next_state = online_preds.memory_out[1:]  # [T, B, N, D]
-    delta = next_state - state
+
+    if self.prediction == 'delta':
+      prediction = delta_preds
+      label = next_state - state
+    elif self.prediction == 'state':
+      prediction = state + delta_preds
+      label = next_state
 
     # -----------------------
     # L2 norm
     # -----------------------
     # [T-1, B, N, D]
-    delta = delta / (1e-5+jnp.linalg.norm(delta, axis=-1, keepdims=True))
-    delta_preds = delta_preds / (1e-5+jnp.linalg.norm(delta_preds, axis=-1, keepdims=True))
+    prediction = prediction / (1e-5+jnp.linalg.norm(prediction, axis=-1, keepdims=True))
+    label = label / (1e-5+jnp.linalg.norm(label, axis=-1, keepdims=True))
 
     def contrastive_loss(anchors, positives):
       # logits
@@ -67,7 +76,7 @@ class ModuleContrastLoss:
       return positive_logits, negative_logits, more_negative_logits, likelihood
 
 
-    pos_logits, mod_neg_logits, rand_neg_logits, likelihood = hk.BatchApply(contrastive_loss)(delta_preds, delta)
+    pos_logits, mod_neg_logits, rand_neg_logits, likelihood = hk.BatchApply(contrastive_loss)(prediction, label)
 
 
     # output is [B]
@@ -75,7 +84,7 @@ class ModuleContrastLoss:
       x=(-likelihood).mean(-1),
       done=data.discount[:-1]).mean()
 
-    T, B, N = delta.shape[:3]
+    T, B, N = label.shape[:3]
     metrics = {
       'loss_contrast': batch_loss,
       'z.contrast.neg_mod_logits' : mod_neg_logits.mean(),
