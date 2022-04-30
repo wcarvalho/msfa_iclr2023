@@ -64,6 +64,7 @@ def main(_):
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
     config['lang_task_dim'] = 32
+    config['lang_task_dim'] = 32
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)

@@ -9,7 +9,7 @@ def normalize(x):
   return  x / (1e-5+jnp.linalg.norm(x, axis=-1, keepdims=True))
 
 
-class ModuleContrastLoss:
+class OldModuleContrastLoss:
   """"""
   def __init__(self, coeff: float, temperature: float = 0.01, extra_negatives: int = 10, prediction='delta'):
     self.coeff = coeff
@@ -21,16 +21,16 @@ class ModuleContrastLoss:
 
   def __call__(self, data, online_preds, online_state, **kwargs):
 
-    delta_preds = online_preds.model_outputs  # [T, B, N, D]
+    model_preds = online_preds.model_outputs  # [T, B, N, D]
 
     state = online_preds.memory_out[:-1]  # [T, B, N, D]
     next_state = online_preds.memory_out[1:]  # [T, B, N, D]
 
     if self.prediction == 'delta':
-      prediction = delta_preds
+      prediction = model_preds
       label = next_state - state
     elif self.prediction == 'state':
-      prediction = state + delta_preds
+      prediction = state + model_preds
       label = next_state
 
     # -----------------------
@@ -93,6 +93,105 @@ class ModuleContrastLoss:
     }
     return self.coeff*batch_loss, metrics
 
+class ModuleContrastLoss:
+  """"""
+  def __init__(self, coeff: float, temperature: float = 0.01, extra_negatives: int = 10, prediction='delta'):
+    self.coeff = coeff
+    self.temperature = temperature
+    self.extra_negatives = extra_negatives
+    self.prediction = prediction.lower()
+    assert self.prediction in ['delta', 'state']
+
+
+  def __call__(self, data, online_preds, online_state, **kwargs):
+
+    model_preds = online_preds.model_outputs  # [T, B, N, D]
+    state = online_preds.memory_out[:-1]  # [T, B, N, D]
+    next_state = online_preds.memory_out[1:]  # [T, B, N, D]
+
+    if self.prediction == 'delta':
+      prediction = model_preds
+      label = next_state - state
+    elif self.prediction == 'state':
+      prediction = state + model_preds
+      label = next_state
+
+    # -----------------------
+    # L2 norm
+    # -----------------------
+    # [T-1, B, N, D]
+    prediction = prediction / (1e-5+jnp.linalg.norm(prediction, axis=-1, keepdims=True))
+    label = label / (1e-5+jnp.linalg.norm(label, axis=-1, keepdims=True))
+
+    def contrastive_loss(predictions : jnp.ndarray, labels : jnp.ndarray, negatives : jnp.ndarray):
+      """Summary
+      
+      Args:
+          predictions (jnp.ndarray): N x D
+          labels (jnp.ndarray): N x D
+          negatives (jnp.ndarray): T x B x N x D
+      
+      Returns:
+          TYPE: Description
+      """
+      logits = jnp.matmul(predictions, labels.transpose(1, 0)) # [N, N]
+
+      identity = jnp.identity(logits.shape[1]).astype(jnp.float32)
+      identity = jnp.expand_dims(identity, axis=0)
+      positive_logits = identity*logits
+      negative_logits = (1 - identity)*logits
+
+      N = logits.shape[0]
+      all_logits = logits
+      more_negative_logits = negative_logits
+
+      if self.extra_negatives > 0:
+        # add extra negatives
+        D = negatives.shape[-1]
+        negatives = negatives.reshape(-1, D)
+
+        # get extra_negatives for each batch
+        nnegatives = self.extra_negatives*N # M*N
+        negative_idx = np.random.randint(len(negatives), size=nnegatives)
+
+        _negatives = negatives[negative_idx].reshape(N, self.extra_negatives, -1)
+
+        dot = lambda a,b : jnp.matmul(a, b.transpose(1, 0))
+        more_negative_logits = jax.vmap(dot)(predictions, _negatives) # N x M
+
+        all_logits = jnp.concatenate((logits, more_negative_logits), axis=-1)
+        all_logits = all_logits + 1e-5
+
+      all_logits = all_logits/jnp.exp(self.temperature)
+
+
+      labels = jnp.arange(N)
+
+      likelihood = distrax.Categorical(logits=all_logits).log_prob(labels)
+
+      return positive_logits, negative_logits, more_negative_logits, likelihood
+
+
+    contrastive_loss = jax.vmap(contrastive_loss, in_axes=(0, 0, None), out_axes=0) # N
+    contrastive_loss = jax.vmap(contrastive_loss, in_axes=(1, 1, None), out_axes=1) # B
+
+
+    pos_logits, mod_neg_logits, rand_neg_logits, likelihood = contrastive_loss(prediction, label, label)
+
+
+    # output is [B]
+    batch_loss = episode_mean(
+      x=(-likelihood).mean(-1),
+      done=data.discount[:-1]).mean()
+
+    T, B, N = label.shape[:3]
+    metrics = {
+      'loss_contrast': batch_loss,
+      'z.contrast.neg_mod_logits' : mod_neg_logits.mean(),
+      'z.contrast.neg_ran_logits' : rand_neg_logits.mean(),
+      'z.contrast.pos_logits' : pos_logits.sum()/(T*B*N),
+    }
+    return self.coeff*batch_loss, metrics
 
 class TimeContrastLoss:
   """"""
@@ -107,7 +206,7 @@ class TimeContrastLoss:
 
   def __call__(self, data, online_preds, online_state, **kwargs):
 
-    delta_preds = online_preds.model_outputs  # [T, B, N, D]
+    model_preds = online_preds.model_outputs  # [T, B, N, D]
 
     state = online_preds.memory_out[:-1]  # [T, B, N, D]
     next_state = online_preds.memory_out[1:]  # [T, B, N, D]
@@ -119,8 +218,8 @@ class TimeContrastLoss:
     labels = normalize(next_state)   # positive
     if self.normalize_step:
       state = normalize(state)
-      delta_preds = normalize(delta_preds)
-    predictions = normalize(state + delta_preds)  # anchor
+      model_preds = normalize(model_preds)
+    predictions = normalize(state + model_preds)  # anchor
 
 
     def contrastive_loss(
@@ -178,8 +277,8 @@ class TimeContrastLoss:
       'z.any_nodata' : any_done_zero.mean(),
       'z.time.positive_logits' : positive_logits.mean(),
       'z.time.negative_logits' : negative_logits.mean(),
-      'z.time.delta_preds_mean' : delta_preds.mean(),
-      'z.time.delta_preds_var' : delta_preds.var(),
+      'z.time.model_preds_mean' : model_preds.mean(),
+      'z.time.model_preds_var' : model_preds.var(),
       'z.time.state_mean' : state.mean(),
       'z.time.state_var' : state.var(),
     }

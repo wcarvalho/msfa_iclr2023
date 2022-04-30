@@ -165,10 +165,10 @@ class FarmModelConfig(FarmConfig):
   seperate_model_params: bool=True # seperate parameters per transition fn
   normalize_step: bool=False # whether to normalize delta step in TimeContrastLoss
   contrast_module_coeff: float = 0.1
+  contrast_module_pred: str = 'delta'
   contrast_time_coeff: float = 0.0
   extra_module_negatives: int = 4
   extra_time_negatives: int = 0
-
 
 
 @dataclasses.dataclass
