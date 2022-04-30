@@ -141,7 +141,6 @@ class ModularUSFAConfig(USFAConfig):
   phi_net: str = 'independent'
   phi_net_heads: int = 2
   phi_net_layers: int=1
-  cumulant_const: str='delta_concat'  # whether to use delta between states as cumulant
 
   relate_w_init: float=2.
   resid_w_init: float=2.
@@ -159,6 +158,7 @@ class FarmModelConfig(FarmConfig):
   # Network hps
   temperature: float = 0.01
   reward_coeff: float = 1e-4 # coefficient for reward loss
+  cumulant_const: str='delta_concat'  # whether to use delta between states as cumulant
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'

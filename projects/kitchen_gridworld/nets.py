@@ -522,6 +522,14 @@ def build_msf_head(config, sf_out_dim, num_actions):
   return head, pred_prep_fn, eval_prep_fn
 
 def build_msf_phi_net(config, sf_out_dim):
+  contrast_module = getattr(config, "contrast_module_coeff", 0) > 0
+  contrast_module_delta = getattr(config, "contrast_module_pred", 'delta') == 'delta'
+  contrast_module_state = getattr(config, "contrast_module_pred", 'delta') == 'state'
+  contrast_time = getattr(config, "contrast_time_coeff", 0) > 0
+
+  normalize_delta = config.normalize_delta and contrast_module and contrast_module_delta
+  normalize_state = contrast_module_state or contrast_time
+
   if config.phi_net == "flat":
     return FarmCumulants(
           activation=config.cumulant_act,
@@ -530,7 +538,7 @@ def build_msf_phi_net(config, sf_out_dim):
           layers=config.cumulant_layers,
           aggregation='concat',
           normalize_cumulants=config.normalize_cumulants,
-          normalize_delta=config.normalize_delta,
+          normalize_delta=normalize_delta,
           construction=config.cumulant_const,
           )
   else:
@@ -559,7 +567,7 @@ def build_msf_phi_net(config, sf_out_dim):
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
         relational_net=relational_net,
-        normalize_delta=config.normalize_delta,
-        normalize_state=getattr(config, "contrast_time_coeff", 0) > 0,
+        normalize_delta=normalize_delta,
+        normalize_state=normalize_state,
         normalize_cumulants=config.normalize_cumulants)
   raise RuntimeError

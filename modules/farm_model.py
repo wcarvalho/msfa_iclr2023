@@ -211,6 +211,5 @@ class FarmIndependentCumulants(FarmCumulants):
     if self.normalize_cumulants:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
 
-
     cumulants = self.activation(cumulants)
     return {'cumulants' : cumulants}
