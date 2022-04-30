@@ -10,6 +10,17 @@ import copy
 from envs.babyai_kitchen.world import Kitchen
 from envs.babyai_kitchen.levelgen import KitchenLevel
 
+def reject_next_to(env, pos):
+    """
+    Function to filter out object positions that are right next to
+    the agent's starting point
+    """
+
+    sx, sy = env.agent_pos
+    x, y = pos
+    d = abs(sx - x) + abs(sy - y)
+    return d < 2
+
 class GotoAvoidEnv(KitchenLevel):
   """docstring for GotoAvoidEnv"""
   def __init__(self, 
@@ -61,7 +72,11 @@ class GotoAvoidEnv(KitchenLevel):
         rootdir=rootdir,
         verbosity=verbosity,
         )
-    self.default_objects = copy.deepcopy(kitchen.objects)
+
+    self.default_objects = []
+    for _ in range(nobjects):
+      self.default_objects.extend(copy.deepcopy(kitchen.objects))
+    
 
     kwargs["task_kinds"] = ['pickup']
     kwargs['actions'] = ['left', 'right', 'forward', 'pickup_contents']
@@ -73,6 +88,11 @@ class GotoAvoidEnv(KitchenLevel):
         verbosity=verbosity,
         objects=objects,
         **kwargs)
+    # -----------------------
+    # backwards compatibility
+    # -----------------------
+    self.actions.drop = len(self.actions)
+    self.actions.toggle = len(self.actions)
 
     self.observation_space.spaces['mission'] = spaces.Box(
         low=0,
@@ -96,21 +116,22 @@ class GotoAvoidEnv(KitchenLevel):
     # connect all rooms
     self.connect_all()
 
-    # -----------------------
-    # get objects to spawn
-    # -----------------------
-    types_to_place = []
-    for object_type in self.object2reward.keys():
-      types_to_place.extend([object_type]*self.nobjects)
+    # # -----------------------
+    # # get objects to spawn
+    # # -----------------------
+    # types_to_place = []
+    # for object_type in self.object2reward.keys():
+    #   types_to_place.extend([object_type]*self.nobjects)
 
     # -----------------------
     # spawn objects
     # -----------------------
     self.object_occurrences = np.zeros(len(self.object2reward), dtype=np.int32)
-    for object_type in types_to_place:
+    for object in self.default_objects:
+        object_type = object.type
         object_idx = self.type2idx[object_type]
         self.object_occurrences[object_idx] += 1
-        object = self.default_objects[object_idx]
+        # object = self.default_objects[object_idx]
         assert object.type in self.object2reward, "placing object with no reward signature"
         self.place_in_room(0, 0, object)
 
@@ -148,7 +169,15 @@ class GotoAvoidEnv(KitchenLevel):
 
       if self.respawn:
         # move object
-        self.place_in_room(0, 0, object)
+        room = self.get_room(0, 0)
+
+        pos = self.place_obj(
+            object,
+            room.top,
+            room.size,
+            reject_fn=reject_next_to,
+            max_tries=1000
+        )
         self.object_occurrences[obj_idx] += 1
       else:
         self.remaining[obj_idx] -= 1
@@ -231,12 +260,15 @@ class GotoAvoidEnv(KitchenLevel):
 if __name__ == '__main__':
     import gym_minigrid.window
     import time
+    from envs.babyai_kitchen.bot import GotoAvoidBot
+
     from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, RGBImgFullyObsWrapper
     import matplotlib.pyplot as plt 
     import cv2
     import tqdm
 
     tile_size=20
+    optimal=True
     size='large'
     sizes = dict(
       small=dict(room_size=5, nobjects=1),
@@ -253,7 +285,7 @@ if __name__ == '__main__':
             "tomato" : 1,
             "knife" : -1,
             },
-        respawn=False,
+        respawn=True,
         pickup_required=True,
         tile_size=tile_size,
         **sizes[size],
@@ -273,27 +305,30 @@ if __name__ == '__main__':
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.show_img(combine(full, obs['image']))
 
-    for _ in tqdm.tqdm(range(1000)):
-      obs = env.reset()
+    def show(obs):
       full = env.render('rgb_array', tile_size=tile_size, highlight=True)
       window.set_caption(obs['mission'])
       window.show_img(combine(full, obs['image']))
+      # import ipdb; ipdb.set_trace()
+      time.sleep(.05)
 
-      rewards = []
-      # print("Initial occurrences:", env.object_occurrences)
-      for step in range(1):
-          obs, reward, done, info = env.step(env.action_space.sample())
-          rewards.append(reward)
-          full = env.render('rgb_array', tile_size=tile_size, highlight=True)
-          window.show_img(combine(full, obs['image']))
-          if done:
-            break
+    for _ in tqdm.tqdm(range(1000)):
+      obs = env.reset()
+      show(obs)
 
-      total_reward = sum(rewards)
-      normalized_reward = total_reward/env.object_occurrences[0]
-      # print("Final occurrences:", env.object_occurrences)
-      print(f"Total reward: {total_reward}")
-      print(f"Left: {env.remaining}")
-      print(f"Total Left: {env.total_remaining}")
-      # print(f"Normalized reward: {normalized_reward}")
-    import ipdb; ipdb.set_trace()
+      if optimal:
+        bot = GotoAvoidBot(env)
+        obss, actions, rewards, dones = bot.generate_traj(
+          plot_fn=show)
+      else:
+        rewards = []
+        for step in range(100):
+            obs, reward, done, info = env.step(env.action_space.sample())
+            rewards.append(reward)
+            show(obs)
+            if done:
+              break
+
+      print(f"Total reward: {sum(rewards)}")
+      print("Final occurrences:", env.object_occurrences)
+      import ipdb; ipdb.set_trace()
