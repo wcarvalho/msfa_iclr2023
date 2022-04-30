@@ -54,21 +54,25 @@ def main(_):
   env = helpers.make_environment(setting=FLAGS.env_setting, evaluation=FLAGS.evaluate)
   env_spec = acme.make_environment_spec(env)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(FLAGS.agent, env_spec, setting=FLAGS.env_setting)
-
+  config = dict()
   if FLAGS.test:
-    config.max_replay_size = 10_000
-    config.min_replay_size = 10
-    config.npolicies = 2
-    config.variance = 0.1
-    config.batch_size = 8
-    config.cumulant_layers = 2
-    config.sf_net_heads = 2
-    config.relate_b_init = 4.0
-    config.res_relu_gate = False
+    config['max_replay_size'] = 10_000
+    config['min_replay_size'] = 10
+    config['npolicies'] = 2
+    config['variance'] = 0.1
+    config['batch_size'] = 8
+    config['cumulant_layers'] = 2
+    config['sf_net_heads'] = 2
+    config['relate_b_init'] = 4.0
+    config['contrast_module_pred'] = 'state'
+    config['contrast_module_coeff'] = 0.1
+    # config['phi_net'] = 'flat'
+    config['res_relu_gate'] = False
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)
+
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(FLAGS.agent, env_spec, setting=FLAGS.env_setting, config_kwargs=config)
 
   # -----------------------
   # logger

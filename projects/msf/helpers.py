@@ -228,7 +228,8 @@ def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, lear
           ModuleContrastLoss(
             coeff=config.contrast_module_coeff,
             extra_negatives=config.extra_module_negatives,
-            temperature=config.temperature)
+            temperature=config.temperature,
+            prediction=config.contrast_module_pred)
           )
     if config.contrast_time_coeff > 0:
       aux_tasks.append(
@@ -238,7 +239,6 @@ def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, lear
             temperature=config.temperature,
             normalize_step=config.normalize_step)
           )
-
   LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
   LossFnKwargs.update(
     loss=config.sf_loss,

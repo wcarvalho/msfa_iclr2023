@@ -295,10 +295,14 @@ class UsfaHead(hk.Module):
       q=q_values,  # [B, N, A]
       w=w)         # [B, D_w]
 
-
   @property
   def out_dim(self):
     return self.sf_out_dim
+
+  @property
+  def cumulants_per_module(self):
+    return self.sf_out_dim
+
 
 class StatePolicyCombination(hk.Module):
   def __call__(self, memory_out, z_embedding):

@@ -31,7 +31,7 @@ class FarmUsfaHead(UsfaHead):
 
     self.vmap_multihead = vmap_multihead
     self.relational_net = relational_net
-    self.cumulants_per_module = cumulants_per_module
+    self._cumulants_per_module = cumulants_per_module
     self.sf_factory = lambda: hk.nets.MLP([self.hidden_size, self.num_actions*cumulants_per_module])
 
   def compute_sf(self,
@@ -46,7 +46,7 @@ class FarmUsfaHead(UsfaHead):
         task (jnp.ndarray): B x D_w
     """
     B, M, _ = state.shape
-    A, C = self.num_actions, self.cumulants_per_module
+    A, C = self.num_actions, self._cumulants_per_module
 
     def concat(x,y): return jnp.concatenate((x,y), axis=-1)
     concat = jax.vmap(concat, in_axes=(1, None), out_axes=1)
@@ -121,3 +121,7 @@ class FarmUsfaHead(UsfaHead):
   @property
   def out_dim(self):
     return self.sf_out_dim
+
+  @property
+  def cumulants_per_module(self):
+    return self._cumulants_per_module
