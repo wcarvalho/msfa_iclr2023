@@ -159,13 +159,13 @@ class FarmModelConfig(FarmConfig):
   # Network hps
   temperature: float = 0.01
   reward_coeff: float = 1e-4 # coefficient for reward loss
-  cumulant_const: str='delta_concat'  # whether to use delta between states as cumulant
+  cumulant_const: str='concat'  # whether to use delta between states as cumulant
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'
   seperate_model_params: bool=True # seperate parameters per transition fn
   normalize_step: bool=False # whether to normalize delta step in TimeContrastLoss
-  contrast_module_coeff: float = 0.1
+  contrast_module_coeff: float = 0.0
   contrast_module_pred: str = 'delta'
   contrast_time_coeff: float = 0.0
   extra_module_negatives: int = 4
@@ -189,4 +189,4 @@ class LangConfig:
   word_dim: int = 128  # dimension of word and sentence embeddings
   word_initializer: str = 'RandomNormal'
   word_compress: str = 'last'
-  lang_task_dim: int = 32  # dimension of task
+  lang_task_dim: int = 16  # dimension of task

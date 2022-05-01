@@ -63,7 +63,9 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['cumulant_layers'] = 1
+    config['out_hidden_size'] = 128
+    config['nmodules'] = 8
+    config['lang_task_dim'] = 32
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)

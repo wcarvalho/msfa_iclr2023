@@ -478,10 +478,11 @@ def build_msf_head(config, sf_out_dim, num_actions):
     else:
       raise NotImplementedError(config.sf_net)
 
+    hidden_size = config.out_hidden_size if config.out_hidden_size else config.module_size
     head = FarmUsfaHead(
           num_actions=num_actions,
           cumulants_per_module=sf_out_dim//config.nmodules,
-          hidden_size=config.out_hidden_size,
+          hidden_size=hidden_size,
           policy_size=config.policy_size,
           variance=config.variance,
           nsamples=config.npolicies,

@@ -36,10 +36,32 @@ def get(search):
         "contrast_module_coeff": tune.grid_search([0.0]),
         "lang_task_dim": tune.grid_search([16, 32]),
         "cumulant_const": tune.grid_search(['concat']),
-        "cumulant_hidden_size": tune.grid_search([1]),
+        "cumulant_layers": tune.grid_search([1]),
         },
     ]
 
+  elif search == 'msf_modules':
+    """
+    Next:
+    """
+    space = [
+      # {
+      #   "seed": tune.grid_search([1, 2]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['SmallL2TransferEasy']),
+      #   "out_hidden_size": tune.grid_search([128]),
+      #   "nmodules": tune.grid_search([4]),
+      #   "lang_task_dim": tune.grid_search([16]),
+      #   },
+      {
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['SmallL2TransferEasy']),
+        "out_hidden_size": tune.grid_search([128, 512]),
+        "nmodules": tune.grid_search([8]),
+        "lang_task_dim": tune.grid_search([32]),
+        },
+    ]
   else:
     raise NotImplementedError(search)
 
