@@ -1,5 +1,8 @@
 food1: [onion, tomato, apple]
 food2: [lettuce, potato, orange]
 food: [lettuce, tomato, onion, potato, apple, orange]
+cookfood1: [onion, tomato]
+cookfood2: [lettuce, potato]
+cookfood: [lettuce, tomato, onion, potato]
 container: [pot, pan]
 utensil: [knife, fork]

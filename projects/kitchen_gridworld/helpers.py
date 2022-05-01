@@ -29,7 +29,6 @@ from envs.babyai_kitchen.utils import InstructionsPreprocessor
 
 
 
-# 2,560,560
 # ======================================================
 # Environment
 # ======================================================

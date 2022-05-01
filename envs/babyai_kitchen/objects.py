@@ -154,7 +154,7 @@ class KitchenObject(WorldObj):
 
   def render(self, screen):
     obj_img = self.state_image()
-    np.copyto(screen, obj_img[:, :, :3])
+    np.copyto(dst=screen, src=obj_img[:, :, :3])
     fill_coords(screen, point_in_rect(0, 0.031, 0, 1), (100, 100, 100))
     fill_coords(screen, point_in_rect(0, 1, 0, 0.031), (100, 100, 100))
 
