@@ -36,7 +36,7 @@ class R2D1Config(configs.R2D1Config):
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 6.0 # 0.0=single process
-  min_replay_size: int = 10_000
+  min_replay_size: int = 100
   max_replay_size: int = 100_000
   batch_size: int = 32
   store_lstm_state: bool = True

@@ -119,9 +119,13 @@ def make_logger(
 
 def _format_key(key: str) -> str:
   """Internal function for formatting keys in Tensorboard format."""
-  new = key.title().replace("_", "")
+  new = key.title().replace("_", "").replace("/", "-")
   return new
 
+def _format_loss(key: str) -> str:
+  """Internal function for formatting keys in Tensorboard format."""
+  new = key.title().replace("_", "")
+  return new
 
 
 
@@ -169,7 +173,7 @@ class WandbLogger(base.Logger):
         if len(key_pieces) == 1: # e.g. [step]
           name = f'{self.label}/{_format_key(key)}'
         else: # e.g. [r2d1/xyz] --> [Loss_r2d1/xyz]
-          name = f'{self.label}_{_format_key(key)}'
+          name = f'{self.label}_{_format_loss(key)}'
       else: # e.g. [actor_SmallL2NoDist]
         name = f'{self.label}/{_format_key(key)}'
 
