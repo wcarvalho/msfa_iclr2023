@@ -69,6 +69,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       log_to_bigtable: bool = True,
       evaluator: bool = True,
       log_every: float = 10.0,
+      num_evaluators: int = 2,
       multithreading_colocate_learner_and_reverb=False,
       **kwargs,
   ):
@@ -111,6 +112,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
             observers=observers,
             log_to_bigtable=log_to_bigtable,
             logger_fn=evaluator_logger_fn)
+          for _ in range(num_evaluators)
               ]
     super().__init__(
         seed=seed,

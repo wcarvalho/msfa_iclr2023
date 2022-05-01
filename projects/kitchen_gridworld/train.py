@@ -93,6 +93,7 @@ def main(_):
     notes=FLAGS.notes,
   )
 
+  actor_label = f"actor_{setting}"
   run(
     env=env,
     env_spec=env_spec,
@@ -107,6 +108,7 @@ def main(_):
     seed=FLAGS.seed,
     num_episodes=FLAGS.num_episodes,
     wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
+    actor_label=actor_label,
     )
 
 

@@ -72,6 +72,7 @@ def run(env,
     num_episodes: int=1_000,
     log_every=5.0,
     observers=None,
+    actor_label='actor',
     wandb_init_kwargs=None):
 
   # -----------------------
@@ -87,7 +88,7 @@ def run(env,
 
   env_logger = make_logger(
     log_dir=log_dir,
-    label='actor',
+    label=actor_label,
     wandb=use_wandb,
     time_delta=log_every,
     steps_key="steps")

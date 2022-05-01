@@ -129,11 +129,15 @@ class RecurrentTDLearning(learning_lib.LossFn):
     importance_weights **= self.importance_sampling_exponent
     importance_weights /= jnp.max(importance_weights)
     mean_loss = jnp.mean(importance_weights * batch_loss)
+
+    Cls = lambda x: x.__class__.__name__
     metrics={
-      **metrics,
-      'loss_main':mean_loss,
-      'z.importance': importance_weights.mean(),
-      'z.reward' :data.reward.mean()
+      Cls(self) : {
+        **metrics,
+        'loss_main':mean_loss,
+        'z.importance': importance_weights.mean(),
+        'z.reward' :data.reward.mean()
+        }
       }
     mean_loss = self.loss_coeff*mean_loss
 
@@ -167,13 +171,12 @@ class RecurrentTDLearning(learning_lib.LossFn):
           steps=steps,
           **kwargs)
 
-        metrics={**metrics,**aux_metrics}
+        
+        # metrics={**metrics,**aux_metrics}
+        metrics[Cls(aux_task)] = aux_metrics
         mean_loss = mean_loss + aux_loss
 
-      metrics={
-        **metrics,
-        'loss_w_aux':mean_loss,
-        }
+      metrics[Cls(self)]['loss_w_aux'] = mean_loss
 
     reverb_update = learning_lib.ReverbUpdate(
         keys=batch.info.key,

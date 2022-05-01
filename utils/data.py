@@ -89,16 +89,6 @@ def save_dict(dictionary, file, **kwargs):
     json.dump(new, handle)
     return new
 
-def expand_config_named(config, new):
-  config = AttrDict(**config.__dict__)
-  config.update(new)
-  # original_fields = set(config.keys()).add(new.keys())
-  print(config)
-  import ipdb; ipdb.set_trace()
-  return config
-  # Config = AttrDict()
-  # return Config(**config)
-
 def merge_configs(dataclass_configs, dict_configs):
 
   if not isinstance(dataclass_configs, list):

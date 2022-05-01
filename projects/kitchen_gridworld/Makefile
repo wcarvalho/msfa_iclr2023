@@ -2,10 +2,11 @@ agent?=msf
 cuda?=2,3
 folder?='results/kitchen_grid/final'
 wandb?=True
+wandb_test?=False
 custom_loggers?=True
 date?=False
 num_gpus?=1
-project?='kitchen_grid1'
+project?='kitchen_grid2'
 env?='EasyPickup'
 group?=''
 notes?=''
@@ -23,14 +24,16 @@ test_sync:
 	python -m ipdb -c continue projects/kitchen_gridworld/train.py \
 	--agent $(agent) \
 	--test=True \
-	--env_setting=$(env)
+	--env_setting=$(env) \
+	--wandb=$(wandb_test) \
 
 
 test_async:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python -m ipdb -c continue projects/kitchen_gridworld/train_distributed.py \
-	--agent $(agent)
+	--agent $(agent) \
+	--wandb=$(wandb_test) \
 
 
 train_search:

@@ -11,6 +11,7 @@ from acme.jax import utils as jax_utils
 import jax
 import numpy as np
 from utils.tf_summary import TFSummaryLogger
+from utils import data as data_utils
 
 import datetime
 from pathlib import Path
@@ -50,6 +51,25 @@ def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, retu
 def copy_numpy(values):
   return jax.tree_map(np.array, values)
 
+class FlattenFilter(base.Logger):
+  """"""
+
+  def __init__(self, to: base.Logger):
+    """Initializes the logger.
+
+    Args:
+      to: A `Logger` object to which the current object will forward its results
+        when `write` is called.
+    """
+    self._to = to
+
+  def write(self, values: base.LoggingData):
+    values = data_utils.flatten_dict(values, sep='/')
+    self._to.write(values)
+
+  def close(self):
+    self._to.close()
+
 def make_logger(
   log_dir: str,
   label: str,
@@ -85,6 +105,7 @@ def make_logger(
   # Dispatch to all writers and filter Nones.
   logger = loggers.Dispatcher(_loggers, copy_numpy)  # type: ignore
   logger = loggers.NoneFilter(logger)
+  logger = FlattenFilter(logger)
 
   if asynchronous:
     logger = async_logger.AsyncLogger(logger)
@@ -98,8 +119,11 @@ def make_logger(
 
 def _format_key(key: str) -> str:
   """Internal function for formatting keys in Tensorboard format."""
-  new = key.title().replace('_', '').replace("/", "-")
+  new = key.title().replace("_", "")
   return new
+
+
+
 
 class WandbLogger(base.Logger):
   """Logs to a tf.summary created in a given logdir.
@@ -111,6 +135,7 @@ class WandbLogger(base.Logger):
   def __init__(
       self,
       label: str = 'Logs',
+      labels_skip=('Loss'),
       steps_key: Optional[str] = None
   ):
     """Initializes the logger.
@@ -122,6 +147,7 @@ class WandbLogger(base.Logger):
     """
     self._time = time.time()
     self.label = label
+    self.labels_skip =labels_skip
     self._iter = 0
     # self.summary = tf.summary.create_file_writer(logdir)
     self._steps_key = steps_key
@@ -133,10 +159,24 @@ class WandbLogger(base.Logger):
       return
 
     step = values[self._steps_key] if self._steps_key is not None else self._iter
-    to_log = {f'{self.label}/step' : step}
+
+
+    to_log={}
     for key in values.keys() - [self._steps_key]:
-      name = f'{self.label}/{_format_key(key)}'
+
+      if self.label in self.labels_skip: # e.g. [Loss]
+        key_pieces = key.split("/")
+        if len(key_pieces) == 1: # e.g. [step]
+          name = f'{self.label}/{_format_key(key)}'
+        else: # e.g. [r2d1/xyz] --> [Loss_r2d1/xyz]
+          name = f'{self.label}_{_format_key(key)}'
+      else: # e.g. [actor_SmallL2NoDist]
+        name = f'{self.label}/{_format_key(key)}'
+
       to_log[name] = values[key]
+
+    to_log[f'{self.label}/step']  = step
+
 
     wandb.log(to_log)
     self._iter += 1

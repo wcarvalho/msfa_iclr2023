@@ -46,7 +46,7 @@ flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
 flags.DEFINE_bool('debug', False, 'whether to debug.')
 flags.DEFINE_bool('custom_loggers', True, 'whether to use custom loggers.')
 flags.DEFINE_bool('wandb', False, 'whether to log.')
-flags.DEFINE_string('wandb_project', 'kitchen_grid', 'wand project.')
+flags.DEFINE_string('wandb_project', 'kitchen_grid_dist', 'wand project.')
 flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
 flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
 flags.DEFINE_string('notes', '', 'notes for wandb.')
@@ -58,7 +58,7 @@ def build_program(
   num_actors : int,
   wandb_init_kwargs=None,
   update_wandb_name=True, # use path from logdir to populate wandb name
-  setting=None,
+  setting='SmallL2NoDist',
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
   log_every=5.0, # how often to log
@@ -95,7 +95,7 @@ def build_program(
       config.samples_per_insert_tolerance_rate = 0.1
       config.samples_per_insert = 0.0 # different
       config.num_parallel_calls = 1
-      config.min_replay_size = 1_000 # smaller
+      config.min_replay_size = 100 # smaller
       config.max_replay_size = 10_000 # smaller
       kwargs['colocate_learner_replay'] = False
 
@@ -140,11 +140,13 @@ def build_program(
     NetKwargs=NetKwargs,
     LossFn=LossFn,
     LossFnKwargs=LossFnKwargs,
-    loss_label=loss_label,
     num_actors=num_actors,
     save_config_dict=save_config_dict,
     log_every=log_every,
     observers=observers,
+    loss_label='Loss',
+    actor_label=f"actor_{setting}",
+    evaluator_label=f"evaluator_{setting}",
     **kwargs,
     )
 
