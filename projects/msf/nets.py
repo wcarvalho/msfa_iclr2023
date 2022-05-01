@@ -508,8 +508,8 @@ def build_msf_phi_net(config, module_cumulants):
   contrast_module_state = getattr(config, "contrast_module_pred", 'delta') == 'state'
   contrast_time = getattr(config, "contrast_time_coeff", 0) > 0
 
-  normalize_delta = contrast_module and contrast_module_delta
-  normalize_state = contrast_module_state or contrast_time
+  normalize_delta = config.normalize_delta and contrast_module and contrast_module_delta
+  normalize_state = config.normalize_state and (contrast_module_state or contrast_time)
 
 
   if config.phi_net == "flat":

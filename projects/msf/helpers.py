@@ -382,36 +382,28 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     loss_label = 'usfa'
     eval_network = config.eval_network
 
-  elif agent == "usfa_farmflat":
-  # USFA + cumulants from FARM + Q-learning
-    return usfa_farm(default_config, env_spec,
-      net='flat',
-      predict_cumulants=True,
-      learn_model=False)
-
-  elif agent == "usfa_farmflat_model":
-  # USFA + cumulants from FARM + Q-learning + structured model
-    return usfa_farm(default_config, env_spec,
-      net='flat',
-      predict_cumulants=True,
-      learn_model=True)
-
-  elif agent == "usfa_farm":
-  # same as above except each module produces independent cumulants, SFs
-    return usfa_farm(default_config, env_spec,
-      net="independent",
-      predict_cumulants=True,
-      learn_model=False)
-
-  elif agent == "usfa_farm_model":
-  # same as above except each module produces independent cumulants, SFs
-    return usfa_farm(default_config, env_spec,
-      net="independent",
-      predict_cumulants=True,
-      learn_model=True)
-
   elif agent == "msf":
   # USFA + cumulants from FARM + Q-learning
+    return usfa_farm(default_config, env_spec,
+      net='msf',
+      predict_cumulants=True,
+      learn_model=True)
+  elif agent == "msf_delta_model":
+  # USFA + cumulants from FARM + Q-learning
+    default_config['contrast_module_pred'] = 'delta'
+    return usfa_farm(default_config, env_spec,
+      net='msf',
+      predict_cumulants=True,
+      learn_model=True)
+  elif agent == "msf_time_model":
+  # USFA + cumulants from FARM + Q-learning
+    return usfa_farm(default_config, env_spec,
+      net='msf',
+      predict_cumulants=True,
+      learn_model=True)
+  elif agent == "msf_state_model":
+  # USFA + cumulants from FARM + Q-learning
+    default_config['contrast_module_pred'] = 'state'
     return usfa_farm(default_config, env_spec,
       net='msf',
       predict_cumulants=True,

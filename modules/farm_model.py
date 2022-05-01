@@ -82,7 +82,7 @@ class FarmCumulants(AuxilliaryTask):
     """
     super(FarmCumulants, self).__init__(
       unroll_only=True, timeseries=True)
-    if hidden_size:
+    if hidden_size > 0 and layers > 0:
       layers = [hidden_size]*layers + [module_cumulants]
     else:
       layers = [module_cumulants]
@@ -177,6 +177,7 @@ class FarmIndependentCumulants(FarmCumulants):
       next_states = memory_out[1:]  # [T, B, M, 2D]
 
       cumulants = next_states - states
+
       if self.normalize_delta:
         cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
       if self.normalize_state:

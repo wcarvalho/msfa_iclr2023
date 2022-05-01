@@ -127,6 +127,7 @@ class FarmConfig:
 class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
   normalize_delta: bool = True # whether to normalize delta between states
+  normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 16 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
 
@@ -141,7 +142,7 @@ class ModularUSFAConfig(USFAConfig):
   phi_net: str = 'independent'
   phi_net_heads: int = 2
   phi_net_layers: int=1
-  cumulant_const: str='delta_concat'  # whether to use delta between states as cumulant
+  cumulant_const: str='concat'  # whether to use delta between states as cumulant
 
   relate_w_init: float=2.
   resid_w_init: float=2.

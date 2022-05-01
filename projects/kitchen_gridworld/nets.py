@@ -268,27 +268,6 @@ def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
     memory_out=memory_out,
     )
 
-# def build_usfa_prep_fns(config, embed_fn):
-
-#   def replace_task_with_embedding(inputs):
-#     new_observation = inputs.observation._replace(
-#       task=embed_fn(inputs.observation.task))
-#     return inputs._replace(observation=new_observation)
-
-#   def pred_prep_fn(inputs, memory_out, *args, **kwargs):
-#     """Concat Farm module-states before passing them."""
-#     new_inputs = replace_task_with_embedding(inputs)
-#     return usfa_prep_fn(inputs=new_inputs, 
-#       memory_out=memory_out)
-
-#   def eval_prep_fn(inputs, memory_out, *args, **kwargs):
-#     """Concat Farm module-states before passing them."""
-#     inputs = replace_task_with_embedding(inputs)
-#     return usfa_eval_prep_fn(inputs=inputs, 
-#       memory_out=memory_out)
-
-#   return pred_prep_fn, eval_prep_fn
-
 def usfa(config, env_spec,
   task_embedding='none',
   use_seperate_eval=True,
@@ -309,7 +288,7 @@ def usfa(config, env_spec,
   elif task_embedding == "none":
     sf_out_dim = env_spec.observations.observation.task.shape[0]
     raise RuntimeError("Is this a good default for sf_out_dim?? state features or task?? Task.")
-  # sf_pred_prep_fn, sf_eval_prep_fn = build_usfa_prep_fns(config, embed_fn)
+
 
 
   prediction_head=UsfaHead(
@@ -429,7 +408,7 @@ def msf(
     # takes structured farm input
     aux_tasks.append(
       FarmModel(
-        output_sizes=max(config.model_layers-1, 0)*[config.module_size],
+        output_sizes=max(config.model_layers-1, 1)*[config.module_size],
         num_actions=num_actions,
         seperate_params=config.seperate_model_params,
         ),
@@ -528,7 +507,7 @@ def build_msf_phi_net(config, sf_out_dim):
   contrast_time = getattr(config, "contrast_time_coeff", 0) > 0
 
   normalize_delta = config.normalize_delta and contrast_module and contrast_module_delta
-  normalize_state = contrast_module_state or contrast_time
+  normalize_state = config.normalize_state and (contrast_module_state or contrast_time)
 
   if config.phi_net == "flat":
     return FarmCumulants(

@@ -61,13 +61,12 @@ def main(_):
     config['npolicies'] = 2
     config['variance'] = 0.1
     config['batch_size'] = 8
-    config['cumulant_layers'] = 2
-    config['sf_net_heads'] = 2
-    config['relate_b_init'] = 4.0
-    config['contrast_module_pred'] = 'state'
+    # config['sf_net_heads'] = 2
+    config['cumulant_const'] = 'delta_concat'
+    config['contrast_module_pred'] = 'delta'
     config['contrast_module_coeff'] = 0.1
-    # config['phi_net'] = 'flat'
-    config['res_relu_gate'] = False
+    config['normalize_delta'] = False
+    # config['res_relu_gate'] = False
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)
