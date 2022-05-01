@@ -28,12 +28,14 @@ def build_common_program(
   NetKwargs,
   LossFn,
   LossFnKwargs,
-  loss_label,
   wandb_init_kwargs=None,
   log_every=5.0, # how often to log
   colocate_learner_replay=False,
   observers=None,
   custom_loggers=True,
+  loss_label=None,
+  actor_label='actor',
+  evaluator_label='evaluator',
   ):
 
   # -----------------------
@@ -73,14 +75,14 @@ def build_common_program(
           asynchronous=True)
 
     actor_logger_fn = lambda actor_id: make_logger(
-                    log_dir=log_dir, label='actor',
+                    log_dir=log_dir, label=actor_label,
                     time_delta=log_every,
                     wandb=use_wandb,
                     save_data=actor_id == 0,
                     steps_key="actor_steps",
                     )
     evaluator_logger_fn = lambda label, steps_key: make_logger(
-                    log_dir=log_dir, label='evaluator',
+                    log_dir=log_dir, label=evaluator_label,
                     time_delta=log_every,
                     wandb=use_wandb,
                     steps_key="evaluator_steps",
