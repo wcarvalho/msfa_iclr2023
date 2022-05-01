@@ -127,6 +127,7 @@ class FarmConfig:
 class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
   normalize_delta: bool = True # whether to normalize delta between states
+  normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 16 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
 
