@@ -34,6 +34,7 @@ from envs.babyai_kitchen.utils import InstructionsPreprocessor
 # ======================================================
 def make_environment(evaluation: bool = False,
                      tile_size=8,
+                     room_size=6,
                      max_text_length=10,
                      path='.',
                      setting=None,
@@ -47,28 +48,32 @@ def make_environment(evaluation: bool = False,
       ),
     SmallL2NoDist=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_no_dist.yaml",
-      room_size=6,
+      room_size=room_size,
       ),
     SmallL2NoDistV2=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_no_dist_v2.yaml",
-      room_size=6,
+      room_size=room_size,
       ),
     SmallL2SliceChill=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_slice_chill.yaml",
-      room_size=6,
+      room_size=room_size,
       ),
     SmallL2Transfer=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_slice_chill_clean_transfer.yaml",
-      room_size=6,
+      room_size=room_size,
       ),
     SmallL2TransferEasy=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_slice_chill_clean_transfer_easy.yaml",
-      room_size=6,
+      room_size=room_size,
       ),
-    # medium=dict(
-    #   tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=3_cook.yaml",
-    #   room_size=7
-    #   )
+    L2_Args_Multi=dict(
+      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-Args-Multi.yaml",
+      room_size=room_size,
+      ),
+    L2_Task_Multi=dict(
+      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-ArgTask-Multi.yaml",
+      room_size=room_size,
+      ),
     )
   settings=settings[setting]
   

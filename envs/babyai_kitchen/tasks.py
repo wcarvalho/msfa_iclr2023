@@ -314,7 +314,7 @@ class PickupCleanedTask(CleanTask):
 
     @property
     def abstract_rep(self):
-        return 'pickup cleaned x'
+        return 'clean x and pickup x'
 
     def generate(self):
         super().generate()
@@ -344,7 +344,7 @@ class PickupSlicedTask(SliceTask):
 
     @property
     def abstract_rep(self):
-        return 'pickup sliced x'
+        return 'slice x and pickup x'
 
     def generate(self):
         super().generate()
@@ -386,7 +386,7 @@ class PickupChilledTask(ChillTask):
 
     @property
     def abstract_rep(self):
-        return 'pickup chilled x'
+        return 'chill x and pickup x'
 
     def generate(self):
         super().generate()
@@ -411,6 +411,38 @@ class PickupChilledTask(ChillTask):
           goto=self.object_to_chill, actions=['pickup_contents']),
         ActionsSubgoal(
           goto=self.fridge, actions=['place', 'toggle', 'pickup_contents'])
+      ]
+
+class PickupHeatedTask(HeatTask):
+    """docstring for CookTask"""
+
+    @property
+    def abstract_rep(self):
+        return 'heat x and pickup x'
+
+    def generate(self):
+        super().generate()
+        return self.abstract_rep.replace('x', self.object_to_heat.name)
+
+    @property
+    def num_navs(self): return 2
+
+    def check_status(self):
+        if self.env.carrying:
+            heated = self.object_to_heat.state['temp'] == 'hot'
+            picked_up = self.env.carrying.type == self.object_to_heat.type
+            reward = done = heated and picked_up
+        else:
+            done = reward = False
+
+        return reward, done
+
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.object_to_heat, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.stove, actions=['place', 'toggle', 'pickup_contents'])
       ]
 
 class PlaceTask(KitchenTask):
@@ -575,7 +607,7 @@ class PickupCookedTask(CookTask):
 
   @property
   def abstract_rep(self):
-      return 'pickup cooked x'
+      return 'cook x and pickup x'
 
 
   @property
@@ -615,6 +647,7 @@ def all_tasks():
       pickup_cleaned=PickupCleanedTask,
       pickup_sliced=PickupSlicedTask,
       pickup_chilled=PickupChilledTask,
+      pickup_heated=PickupHeatedTask,
       cook=CookTask,
       pickup_cooked=PickupCookedTask,
   )
