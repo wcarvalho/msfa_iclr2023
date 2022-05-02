@@ -37,6 +37,7 @@ def main(_):
   num_gpus = FLAGS.num_gpus
   DEFAULT_ENV_SETTING = 'SmallL2NoDist'
   DEFAULT_NUM_ACTORS = 4
+  LOG_EVERY=120.0
   name_kwargs=[]
 
   space = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search)
@@ -119,6 +120,7 @@ def main(_):
       setting=setting,
       path=root_path,
       log_dir=log_dir,
+      log_every=LOG_EVERY,
       )
 
     if program is None: return

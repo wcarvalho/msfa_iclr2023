@@ -5,6 +5,7 @@ import jax.numpy as jnp
 
 from utils import vmap
 from utils import data as data_utils
+from modules.relational import RelationalLayer
 
 def add_batch(nest, batch_size: Optional[int]):
   """Adds a batch dimension at axis 0 to the leaves of a nested structure."""
@@ -131,13 +132,15 @@ class ModuleAttention(hk.Module):
   def __init__(self, module_size, num_heads=4, w_init_scale=2.,
     shared_parameters=True):
     super(ModuleAttention, self).__init__()
-    self.attn_factory = lambda: hk.MultiHeadAttention(
-      num_heads=num_heads,
-      key_size=module_size,
-      model_size=module_size,
-      w_init_scale=w_init_scale,
-      )
+    # self.attn_factory = lambda: hk.MultiHeadAttention(
+    #   num_heads=num_heads,
+    #   key_size=module_size,
+    #   model_size=module_size,
+    #   w_init_scale=w_init_scale,
+    #   )
     self.shared_parameters = shared_parameters
+    self.num_heads = num_heads
+
 
   def prepare_data(
       self,
@@ -175,7 +178,9 @@ class ModuleAttention(hk.Module):
         jnp.ndarray: Description
     """
     if self.shared_parameters:
-      return self.shared_attn(queries, hidden_states)
+      relational = RelationalLayer(num_heads=self.num_heads, shared_parameters=self.self.shared_parameters)
+      return relational(queries=queries, factors=hidden_states)
+      # return self.shared_attn(queries, hidden_states)
     else:
       return self.independent_attn(queries, hidden_states)
 
@@ -288,10 +293,15 @@ class FARM(hk.RNNCore):
     self.image_attn = image_attn
 
     if module_attn_heads > 0:
-      self._module_attention = ModuleAttention(
-        module_size=module_attn_size or module_size,
-        num_heads=module_attn_heads,
-        shared_parameters=shared_module_attn)
+      if module_attn_size:
+        attn_size=module_attn_size*module_attn_heads
+      else:
+        attn_size=module_size*module_attn_heads
+      self._module_attention = RelationalLayer(
+        num_heads=module_attn_heads, 
+        shared_parameters=shared_module_attn,
+        attn_size=attn_size
+        )
 
     self.module_size = module_size
     self.nmodules = nmodules
@@ -314,12 +324,11 @@ class FARM(hk.RNNCore):
     # [B, N , D]
     image_attn = self.image_attention(query, inputs.image)
 
-    memory_input = [query, image_attn]
     if self.module_attn_heads > 0:
       # [B, N , D]
-      module_attn = self.module_attention(query, prev_state.hidden)
-      memory_input.append(module_attn)
+      query = self.module_attention(query, prev_state.hidden)
 
+    memory_input = [query, image_attn]
     memory_input = jnp.concatenate(memory_input, axis=-1)
     hidden, state = self.memory(memory_input, prev_state)
 
@@ -342,7 +351,7 @@ class FARM(hk.RNNCore):
       return attn_out
 
   def module_attention(self, query, hidden_states):
-    return self._module_attention(query, hidden_states)
+    return self._module_attention(queries=query, factors=hidden_states)
 
 
   @property

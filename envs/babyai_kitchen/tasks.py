@@ -314,7 +314,7 @@ class PickupCleanedTask(CleanTask):
 
     @property
     def abstract_rep(self):
-        return 'clean x and pickup x'
+        return 'pickup cleaned x'
 
     def check_status(self):
         if self.env.carrying:
@@ -339,7 +339,7 @@ class PickupSlicedTask(SliceTask):
 
     @property
     def abstract_rep(self):
-        return 'slice x and pickup x'
+        return 'pickup sliced x'
 
     @property
     def num_navs(self): return 2
@@ -376,7 +376,7 @@ class PickupChilledTask(ChillTask):
 
     @property
     def abstract_rep(self):
-        return 'chill x and pickup x'
+        return 'pickup chilled x'
 
     @property
     def num_navs(self): return 2
@@ -404,7 +404,7 @@ class PickupHeatedTask(HeatTask):
 
     @property
     def abstract_rep(self):
-        return 'heat x and pickup x'
+        return 'pickup heated x'
 
     @property
     def num_navs(self): return 2

@@ -30,7 +30,7 @@ from utils import data as data_utils
 
 from projects.kitchen_gridworld import helpers
 from projects.common.train_distributed import build_common_program
-from projects.common.observers import LevelReturnObserver
+from projects.common.observers import LevelAvgReturnObserver
 
 # -----------------------
 # flags
@@ -61,7 +61,7 @@ def build_program(
   setting='SmallL2NoDist',
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
-  log_every=5.0, # how often to log
+  log_every=60.0, # how often to log
   config_kwargs=None, # config
   path='.', # path that's being run from
   log_dir=None, # where to save everything
@@ -125,7 +125,7 @@ def build_program(
     if wandb_init_kwargs and update_wandb_name:
       wandb_init_kwargs['name'] = config_path_str
 
-  observers = [LevelReturnObserver()]
+  observers = [LevelAvgReturnObserver(reset=1000)]
   # -----------------------
   # wandb settup
   # -----------------------

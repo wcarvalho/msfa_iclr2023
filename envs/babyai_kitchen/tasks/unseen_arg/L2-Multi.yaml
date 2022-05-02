@@ -20,23 +20,22 @@ train:
     task_kinds: heat
     num_dists: 0
 
-  - name: pickup_chilled
-    task_kinds: pickup_chilled
-    taskarg_options:
-      x: [lettuce, potato, apple]
-    num_dists: 0
-
   - name: pickup_cleaned
     task_kinds: pickup_cleaned
     num_dists: 0
 
-  # - name: pickup_heated
-  #   task_kinds: pickup_heated
-  #   num_dists: 0
+  - name: pickup_heated
+    task_kinds: pickup_heated
+    num_dists: 0
 
   - name: pickup_sliced
     task_kinds: pickup_sliced
     num_dists: 0
+
+  - name: pickup_chilled
+    task_kinds: pickup_chilled
+    num_dists: 0
+
 
 test:
 
@@ -44,17 +43,14 @@ test:
     task_kinds: pickup_cleaned
     num_dists: 0
 
-  # - name: train_pickup_heated
-  #   task_kinds: pickup_heated
-  #   num_dists: 0
+  - name: train_pickup_heated
+    task_kinds: pickup_heated
+    num_dists: 0
 
   - name: train_pickup_sliced
     task_kinds: pickup_sliced
     num_dists: 0
 
-    # UNSEEN ARGUMENTS
-  - name: test_pickup_chilled
+  - name: train_pickup_chilled
     task_kinds: pickup_chilled
-    taskarg_options:
-      x: [onion, tomato, orange]
     num_dists: 0

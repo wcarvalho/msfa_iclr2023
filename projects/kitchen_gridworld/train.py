@@ -64,7 +64,8 @@ def main(_):
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
     config['out_hidden_size'] = 128
-    config['nmodules'] = 8
+    config['nmodules'] = 4
+    config['module_attn_heads'] = 2
     config['lang_task_dim'] = 32
     print("="*50)
     print("="*20, "testing", "="*20)

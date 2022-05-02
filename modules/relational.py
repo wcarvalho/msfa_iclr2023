@@ -122,26 +122,26 @@ class Gate(hk.Module):
 
   def __call__(self, queries, values):
     D = queries.shape[-1]
-    output = hk.Linear(D, with_bias=False, w_init=self.w_init)(values)
+    linear = lambda x: hk.Linear(D, with_bias=False, w_init=self.w_init)(x)
 
     if self.relu_gate:
-      output = jax.nn.relu(output)
+      output = jax.nn.relu(linear(values))
 
     if self.residual == "skip":
-      output = queries + output
+      output = queries + linear(values)
 
     elif self.residual == "concat":
-      output = jnp.concatenate((queries, output), axis=-1)
+      output = jnp.concatenate((queries, linear(values)), axis=-1)
 
     elif self.residual == "output":
       b = hk.get_parameter("b_gate", [D], queries.dtype, init=self.b_init)
-      gate = jax.nn.sigmoid(hk.Linear(D, with_bias=False, w_init=self.w_init)(queries) - b)
-      output = queries + gate*output
+      gate = jax.nn.sigmoid(linear(queries) - b)
+      output = queries + gate*linear(values)
 
     elif self.residual == "sigtanh":
       b = hk.get_parameter("b_gate", [D], queries.dtype, init=self.b_init)
-      gate = jax.nn.sigmoid(hk.Linear(D, with_bias=False, w_init=self.w_init)(output) - b)
-      output = jax.nn.tanh(output)
+      gate = jax.nn.sigmoid(linear(values) - b)
+      output = jax.nn.tanh(linear(values))
       output = queries + gate*output
 
     elif self.residual == "gru":
@@ -149,7 +149,7 @@ class Gate(hk.Module):
       output = gate(queries=queries, values=output)
 
     elif self.residual == "none":
-      output = output
+      output = linear(values)
     else:
       raise NotImplementedError
 
@@ -252,7 +252,7 @@ class RelationalLayer(base.Module):
       queries: jnp.ndarray,
       factors: jnp.ndarray,
       ) -> jnp.ndarray:
-    """ Multihead attention expects [N, B, D]. Fix. """
+    """ """
     # -----------------------
     # prepare data
     # -----------------------
@@ -304,6 +304,7 @@ class RelationalLayer(base.Module):
     attn_vmap = jax.vmap(attn)
     # B, N, D
     out = attn_vmap(queries_prep, factors_prep, factors_prep)
+
     return out
 
   def independent_attn(
