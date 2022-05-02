@@ -87,6 +87,7 @@ class MultiLevel(object):
     """Sample new level."""
     self._current_idx = np.random.randint(len(self.levelnames))
     obs = self.current_level.reset(**kwargs)
+
     return obs
 
   def step(self, *args, **kwargs):

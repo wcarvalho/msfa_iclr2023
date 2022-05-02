@@ -1,5 +1,6 @@
 """Evaluation Observers."""
 
+import collections
 import abc
 import dataclasses
 import itertools
@@ -23,16 +24,26 @@ Number = Union[int, float, np.float32, jnp.float32]
 
 class LevelReturnObserver(EnvLoopObserver):
   """docstring for LevelReturnObserver"""
-  def __init__(self):
+  def __init__(self, reset=200):
     super(LevelReturnObserver, self).__init__()
+    self.returns = collections.defaultdict(list)
+    self.level = None
+    self.reset = reset
+    self.idx = 0
+
 
   def observe_first(self, env: dm_env.Environment, timestep: dm_env.TimeStep
                     ) -> None:
     """Observes the initial state."""
+    self.idx += 1
+    if self.level is not None:
+      self.returns[self.level].append(self._episode_return)
+
     self._episode_return = tree.map_structure(
       _generate_zeros_from_spec,
       env.reward_spec())
     self.level = str(env.env.current_levelname)
+
 
   def observe(self, env: dm_env.Environment, timestep: dm_env.TimeStep,
               action: np.ndarray) -> None:
@@ -47,6 +58,14 @@ class LevelReturnObserver(EnvLoopObserver):
     result = {
         f'0.task/{self.level}/episode_return': self._episode_return,
     }
+
+    if self.idx % self.reset == 0:
+      for key, returns in self.returns.items():
+        avg = np.array(returns).mean()
+        result[f'0.task/{key}/avg_return'] = avg
+        self.returns[key] = []
+
+
     return result
 
 

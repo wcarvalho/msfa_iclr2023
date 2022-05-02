@@ -8,3 +8,6 @@ make train_search_rldl group=tasks1 search=usfa_lstm
 
 make train_search_rldl group=msf_tasks1 search=msf
 make train_search_rldl group=msf_modules2 search=msf_modules cuda=0,1,2,3
+
+
+make train_search_rldl group=baselines1 search=baselines1 cuda=0,1,2,3

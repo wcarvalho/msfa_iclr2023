@@ -316,11 +316,6 @@ class PickupCleanedTask(CleanTask):
     def abstract_rep(self):
         return 'clean x and pickup x'
 
-    def generate(self):
-        super().generate()
-
-        return self.abstract_rep.replace('x', self.object_to_clean.name)
-
     def check_status(self):
         if self.env.carrying:
             clean = self.object_to_clean.state['dirty'] == False
@@ -345,11 +340,6 @@ class PickupSlicedTask(SliceTask):
     @property
     def abstract_rep(self):
         return 'slice x and pickup x'
-
-    def generate(self):
-        super().generate()
-
-        return self.abstract_rep.replace('x', self.object_to_slice.name)
 
     @property
     def num_navs(self): return 2
@@ -388,10 +378,6 @@ class PickupChilledTask(ChillTask):
     def abstract_rep(self):
         return 'chill x and pickup x'
 
-    def generate(self):
-        super().generate()
-        return self.abstract_rep.replace('x', self.object_to_chill.name)
-
     @property
     def num_navs(self): return 2
 
@@ -419,10 +405,6 @@ class PickupHeatedTask(HeatTask):
     @property
     def abstract_rep(self):
         return 'heat x and pickup x'
-
-    def generate(self):
-        super().generate()
-        return self.abstract_rep.replace('x', self.object_to_heat.name)
 
     @property
     def num_navs(self): return 2
