@@ -23,7 +23,7 @@ def get(search):
         "setting": tune.grid_search(['SmallL2TransferEasy', 'SmallL2Transfer', 'SmallL2SliceChill']),
         },
     ]
-  
+
   elif search == 'msf':
     """
     Next:
@@ -39,35 +39,38 @@ def get(search):
         "cumulant_layers": tune.grid_search([1]),
         },
     ]
-
   elif search == 'msf_modules':
     """
     Next:
     """
     space = [
-      # {
-      #   "seed": tune.grid_search([1, 2]),
-      #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['SmallL2TransferEasy']),
-      #   "out_hidden_size": tune.grid_search([128]),
-      #   "nmodules": tune.grid_search([4]),
-      #   "lang_task_dim": tune.grid_search([16]),
-      #   },
       {
-        "seed": tune.grid_search([1]),
+        "seed": tune.grid_search([2]),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['SmallL2TransferEasy']),
         "out_hidden_size": tune.grid_search([512]),
         "nmodules": tune.grid_search([8]),
-        "lang_task_dim": tune.grid_search([16, 32]),
+        "lang_task_dim": tune.grid_search([16]),
         },
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['SmallL2TransferEasy']),
+      #   "out_hidden_size": tune.grid_search([128]),
+      #   "nmodules": tune.grid_search([8]),
+      #   "lang_task_dim": tune.grid_search([32]),
+      #   },
+    ]
+  elif search == 'ssf1':
+    """
+    Next:
+    """
+    space = [
       {
-        "seed": tune.grid_search([1]),
+        "seed": tune.grid_search([1, 2, 3]),
         "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['SmallL2TransferEasy']),
-        "out_hidden_size": tune.grid_search([1024]),
-        "nmodules": tune.grid_search([8]),
-        "lang_task_dim": tune.grid_search([32]),
+        "setting": tune.grid_search(['L2_Args_Multi']),
+        "sf_net": tune.grid_search(['independent', 'relational']),
         },
     ]
   else:
