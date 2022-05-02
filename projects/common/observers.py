@@ -52,7 +52,7 @@ class LevelReturnObserver(EnvLoopObserver):
 
 class LevelAvgReturnObserver(EnvLoopObserver):
   """Metric: Average return over many episodes"""
-  def __init__(self, reset=1000):
+  def __init__(self, reset=200):
     super(LevelAvgReturnObserver, self).__init__()
     self.returns = collections.defaultdict(list)
     self.level = None
