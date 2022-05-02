@@ -312,7 +312,7 @@ class Kitchen(object):
                 rootdir=rootdir,
                 properties=['on'],
                 visible_properties=[''],
-                can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                can_contain=['lettuce', 'potato', 'tomato', 'onion', 'apple', 'orange'],
                 pickupable=False,
                 toggle_prop={'temp': 'cold'},
 

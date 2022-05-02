@@ -96,6 +96,7 @@ def main():
 
         bot = KitchenBot(env)
         obss, actions, rewards, dones = bot.generate_traj(plot_fn=show)
+        print("Reward:", sum(rewards))
         if args.check_end:
           import ipdb; ipdb.set_trace()
 
