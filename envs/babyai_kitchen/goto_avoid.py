@@ -243,7 +243,7 @@ class GotoAvoidEnv(KitchenLevel):
         done = True
 
     # if no task objects remaining, done
-    if self.total_remaining < 1e-5:
+    if self.total_remaining < 1e-5 and not self.respawn:
       done = True
 
     obs = self.gen_obs()
@@ -256,7 +256,7 @@ class GotoAvoidEnv(KitchenLevel):
   @property
   def total_remaining(self):
     return self.remaining[self._task_oidxs].sum()
-  
+
 if __name__ == '__main__':
     import gym_minigrid.window
     import time
