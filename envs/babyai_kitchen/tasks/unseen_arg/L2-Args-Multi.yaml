@@ -16,9 +16,9 @@ train:
     task_kinds: chill
     num_dists: 0
 
-  - name: heat
-    task_kinds: heat
-    num_dists: 0
+  # - name: heat
+  #   task_kinds: heat
+  #   num_dists: 0
 
   - name: pickup_chilled
     task_kinds: pickup_chilled
