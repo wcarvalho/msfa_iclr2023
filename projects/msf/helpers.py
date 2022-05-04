@@ -29,6 +29,7 @@ def make_environment(evaluation: bool = False,
                      setting='small',
                      path='.',
                      image_wrapper=True,
+                     obj2rew=None,
                      ) -> dm_env.Environment:
   """Loads environments.
   
@@ -58,84 +59,98 @@ def make_environment(evaluation: bool = False,
       room_size=9, nobjects=3,
       respawn=True),
     )
-  if evaluation:
-    obj2rew={
-        '1,1,0,0':{
-            "pan" : 1,
-            "plates" :1,
-            "tomato" : 0,
-            "knife" : 0,
-            },
-        '1,1,1,1':{
-            "pan" : 1,
-            "plates" : 1,
-            "tomato" : 1,
-            "knife" : 1,
-            },
-        '-1,1,-1,1':{
-            "pan" : -1,
-            "plates" : 1,
-            "tomato" : -1,
-            "knife" : 1,
-            },
-        '-1,1,0,1':{
-            "pan" : -1,
-            "plates" : 1,
-            "tomato" : 0,
-            "knife" : 1,
-            },
-        "1,0,0,0":{
-            "pan" : 1,
-            "plates" : 0,
-            "tomato" : 0,
-            "knife" : 0,
-            },
-        "0,1,0,0":{
-            "pan" : 0,
-            "plates" : 1,
-            "tomato" : 0,
-            "knife" : 0,
-            },
-        "0,0,1,0":{
-            "pan" : 0,
-            "plates" : 0,
-            "tomato" : 1,
-            "knife" : 0,
-            },
-        "0,0,0,1":{
-            "pan" : 0,
-            "plates" : 0,
-            "tomato" : 0,
-            "knife" : 1,
-            },
-    }
-  else:
-    obj2rew={
-        "1,0,0,0":{
-            "pan" : 1,
-            "plates" : 0,
-            "tomato" : 0,
-            "knife" : 0,
-            },
-        "0,1,0,0":{
-            "pan" : 0,
-            "plates" : 1,
-            "tomato" : 0,
-            "knife" : 0,
-            },
-        "0,0,1,0":{
-            "pan" : 0,
-            "plates" : 0,
-            "tomato" : 1,
-            "knife" : 0,
-            },
-        "0,0,0,1":{
-            "pan" : 0,
-            "plates" : 0,
-            "tomato" : 0,
-            "knife" : 1,
-            },
-    }
+  if obj2rew is None:
+    if evaluation:
+      obj2rew={
+          "1,0,0,0":{
+              "pan" : 1,
+              "plates" : 0,
+              "tomato" : 0,
+              "knife" : 0,
+              },
+          "0,1,0,0":{
+              "pan" : 0,
+              "plates" : 1,
+              "tomato" : 0,
+              "knife" : 0,
+              },
+          "0,0,1,0":{
+              "pan" : 0,
+              "plates" : 0,
+              "tomato" : 1,
+              "knife" : 0,
+              },
+          "0,0,0,1":{
+              "pan" : 0,
+              "plates" : 0,
+              "tomato" : 0,
+              "knife" : 1,
+              },
+          '1,1,0,0':{
+              "pan" : 1,
+              "plates" :1,
+              "tomato" : 0,
+              "knife" : 0,
+              },
+          '1,1,1,1':{
+              "pan" : 1,
+              "plates" : 1,
+              "tomato" : 1,
+              "knife" : 1,
+              },
+          '-1,1,0,1':{
+              "pan" : -1,
+              "plates" : 1,
+              "tomato" : 0,
+              "knife" : 1,
+              },
+          '-1,1,-1,1':{
+              "pan" : -1,
+              "plates" : 1,
+              "tomato" : -1,
+              "knife" : 1,
+              },
+          '-1,1,-1,-1':{
+              "pan" : -1,
+              "plates" : 1,
+              "tomato" : -1,
+              "knife" : -1,
+              },
+          '-1,-1,-1,-1':{
+              "pan" : -1,
+              "plates" : -1,
+              "tomato" : -1,
+              "knife" : -1,
+              },
+
+      }
+    else:
+      obj2rew={
+          "1,0,0,0":{
+              "pan" : 1,
+              "plates" : 0,
+              "tomato" : 0,
+              "knife" : 0,
+              },
+          "0,1,0,0":{
+              "pan" : 0,
+              "plates" : 1,
+              "tomato" : 0,
+              "knife" : 0,
+              },
+          "0,0,1,0":{
+              "pan" : 0,
+              "plates" : 0,
+              "tomato" : 1,
+              "knife" : 0,
+              },
+          "0,0,0,1":{
+              "pan" : 0,
+              "plates" : 0,
+              "tomato" : 0,
+              "knife" : 1,
+              },
+      }
 
   env_wrappers = []
   if image_wrapper:

@@ -1,4 +1,4 @@
-agent?=usfa_farm_model
+agent?=msf
 cuda?=2,3
 folder?='results/msf/final'
 wandb?=True
@@ -56,6 +56,11 @@ goto_search_rldl:
 	--notes $(notes)
 
 
+evaluate_sync:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python -m ipdb -c continue projects/msf/evaluate.py \
+	--distributed=True
 
 
 mprof_goto_search:

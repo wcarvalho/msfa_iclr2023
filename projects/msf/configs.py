@@ -22,7 +22,7 @@ class R2D1Config(configs.R2D1Config):
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
   seed: int = 3
-  max_number_of_steps: int = 4_000_000
+  max_number_of_steps: int = 2_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -113,9 +113,9 @@ class FarmConfig:
   module_size: int = 128
   nmodules: int = 4
   out_layers: int = 0
-  module_attn_size: int = 64
+  module_attn_size: int = None
   module_attn_heads: int = 0  # how many attention heads between modules
-  shared_module_attn: bool = False # share params for module attention
+  shared_module_attn: bool = True # share params for module attention
   projection_dim: int = 16
   farm_vmap: str = "lift"  # vmap over different parameter sets 
   image_attn: bool = True # whether to use feature attention on image
@@ -165,7 +165,7 @@ class FarmModelConfig(FarmConfig):
   activation: str='relu'
   seperate_model_params: bool=True # seperate parameters per transition fn
   normalize_step: bool=False # whether to normalize delta step in TimeContrastLoss
-  contrast_module_coeff: float = 0.1
+  contrast_module_coeff: float = 0.0
   contrast_module_pred: str = 'delta'
   contrast_time_coeff: float = 0.0
   extra_module_negatives: int = 4

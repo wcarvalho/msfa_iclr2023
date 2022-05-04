@@ -85,7 +85,7 @@ class BasicRecurrent(hk.Module):
   def unroll(
       self,
       inputs: Any,  # [T, B, ...]
-      state: hk.LSTMState,  # [T, ...]
+      state: hk.LSTMState,  # [B, ...]
       key: networks_lib.PRNGKey,
     ) -> Tuple[Any, hk.LSTMState]:
     return self.forward(inputs, state, key, setting="unroll")

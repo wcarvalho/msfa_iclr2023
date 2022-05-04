@@ -61,6 +61,17 @@ def get(search):
       #   "lang_task_dim": tune.grid_search([32]),
       #   },
     ]
+  elif search == 'baselines':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1, 2, 3]),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+        "setting": tune.grid_search(['L2_Args_Multi']),
+        },
+    ]
   elif search == 'ssf1':
     """
     Next:
@@ -73,6 +84,7 @@ def get(search):
         "sf_net": tune.grid_search(['independent', 'relational']),
         },
     ]
+
   else:
     raise NotImplementedError(search)
 

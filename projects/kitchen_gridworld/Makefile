@@ -26,6 +26,7 @@ test_sync:
 	--test=True \
 	--env_setting=$(env) \
 	--wandb=$(wandb_test) \
+	--group=$(group)
 
 
 test_async:
@@ -34,6 +35,7 @@ test_async:
 	python -m ipdb -c continue projects/kitchen_gridworld/train_distributed.py \
 	--agent $(agent) \
 	--wandb=$(wandb_test) \
+	--group=$(group)
 
 
 train_search:

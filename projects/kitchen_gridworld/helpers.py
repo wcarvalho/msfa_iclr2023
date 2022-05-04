@@ -236,14 +236,36 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting=None, max_v
   elif agent == "msf":
   # USFA + cumulants from FARM + Q-learning
     config = data_utils.merge_configs(
-    dataclass_configs=[
-      configs.ModularUSFAConfig(),
-      configs.QAuxConfig(),
-      configs.RewardConfig(),
-      configs.FarmModelConfig(),
-      configs.LangConfig(),
-    ],
-    dict_configs=default_config)
+      dataclass_configs=[
+        configs.ModularUSFAConfig(),
+        configs.QAuxConfig(),
+        configs.RewardConfig(),
+        configs.FarmModelConfig(),
+        configs.LangConfig(),
+      ],
+      dict_configs=default_config)
+
+    return msf(
+      config,
+      env_spec,
+      predict_cumulants=True,
+      learn_model=True,
+      use_seperate_eval=False,
+      task_embedding='language')
+
+  elif agent == "msf_monolithic":
+  # USFA + cumulants from FARM + Q-learning
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.ModularUSFAConfig(),
+        configs.QAuxConfig(),
+        configs.RewardConfig(),
+        configs.FarmModelConfig(),
+        configs.LangConfig(),
+      ],
+      dict_configs=default_config)
+    config.sf_net = 'flat'
+    config.phi_net = 'flat'
 
     return msf(
       config,

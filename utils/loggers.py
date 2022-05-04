@@ -111,7 +111,8 @@ def make_logger(
     logger = async_logger.AsyncLogger(logger)
 
   # filter by time: Print logs almost every 10 seconds.
-  logger = loggers.TimeFilter(logger, time_delta=time_delta)
+  if time_delta:
+    logger = loggers.TimeFilter(logger, time_delta=time_delta)
 
 
   return logger
