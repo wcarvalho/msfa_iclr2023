@@ -134,7 +134,23 @@ def get(search):
         "setting": tune.grid_search(['L2_Multi_Gen']),
       },
     ]
+  elif search == 'increasingL':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf']),
+        "setting": tune.grid_search(['increasingL']),
+      },
+    ]
   else:
     raise NotImplementedError(search)
 
   return space
+
+
+# -----------------------
+# 
+# -----------------------

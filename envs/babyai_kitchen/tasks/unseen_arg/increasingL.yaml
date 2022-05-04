@@ -45,33 +45,26 @@ train:
   # -----------------------
   # place sliced in 
   # -----------------------
-  - name: heat
-    task_kinds: heat
+  - name: place_sliced
+    task_kinds: place_sliced
     num_dists: 0
-
-  - name: cook
-    task_kinds: pickup_heated
-    num_dists: 0
-
 
 
 
 test:
 
-  - name: train_pickup_cleaned
+  - name: pickup_cleaned
     task_kinds: pickup_cleaned
     num_dists: 0
 
-  # - name: train_pickup_heated
-  #   task_kinds: pickup_heated
-  #   num_dists: 0
-
-  - name: train_pickup_sliced
+  - name: pickup_sliced
     task_kinds: pickup_sliced
     num_dists: 0
 
-    # UNSEEN ARGUMENTS
-  - name: test_pickup_chilled
-    task_kinds: pickup_chilled
-    taskarg_options:
+  - name: pickup_cooked
+    task_kinds: pickup_cooked
+    num_dists: 0
+
+  - name: place_sliced
+    task_kinds: place_sliced
     num_dists: 0

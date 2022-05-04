@@ -85,6 +85,9 @@ def make_environment(evaluation: bool = False,
     L2_Multi_Gen=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-Multi-gen-room-dists.yaml",
       ),
+    increasingL=dict(
+      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/increasingL.yaml",
+      ),
     )
   settings=settings[setting]
   
