@@ -35,12 +35,25 @@ from envs.babyai_kitchen.utils import InstructionsPreprocessor
 def make_environment(evaluation: bool = False,
                      tile_size=8,
                      room_size=6,
+                     num_dists=0,
+                     task_reps='pickup',
                      max_text_length=10,
                      path='.',
                      setting=None,
                      ) -> dm_env.Environment:
   setting = setting or 'SmallL2NoDist'
   """Loads environments."""
+
+  task_rep_options=dict(
+    pickup="envs/babyai_kitchen/tasks/task_reps/pickup.yaml",
+    lesslang="envs/babyai_kitchen/tasks/task_reps/lesslang.yaml"
+    )
+
+  task_reps_file = task_rep_options[task_reps]
+  with open(os.path.join(path, task_reps_file), 'r') as f:
+    task_reps = yaml.load(f, Loader=yaml.SafeLoader)
+
+
   settings = dict(
     EasyPickup=dict(
       tasks_file="envs/babyai_kitchen/tasks/multitask/all_pickup_easy.yaml",
@@ -74,6 +87,10 @@ def make_environment(evaluation: bool = False,
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-ArgTask-Multi.yaml",
       room_size=room_size,
       ),
+    L2_Multi=dict(
+      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-Multi.yaml",
+      room_size=room_size,
+      ),
     )
   settings=settings[setting]
   
@@ -93,6 +110,8 @@ def make_environment(evaluation: bool = False,
     task_dicts=task_dicts,
     tile_size=tile_size,
     path=path,
+    num_dists=num_dists,
+    task_reps=task_reps,
     room_size=settings['room_size'],
     wrappers=[ # wrapper for babyAI gym env
       functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size),

@@ -59,6 +59,9 @@ def build_program(
   wandb_init_kwargs=None,
   update_wandb_name=True, # use path from logdir to populate wandb name
   setting='SmallL2NoDist',
+  task_reps='lesslang',
+  room_size=8,
+  num_dists=0,
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
   log_every=5.0, # how often to log
@@ -75,6 +78,9 @@ def build_program(
     evaluation=is_eval,
     path=path,
     setting=setting,
+    task_reps=task_reps,
+    room_size=room_size,
+    num_dists=num_dists,
     )
   env = environment_factory(False)
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK

@@ -110,9 +110,9 @@ def construct_kitchenlevel_kwargs(task_dict, level_kwargs=None, sets=None):
   level_kwargs = copy.deepcopy(level_kwargs) or dict()
   sets = sets or dict()
 
-  # for k in ['task_kinds', 'num_dists', 'taskarg_options']:
-  #     if k in task_dict:
-  #         level_kwargs[k] = task_dict[k]
+  for k in ['task_kinds', 'num_dists', 'taskarg_options']:
+      if k in task_dict:
+          level_kwargs[k] = task_dict[k]
 
   def set_items(name):
       if name in sets:
@@ -142,9 +142,6 @@ def construct_kitchenlevel_kwargs(task_dict, level_kwargs=None, sets=None):
               raise RuntimeError(str(names))
 
           argops[k] = items
-      import ipdb; ipdb.set_trace()
-
-  level_kwargs.update(task_dict)
 
   return level_kwargs
 

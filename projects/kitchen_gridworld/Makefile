@@ -8,6 +8,7 @@ date?=False
 num_gpus?=1
 project?='kitchen_grid3'
 env?='EasyPickup'
+task_reps?='pickup'
 group?=''
 notes?=''
 
@@ -25,6 +26,7 @@ test_sync:
 	--agent $(agent) \
 	--test=True \
 	--env_setting=$(env) \
+	--task_reps=$(task_reps) \
 	--wandb=$(wandb_test) \
 	--group=$(group)
 

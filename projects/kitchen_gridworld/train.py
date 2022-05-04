@@ -32,6 +32,7 @@ from utils import make_logger, gen_log_dir
 # -----------------------
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_string('env_setting', 'EasyPickup', 'which environment setting.')
+flags.DEFINE_string('task_reps', 'pickup', 'which task reps to use.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('test', True, 'whether testing.')
@@ -55,6 +56,7 @@ def main(_):
 
   env = helpers.make_environment(
     setting=setting,
+    task_reps=FLAGS.task_reps,
     evaluation=FLAGS.evaluate)
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   env_spec = acme.make_environment_spec(env)

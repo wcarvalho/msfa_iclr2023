@@ -38,7 +38,7 @@ class KitchenLevel(RoomGridLevel):
     task_kinds=['slice', 'clean', 'cook'],
     valid_tasks=[],
     taskarg_options=None,
-    task_kwargs=None,
+    task_reps=None,
     instr_kinds=['action'], # IGNORE. not implemented
     use_subtasks=False, # IGNORE. not implemented
     use_time_limit=True,
@@ -62,7 +62,7 @@ class KitchenLevel(RoomGridLevel):
         self.task_kinds = [task_kinds]
     else:
         RuntimeError(f"Don't know how to read task kind(s): {str(task_kinds)}")
-    self.task_kwargs = task_kwargs or dict()
+    self.task_reps = task_reps or dict()
     self.instr_kinds = instr_kinds
     self.random_object_state = random_object_state
     self.use_subtasks = use_subtasks
@@ -254,10 +254,14 @@ class KitchenLevel(RoomGridLevel):
         else:
             available_tasks = envs.babyai_kitchen.tasks.all_tasks()
             task_class = available_tasks[task_kind]
+            task_kwargs=dict()
+            if task_kind in self.task_reps:
+              task_kwargs['task_rep'] = self.task_reps[task_kind]
+
             task = task_class(
                 env=self.kitchen,
                 argument_options=self.taskarg_options,
-                **self.task_kwargs)
+                **task_kwargs)
     else:
         raise RuntimeError(f"Instruction kind not supported: '{instruction_kind}'")
 

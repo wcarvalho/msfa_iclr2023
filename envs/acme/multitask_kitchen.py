@@ -47,6 +47,7 @@ class MultitaskKitchen(dm_env.Environment):
     task_dicts: dict=None,
     task_kinds: list=None,
     room_size=10,
+    task_reps=None,
     sets: str=None,
     agent_view_size=5,
     path='.',
@@ -65,6 +66,7 @@ class MultitaskKitchen(dm_env.Environment):
       agent_view_size=agent_view_size,
       tile_size=tile_size,
       num_dists=num_dists,
+      task_reps=task_reps,
     )
 
     # -----------------------

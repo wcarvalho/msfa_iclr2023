@@ -115,7 +115,7 @@ class FarmConfig:
   nmodules: int = 4
   out_layers: int = 0
   module_attn_size: int = None
-  module_attn_heads: int = 0  # how many attention heads between modules
+  module_attn_heads: int = 2  # how many attention heads between modules
   shared_module_attn: bool = True # share params for module attention
   projection_dim: int = 16
   farm_vmap: str = "lift"  # vmap over different parameter sets 

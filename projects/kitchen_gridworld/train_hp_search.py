@@ -36,7 +36,10 @@ def main(_):
   num_cpus = 3
   num_gpus = FLAGS.num_gpus
   DEFAULT_ENV_SETTING = 'SmallL2NoDist'
+  DEFAULT_TASK_REPS='pickup'
+  DEFAULT_ROOM_SIZE=6
   DEFAULT_NUM_ACTORS = 4
+  DEFAULT_NUM_DISTS = 0
   name_kwargs=[]
 
   space = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search)
@@ -63,6 +66,11 @@ def main(_):
     agent = config.pop('agent', 'r2d1')
     num_actors = config.pop('num_actors', DEFAULT_NUM_ACTORS)
     setting = config.pop('setting', DEFAULT_ENV_SETTING)
+    task_reps = config.pop('task_reps', DEFAULT_TASK_REPS)
+    room_size = config.pop('room_size', DEFAULT_ROOM_SIZE)
+    num_dists = config.pop('num_dists', DEFAULT_NUM_DISTS)
+
+
 
     # -----------------------
     # get log dir for experiment
@@ -117,6 +125,9 @@ def main(_):
       config_kwargs=config, 
       wandb_init_kwargs=wandb_init_kwargs if use_wandb else None,
       setting=setting,
+      task_reps=task_reps,
+      room_size=room_size,
+      num_dists=num_dists,
       path=root_path,
       log_dir=log_dir,
       )
