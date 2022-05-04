@@ -58,10 +58,10 @@ def build_program(
   num_actors : int,
   wandb_init_kwargs=None,
   update_wandb_name=True, # use path from logdir to populate wandb name
-  setting='SmallL2NoDist',
-  task_reps='lesslang',
-  room_size=8,
-  num_dists=0,
+  # setting='SmallL2NoDist',
+  # task_reps='lesslang',
+  # room_size=8,
+  # num_dists=0,
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
   log_every=5.0, # how often to log
@@ -69,6 +69,7 @@ def build_program(
   path='.', # path that's being run from
   log_dir=None, # where to save everything
   debug: bool=False,
+  env_kwargs=dict(),
   **kwargs,
   ):
   # -----------------------
@@ -77,10 +78,8 @@ def build_program(
   environment_factory = lambda is_eval: helpers.make_environment(
     evaluation=is_eval,
     path=path,
-    setting=setting,
-    task_reps=task_reps,
-    room_size=room_size,
-    num_dists=num_dists,
+    # setting=setting,
+    **env_kwargs,
     )
   env = environment_factory(False)
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
@@ -90,7 +89,7 @@ def build_program(
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs)
 
   if debug:
       config.batch_size = 32
@@ -111,8 +110,9 @@ def build_program(
   save_config_dict = config.__dict__
   save_config_dict.update(
     agent=agent,
-    setting=setting,
-    group=group
+    # setting=setting,
+    group=group,
+    **env_kwargs,
   )
 
   # -----------------------
@@ -136,6 +136,7 @@ def build_program(
   # wandb settup
   # -----------------------
   os.chdir(path)
+  setting = env_kwargs['setting']
   return build_common_program(
     environment_factory=environment_factory,
     env_spec=env_spec,
@@ -168,6 +169,7 @@ def main(_):
     group=FLAGS.group if FLAGS.group else FLAGS.agent, # organize individual runs into larger experiment
     notes=FLAGS.notes,
   )
+
 
   program = build_program(
     agent=FLAGS.agent,
