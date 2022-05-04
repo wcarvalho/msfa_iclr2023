@@ -17,3 +17,7 @@ make train_search group=moredists2 search=moredists cuda=0,1,2,3
 make train_search group=lesslang2 search=lesslang cuda=0,1,2,3
 
 make train_search group=bigroom_moredists2 search=bigroom_moredists cuda=0,1,2,3
+
+
+
+make train_search group=increasingL2 search=increasingL cuda=0,1,2,3
