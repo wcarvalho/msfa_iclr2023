@@ -122,6 +122,18 @@ def get(search):
         "num_dists": tune.grid_search([5]),
       },
     ]
+
+  elif search == 'bigroom_moredists':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf', 'msf_monolithic']),
+        "setting": tune.grid_search(['L2_Multi_Gen']),
+      },
+    ]
   else:
     raise NotImplementedError(search)
 

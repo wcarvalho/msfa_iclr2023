@@ -31,44 +31,66 @@ train:
   - name: pickup_dists2
     task_kinds: pickup
     num_dists: 2
+    room_size: 6
 
   - name: clean_dists2
     task_kinds: clean
     num_dists: 2
+    room_size: 6
 
   - name: slice_dists2
     task_kinds: slice
     num_dists: 2
+    room_size: 6
 
   - name: chill_dists2
     task_kinds: chill
     num_dists: 2
+    room_size: 6
 
   - name: pickup_cleaned_dists2
     task_kinds: pickup_cleaned
     num_dists: 2
+    room_size: 6
 
   - name: pickup_sliced_dists2
     task_kinds: pickup_sliced
     num_dists: 2
+    room_size: 6
 
   - name: pickup_chilled_dists2
     task_kinds: pickup_chilled
     num_dists: 2
+    room_size: 6
 
 test:
 
-  - name: train_pickup_cleaned
+  - name: cleaned_dists5
     task_kinds: pickup_cleaned
     room_size: 8
     num_dists: 5
 
-  - name: train_pickup_sliced
+  - name: sliced_dists5
     task_kinds: pickup_sliced
     room_size: 8
     num_dists: 5
 
-  - name: train_pickup_chilled
+  - name: chilled_dists5
     task_kinds: pickup_chilled
     room_size: 8
     num_dists: 5
+
+  - name: cleaned_dists8
+    task_kinds: pickup_cleaned
+    room_size: 8
+    num_dists: 8
+
+  - name: sliced_dists8
+    task_kinds: pickup_sliced
+    room_size: 8
+    num_dists: 8
+
+  - name: chilled_dists8
+    task_kinds: pickup_chilled
+    room_size: 8
+    num_dists: 8

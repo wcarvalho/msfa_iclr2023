@@ -627,6 +627,81 @@ class PickupCookedTask(CookTask):
     ]
 
 
+class PlaceSlicedTask(SliceTask):
+    """docstring for SliceTask"""
+
+    @property
+    def default_task_rep(self):
+        return 'place sliced x on y'
+
+    def generate(self):
+        # -----------------------
+        # x= object to slice
+        # -----------------------
+        x_options = self.argument_options.get('x', [])
+        if x_options:
+            objects_to_slice = self.env.objects_by_type(x_options)
+        else:
+            objects_to_slice = self.env.objects_with_property(['sliced'])
+        self.object_to_slice = np.random.choice(objects_to_slice)
+        self.object_to_slice.set_prop('sliced', False)
+
+        # -----------------------
+        # knife
+        # -----------------------
+        self.knife = self.env.objects_by_type(["knife"])[0]
+
+
+        # -----------------------
+        # y = container
+        # -----------------------
+
+        # restrict to wich can accept to_place
+        container_type_objs = [o for o in self.env.objects 
+                                if o.accepts(self.object_to_slice)]
+        assert len(container_type_objs) > 0, "no match found"
+
+        # pick 1 at random
+        self.container = np.random.choice(container_type_objs)
+
+
+        self._task_objects = [self.object_to_slice, self.knife, self.container]
+        return self.task_rep.replace(
+          'x', self.object_to_slice.name).replace(
+          'y', self.container)
+
+    @property
+    def num_navs(self): return 2
+
+    def check_status(self):
+        if self.container.contains:
+            # let's any match fit, not just the example used for defining the task. 
+            # e.g., if multiple pots, any pot will work inside container
+            object_sliced = self.object_to_slice.state['sliced'] == True
+            placed = self.container.contains.type == self.object_to_slice.type
+            done = reward = object_sliced and placed
+        else:
+            done = reward = False
+
+        return reward, done
+
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.knife, actions=['pickup_contents']),
+        ActionsSubgoal(
+          goto=self.object_to_slice, actions=['slice', *(['left', 'place']*4), 'pickup_contents'])
+        ActionsSubgoal(
+          goto=self.container, actions=['place']),
+      ]
+
+    @staticmethod
+    def task_actions():
+        return [
+            'slice',
+            'pickup_and',
+            'place'
+            ]
 
 def all_tasks():
   return dict(
@@ -642,4 +717,5 @@ def all_tasks():
       pickup_heated=PickupHeatedTask,
       cook=CookTask,
       pickup_cooked=PickupCookedTask,
+      place_sliced=PlaceSlicedTask,
   )

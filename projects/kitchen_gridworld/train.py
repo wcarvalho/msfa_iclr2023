@@ -57,7 +57,8 @@ def main(_):
   env = helpers.make_environment(
     setting=setting,
     task_reps=FLAGS.task_reps,
-    evaluation=FLAGS.evaluate)
+    evaluation=True # test set (harder)
+    )
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   env_spec = acme.make_environment_spec(env)
 
@@ -76,7 +77,6 @@ def main(_):
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(
     agent=FLAGS.agent,
     env_spec=env_spec,
-    setting=FLAGS.env_setting,
     max_vocab_size=max_vocab_size,
     config_kwargs=config)
 

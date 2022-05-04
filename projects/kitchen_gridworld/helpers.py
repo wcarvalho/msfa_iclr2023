@@ -34,7 +34,7 @@ from envs.babyai_kitchen.utils import InstructionsPreprocessor
 # ======================================================
 def make_environment(evaluation: bool = False,
                      tile_size=8,
-                     room_size=6,
+                     room_size=5,
                      num_dists=0,
                      task_reps='pickup',
                      max_text_length=10,
@@ -57,39 +57,33 @@ def make_environment(evaluation: bool = False,
   settings = dict(
     EasyPickup=dict(
       tasks_file="envs/babyai_kitchen/tasks/multitask/all_pickup_easy.yaml",
-      room_size=5,
       ),
     SmallL2NoDist=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_no_dist.yaml",
-      room_size=room_size,
       ),
     SmallL2NoDistV2=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_no_dist_v2.yaml",
-      room_size=room_size,
       ),
     SmallL2SliceChill=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_slice_chill.yaml",
-      room_size=room_size,
       ),
     SmallL2Transfer=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_slice_chill_clean_transfer.yaml",
-      room_size=room_size,
       ),
     SmallL2TransferEasy=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_slice_chill_clean_transfer_easy.yaml",
-      room_size=room_size,
       ),
     L2_Args_Multi=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-Args-Multi.yaml",
-      room_size=room_size,
       ),
     L2_Task_Multi=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-ArgTask-Multi.yaml",
-      room_size=room_size,
       ),
     L2_Multi=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-Multi.yaml",
-      room_size=room_size,
+      ),
+    L2_Multi_Gen=dict(
+      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-Multi-gen-room-dists.yaml",
       ),
     )
   settings=settings[setting]
@@ -112,7 +106,7 @@ def make_environment(evaluation: bool = False,
     path=path,
     num_dists=num_dists,
     task_reps=task_reps,
-    room_size=settings['room_size'],
+    room_size=room_size,
     wrappers=[ # wrapper for babyAI gym env
       functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size),
       functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc,
