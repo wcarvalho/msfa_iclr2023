@@ -10,4 +10,4 @@ make train_search group=msf_tasks1 search=msf
 make train_search group=msf_modules2 search=msf_modules cuda=0,1,2,3
 
 
-make train_search group=big_room_lesslang2 search=big_room_lesslang cuda=0,1,2,3
+make train_search group=monolithic2 search=monolithic cuda=0,1,2,3

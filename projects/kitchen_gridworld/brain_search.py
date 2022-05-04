@@ -75,9 +75,9 @@ def get(search):
     """
     space = [
       {
-        "seed": tune.grid_search([1, 2]),
+        "seed": tune.grid_search([3, 4]),
         "agent": tune.grid_search(['msf_monolithic']),
-        "setting": tune.grid_search(['L2_Multi']),
+        "setting": tune.grid_search(['L2_Args_Multi']),
       },
     ]
   elif search == 'big_room_lesslang':
