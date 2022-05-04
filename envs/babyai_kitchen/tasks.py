@@ -599,7 +599,7 @@ class PickupCookedTask(CookTask):
 
   @property
   def default_task_rep(self):
-      return 'cook x and pickup x'
+      return 'pickup cooked x'
 
 
   @property
