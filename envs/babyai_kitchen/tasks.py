@@ -668,7 +668,7 @@ class PlaceSlicedTask(SliceTask):
         self._task_objects = [self.object_to_slice, self.knife, self.container]
         return self.task_rep.replace(
           'x', self.object_to_slice.name).replace(
-          'y', self.container)
+          'y', self.container.name)
 
     @property
     def num_navs(self): return 2
@@ -690,7 +690,7 @@ class PlaceSlicedTask(SliceTask):
         ActionsSubgoal(
           goto=self.knife, actions=['pickup_contents']),
         ActionsSubgoal(
-          goto=self.object_to_slice, actions=['slice', *(['left', 'place']*4), 'pickup_contents'])
+          goto=self.object_to_slice, actions=['slice', *(['left', 'place']*4), 'pickup_contents']),
         ActionsSubgoal(
           goto=self.container, actions=['place']),
       ]
