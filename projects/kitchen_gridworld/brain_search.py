@@ -140,9 +140,11 @@ def get(search):
     """
     space = [
       {
-        "seed": tune.grid_search([1, 2]),
+        "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf']),
         "setting": tune.grid_search(['increasingL']),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+        "lang_task_dim": tune.grid_search([16, 24]),
       },
     ]
   else:
