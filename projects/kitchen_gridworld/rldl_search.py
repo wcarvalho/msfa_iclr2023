@@ -84,6 +84,7 @@ def get(search):
         "sf_net": tune.grid_search(['independent', 'relational']),
         },
     ]
+
   else:
     raise NotImplementedError(search)
 

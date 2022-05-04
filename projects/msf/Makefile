@@ -1,4 +1,4 @@
-agent?=usfa_farm_model
+agent?=msf
 cuda?=2,3
 folder?='results/msf/final'
 wandb?=True

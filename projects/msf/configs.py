@@ -113,9 +113,9 @@ class FarmConfig:
   module_size: int = 128
   nmodules: int = 4
   out_layers: int = 0
-  module_attn_size: int = 64
+  module_attn_size: int = None
   module_attn_heads: int = 0  # how many attention heads between modules
-  shared_module_attn: bool = False # share params for module attention
+  shared_module_attn: bool = True # share params for module attention
   projection_dim: int = 16
   farm_vmap: str = "lift"  # vmap over different parameter sets 
   image_attn: bool = True # whether to use feature attention on image
@@ -165,7 +165,7 @@ class FarmModelConfig(FarmConfig):
   activation: str='relu'
   seperate_model_params: bool=True # seperate parameters per transition fn
   normalize_step: bool=False # whether to normalize delta step in TimeContrastLoss
-  contrast_module_coeff: float = 0.1
+  contrast_module_coeff: float = 0.0
   contrast_module_pred: str = 'delta'
   contrast_time_coeff: float = 0.0
   extra_module_negatives: int = 4

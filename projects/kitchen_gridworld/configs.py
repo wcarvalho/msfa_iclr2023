@@ -2,9 +2,10 @@
 import dataclasses
 
 from acme.adders import reverb as adders_reverb
-from agents.td_agent import configs
+# from agents.td_agent import configs
 import rlax
 
+from projects.msf import configs
 
 @dataclasses.dataclass
 class R2D1Config(configs.R2D1Config):
@@ -171,14 +172,6 @@ class FarmModelConfig(FarmConfig):
   extra_module_negatives: int = 4
   extra_time_negatives: int = 0
 
-
-@dataclasses.dataclass
-class VAEConfig:
-  """Extra configuration options for USFA agent."""
-  vae_coeff: float = 1e-4 # coefficient for loss
-  latent_source: str = "samples" # coefficient for loss
-  latent_dim: int = 128 # latent dim for compression
-  beta: float = 25 # beta for KL
 
 
 

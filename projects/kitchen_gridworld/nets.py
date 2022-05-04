@@ -443,10 +443,10 @@ def build_msf_head(config, sf_out_dim, num_actions):
         policy_layers=config.policy_layers,
         z_as_train_task=config.z_as_train_task,
         sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
-        multihead=config.multihead,
-        concat_w=config.concat_w,
-        task_embed=task_embed,
-        normalize_task=config.normalize_task and config.embed_task,
+        multihead=False,
+        concat_w=False,
+        task_embed=0,
+        normalize_task=False,
         )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
