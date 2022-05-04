@@ -98,6 +98,18 @@ def get(search):
         "task_reps": tune.grid_search(['lesslang']),
       },
     ]
+  elif search == 'lesslang':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf']),
+        "setting": tune.grid_search(['L2_Multi']),
+        "task_reps": tune.grid_search(['lesslang']),
+      },
+    ]
   elif search == 'moredists':
     """
     Next:
@@ -105,7 +117,7 @@ def get(search):
     space = [
       {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf']),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf', 'msf_monolithic']),
         "setting": tune.grid_search(['L2_Multi']),
         "num_dists": tune.grid_search([5]),
       },

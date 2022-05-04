@@ -187,7 +187,7 @@ def msf(config, env_spec, use_seperate_eval=True, predict_cumulants=True, learn_
 
   return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
 
-def load_agent_settings(agent, env_spec, config_kwargs=None, setting=None, max_vocab_size=30):
+def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
   default_config = dict(max_vocab_size=max_vocab_size)
   default_config.update(config_kwargs or {})
 

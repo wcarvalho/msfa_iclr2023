@@ -37,7 +37,7 @@ def main(_):
   num_gpus = FLAGS.num_gpus
   DEFAULT_ENV_SETTING = 'SmallL2NoDist'
   DEFAULT_TASK_REPS='pickup'
-  DEFAULT_ROOM_SIZE=6
+  DEFAULT_ROOM_SIZE=5
   DEFAULT_NUM_ACTORS = 4
   DEFAULT_NUM_DISTS = 0
   name_kwargs=[]
@@ -70,14 +70,19 @@ def main(_):
     room_size = config.pop('room_size', DEFAULT_ROOM_SIZE)
     num_dists = config.pop('num_dists', DEFAULT_NUM_DISTS)
 
-
+    env_kwargs=dict(
+      setting=setting,
+      task_reps=task_reps,
+      room_size=room_size,
+      num_dists=num_dists,
+      )
 
     # -----------------------
     # get log dir for experiment
     # -----------------------
     log_path_config=dict(
       agent=agent,
-      setting=setting,
+      **env_kwargs,
       **config
       )
     log_dir, config_path_str = gen_log_dir(
@@ -124,10 +129,7 @@ def main(_):
       num_actors=num_actors,
       config_kwargs=config, 
       wandb_init_kwargs=wandb_init_kwargs if use_wandb else None,
-      setting=setting,
-      task_reps=task_reps,
-      room_size=room_size,
-      num_dists=num_dists,
+      env_kwargs=env_kwargs,
       path=root_path,
       log_dir=log_dir,
       )
