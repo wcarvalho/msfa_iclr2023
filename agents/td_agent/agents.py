@@ -67,7 +67,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       device_prefetch: bool = False,
       observers=None,
       log_to_bigtable: bool = True,
-      evaluator: bool = True,
+      evaluator_factories = None,
       log_every: float = 10.0,
       num_evaluators: int = 2,
       multithreading_colocate_learner_and_reverb=False,
@@ -99,8 +99,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
     policy_network_factory = (
         lambda n: behavior_policy_constructor(n, config))
 
-    evaluator_factories = []
-    if evaluator:
+    if evaluator_factories is None:
       evaluator_policy_network_factory = (
           lambda n: behavior_policy_constructor(n, config, True))
       eval_env_factory=lambda key: environment_factory(True)

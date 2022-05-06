@@ -16,17 +16,17 @@ train:
     task_kinds: chill
     num_dists: 0
 
-  - name: heat
-    task_kinds: heat
-    num_dists: 0
+  # - name: heat
+  #   task_kinds: heat
+  #   num_dists: 0
 
   - name: pickup_cleaned
     task_kinds: pickup_cleaned
     num_dists: 0
 
-  - name: pickup_heated
-    task_kinds: pickup_heated
-    num_dists: 0
+  # - name: pickup_heated
+  #   task_kinds: pickup_heated
+  #   num_dists: 0
 
   - name: pickup_sliced
     task_kinds: pickup_sliced
@@ -38,9 +38,9 @@ test:
     task_kinds: pickup_cleaned
     num_dists: 0
 
-  - name: train_pickup_heated
-    task_kinds: pickup_heated
-    num_dists: 0
+  # - name: train_pickup_heated
+  #   task_kinds: pickup_heated
+  #   num_dists: 0
 
   - name: train_pickup_sliced
     task_kinds: pickup_sliced

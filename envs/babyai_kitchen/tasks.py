@@ -50,7 +50,10 @@ class KitchenTask(Instr):
 
   @property
   def task_rep(self):
-    return self._task_rep or self.default_task_rep
+    if self._task_rep is not None:
+      return self._task_rep 
+    else:
+      return self.default_task_rep
   
   @property
   def task_objects(self):
@@ -506,7 +509,7 @@ class PlaceTask(KitchenTask):
             self.to_place
         ]
 
-        task = self.abstract_rep.replace('x', self.to_place.name)
+        task = self.task_rep.replace('x', self.to_place.name)
         task = task.replace('y', self.container.name)
         return task
 
@@ -703,7 +706,7 @@ class CookTask(KitchenTask):
             self.object_to_cook_on
         ]
 
-        task = self.abstract_rep.replace('x', self.object_to_cook.name)
+        task = self.task_rep.replace('x', self.object_to_cook.name)
         task = task.replace('y', self.object_to_cook_with.name)
         return task
 
@@ -729,7 +732,7 @@ class PickupCookedTask(CookTask):
 
   @property
   def default_task_rep(self):
-      return 'cook x and pickup x'
+      return 'pickup cooked x'
 
 
   @property
