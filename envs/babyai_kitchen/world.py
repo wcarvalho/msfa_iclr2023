@@ -307,6 +307,16 @@ class Kitchen(object):
                 toggle_prop={'temp': 'hot'},
             ),
             KitchenContainer(
+                name="microwave",
+                rendering_scale=rendering_scale,
+                rootdir=rootdir,
+                properties=['on'],
+                visible_properties=['on'],
+                can_contain=['plates'],
+                pickupable=False,
+                toggle_prop={'temp': 'hot'},
+            ),
+            KitchenContainer(
                 name="fridge",
                 rendering_scale=rendering_scale,
                 rootdir=rootdir,
@@ -317,7 +327,6 @@ class Kitchen(object):
                 toggle_prop={'temp': 'cold'},
 
             ),
-
             KitchenContainer(
                 name="pot",
                 rendering_scale=rendering_scale,
