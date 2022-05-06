@@ -88,6 +88,19 @@ def make_environment(evaluation: bool = False,
     increasingL=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/increasingL.yaml",
       ),
+    Clean_Cook_Slice=dict(
+      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/Clean_Cook_Slice.yaml",
+      ),
+    multiv1=dict(
+      tasks_file="envs/babyai_kitchen/tasks/v1/multiv1.yaml",
+      ),
+    multiv2=dict(
+      tasks_file="envs/babyai_kitchen/tasks/v1/multiv2.yaml",
+      ),
+    multiv3=dict(
+      tasks_file="envs/babyai_kitchen/tasks/v1/multiv3.yaml",
+      ),
+
     )
   settings=settings[setting]
   
@@ -188,7 +201,8 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
   default_config = dict(max_vocab_size=max_vocab_size)
   default_config.update(config_kwargs or {})
 
-  if agent == "r2d1": # Recurrent DQN
+  if agent == "r2d1":
+  # Recurrent DQN (2.2M params)
     config = data_utils.merge_configs(
       dataclass_configs=[
         configs.R2D1Config(),
@@ -208,7 +222,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     eval_network = config.eval_network
 
   elif agent == "usfa_lstm":
-  # USFA + cumulants from LSTM + Q-learning
+  # USFA + cumulants from LSTM + Q-learning (2.5M params)
 
     config = data_utils.merge_configs(
       dataclass_configs=[

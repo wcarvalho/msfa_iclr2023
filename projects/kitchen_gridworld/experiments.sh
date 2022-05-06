@@ -20,4 +20,7 @@ make train_search group=bigroom_moredists2 search=bigroom_moredists cuda=0,1,2,3
 
 
 
-make train_search group=increasingL2 search=increasingL cuda=0,1,2,3
+make train_search group=Clean_Cook_Slice1 search=Clean_Cook_Slice cuda=0,1,2,3,4
+
+
+make train_search group=multi1 search=multi cuda=0,1,2,3,4

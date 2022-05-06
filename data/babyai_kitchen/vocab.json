@@ -1,4 +1,5 @@
-{"pickup": 1,
+{
+"pickup": 1,
 "x": 2,
 "place": 3,
 "on": 4,
@@ -31,5 +32,6 @@
 "and": 31,
 "get": 32,
 "heated": 33,
-"turnon": 25,
+"turnon": 34,
+"microwave": 34
 }

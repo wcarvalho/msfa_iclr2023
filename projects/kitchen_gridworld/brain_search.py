@@ -38,113 +38,27 @@ def get(search):
         "cumulant_layers": tune.grid_search([1]),
         },
     ]
-  elif search == 'baselines':
+  elif search == 'multi':
     """
     Next:
     """
     space = [
-      {
-        "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf']),
-        "setting": tune.grid_search(['L2_Multi']),
-      },
-    ]
-  elif search == 'ssf':
-    """
-    Next:
-    """
-    space = [
-      {
-        "seed": tune.grid_search([1, 2]),
-        "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['L2_Multi']),
-        "sf_net": tune.grid_search(['independent', 'relational']),
-        "module_attn_heads": tune.grid_search([0]),
-      },
       # {
       #   "seed": tune.grid_search([1, 2]),
       #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['L2_Multi']),
-      #   "sf_net": tune.grid_search(['independent']),
-      #   "module_attn_heads": tune.grid_search([2]),
+      #   "sf_net": tune.grid_search(['relational']),
+      #   "setting": tune.grid_search(['multiv1', 'multiv2', 'multiv3']),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
       # },
-    ]
-  elif search == 'monolithic':
-    """
-    Next:
-    """
-    space = [
-      {
-        "seed": tune.grid_search([3, 4]),
-        "agent": tune.grid_search(['msf_monolithic']),
-        "setting": tune.grid_search(['L2_Args_Multi']),
-      },
-    ]
-  elif search == 'big_room_lesslang':
-    """
-    Next:
-    """
-    space = [
-      {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf']),
-        "setting": tune.grid_search(['L2_Multi']),
-        "room_size": tune.grid_search([7]),
-      },
-      {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf']),
-        "setting": tune.grid_search(['L2_Multi']),
-        "task_reps": tune.grid_search(['lesslang']),
-      },
-    ]
-  elif search == 'lesslang':
-    """
-    Next:
-    """
-    space = [
       {
         "seed": tune.grid_search([1, 2]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf']),
-        "setting": tune.grid_search(['L2_Multi']),
-        "task_reps": tune.grid_search(['lesslang']),
-      },
-    ]
-  elif search == 'moredists':
-    """
-    Next:
-    """
-    space = [
-      {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf', 'msf_monolithic']),
-        "setting": tune.grid_search(['L2_Multi']),
-        "num_dists": tune.grid_search([5]),
-      },
-    ]
-
-  elif search == 'bigroom_moredists':
-    """
-    Next:
-    """
-    space = [
-      {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf', 'msf_monolithic']),
-        "setting": tune.grid_search(['L2_Multi_Gen']),
-      },
-    ]
-  elif search == 'increasingL':
-    """
-    Next:
-    """
-    space = [
-      {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm', 'msf']),
-        "setting": tune.grid_search(['increasingL']),
+        # "agent": tune.grid_search(['r2d1', 'msf']),
+        "agent": tune.grid_search(['msf']),
+        "sf_net": tune.grid_search(['relational']),
         "max_number_of_steps": tune.grid_search([30_000_000]),
-        "lang_task_dim": tune.grid_search([16, 24]),
+        "setting": tune.grid_search(['multiv2']),
+        "lang_task_dim": tune.grid_search([4*6]),
+        "nmodules": tune.grid_search([6]),
       },
     ]
   else:
