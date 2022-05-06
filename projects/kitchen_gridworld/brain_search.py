@@ -43,23 +43,23 @@ def get(search):
     Next:
     """
     space = [
-      # {
-      #   "seed": tune.grid_search([1, 2]),
-      #   "agent": tune.grid_search(['msf']),
-      #   "sf_net": tune.grid_search(['relational']),
-      #   "setting": tune.grid_search(['multiv1', 'multiv2', 'multiv3']),
-      #   "max_number_of_steps": tune.grid_search([30_000_000]),
-      # },
       {
         "seed": tune.grid_search([1, 2]),
-        # "agent": tune.grid_search(['r2d1', 'msf']),
-        "agent": tune.grid_search(['msf']),
+        "agent": tune.grid_search(['r2d1']),
         "sf_net": tune.grid_search(['relational']),
+        "setting": tune.grid_search(['multiv1', 'multiv2', 'multiv3']),
         "max_number_of_steps": tune.grid_search([30_000_000]),
-        "setting": tune.grid_search(['multiv2']),
-        "lang_task_dim": tune.grid_search([4*6]),
-        "nmodules": tune.grid_search([6]),
       },
+      # {
+      #   "seed": tune.grid_search([1, 2]),
+      #   # "agent": tune.grid_search(['r2d1', 'msf']),
+      #   "agent": tune.grid_search(['msf']),
+      #   "sf_net": tune.grid_search(['relational']),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      #   "setting": tune.grid_search(['multiv2']),
+      #   "lang_task_dim": tune.grid_search([4*6]),
+      #   "nmodules": tune.grid_search([6]),
+      # },
     ]
   else:
     raise NotImplementedError(search)
