@@ -565,7 +565,7 @@ class PickupPlacedTask(KitchenTask):
           goto=self.container, actions=['place', 'pickup_container'])
       ]
 
-class Slice2Task(KitchenTask):
+class Slice2Task(SliceTask):
     """docstring for SliceTask"""
 
     @property
@@ -574,12 +574,14 @@ class Slice2Task(KitchenTask):
 
     def generate(self):
         objects_to_slice = self.get_options()['x']
-        import ipdb; ipdb.set_trace()
 
-        self.object_to_slice = np.random.choice(objects_to_slice)
+
+        choices = np.random.choice(objects_to_slice, 2, replace=False)
+
+        self.object_to_slice = choices[0]
+        self.object_to_slice2 = choices[1]
+
         self.object_to_slice.set_prop('sliced', False)
-
-        self.object_to_slice2 = np.random.choice(objects_to_slice)
         self.object_to_slice2.set_prop('sliced', False)
 
         self.knife = self.env.objects_by_type(["knife"])[0]
@@ -589,7 +591,7 @@ class Slice2Task(KitchenTask):
         instr =  self.task_rep.replace(
           'x', self.object_to_slice.name).replace(
           'y', self.object_to_slice2.name)
-        import ipdb; ipdb.set_trace()
+
         return instr
 
     @property
@@ -599,7 +601,7 @@ class Slice2Task(KitchenTask):
         sliced1  = self.object_to_slice.state['sliced'] == True
         sliced2 = self.object_to_slice2.state['sliced'] == True
 
-        reward, done = sliced1 and sliced2
+        reward = done = sliced1 and sliced2
 
         return reward, done
 
@@ -633,12 +635,14 @@ class Toggle2Task(KitchenTask):
             totoggle_options = self.env.objects_by_type(x_options)
         else:
             totoggle_options = self.env.objects_with_property(['on'])
-        
-        self.toggle1 = np.random.choice(totoggle_options)
-        self.toggle2 = np.random.choice(totoggle_options)
 
-        self.toggle1.set_prop("temp", "room")
-        self.toggle2.set_prop("temp", "room")
+        choices = np.random.choice(totoggle_options, 2, replace=False)
+
+        self.toggle1 = choices[0]
+        self.toggle2 = choices[1]
+
+        self.toggle1.set_prop("on", False)
+        self.toggle2.set_prop("on", False)
 
         self._task_objects = [
             self.toggle1,
@@ -648,14 +652,15 @@ class Toggle2Task(KitchenTask):
           'x', self.toggle1.name).replace(
           'y', self.toggle2.name)
 
-        import ipdb; ipdb.set_trace()
         return instr
 
     @property
     def num_navs(self): return 2
 
     def check_status(self):
-        done = reward = self.object_to_heat.state['temp'] == 'hot'
+        toggle1 = self.toggle1.state['on'] == True
+        toggle2 = self.toggle2.state['on'] == True
+        reward = done = toggle1 and toggle2
         return reward, done
 
     def subgoals(self):
