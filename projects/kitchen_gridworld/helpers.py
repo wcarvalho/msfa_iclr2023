@@ -100,7 +100,15 @@ def make_environment(evaluation: bool = False,
     multiv3=dict(
       tasks_file="envs/babyai_kitchen/tasks/v1/multiv3.yaml",
       ),
-
+    multiv4=dict(
+      tasks_file="envs/babyai_kitchen/tasks/v1/multiv4.yaml",
+      ),
+    clean=dict(
+      tasks_file="envs/babyai_kitchen/tasks/v1/clean.yaml",
+      ),
+    slice=dict(
+      tasks_file="envs/babyai_kitchen/tasks/v1/slice.yaml",
+      ),
     )
   settings=settings[setting]
   
