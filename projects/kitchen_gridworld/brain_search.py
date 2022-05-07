@@ -67,10 +67,18 @@ def get(search):
     """
     space = [
       {
-        "seed": tune.grid_search([1, 2, 3, 4]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['usfa_lstm']),
         "setting": tune.grid_search(['multiv4']),
-        "out_hidden_size": tune.grid_search([1024]),
+        "out_hidden_size": tune.grid_search([512, 1024]),
+        "lang_task_dim": tune.grid_search([16, 32]),
+       "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+      {
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['r2d1']),
+        "setting": tune.grid_search(['multiv4']),
+        "out_hidden_size": tune.grid_search([512, 1024]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
       # {
