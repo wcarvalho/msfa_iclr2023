@@ -24,6 +24,9 @@ export TF_FORCE_GPU_ALLOW_GROWTH=true
 git_sync:
 	git add -u; git commit -m "updates"; git pull
 
+git_minor_push:
+	git add -u; git commit -m "minor"; git push
+
 test_sync:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
