@@ -66,9 +66,10 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['out_hidden_size'] = 128
-    config['nmodules'] = 6
-    config['module_attn_heads'] = 2
+    config['nmodules'] = 4
+    config['out_hidden_size'] = 512
+    config['seperate_value_params'] = True
+    config['seperate_cumulant_params'] = True
     config['lang_task_dim'] = 4*config.get('nmodules', 4)
     print("="*50)
     print("="*20, "testing", "="*20)

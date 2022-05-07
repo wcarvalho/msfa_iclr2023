@@ -116,6 +116,7 @@ def run(env,
   # prepare networks
   # -----------------------
   PredCls = create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs)
+  return
   NetKwargs.update(PredCls=PredCls)
 
   agent = td_agent.TDAgent(

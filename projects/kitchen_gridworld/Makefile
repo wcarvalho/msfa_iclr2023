@@ -11,6 +11,8 @@ env?='EasyPickup'
 task_reps?='pickup'
 group?=''
 notes?=''
+distributed?='False'
+
 
 
 export PYTHONPATH:=$(PYTHONPATH):.
@@ -70,6 +72,11 @@ train_search_rldl:
 
 
 
+video_maker:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python -m ipdb -c continue projects/kitchen_gridworld/create_episode_data.py \
+	--distributed=$(distributed)
 
 mprof_train_search:
 	cd ../..; \
