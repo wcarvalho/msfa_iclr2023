@@ -72,7 +72,7 @@ def get(search):
         "setting": tune.grid_search(['multiv4']),
         "out_hidden_size": tune.grid_search([1024]),
         "lang_task_dim": tune.grid_search([16, 32]),
-        "max_number_of_steps": tune.grid_search([30_000_000]),
+       "max_number_of_steps": tune.grid_search([30_000_000]),
       },
       # {
       #   "seed": tune.grid_search([1, 2, 3, 4]),
