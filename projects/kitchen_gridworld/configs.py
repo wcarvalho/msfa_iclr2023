@@ -113,7 +113,7 @@ class FarmConfig:
 
   # Network hps
   module_size: int = 128
-  nmodules: int = 4
+  nmodules: int = 6
   out_layers: int = 0
   module_attn_size: int = None
   module_attn_heads: int = 2  # how many attention heads between modules
