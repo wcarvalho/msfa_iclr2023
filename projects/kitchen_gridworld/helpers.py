@@ -174,6 +174,7 @@ def msf(config, env_spec, use_seperate_eval=True, predict_cumulants=True, learn_
         shorten_data_for_cumulant=True,
         coeff=config.reward_coeff,
         loss=config.reward_loss,
+        l1_coeff=config.phi_l1_coeff,
         balance=config.balance_reward))
 
   if learn_model:
@@ -264,6 +265,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
           shorten_data_for_cumulant=True,
           coeff=config.reward_coeff,
           loss=config.reward_loss,
+          l1_coeff=config.phi_l1_coeff,
           balance=config.balance_reward,
           ),
       ])

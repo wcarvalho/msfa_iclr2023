@@ -71,6 +71,7 @@ def main(_):
     config['seperate_value_params'] = True
     config['seperate_cumulant_params'] = True
     config['lang_task_dim'] = 4*config.get('nmodules', 4)
+    config['phi_l1_coeff'] = 0.01
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)

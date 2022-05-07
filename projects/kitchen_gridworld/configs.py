@@ -99,6 +99,7 @@ class RewardConfig:
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 1e-4 # coefficient for reward loss
   value_coeff: float = 0.05 # coefficient for value loss
+  phi_l1_coeff: float = None # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
   q_aux: str="single"
