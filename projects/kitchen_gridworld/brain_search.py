@@ -106,23 +106,18 @@ def get(search):
         "lang_task_dim": tune.grid_search([128]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
+    ]
+  elif search == 'uvfa':
+    """
+    Next:
+    """
+    space = [
       {
-        "seed": tune.grid_search([1, 2]),
+        "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['r2d1']),
-        "setting": tune.grid_search(['multiv1', 'multiv4']),
-        "out_hidden_size": tune.grid_search([512, 1024]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
+        "setting": tune.grid_search(['multiv4', 'slice']),
       },
-      # {
-      #   "seed": tune.grid_search([1, 2]),
-      #   # "agent": tune.grid_search(['r2d1', 'msf']),
-      #   "agent": tune.grid_search(['msf']),
-      #   "sf_net": tune.grid_search(['relational']),
-      #   "max_number_of_steps": tune.grid_search([30_000_000]),
-      #   "setting": tune.grid_search(['multiv2']),
-      #   "lang_task_dim": tune.grid_search([4*6]),
-      #   "nmodules": tune.grid_search([6]),
-      # },
     ]
 
   else:

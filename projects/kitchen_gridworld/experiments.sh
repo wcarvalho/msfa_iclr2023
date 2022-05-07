@@ -24,3 +24,8 @@ make train_search group=Clean_Cook_Slice1 search=Clean_Cook_Slice cuda=0,1,2,3,4
 
 
 make train_search group=multiv4 search=multiv4 cuda=0,1,2,3,4,5,6,7
+
+
+make train_search group=uvfa4 search=uvfa cuda=0,1,2,3,4,5,6,7
+
+make train_search group=capacity1 search=capacity cuda=0,1,2,3,4,5,6,7
