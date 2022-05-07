@@ -21,7 +21,7 @@ export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export TF_FORCE_GPU_ALLOW_GROWTH=true
 
-git_sync:
+git_minor_pull:
 	git add -u; git commit -m "updates"; git pull
 
 git_minor_push:
