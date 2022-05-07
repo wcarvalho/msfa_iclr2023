@@ -23,4 +23,4 @@ make train_search group=bigroom_moredists2 search=bigroom_moredists cuda=0,1,2,3
 make train_search group=Clean_Cook_Slice1 search=Clean_Cook_Slice cuda=0,1,2,3,4
 
 
-make train_search group=multi1 search=multi cuda=0,1,2,3,4
+make train_search group=multiv4 search=multiv4 cuda=0,1,2,3,4,5,6,7
