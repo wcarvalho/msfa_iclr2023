@@ -99,11 +99,11 @@ def get(search):
     space = [
       {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['usfa_lstm']),
+        "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['multiv1']),
         "phi_l1_coeff": tune.grid_search([1e-1, 1e-2, 1e-3, 1e-4]),
         "out_hidden_size": tune.grid_search([512]),
-        "lang_task_dim": tune.grid_search([128]),
+        "lang_task_dim": tune.grid_search([126]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
     ]

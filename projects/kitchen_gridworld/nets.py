@@ -364,6 +364,12 @@ def msf(
   num_actions = env_spec.actions.num_values
 
   # -----------------------
+  # memory
+  # -----------------------
+  farm_memory = build_farm(config)
+  # TODO: make sure task dim can be evenly divided by num modules
+
+  # -----------------------
   # task related
   # -----------------------
   task_dim = env_spec.observations.observation.task.shape[0]
@@ -375,10 +381,6 @@ def msf(
     sf_out_dim = env_spec.observations.observation.state_features.shape[0]
     raise RuntimeError("Is this a good default for sf_out_dim?? state features or task?? Task.")
 
-  # -----------------------
-  # memory
-  # -----------------------
-  farm_memory = build_farm(config)
 
   # -----------------------
   # USFA Head

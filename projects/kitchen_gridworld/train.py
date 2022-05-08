@@ -66,7 +66,6 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['nmodules'] = 4
     config['out_hidden_size'] = 512
     config['seperate_value_params'] = True
     config['seperate_cumulant_params'] = True
