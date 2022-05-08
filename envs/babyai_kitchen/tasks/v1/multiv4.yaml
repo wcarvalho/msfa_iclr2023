@@ -1,5 +1,5 @@
 # -----------------------
-# clean, slice, toggle2, slice2, cook
+# pickup, place, slice, toggle2, slice2, clean, pickup sliced
 # -----------------------
 
 train:

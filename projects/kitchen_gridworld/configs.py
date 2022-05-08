@@ -85,6 +85,7 @@ class USFAConfig(R2D1Config):
   sf_loss: str = 'n_step_q_learning' # whether to use q_lambda or n-step q-learning for objective
   lambda_: float = .9 # lambda for q-lambda
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
+  phi_l1_coeff: float = 0.1 # coefficient for L1 on phi
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -99,7 +100,6 @@ class RewardConfig:
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 1e-4 # coefficient for reward loss
   value_coeff: float = 0.05 # coefficient for value loss
-  phi_l1_coeff: float = None # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
   q_aux: str="single"
@@ -135,6 +135,7 @@ class ModularUSFAConfig(USFAConfig):
 
   seperate_cumulant_params: bool=False # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
+  phi_l1_coeff: float = 0.01 # coefficient for L1 on phi
 
   sf_net: str = 'independent'
   sf_net_heads: int = 2

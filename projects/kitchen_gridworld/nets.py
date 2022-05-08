@@ -363,11 +363,22 @@ def msf(
   assert config.phi_net in ['flat', 'independent', 'relational']
   num_actions = env_spec.actions.num_values
 
+
+  if task_embedding == 'none':
+    pass
+  elif task_embedding == 'language':
+    # make sure task dim can be evenly divided by num modules
+    task_dim = config.lang_task_dim
+    nmodules = config.nmodules
+    config.lang_task_dim = int(task_dim//nmodules)*nmodules
+  else:
+    raise NotImplementedError(task_embedding)
+
+
   # -----------------------
   # memory
   # -----------------------
   farm_memory = build_farm(config)
-  # TODO: make sure task dim can be evenly divided by num modules
 
   # -----------------------
   # task related

@@ -116,7 +116,7 @@ def make_environment(evaluation: bool = False,
   with open(os.path.join(path, tasks_file), 'r') as f:
     tasks = yaml.load(f, Loader=yaml.SafeLoader)
 
-  if evaluation:
+  if evaluation and 'test' in tasks:
     task_dicts = tasks['test']
   else:
     task_dicts = tasks['train']

@@ -67,9 +67,9 @@ def main(_):
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
     config['out_hidden_size'] = 512
-    config['seperate_value_params'] = True
-    config['seperate_cumulant_params'] = True
-    config['lang_task_dim'] = 4*config.get('nmodules', 4)
+    config['seperate_value_params'] = False
+    config['seperate_cumulant_params'] = False
+    config['lang_task_dim'] = 128
     config['phi_l1_coeff'] = 0.01
     print("="*50)
     print("="*20, "testing", "="*20)
