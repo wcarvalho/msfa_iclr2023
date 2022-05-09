@@ -161,7 +161,7 @@ def r2d1(config, env_spec,
       TYPE: Description
   """
 
-  config.lang_task_dim = 0 # use GRU output
+  # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
@@ -189,7 +189,7 @@ def r2d1_noise(config, env_spec,
   task_embedding: str='none',
   **net_kwargs):
 
-  config.lang_task_dim = 0 # use GRU output
+  # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
@@ -226,7 +226,7 @@ def r2d1_farm(config, env_spec,
   task_embedding: str='none',
   **net_kwargs):
 
-  config.lang_task_dim = 0 # use GRU output
+  # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
