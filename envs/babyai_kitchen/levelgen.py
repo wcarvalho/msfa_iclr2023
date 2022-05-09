@@ -439,7 +439,8 @@ class KitchenLevel(RoomGridLevel):
     else:
         num_navs = 2
     self.max_steps = max(num_navs, 2) * nav_time_maze
-    self.timesteps_complete=0
+    self.timesteps_complete = 0
+    self.interaction_info = {}
 
     return obs
 
@@ -469,6 +470,7 @@ class KitchenLevel(RoomGridLevel):
 
     # Rotate left
     action_info = None
+    self.interaction_info = {}
     interaction = False
     if action == self.actiondict.get('left', -1):
         self.agent_dir -= 1
@@ -496,6 +498,10 @@ class KitchenLevel(RoomGridLevel):
             grid=self.grid,
             env=self, # only used for backwards compatibility with toggle
         )
+        if action_info['success']:
+          self.interaction_info=dict(
+            action=str(self.idx2action[int(action)]),
+            object=str(object_infront.type) if object_infront else None)
         self.carrying = self.kitchen.carrying
         interaction = True
 
