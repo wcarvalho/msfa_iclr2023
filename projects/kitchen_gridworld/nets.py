@@ -160,6 +160,8 @@ def r2d1(config, env_spec,
   Returns:
       TYPE: Description
   """
+
+  # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
@@ -186,6 +188,8 @@ def r2d1_noise(config, env_spec,
   eval_noise=True,
   task_embedding: str='none',
   **net_kwargs):
+
+  # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
@@ -221,6 +225,8 @@ def r2d1_noise(config, env_spec,
 def r2d1_farm(config, env_spec,
   task_embedding: str='none',
   **net_kwargs):
+
+  # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
@@ -357,6 +363,23 @@ def msf(
   assert config.phi_net in ['flat', 'independent', 'relational']
   num_actions = env_spec.actions.num_values
 
+
+  if task_embedding == 'none':
+    pass
+  elif task_embedding == 'language':
+    # make sure task dim can be evenly divided by num modules
+    task_dim = config.lang_task_dim
+    nmodules = config.nmodules
+    config.lang_task_dim = int(task_dim//nmodules)*nmodules
+  else:
+    raise NotImplementedError(task_embedding)
+
+
+  # -----------------------
+  # memory
+  # -----------------------
+  farm_memory = build_farm(config)
+
   # -----------------------
   # task related
   # -----------------------
@@ -369,10 +392,6 @@ def msf(
     sf_out_dim = env_spec.observations.observation.state_features.shape[0]
     raise RuntimeError("Is this a good default for sf_out_dim?? state features or task?? Task.")
 
-  # -----------------------
-  # memory
-  # -----------------------
-  farm_memory = build_farm(config)
 
   # -----------------------
   # USFA Head

@@ -11,6 +11,8 @@ env?='EasyPickup'
 task_reps?='pickup'
 group?=''
 notes?=''
+distributed?='False'
+
 
 
 export PYTHONPATH:=$(PYTHONPATH):.
@@ -18,6 +20,12 @@ export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
 
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export TF_FORCE_GPU_ALLOW_GROWTH=true
+
+git_minor_pull:
+	git add -u; git commit -m "updates"; git pull
+
+git_minor_push:
+	git add -u; git commit -m "minor"; git push
 
 test_sync:
 	cd ../..; \
@@ -70,6 +78,11 @@ train_search_rldl:
 
 
 
+video_maker:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python -m ipdb -c continue projects/kitchen_gridworld/create_episode_data.py \
+	--distributed=$(distributed)
 
 mprof_train_search:
 	cd ../..; \

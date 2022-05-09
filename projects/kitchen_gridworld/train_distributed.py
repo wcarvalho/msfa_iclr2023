@@ -136,7 +136,7 @@ def build_program(
   # wandb settup
   # -----------------------
   os.chdir(path)
-  setting = env_kwargs['setting']
+  setting = env_kwargs.get('setting', 'default')
   return build_common_program(
     environment_factory=environment_factory,
     env_spec=env_spec,
@@ -154,6 +154,7 @@ def build_program(
     loss_label='Loss',
     actor_label=f"actor_{setting}",
     evaluator_label=f"evaluator_{setting}",
+    evaluator_factories=[],
     **kwargs,
     )
 

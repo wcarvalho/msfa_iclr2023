@@ -6,7 +6,9 @@ import rlax
 
 class CumulantRewardLoss:
   """"""
-  def __init__(self, coeff: float, loss: str = 'l2', shorten_data_for_cumulant: bool = False, balance: float = 0):
+  def __init__(self, coeff: float, loss: str = 'l2', shorten_data_for_cumulant: bool = False,
+    balance: float = 0,
+    l1_coeff=None):
     self.coeff = coeff
     loss = loss.lower()
     assert loss in ['l2', 'binary']
@@ -14,6 +16,8 @@ class CumulantRewardLoss:
     self.shorten_data_for_cumulant = shorten_data_for_cumulant
     self.balance = balance
     self.random = True
+    self.l1_coeff = l1_coeff
+
 
   def __call__(self, data, online_preds, key, **kwargs):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
@@ -65,5 +69,11 @@ class CumulantRewardLoss:
         f'loss_reward_{self.loss}': final_error,
       }
 
+    if self.l1_coeff is not None:
+      phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
+      phi_l1 = phi_l1.mean()
+      metrics['loss_phi_l1'] = phi_l1
+
+      final_error += phi_l1
 
     return final_error*self.coeff, metrics

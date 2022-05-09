@@ -36,6 +36,7 @@ def build_common_program(
   loss_label=None,
   actor_label='actor',
   evaluator_label='evaluator',
+  **kwargs,
   ):
 
   # -----------------------
@@ -144,4 +145,5 @@ def build_common_program(
       max_number_of_steps=config.max_number_of_steps,
       log_every=log_every,
       observers=observers,
-      multithreading_colocate_learner_and_reverb=colocate_learner_replay).build()
+      multithreading_colocate_learner_and_reverb=colocate_learner_replay,
+      **kwargs).build()

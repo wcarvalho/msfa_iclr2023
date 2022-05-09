@@ -88,14 +88,24 @@ def make_environment(evaluation: bool = False,
     increasingL=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/increasingL.yaml",
       ),
+    Clean_Cook_Slice=dict(
+      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/Clean_Cook_Slice.yaml",
+      )
     )
-  settings=settings[setting]
+  if setting in settings:
+    settings=settings[setting]
+    tasks_file = settings['tasks_file']
+    tasks_file = os.path.join(path, tasks_file)
+  else:
+    tasks_file = f"envs/babyai_kitchen/tasks/v1/{setting}.yaml"
+    tasks_file = os.path.join(path, tasks_file)
+    if not os.path.exists(tasks_file):
+      raise RuntimeError(f"don't know how to handle setting: {setting}")
   
-  tasks_file = settings['tasks_file']
-  with open(os.path.join(path, tasks_file), 'r') as f:
+  with open(tasks_file, 'r') as f:
     tasks = yaml.load(f, Loader=yaml.SafeLoader)
 
-  if evaluation:
+  if evaluation and 'test' in tasks:
     task_dicts = tasks['test']
   else:
     task_dicts = tasks['train']
@@ -153,6 +163,7 @@ def msf(config, env_spec, use_seperate_eval=True, predict_cumulants=True, learn_
         shorten_data_for_cumulant=True,
         coeff=config.reward_coeff,
         loss=config.reward_loss,
+        l1_coeff=config.phi_l1_coeff,
         balance=config.balance_reward))
 
   if learn_model:
@@ -188,7 +199,8 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
   default_config = dict(max_vocab_size=max_vocab_size)
   default_config.update(config_kwargs or {})
 
-  if agent == "r2d1": # Recurrent DQN
+  if agent == "r2d1":
+  # Recurrent DQN (2.2M params)
     config = data_utils.merge_configs(
       dataclass_configs=[
         configs.R2D1Config(),
@@ -208,7 +220,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     eval_network = config.eval_network
 
   elif agent == "usfa_lstm":
-  # USFA + cumulants from LSTM + Q-learning
+  # USFA + cumulants from LSTM + Q-learning (2.5M params)
 
     config = data_utils.merge_configs(
       dataclass_configs=[
@@ -242,6 +254,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
           shorten_data_for_cumulant=True,
           coeff=config.reward_coeff,
           loss=config.reward_loss,
+          l1_coeff=config.phi_l1_coeff,
           balance=config.balance_reward,
           ),
       ])

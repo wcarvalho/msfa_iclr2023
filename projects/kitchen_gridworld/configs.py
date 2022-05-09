@@ -85,6 +85,7 @@ class USFAConfig(R2D1Config):
   sf_loss: str = 'n_step_q_learning' # whether to use q_lambda or n-step q-learning for objective
   lambda_: float = .9 # lambda for q-lambda
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
+  phi_l1_coeff: float = 0.1 # coefficient for L1 on phi
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -112,7 +113,7 @@ class FarmConfig:
 
   # Network hps
   module_size: int = 128
-  nmodules: int = 4
+  nmodules: int = 6
   out_layers: int = 0
   module_attn_size: int = None
   module_attn_heads: int = 2  # how many attention heads between modules
@@ -134,6 +135,7 @@ class ModularUSFAConfig(USFAConfig):
 
   seperate_cumulant_params: bool=False # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
+  phi_l1_coeff: float = 0.01 # coefficient for L1 on phi
 
   sf_net: str = 'independent'
   sf_net_heads: int = 2

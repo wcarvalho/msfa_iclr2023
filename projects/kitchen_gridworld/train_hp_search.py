@@ -38,7 +38,7 @@ def main(_):
   DEFAULT_ENV_SETTING = 'SmallL2NoDist'
   DEFAULT_TASK_REPS='pickup'
   DEFAULT_ROOM_SIZE=5
-  DEFAULT_NUM_ACTORS = 4
+  DEFAULT_NUM_ACTORS = 5
   DEFAULT_NUM_DISTS = 0
   name_kwargs=[]
 

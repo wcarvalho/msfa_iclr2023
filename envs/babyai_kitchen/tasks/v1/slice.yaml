@@ -1,0 +1,17 @@
+# -----------------------
+# clean, slice, toggle2, slice2, cook
+# -----------------------
+
+train:
+
+  - name: pickup
+    task_kinds: pickup
+    num_dists: 0
+
+  - name: slice
+    task_kinds: slice
+    num_dists: 0
+
+  - name: pickup_sliced
+    task_kinds: pickup_sliced
+    num_dists: 0
