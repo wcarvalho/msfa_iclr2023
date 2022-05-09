@@ -90,25 +90,7 @@ def make_environment(evaluation: bool = False,
       ),
     Clean_Cook_Slice=dict(
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/Clean_Cook_Slice.yaml",
-      ),
-    multiv1=dict(
-      tasks_file="envs/babyai_kitchen/tasks/v1/multiv1.yaml",
-      ),
-    multiv2=dict(
-      tasks_file="envs/babyai_kitchen/tasks/v1/multiv2.yaml",
-      ),
-    multiv3=dict(
-      tasks_file="envs/babyai_kitchen/tasks/v1/multiv3.yaml",
-      ),
-    multiv4=dict(
-      tasks_file="envs/babyai_kitchen/tasks/v1/multiv4.yaml",
-      ),
-    clean=dict(
-      tasks_file="envs/babyai_kitchen/tasks/v1/clean.yaml",
-      ),
-    slice=dict(
-      tasks_file="envs/babyai_kitchen/tasks/v1/slice.yaml",
-      ),
+      )
     )
   if setting in settings:
     settings=settings[setting]
