@@ -18,6 +18,7 @@ class CumulantRewardLoss:
     self.random = True
     self.l1_coeff = l1_coeff
 
+
   def __call__(self, data, online_preds, key, **kwargs):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
     task = online_preds.w  # ground-truth  [T, B, D]

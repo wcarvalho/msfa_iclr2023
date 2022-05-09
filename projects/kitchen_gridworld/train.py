@@ -66,11 +66,11 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['out_hidden_size'] = 512
-    config['seperate_value_params'] = False
-    config['seperate_cumulant_params'] = False
-    config['lang_task_dim'] = 128
-    config['phi_l1_coeff'] = 0.01
+    # config['out_hidden_size'] = 512
+    # config['seperate_value_params'] = False
+    # config['seperate_cumulant_params'] = False
+    # config['lang_task_dim'] = 128
+    # config['phi_l1_coeff'] = 0.01
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)

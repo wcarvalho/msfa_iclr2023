@@ -110,10 +110,17 @@ def make_environment(evaluation: bool = False,
       tasks_file="envs/babyai_kitchen/tasks/v1/slice.yaml",
       ),
     )
-  settings=settings[setting]
+  if setting in settings:
+    settings=settings[setting]
+    tasks_file = settings['tasks_file']
+    tasks_file = os.path.join(path, tasks_file)
+  else:
+    tasks_file = f"envs/babyai_kitchen/tasks/v1/{setting}.yaml"
+    tasks_file = os.path.join(path, tasks_file)
+    if not os.path.exists(tasks_file):
+      raise RuntimeError(f"don't know how to handle setting: {setting}")
   
-  tasks_file = settings['tasks_file']
-  with open(os.path.join(path, tasks_file), 'r') as f:
+  with open(tasks_file, 'r') as f:
     tasks = yaml.load(f, Loader=yaml.SafeLoader)
 
   if evaluation and 'test' in tasks:
