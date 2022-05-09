@@ -44,11 +44,13 @@ class SfQNet(hk.Module):
       num_cumulants: int,
       hidden_sizes: Sequence[int],
       multihead: bool=False,
+      layernorm: bool=False,
   ):
     super().__init__(name='sf_network')
     self.num_actions = num_actions
     self.num_cumulants = num_cumulants
     self.multihead = multihead
+    self.layernorm = layernorm
     if multihead:
       self.mlp_factory = lambda: hk.nets.MLP([
           *hidden_sizes, num_actions])
@@ -81,6 +83,14 @@ class SfQNet(hk.Module):
       # [B, A, C]
       sf = jnp.reshape(sf, [sf.shape[0], self.num_actions, self.num_cumulants])
 
+    if self.layernorm:
+      sf = hk.LayerNorm(
+          axis=-1,
+          param_axis=-1,
+          create_scale=False,
+          create_offset=False)(sf)
+          import ipdb; ipdb.set_trace()
+
     q_values = jnp.sum(sf*w, axis=-1) # [B, A]
 
     return sf, q_values
@@ -106,6 +116,7 @@ class UsfaHead(hk.Module):
     z_as_train_task: bool = False,
     multihead: bool = False,
     concat_w: bool = False,
+    layernorm: bool = False,
     ):
     """Summary
     
@@ -134,6 +145,7 @@ class UsfaHead(hk.Module):
     self.hidden_size = hidden_size
     self.var = variance
     self.nsamples = nsamples
+    self.layernorm = layernorm
     self.z_as_train_task = z_as_train_task
     self.multihead = multihead
     self.concat_w = concat_w
@@ -179,7 +191,8 @@ class UsfaHead(hk.Module):
       self.sf_q_net = SfQNet(num_actions=num_actions,
         num_cumulants=self.sf_out_dim,
         hidden_sizes=[hidden_size],
-        multihead=multihead)
+        multihead=multihead,
+        layernorm=layernorm)
 
   def __call__(self,
     inputs : USFAInputs,
