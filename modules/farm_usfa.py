@@ -67,6 +67,13 @@ class FarmUsfaHead(UsfaHead):
     # [B, A, C*M=D_w]
     sf = sf.transpose(0, 2, 1, 3).reshape(B, A, -1)
 
+    if self.layernorm:
+      sf = hk.LayerNorm(
+          axis=-1,
+          param_axis=-1,
+          create_scale=False,
+          create_offset=False)(sf)
+
     q = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)(sf, task)
     q = q.sum(-1)
 
