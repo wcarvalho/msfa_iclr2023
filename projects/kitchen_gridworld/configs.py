@@ -134,7 +134,7 @@ class ModularUSFAConfig(USFAConfig):
   embed_position: int = 16 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
 
-  seperate_cumulant_params: bool=False # seperate parameters per cumulant set
+  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
   phi_l1_coeff: float = 0.01 # coefficient for L1 on phi
 

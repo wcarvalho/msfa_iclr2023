@@ -66,7 +66,8 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['sf_layernorm'] = 'sf'
+    config['seperate_cumulant_params'] = True
+    config['nmodules'] = 4
     # config['seperate_value_params'] = False
     # config['seperate_cumulant_params'] = False
     # config['lang_task_dim'] = 128
