@@ -154,7 +154,7 @@ def build_program(
     loss_label='Loss',
     actor_label=f"actor_{setting}",
     evaluator_label=f"evaluator_{setting}",
-    evaluator_factories=[],
+    # evaluator_factories=[], # no effect to not have evaluators
     **kwargs,
     )
 

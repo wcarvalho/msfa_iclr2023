@@ -499,7 +499,7 @@ class KitchenLevel(RoomGridLevel):
             env=self, # only used for backwards compatibility with toggle
         )
         if action_info['success']:
-          self.interaction_info=dict(
+          self.interaction_info = dict(
             action=str(self.idx2action[int(action)]),
             object=str(object_infront.type) if object_infront else None)
         self.carrying = self.kitchen.carrying

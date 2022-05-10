@@ -128,7 +128,7 @@ class Kitchen(object):
             action_info = object_infront.toggle()
         else:
             # backwards compatibility
-            action_info = object_infront.toggle(env, fwd_pos)
+            action_info['success'] = object_infront.toggle(env, fwd_pos)
 
     return action_info
 

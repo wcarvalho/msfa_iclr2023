@@ -86,6 +86,7 @@ class USFAConfig(R2D1Config):
   lambda_: float = .9 # lambda for q-lambda
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
   phi_l1_coeff: float = 0.1 # coefficient for L1 on phi
+  sf_layernorm: str = 'none' # coefficient for L1 on phi
 
 @dataclasses.dataclass
 class QAuxConfig:

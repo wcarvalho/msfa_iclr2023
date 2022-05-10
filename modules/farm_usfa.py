@@ -53,6 +53,13 @@ class FarmUsfaHead(UsfaHead):
     # [B, M, D_z+D_h]
     state_policy = concat(state, policy)
 
+    if self.layernorm == 'sf_input':
+      state_policy = hk.LayerNorm(
+          axis=-1,
+          param_axis=-1,
+          create_scale=False,
+          create_offset=False)(state_policy)
+
     if self.multihead:
       # [B, M, A*C]
       sf = vmap.batch_multihead(
@@ -67,7 +74,7 @@ class FarmUsfaHead(UsfaHead):
     # [B, A, C*M=D_w]
     sf = sf.transpose(0, 2, 1, 3).reshape(B, A, -1)
 
-    if self.layernorm:
+    if self.layernorm == 'sf':
       sf = hk.LayerNorm(
           axis=-1,
           param_axis=-1,

@@ -56,7 +56,15 @@ def create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs, data_le
     dummy_key)
 
   keys = dummy_output._asdict().keys()
-  return collections.namedtuple('Predictions', keys, defaults=(None,) * len(keys))
+  CustomPreds = collections.namedtuple('CustomPreds', keys, defaults=(None,) * len(keys))
+
+  # adds compatibility with pickling ++
+  globals()['CustomPreds'] = CustomPreds
+  import __main__
+  setattr(__main__, CustomPreds.__name__, CustomPreds)
+  CustomPreds.__module__ = "__main__"
+  return CustomPreds
+
 
 def run(env,
     env_spec,
@@ -116,6 +124,7 @@ def run(env,
   # prepare networks
   # -----------------------
   PredCls = create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs)
+  # insert into global namespace for pickling, etc.
   NetKwargs.update(PredCls=PredCls)
 
   agent = td_agent.TDAgent(

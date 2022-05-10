@@ -3,6 +3,7 @@ import operator
 import time
 from typing import Optional, Sequence
 
+
 from acme import core
 from acme.utils import counting
 from acme.utils import loggers
@@ -28,6 +29,7 @@ from acme.utils import paths
 
 import dm_env
 import pandas as pd
+from acme import specs as acme_specs
 from dm_env import specs
 import jax.numpy as jnp
 import numpy as np
@@ -35,7 +37,7 @@ import operator
 import tree
 
 
-import pickle
+import cloudpickle
 from acme import core
 from acme import types
 from acme.agents.jax import r2d2
@@ -52,6 +54,7 @@ import numpy as np
 
 from agents.td_agent.types import TDNetworkFns, Predictions
 from agents.td_agent.configs import R2D1Config
+from agents.td_agent.agents import DistributedTDAgent
 
 
 class DataStorer(object):
@@ -70,6 +73,7 @@ class DataStorer(object):
         )
     if not os.path.exists(self.results_path):
       paths.process_path(self.results_path, add_uid=False)
+    self.results_file = os.path.join(self.results_path, 'data.npz')
     
     self.idx = 0
 
@@ -79,12 +83,14 @@ class DataStorer(object):
     if self.level is not None:
       self.add_prev_episode_to_results()
     
+    self.idx += 1
     self.level = str(env.env.current_levelname)
     self.episode_data = []
     self.interaction_info = []
-    self._episode_return = tree.map_structure(
-      _generate_zeros_from_spec,
-      env.reward_spec())
+    self.rewards = []
+    # self._episode_return = tree.map_structure(
+    #   _generate_zeros_from_spec,
+    #   env.reward_spec())
 
 
   def observe(self, env: dm_env.Environment, timestep: dm_env.TimeStep,
@@ -92,10 +98,11 @@ class DataStorer(object):
     """Skip"""
     info = env.env.interaction_info
     self.interaction_info.append(info)
-    self._episode_return = tree.map_structure(
-      operator.iadd,
-      self._episode_return,
-      timestep.reward)
+    self.rewards.append(timestep.reward)
+    # self._episode_return = tree.map_structure(
+    #   operator.iadd,
+    #   self._episode_return,
+    #   timestep.reward)
 
   def store(self, data) -> None:
     """Records one environment step."""
@@ -107,23 +114,31 @@ class DataStorer(object):
     2. stack arrays by key (e.g. obs, q, etc.)
     3. agglomerate interaction info + reward
     """
-    processed_episode_data = jax.tree_map(np.array, *self.episode_data)
-    # turn in stacked numpy arrays
-    processed_episode_data = jax.tree_map(lambda *arrays: np.stack(arrays), processed_episode_data)
-    processed_episode_data['interaction_info'] = self.interaction_info
-    processed_episode_data['return'] = self._episode_return
+    # [{key:data}, {key:data}, ...]
+    episode_data = utils.to_numpy(self.episode_data)
 
-    self.all_episode_data[self.level].append(processed_episode_data)
+     # {key: [data, data, ...]}
+    episode_data_dict = jax.tree_map(lambda *arrays: np.stack(arrays), *episode_data)
+    
+    # add 2 keys
+    episode_data_dict['interaction_info'] = self.interaction_info
+    episode_data_dict['rewards'] = np.array(self.rewards)
+
+    # fix observation data
+    obs = episode_data_dict['observation'].observation
+    episode_data_dict['observation'] = obs._asdict()
+
+    self.all_episode_data[self.level].append(episode_data_dict)
     with signals.runtime_terminator():
-      if self.idx % self.episodes == 0:
-        path = os.path.join(self.results_path, 'data.npz')
-        with open(path, 'wb') as file:
-          pickle.dump(self.episode_data, file)
+      if self.idx % (self.episodes+1) == 0:
+        with open(self.results_file, 'wb') as file:
+          cloudpickle.dump(self.all_episode_data, file)
 
         if self.exit:
           import launchpad as lp  # pylint: disable=g-import-not-at-top
           lp.stop()
-        self.episode_data = []
+          import os; os._exit(0)
+        self.all_episode_data = collections.defaultdict(list)
 
 
   def get_metrics(self):
@@ -171,7 +186,6 @@ def make_behavior_policy(
     preds, core_state = forward_fn(
         params, key_net, observation, core_state, key_sample)
 
-
     return preds, core_state
 
   return behavior_policy
@@ -207,14 +221,58 @@ class ActorStorageWrapper(object):
     # -----------------------
     # store
     # -----------------------
-    self.observer.store(utils.to_numpy(dict(
+    self.observer.store(dict(
           observation=observation,
           action=action,
           preds=preds,
-          lstm_state=self.agent._state.recurrent_state)))
+          lstm_state=self.agent._state.recurrent_state))
 
     return utils.to_numpy(action)
 
 def _generate_zeros_from_spec(spec: specs.Array) -> np.ndarray:
   return np.zeros(spec.shape, spec.dtype)
 
+def storage_evaluator_factory(
+    environment_factory,
+    network_factory,
+    policy_factory,
+    epsilon: float,
+    seed: int,
+    observers,
+    log_to_bigtable,
+    logger_fn=None,
+    ):
+  """Returns a default evaluator process."""
+  def evaluator(
+      random_key: networks_lib.PRNGKey,
+      variable_source: core.VariableSource,
+      counter: counting.Counter,
+      make_actor,
+  ):
+    """The evaluation process."""
+
+    # Create environment and evaluator networks
+    environment_key, actor_key = jax.random.split(random_key)
+    # Environments normally require uint32 as a seed.
+    environment = environment_factory(utils.sample_uint32(environment_key))
+    networks = network_factory(acme_specs.make_environment_spec(environment))
+
+    actor = make_actor(actor_key, policy_factory(networks), variable_source)
+    actor = ActorStorageWrapper(
+      agent=actor,
+      observer=observers[0],
+      epsilon=epsilon,
+      seed=seed)
+
+    # Create logger and counter.
+    counter = counting.Counter(counter, 'evaluator')
+    if logger_fn is not None:
+      logger = logger_fn('evaluator', 'actor_steps')
+    else:
+      logger = loggers.make_default_logger(
+          'evaluator', log_to_bigtable, steps_key='actor_steps')
+
+    # Create the run loop and return it.
+    return EnvironmentLoop(environment, actor, counter,
+                                            logger, observers=observers)
+  return evaluator

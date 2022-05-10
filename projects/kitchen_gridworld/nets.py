@@ -310,6 +310,7 @@ def usfa(config, env_spec,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       multihead=config.multihead,
       concat_w=config.concat_w,
+      layernorm=config.sf_layernorm,
       normalize_task=config.normalize_task and config.embed_task,
       )
 
@@ -466,6 +467,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
         concat_w=False,
         task_embed=0,
         normalize_task=False,
+        layernorm=config.sf_layernorm,
         )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
@@ -509,6 +511,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
           policy_layers=config.policy_layers,
           multihead=config.seperate_value_params, # seperate params per cumulants
           vmap_multihead=config.farm_vmap,
+          layernorm=config.sf_layernorm,
           )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
