@@ -32,7 +32,21 @@ def get(search):
       #   "max_number_of_steps": tune.grid_search([30_000_000]),
       # },
     ]
-
+  elif search == 'params':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['multiv5']),
+        "nmodules": tune.grid_search([4]),
+        "seperate_value_params": tune.grid_search([True, False]),
+        "seperate_cumulant_params": tune.grid_search([True, False]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+    ]
   elif search == 'layernorm':
     """
     Next:
