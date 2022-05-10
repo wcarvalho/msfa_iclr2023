@@ -59,7 +59,7 @@ def first_path(path_search):
   print("Selected", options[0])
   return options[0]
 
-def evaluate(config_kwargs, agent_name, path, num_episodes=100):
+def evaluate(config_kwargs, agent_name, path, num_episodes=5):
   """Changes:
 
   1. custom observer
@@ -75,11 +75,12 @@ def evaluate(config_kwargs, agent_name, path, num_episodes=100):
   env = helpers.make_environment(
     setting=config_kwargs['setting'],
     task_reps=config_kwargs.get('task_reps', 'pickup'),
-    evaluation=True # test set (harder)
+    evaluation=False # test set (harder)
     )
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
+  nlevels = len(env.env.all_level_kwargs)
   env_spec = acme.make_environment_spec(env)
-
+  total_episodes=nlevels*num_episodes
 
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(
     agent=config_kwargs['agent'],
@@ -106,7 +107,7 @@ def evaluate(config_kwargs, agent_name, path, num_episodes=100):
   # -----------------------
   # video utils:
   # -----------------------
-  observer = video_utils.DataStorer(path=path, agent=agent_name, seed=config.seed, episodes=num_episodes)
+  observer = video_utils.DataStorer(path=path, agent=agent_name, seed=config.seed, episodes=total_episodes)
 
   kwargs={}
   kwargs['behavior_policy_constructor'] = functools.partial(video_utils.make_behavior_policy,
@@ -155,9 +156,9 @@ def evaluate(config_kwargs, agent_name, path, num_episodes=100):
     should_update=False,
     observers=[observer]
     )
-  loop.run(num_episodes)
+  loop.run(total_episodes)
 
-def evaluate_distributed(config_kwargs, agent_name, path, root_path='.', cuda_idx=0, num_episodes=200, overwrite=True):
+def evaluate_distributed(config_kwargs, agent_name, path, root_path='.', cuda_idx=0, num_episodes=20, overwrite=True):
   """Changes
 
   1. custom observer
@@ -175,14 +176,34 @@ def evaluate_distributed(config_kwargs, agent_name, path, root_path='.', cuda_id
   Returns:
       TYPE: Description
   """
+
+  environment_factory = lambda is_eval: helpers.make_environment(
+    evaluation=False,
+    path=root_path,
+    setting=config_kwargs['setting'])
+  env = environment_factory(False)
+  max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
+  nlevels = len(env.env.all_level_kwargs)
+  env_spec = acme.make_environment_spec(env)
+  del env
+
+
+
+  config_kwargs['min_replay_size'] = 10_000
+  config_kwargs['max_replay_size'] = 100_000
+  config_kwargs['samples_per_insert'] = 0.0
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(config_kwargs['agent'], env_spec, config_kwargs=config_kwargs)
+
+  # -----------------------
+  # observer
+  # -----------------------
+  total_episodes = num_episodes*nlevels
   observer = video_utils.DataStorer(
             path=path,
             exit=True,
             agent=agent_name,
             seed=config_kwargs['seed'],
-            episodes=num_episodes)
-
-
+            episodes=total_episodes)
   if os.path.exists(observer.results_file):
     if overwrite:
       print("="*50)
@@ -193,21 +214,6 @@ def evaluate_distributed(config_kwargs, agent_name, path, root_path='.', cuda_id
       print(f"Skipping: {observer.results_file}")
       print("="*50)
       return
-
-  environment_factory = lambda is_eval: helpers.make_environment(
-    evaluation=is_eval,
-    path=root_path,
-    setting=config_kwargs['setting'])
-  env = environment_factory(False)
-  max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
-  env_spec = acme.make_environment_spec(env)
-  del env
-
-
-  config_kwargs['min_replay_size'] = 10_000
-  config_kwargs['max_replay_size'] = 100_000
-  config_kwargs['samples_per_insert'] = 0.0
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(config_kwargs['agent'], env_spec, config_kwargs=config_kwargs)
 
   # -----------------------
   # prepare networks

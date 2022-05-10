@@ -18,11 +18,11 @@ def get(search):
     """
     space = [
       {
-        "seed": tune.grid_search([1]),
+        "seed": tune.grid_search([1, 2, 3]),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['multiv5']),
         "room_size": tune.grid_search([7]),
-        "num_dists": tune.grid_search([3, 5]),
+        "num_dists": tune.grid_search([5]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
       # {
