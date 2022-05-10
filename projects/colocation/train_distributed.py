@@ -5,11 +5,11 @@ Run Successor Feature based agents and baselines on
 Command I run for r2d1:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=0 \
+    CUDA_VISIBLE_DEVICES=2 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/colocation/train_distributed.py \
-    --agent r2d1_noise --simple --nowalls --one_room
+    --agent r2d1_noise --simple --room_reward .25
 
 
 Command for tensorboard
@@ -51,14 +51,18 @@ flags.DEFINE_string('experiment', None, 'experiment_name.')
 flags.DEFINE_bool('simple',False, 'should the environment be simple or have some colocation')
 flags.DEFINE_bool('nowalls',False,'No doors in environment')
 flags.DEFINE_bool('one_room',False, 'all in one room')
-flags.DEFINE_string('agent', 'usfa', 'which agent.')
+flags.DEFINE_bool('deterministic_rooms',True,'rooms are not in random order')
+flags.DEFINE_float('room_reward',0,'reward for entering the correct room')
+
+
+flags.DEFINE_string('agent', 'usfa_cumulants', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
 
-flags.DEFINE_bool('wandb', False, 'whether to log.')
-flags.DEFINE_string('wandb_project', 'msf2', 'wand project.')
-flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
+flags.DEFINE_bool('wandb', True, 'whether to log.')
+flags.DEFINE_string('wandb_project', 'successor_features', 'wand project.')
+flags.DEFINE_string('wandb_entity', 'nrocketmann', 'wandb entity')
 flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
 flags.DEFINE_string('wandb_notes', '', 'notes for wandb.')
 
@@ -79,11 +83,13 @@ def build_program(
   is_simple: bool = True,
   nowalls: bool = False,
   one_room: bool = False,
+  deterministic_rooms: bool = False,
+  room_reward: float = 0
     ):
   # -----------------------
   # load env stuff
   # -----------------------
-  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=is_simple, agent=agent, nowalls=nowalls, one_room=one_room)
+  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=is_simple, agent=agent, nowalls=nowalls, one_room=one_room, deterministic_rooms=deterministic_rooms, room_reward=room_reward)
   env = environment_factory(False)
   env_spec = acme.make_environment_spec(env)
   del env
@@ -114,6 +120,13 @@ def build_program(
 
     if wandb_init_kwargs and update_wandb_name:
       wandb_init_kwargs['name'] = config_path_str
+      wandb_init_kwargs['config'] = dict(
+      is_simple=FLAGS.simple,
+      nowalls=FLAGS.nowalls,
+      one_room=FLAGS.one_room,
+      deterministic_rooms=FLAGS.deterministic_rooms,
+      room_reward=FLAGS.room_reward
+      )
 
   return build_common_program(
     environment_factory=environment_factory,
@@ -144,7 +157,7 @@ def main(_):
       project=FLAGS.wandb_project,
       entity=FLAGS.wandb_entity,
       group=FLAGS.group if FLAGS.group else FLAGS.agent,  # organize individual runs into larger experiment
-      notes=FLAGS.wandb_notes,
+      notes=FLAGS.wandb_notes
   )
 
   program = build_program(
@@ -154,7 +167,9 @@ def main(_):
       wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
       is_simple=FLAGS.simple,
       nowalls=FLAGS.nowalls,
-      one_room=FLAGS.one_room
+      one_room=FLAGS.one_room,
+      deterministic_rooms=FLAGS.deterministic_rooms,
+      room_reward=FLAGS.room_reward
   )
 
   # Launch experiment.

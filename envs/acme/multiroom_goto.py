@@ -40,6 +40,8 @@ class MultiroomGoto(dm_env.Environment):
                wrappers=None,
                walls_gone=False,
                one_room = False,
+               deterministic_rooms = False,
+               room_reward = 0.0,
     **kwargs):
     """Initializes a new MultiroomGotoEnv
 
@@ -75,6 +77,8 @@ class MultiroomGoto(dm_env.Environment):
                 stop_when_gone=stop_when_gone,
                 walls_gone=walls_gone,
                 one_room=one_room,
+                deterministic_rooms = deterministic_rooms,
+                room_reward=room_reward
             )
     else:
         all_level_kwargs['ONLY_LEVEL']  = dict(
@@ -89,6 +93,8 @@ class MultiroomGoto(dm_env.Environment):
                 stop_when_gone=stop_when_gone,
                 walls_gone=walls_gone,
                 one_room=one_room,
+                deterministic_rooms = deterministic_rooms,
+                room_reward=room_reward
             )
 
 

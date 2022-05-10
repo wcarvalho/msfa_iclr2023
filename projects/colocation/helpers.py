@@ -7,6 +7,9 @@ from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, MissionInteger
 import tensorflow as tf
 import dm_env
 from utils import data as data_utils
+from agents.td_agent import losses
+from losses import usfa as usfa_losses
+from losses import cumulants
 
 
 # -----------------------
@@ -15,7 +18,7 @@ from utils import data as data_utils
 from projects.colocation import nets
 from projects.colocation import configs
 
-def make_environment_sanity_check(evaluation: bool = False, simple: bool = True, agent='r2d1', nowalls: bool = False, one_room:bool=False):
+def make_environment_sanity_check(evaluation: bool = False, simple: bool = True, agent='r2d1', nowalls: bool = False, one_room:bool=False, deterministic_rooms:bool=False, room_reward: float = 0.0):
     if simple:
         objs = [{'pan': 1}, {'tomato': 1}, {'knife':1}]
     else:
@@ -35,6 +38,8 @@ def make_environment_sanity_check(evaluation: bool = False, simple: bool = True,
         stop_when_gone=True,
         walls_gone=nowalls,
         one_room=one_room,
+        deterministic_rooms=deterministic_rooms,
+        room_reward = room_reward,
         wrappers=[ # wrapper for babyAI gym env
       functools.partial(RGBImgPartialObsWrapper, tile_size=8)]
     )
@@ -46,6 +51,23 @@ def make_environment_sanity_check(evaluation: bool = False, simple: bool = True,
         wrappers.SinglePrecisionWrapper,
     ]
     return wrappers.wrap_all(env, wrapper_list)
+
+def q_aux_loss(config):
+  """Create auxilliary Q-learning loss for SF
+  """
+  if config.q_aux == "single":
+    loss = usfa_losses.QLearningAuxLoss
+  elif config.q_aux == "ensemble":
+    loss = usfa_losses.QLearningEnsembleAuxLoss
+  else:
+    raise RuntimeError(config.q_aux)
+
+  return loss(
+          coeff=config.value_coeff,
+          discount=config.discount,
+          sched_end=config.q_aux_anneal,
+          sched_end_val=config.q_aux_end_val,
+          tx_pair=config.tx_pair)
 
 def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1"):
     default_config = dict()
@@ -92,8 +114,42 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
 
         loss_label = 'usfa'
         eval_network = config.eval_network
+    elif agent == 'usfa_cumulants':
+        config = data_utils.merge_configs(
+            dataclass_configs=[configs.USFAConfig()],
+            dict_configs=default_config
+        )
+
+        NetworkCls = nets.usfa  # default: 2M params
+        NetKwargs = dict(
+            config=config,
+            env_spec=env_spec,
+            use_seperate_eval=True,
+            predict_cumulants=True)
+        LossFn = td_agent.USFALearning
+        LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+        LossFnKwargs.update(
+            loss=config.sf_loss,
+            shorten_data_for_cumulant=True,
+            extract_cumulants=functools.partial(
+                losses.cumulants_from_preds,
+                stop_grad=True,
+            ),
+            aux_tasks=[
+                q_aux_loss(config), #TODO: figure out if we actually need this
+                cumulants.CumulantRewardLoss(
+                    shorten_data_for_cumulant=True,
+                    coeff=config.reward_coeff,
+                    loss=config.reward_loss,
+                    balance=config.balance_reward,
+                ),
+            ])
+        loss_label = 'usfa'
+        eval_network = config.eval_network
     else:
         raise ValueError("Please specify a valid agent type")
+
+
 
     return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
 

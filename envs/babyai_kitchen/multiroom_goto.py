@@ -37,6 +37,8 @@ class MultiroomGotoEnv(KitchenLevel):
                  walls_gone = False,
                  one_room = False,
                  mission_object = None,
+                 deterministic_rooms = False,
+                 room_reward = 0.0,
                  **kwargs):
         """Summary
 
@@ -62,6 +64,8 @@ class MultiroomGotoEnv(KitchenLevel):
         self.one_room = one_room
         if one_room:
             walls_gone = False
+            room_reward = 0
+        self.deterministic_rooms = deterministic_rooms
         self.objectlist = objectlist
         self.walls_gone = walls_gone
         self.stop_when_gone = stop_when_gone
@@ -72,6 +76,9 @@ class MultiroomGotoEnv(KitchenLevel):
         self.epsilon = epsilon
         self.verbosity = verbosity
         self.room = None #variable to keep track of what the primary room of the target object is
+        self.room_location = None #same purpose, just instead of a number, it's 2 coords
+        self.room_reward = room_reward
+        self.got_room_reward = False
 
         self.random_mission = True
         if mission_object:
@@ -147,7 +154,10 @@ class MultiroomGotoEnv(KitchenLevel):
 
 
         #we permute valid rooms and colors:
-        perm = np.random.permutation(3)
+        if self.deterministic_rooms:
+            perm = np.array([0,1,2])
+        else:
+            perm = np.random.permutation(3)
         VALID_ROOMS = VALID_ROOMS_[perm].tolist()
         # DOOR_COLORS = DOOR_COLORS[perm].tolist()
 
@@ -167,9 +177,11 @@ class MultiroomGotoEnv(KitchenLevel):
                     if self.one_room:
                         self.place_in_room(1, 1, placeable_obj)
                         self.room = 0
+                        self.room_location = (1,1)
                     else:
                         if self.mission_arr[self.type2idx[obj]]==1: #set self.room if this is indeed the reward object
                             self.room = perm[room_idx] + 1
+                            self.room_location = tuple(VALID_ROOMS[room_idx])
                         #epsilon chance of random room placement
                         if np.random.uniform(0,1)<self.epsilon:
                             random_room = VALID_ROOMS[np.random.choice(range(len(VALID_ROOMS)))]
@@ -177,7 +189,7 @@ class MultiroomGotoEnv(KitchenLevel):
                         else:
                             self.place_in_room(VALID_ROOMS[room_idx][0], VALID_ROOMS[room_idx][1], placeable_obj)
                     if self.stop_when_gone:
-                        self.object_occurrences[self.type2idx[obj]]+=self.mission_arr[self.type2idx[obj]]
+                        self.object_occurrences[self.type2idx[obj]]+=int(self.mission_arr[self.type2idx[obj]]!=0)
                     else:
                         self.object_occurrences[self.type2idx[obj]]+=1
 
@@ -215,6 +227,7 @@ class MultiroomGotoEnv(KitchenLevel):
 
     def reset(self):
         obs = super().reset()
+        self.got_room_reward = False
         assert self.carrying is None
         obs['pickup'] = np.zeros(self.num_objects, dtype=np.uint8)
         obs['mission'] = self.mission_arr
@@ -348,15 +361,23 @@ class MultiroomGotoEnv(KitchenLevel):
             if object_infront and self.pickup_required:
                 # get reward
                 reward = self.remove_object(fwd_pos, pickup)
+
+
+        #get the room reward for going in the right room for the first time
+        if not self.got_room_reward:
+            curr_i = self.agent_pos[0]//(self.room_size - 1)
+            curr_j = self.agent_pos[1] // (self.room_size - 1)
+            if (curr_i, curr_j)==self.room_location:
+                reward+=self.room_reward
+                self.got_room_reward = True
+                if self.verbosity==1:
+                    print("Got reward for entering correct room: {0}".format(self.room_reward))
+
         # print("remaining: " + str(self.remaining))
 
         # ======================================================
         # copied from RoomGridLevel
         # ======================================================
-        if reward>0 and self.stop_when_gone:
-            assert self.remaining.sum()<1e-5
-
-
         info = {}
         # if past step count, done
         if self.step_count >= self.max_steps and self.use_time_limit:
@@ -404,7 +425,9 @@ if __name__ == '__main__':
         stop_when_gone=True,
         walls_gone=True,
         verbosity=1,
-        one_room=True
+        one_room=False,
+        deterministic_rooms=True,
+        room_reward=1.0
     )
 
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)

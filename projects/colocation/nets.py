@@ -16,7 +16,8 @@ from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding, LanguageTaskEmbedder
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules.vision import AtariVisionTorso
-from modules.usfa import UsfaHead, USFAInputs, ConcatFlatStatePolicy
+from modules.usfa import UsfaHead, USFAInputs, ConcatFlatStatePolicy, CumulantsFromMemoryAuxTask
+from projects.colocation.cumulants import CumulantsFromConvTask, LinearTaskEmbed
 from acme.adders import reverb as adders_reverb
 
 from utils import data as data_utils
@@ -76,9 +77,12 @@ def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
     memory_out=memory_out,
     )
 
-def usfa(config, env_spec, use_seperate_eval=True, **kwargs):
+def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False,**kwargs):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
+  task_embed = 0
+  if predict_cumulants:
+    task_embed = LinearTaskEmbed(config.cumulant_dimension)
   prediction_head=UsfaHead(
       num_actions=num_actions,
       state_dim=state_dim,
@@ -90,10 +94,23 @@ def usfa(config, env_spec, use_seperate_eval=True, **kwargs):
       policy_layers=config.policy_layers,
       z_as_train_task=config.z_as_train_task,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
+      task_embed=task_embed,
     ##SPECIAL TIME
-      train_task_as_z=config.train_task_as_z
+      train_task_as_z=predict_cumulants
       )
-
+  aux_tasks = []
+  if predict_cumulants:
+    # aux_tasks.append(
+    #   CumulantsFromMemoryAuxTask(
+    #     [config.cumulant_hidden_size, state_dim],
+    #     normalize=config.normalize_cumulants,
+    #     activation=config.cumulant_act,
+    #     construction=config.cumulant_const))
+    aux_tasks.append(
+      CumulantsFromConvTask(
+        [config.cumulant_hidden_size, config.cumulant_dimension],
+        normalize=config.normalize_cumulants,
+        activation=config.cumulant_act))
   if use_seperate_eval:
     evaluation_prep_fn=usfa_eval_prep_fn
     evaluation=prediction_head.evaluation
