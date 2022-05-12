@@ -21,7 +21,7 @@ from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulant
 from modules.farm_usfa import FarmUsfaHead
 
 from modules.vision import AtariVisionTorso, BabyAIVisionTorso
-from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, ConcatFlatStatePolicy, UniqueStatePolicyPairs
+from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, ConcatFlatStatePolicy, UniqueStatePolicyPairs, QBias
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules import usfa as usfa_modules
 from modules import vae as vae_modules
@@ -417,6 +417,9 @@ def msf(
     phi_net = build_msf_phi_net(config, sf_out_dim)
     aux_tasks.append(phi_net)
 
+  add_bias = getattr(config, "step_penalty", 0) > 0
+  if add_bias:
+    aux_tasks.append(QBias())
 
   # -----------------------
   # Model

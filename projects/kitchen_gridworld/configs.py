@@ -15,6 +15,7 @@ class R2D1Config(configs.R2D1Config):
   evaluation_epsilon: float = 0.0
   num_epsilons: int = 256
   variable_update_period: int = 400 # how often to update actor
+  step_penalty: float = 0.00
 
   # Learner options
   burn_in_length: int = 0  # burn in during learning
@@ -137,6 +138,7 @@ class ModularUSFAConfig(USFAConfig):
   seperate_cumulant_params: bool=True # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
   phi_l1_coeff: float = 0.01 # coefficient for L1 on phi
+  module_l1: bool = False # apply L1 per module or for all phi
 
   sf_net: str = 'independent'
   sf_net_heads: int = 2
@@ -185,4 +187,4 @@ class LangConfig:
   word_dim: int = 128  # dimension of word and sentence embeddings
   word_initializer: str = 'RandomNormal'
   word_compress: str = 'last'
-  lang_task_dim: int = 16  # dimension of task
+  lang_task_dim: int = 128  # dimension of task

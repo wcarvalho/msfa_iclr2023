@@ -83,6 +83,7 @@ def build_program(
     )
   env = environment_factory(False)
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
+  config_kwargs['step_penalty'] = env.step_penalty
   env_spec = acme.make_environment_spec(env)
   del env
 
