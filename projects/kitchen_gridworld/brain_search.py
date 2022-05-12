@@ -17,20 +17,22 @@ def get(search):
     Next:
     """
     space = [
+      # {
+      #   "seed": tune.grid_search([1, 2, 3]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['multiv5']),
+      #   "room_size": tune.grid_search([7]),
+      #   "num_dists": tune.grid_search([5]),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
       {
         "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(['msf']),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
         "setting": tune.grid_search(['multiv5']),
         "room_size": tune.grid_search([7]),
         "num_dists": tune.grid_search([5]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
-      # {
-      #   "seed": tune.grid_search([1, 2, 3]),
-      #   "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
-      #   "setting": tune.grid_search(['multiv5']),
-      #   "max_number_of_steps": tune.grid_search([30_000_000]),
-      # },
     ]
   elif search == 'params':
     """
