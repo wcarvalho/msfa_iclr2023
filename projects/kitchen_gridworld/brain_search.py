@@ -30,7 +30,7 @@ def get(search):
         "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
         "setting": tune.grid_search(['multiv5']),
         "room_size": tune.grid_search([7]),
-        "num_dists": tune.grid_search([5]),
+        "num_dists": tune.grid_search([0]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
     ]
