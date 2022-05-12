@@ -52,6 +52,7 @@ class MultitaskKitchen(dm_env.Environment):
     agent_view_size=5,
     path='.',
     tile_size=12,
+    step_penalty=0.0,
     wrappers=None,
     num_dists=0,
     **kwargs):
@@ -69,6 +70,7 @@ class MultitaskKitchen(dm_env.Environment):
       task_reps=task_reps,
     )
 
+    self.step_penalty = step_penalty
     # -----------------------
     # load level kwargs
     # -----------------------
@@ -122,7 +124,8 @@ class MultitaskKitchen(dm_env.Environment):
     """Updates the environment according to the action."""
     obs, reward, done, info = self.env.step(action)
     obs = convert_rawobs(obs)
-
+    if self.step_penalty:
+      reward = reward - self.step_penalty
     if done:
       return dm_env.termination(reward=reward, observation=obs)
     else:

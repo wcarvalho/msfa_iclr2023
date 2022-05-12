@@ -158,7 +158,7 @@ def evaluate(config_kwargs, agent_name, path, num_episodes=5):
     )
   loop.run(total_episodes)
 
-def evaluate_distributed(config_kwargs, agent_name, path, root_path='.', cuda_idx=0, num_episodes=20, overwrite=True):
+def evaluate_distributed(config_kwargs, agent_name, path, root_path='.', cuda_idx=0, num_episodes=30, overwrite=True):
   """Changes
 
   1. custom observer

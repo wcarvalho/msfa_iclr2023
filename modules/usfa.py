@@ -406,3 +406,12 @@ class CumulantsFromMemoryAuxTask(AuxilliaryTask):
     if self.normalize:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
     return {'cumulants' : cumulants}
+
+
+
+class QBias(AuxilliaryTask):
+  def __call__(self, predictions, **kwargs):
+    q_ = predictions["q"]
+    b = hk.Bias(bias_dims=[-1])(q_)
+
+    return {'qbias' : b}

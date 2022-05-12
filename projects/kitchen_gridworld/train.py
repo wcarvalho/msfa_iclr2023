@@ -53,10 +53,12 @@ FLAGS = flags.FLAGS
 
 def main(_):
   setting=FLAGS.env_setting
+  step_penalty=0.01
 
   env = helpers.make_environment(
     setting=setting,
     task_reps=FLAGS.task_reps,
+    step_penalty=step_penalty,
     evaluation=True # test set (harder)
     )
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
@@ -68,6 +70,8 @@ def main(_):
     config['min_replay_size'] = 10
     config['seperate_cumulant_params'] = True
     config['nmodules'] = 4
+    config['step_penalty'] = env.step_penalty
+    config['module_l1'] = True
     # config['seperate_value_params'] = False
     # config['seperate_cumulant_params'] = False
     # config['lang_task_dim'] = 128
