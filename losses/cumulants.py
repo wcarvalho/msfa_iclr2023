@@ -8,6 +8,8 @@ class CumulantRewardLoss:
   """"""
   def __init__(self, coeff: float, loss: str = 'l2', shorten_data_for_cumulant: bool = False,
     balance: float = 0,
+    reward_bias: float = 0,
+    nmodules: int = 1,
     l1_coeff=None):
     self.coeff = coeff
     loss = loss.lower()
@@ -17,6 +19,8 @@ class CumulantRewardLoss:
     self.balance = balance
     self.random = True
     self.l1_coeff = l1_coeff
+    self.reward_bias = reward_bias
+    self.nmodules = nmodules
 
 
   def __call__(self, data, online_preds, key, **kwargs):
@@ -24,6 +28,8 @@ class CumulantRewardLoss:
     task = online_preds.w  # ground-truth  [T, B, D]
 
     rewards = data.reward  # ground-truth  [T, B]
+    if self.reward_bias:
+      rewards = rewards + self.reward_bias # offset time-step penality
 
     if self.shorten_data_for_cumulant and cumulants.shape[0] < task.shape[0]:
       shape = cumulants.shape[0]
@@ -55,11 +61,13 @@ class CumulantRewardLoss:
 
       all_keep = (nonzero + keep_zero)
       total_keep = all_keep.sum()
-      final_error = (error*all_keep).sum()/(1e-5*total_keep)
+      final_error = (error*all_keep).sum()/(1e-5+total_keep)
+      positive_error = (error*nonzero).sum()/(1e-5+nonzero.sum())
 
       metrics = {
         f'loss_reward_{self.loss}': final_error,
         f'z.raw_loss_{self.loss}': raw_final_error,
+        f'z.positive_error': positive_error,
         f'z.reward_pred': reward_pred.mean(),
         f'z.reward_pred_var': reward_pred.var(),
       }
@@ -70,6 +78,9 @@ class CumulantRewardLoss:
       }
 
     if self.l1_coeff is not None:
+
+      if self.nmodules > 1:
+        cumulants = jnp.stack(jnp.split(cumulants, self.nmodules, axis=-1), axis=2)
       phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
       phi_l1 = phi_l1.mean()
       metrics['loss_phi_l1'] = phi_l1
