@@ -87,6 +87,26 @@ def get(search):
       #   "max_number_of_steps": tune.grid_search([30_000_000]),
       # },
     ]
+  elif search == 'reward_msf':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['multiv5']),
+        "reward_coeff": tune.grid_search([5, 1, 0.5, 1e-1, 2e-1]),
+        "lang_task_dim": tune.grid_search([16]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+      # {
+      #   "seed": tune.grid_search([1, 2, 3]),
+      #   "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+      #   "setting": tune.grid_search(['multiv5']),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
+    ]
 
   else:
     raise NotImplementedError(search)
