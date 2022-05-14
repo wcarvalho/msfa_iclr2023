@@ -70,19 +70,33 @@ def main(_):
     room_size = config.pop('room_size', DEFAULT_ROOM_SIZE)
     num_dists = config.pop('num_dists', DEFAULT_NUM_DISTS)
 
+    # -----------------------
+    # add env kwargs to path desc
+    # -----------------------
+    default_env_kwargs = {
+      'setting' : DEFAULT_ENV_SETTING,
+      'task_reps' : DEFAULT_TASK_REPS,
+      'room_size' : DEFAULT_ROOM_SIZE,
+      'num_dists' : DEFAULT_NUM_DISTS,
+    }
+
     env_kwargs=dict(
       setting=setting,
       task_reps=task_reps,
       room_size=room_size,
       num_dists=num_dists,
       )
+    env_path=dict()
+    for k,v in env_kwargs.items():
+      if v != default_env_kwargs[k]:
+        env_path[k]=v
 
     # -----------------------
     # get log dir for experiment
     # -----------------------
     log_path_config=dict(
       agent=agent,
-      **env_kwargs,
+      **env_path,
       **config
       )
     log_dir, config_path_str = gen_log_dir(

@@ -29,9 +29,12 @@ class USFAInputs(NamedTuple):
 def sample_gauss(mean, var, key, nsamples, axis):
   # gaussian (mean=mean, var=.1I)
   # mean = [B, D]
-  samples = data_utils.expand_tile_dim(mean, axis=axis, size=nsamples)
-  dims = samples.shape # [B, N, D]
-  samples =  samples + jnp.sqrt(var) * jax.random.normal(key, dims)
+  if nsamples > 1:
+    samples = data_utils.expand_tile_dim(mean, axis=axis, size=nsamples)
+    dims = samples.shape # [B, N, D]
+    samples =  samples + jnp.sqrt(var) * jax.random.normal(key, dims)
+  else:
+    samples = jnp.expand_dims(mean, axis=1) # [B, N, D]
   return samples.astype(mean.dtype)
 
 
