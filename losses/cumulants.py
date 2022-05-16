@@ -69,7 +69,6 @@ class CumulantRewardLoss:
         f'z.raw_loss_{self.loss}': raw_final_error,
         f'z.positive_error': positive_error,
         f'z.reward_pred': reward_pred.mean(),
-        f'z.reward_pred_var': reward_pred.var(),
       }
     else:
       final_error = error.mean()
@@ -77,14 +76,17 @@ class CumulantRewardLoss:
         f'loss_reward_{self.loss}': final_error,
       }
 
-    if self.l1_coeff is not None:
+    final_error = final_error*self.coeff
+    if self.l1_coeff is not None and self.l1_coeff != 0:
 
       if self.nmodules > 1:
         cumulants = jnp.stack(jnp.split(cumulants, self.nmodules, axis=-1), axis=2)
       phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
       phi_l1 = phi_l1.mean()
+
+      phi_l1 = phi_l1*self.l1_coeff
       metrics['loss_phi_l1'] = phi_l1
 
       final_error += phi_l1
 
-    return final_error*self.coeff, metrics
+    return final_error, metrics

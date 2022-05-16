@@ -95,10 +95,10 @@ def get(search):
     """
     space = [
       {
-        "seed": tune.grid_search([1]),
+        "seed": tune.grid_search([1, 2]),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['multiv5']),
-        "reward_coeff": tune.grid_search([5, 1, 0.5, 1e-1, 5e-1]),
+        "reward_coeff": tune.grid_search([100, 10, 5]),
         "phi_l1_coeff": tune.grid_search([0.0]),
         "lang_task_dim": tune.grid_search([16]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
