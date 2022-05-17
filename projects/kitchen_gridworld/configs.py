@@ -100,7 +100,7 @@ class QAuxConfig:
 @dataclasses.dataclass
 class RewardConfig:
   """Extra configuration options for USFA agent."""
-  reward_coeff: float = 10.0 # coefficient for reward loss
+  reward_coeff: float = 50.0 # coefficient for reward loss
   value_coeff: float = 0.05 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
@@ -164,7 +164,7 @@ class FarmModelConfig(FarmConfig):
 
   # Network hps
   temperature: float = 0.01
-  reward_coeff: float = 10.0 # coefficient for reward loss
+  reward_coeff: float = 50.0 # coefficient for reward loss
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
   out_layers: int = 0
   model_layers: int = 2
