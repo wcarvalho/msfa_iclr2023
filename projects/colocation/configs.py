@@ -37,6 +37,7 @@ class R2D1Config(configs.R2D1Config):
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 6.0 # 0.0=single process
   min_replay_size: int = 10_000
+  #min_replay_size = 100
   max_replay_size: int = 100_000
   batch_size: int = 32
   store_lstm_state: bool = True
@@ -66,14 +67,14 @@ class NoiseConfig(R2D1Config):
 @dataclasses.dataclass
 class USFAConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
-  npolicies: int = 10 # number of policies to sample
+  npolicies: int = 5 # number of policies to sample
   variance: float = 0.5
   # Network hps
   policy_size = 32
   policy_layers = 0
   batch_size: int = 32
   cumulant_hidden_size: int=128 # hidden size for cumulant pred
-  cumulant_dimension: int = 10 # actual cumulant dimensions
+  cumulant_dimension: int = 8 # actual cumulant dimensions
   embed_task: bool = False  # whether to embed task
   normalize_task: bool = False # whether to normalize task embedding
   eval_network: bool = True
@@ -89,9 +90,10 @@ class USFAConfig(R2D1Config):
 
 @dataclasses.dataclass
 class QAuxConfig:
-    """Extra configuration options when doing QAux loss over SF."""
-    loss_coeff: float = 1.0
-    q_aux_anneal: int = 10_000
+  """Extra configuration options when doing QAux loss over SF."""
+  loss_coeff: float = 1.0
+  q_aux_anneal: int = 0
+  q_aux_end_val: float = 1e-2
 
 
 @dataclasses.dataclass

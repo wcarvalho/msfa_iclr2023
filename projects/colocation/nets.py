@@ -16,8 +16,8 @@ from modules.basic_archs import BasicRecurrent
 from modules.embedding import OAREmbedding, LanguageTaskEmbedder
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules.vision import AtariVisionTorso
-from modules.usfa import UsfaHead, USFAInputs, ConcatFlatStatePolicy, CumulantsFromMemoryAuxTask
-from projects.colocation.cumulants import CumulantsFromConvTask, LinearTaskEmbed
+from modules.usfa import UsfaHead, USFAInputs, ConcatFlatStatePolicy
+from projects.colocation.cumulants import CumulantsFromConvTask, LinearTaskEmbed, CumulantsFromMemoryAuxTask
 from acme.adders import reverb as adders_reverb
 
 from utils import data as data_utils
@@ -77,12 +77,13 @@ def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
     memory_out=memory_out,
     )
 
-def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False,**kwargs):
+def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False, cumulant_type = 'conv',**kwargs):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
   task_embed = 0
   if predict_cumulants:
     task_embed = LinearTaskEmbed(config.cumulant_dimension)
+    state_dim = config.cumulant_dimension
   prediction_head=UsfaHead(
       num_actions=num_actions,
       state_dim=state_dim,
@@ -100,17 +101,21 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False,**k
       )
   aux_tasks = []
   if predict_cumulants:
-    # aux_tasks.append(
-    #   CumulantsFromMemoryAuxTask(
-    #     [config.cumulant_hidden_size, state_dim],
-    #     normalize=config.normalize_cumulants,
-    #     activation=config.cumulant_act,
-    #     construction=config.cumulant_const))
-    aux_tasks.append(
-      CumulantsFromConvTask(
-        [config.cumulant_hidden_size, config.cumulant_dimension],
-        normalize=config.normalize_cumulants,
-        activation=config.cumulant_act))
+    if cumulant_type=='lstm':
+      aux_tasks.append(
+        CumulantsFromMemoryAuxTask(
+          [config.cumulant_hidden_size, state_dim],
+          normalize=config.normalize_cumulants,
+          activation=config.cumulant_act,
+          construction=config.cumulant_const))
+    elif cumulant_type=='conv':
+      aux_tasks.append(
+        CumulantsFromConvTask(
+          [config.cumulant_hidden_size, config.cumulant_dimension],
+          normalize=config.normalize_cumulants,
+          activation=config.cumulant_act))
+    else:
+      raise NotImplementedError("Cumulant type {0} not implemented".format(cumulant_type))
   if use_seperate_eval:
     evaluation_prep_fn=usfa_eval_prep_fn
     evaluation=prediction_head.evaluation
@@ -128,6 +133,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False,**k
     prediction=prediction_head,
     evaluation_prep_fn=evaluation_prep_fn,
     evaluation=evaluation,
+    aux_tasks=aux_tasks
   )
 
 def r2d1_noise(config, env_spec, **kwargs):

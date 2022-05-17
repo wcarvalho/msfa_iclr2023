@@ -151,11 +151,14 @@ class UsfaHead(hk.Module):
     # -----------------------
     # function to embed task and figure out dim of SF
     # -----------------------
-    if task_embed > 0:
-      task_embed = OneHotTask(size=state_dim, dim=task_embed)
-      self.sf_out_dim = task_embed.dim
+    if isinstance(task_embed,int):
+      if task_embed > 0:
+        task_embed = OneHotTask(size=state_dim, dim=task_embed)
+        self.sf_out_dim = task_embed.dim
+      else:
+        task_embed = lambda x:x
+        self.sf_out_dim = state_dim
     else:
-      task_embed = lambda x:x
       self.sf_out_dim = state_dim
 
     self.task_embed = task_embed
@@ -198,14 +201,21 @@ class UsfaHead(hk.Module):
     # policies + embeddings
     # -----------------------
     if self.train_task_as_z:
-      #shape B, N-D_w, D_w
-      z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples-inputs.w.shape[-1], axis=-2) #nz - number of tasks random z's
-      all_tasks = jnp.identity(inputs.w.shape[-1]) #all tasks are identity D_w x D_w. We want to tile to get B, D_w, D_w
-      all_tasks = data_utils.expand_tile_dim(all_tasks, inputs.w.shape[0],axis=0)
-      z_samples = jnp.concatenate([z_samples, all_tasks],axis=1) #now concatenate all the tasks, getting desired shape B, N, D_w
+      D_w = w.shape[-1]
+      B = w.shape[0]
+      original_D_w = inputs.w.shape[-1]
+
+      all_tasks = jax.vmap(self.task_embed)(jnp.identity(original_D_w)) #shape original_D_w, D_w. We want to tile to get B, D_w, D_w
+      all_tasks = data_utils.expand_tile_dim(all_tasks, B, axis=0) # shape: B, original_D_w, D_w
+
+      z_samples = sample_gauss(mean=all_tasks, var=self.var, key=key, nsamples=self.nsamples-1,
+                               axis=-2)  # shape B, original_D_w, N-1, D_w
+      z_samples = jnp.reshape(z_samples, [B, (self.nsamples-1) * original_D_w, D_w])
+
+      z_samples = jnp.concatenate([z_samples, all_tasks],axis=1) #now concatenate all the tasks, getting desired shape B, N*original_D_w, D_w
     else:
       # sample N times: [B, D_w] --> [B, N, D_w]
-      z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples, axis=-2)
+      z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples*inputs.w.shape[0], axis=-2)
 
     # combine samples with original task vector
     z_base = jnp.expand_dims(w, axis=1) # [B, 1, D_w]

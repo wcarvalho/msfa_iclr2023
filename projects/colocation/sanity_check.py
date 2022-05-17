@@ -14,10 +14,10 @@ TASK1: With some colocation (2-3 objects per room), doors open by default, train
 """Comand I run:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=0 \
+    CUDA_VISIBLE_DEVICES=2 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
-    python projects/colocation/sanity_check.py"""
+    python -m memray run projects/colocation/sanity_check.py"""
 
 import os
 #os.environ['LD_LIBRARY_PATH'] = "/home/nameer/miniconda3/envs/acmejax/lib"
@@ -41,7 +41,7 @@ from utils import make_logger, gen_log_dir
 # -----------------------
 flags.DEFINE_string('agent','usfa_cumulants','what kind of agent? r2d1 or usfa available now')
 flags.DEFINE_bool('super_simple',False,'1 object per room, or a bit of colocation?')
-flags.DEFINE_integer('num_episodes', 10000, 'Number of episodes to train for.')
+flags.DEFINE_integer('num_episodes', 100, 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
 

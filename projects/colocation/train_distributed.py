@@ -2,14 +2,14 @@
 Run Successor Feature based agents and baselines on
   BabyAI derivative environments.
 
-Command I run for r2d1:
+Command I run to train:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=2 \
+    CUDA_VISIBLE_DEVICES=1 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/colocation/train_distributed.py \
-    --agent r2d1_noise --simple --room_reward .25
+    --agent usfa_cumulants --room_reward .25
 
 
 Command for tensorboard
@@ -47,15 +47,15 @@ from projects.colocation.observers import RoomReturnObserver, FullReturnObserver
 # flags
 # -----------------------
 
-flags.DEFINE_string('experiment', None, 'experiment_name.')
+flags.DEFINE_string('wandb_name', None, 'wandb name')
 flags.DEFINE_bool('simple',False, 'should the environment be simple or have some colocation')
 flags.DEFINE_bool('nowalls',False,'No doors in environment')
 flags.DEFINE_bool('one_room',False, 'all in one room')
-flags.DEFINE_bool('deterministic_rooms',True,'rooms are not in random order')
+flags.DEFINE_bool('deterministic_rooms',False,'rooms are not in random order')
 flags.DEFINE_float('room_reward',0,'reward for entering the correct room')
 
 
-flags.DEFINE_string('agent', 'usfa_cumulants', 'which agent.')
+flags.DEFINE_string('agent', 'usfa_conv', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
@@ -63,7 +63,6 @@ flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
 flags.DEFINE_bool('wandb', True, 'whether to log.')
 flags.DEFINE_string('wandb_project', 'successor_features', 'wand project.')
 flags.DEFINE_string('wandb_entity', 'nrocketmann', 'wandb entity')
-flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
 flags.DEFINE_string('wandb_notes', '', 'notes for wandb.')
 
 FLAGS = flags.FLAGS
@@ -72,7 +71,7 @@ def build_program(
   agent: str,
   num_actors : int,
   wandb_init_kwargs=None,
-  update_wandb_name=True, # use path from logdir to populate wandb name
+  wandb_name = None,
   setting='small',
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
@@ -80,7 +79,7 @@ def build_program(
   config_kwargs=None, # config
   path='.', # path that's being run from
   log_dir=None, # where to save everything
-  is_simple: bool = True,
+  simple: bool = True,
   nowalls: bool = False,
   one_room: bool = False,
   deterministic_rooms: bool = False,
@@ -89,7 +88,7 @@ def build_program(
   # -----------------------
   # load env stuff
   # -----------------------
-  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=is_simple, agent=agent, nowalls=nowalls, one_room=one_room, deterministic_rooms=deterministic_rooms, room_reward=room_reward)
+  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=simple, agent=agent, nowalls=nowalls, one_room=one_room, deterministic_rooms=deterministic_rooms, room_reward=room_reward)
   env = environment_factory(False)
   env_spec = acme.make_environment_spec(env)
   del env
@@ -97,7 +96,7 @@ def build_program(
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec, agent=FLAGS.agent)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec, agent=agent)
 
   #observers
   observers = [LevelReturnObserver(), RoomReturnObserver(),FullReturnObserver()]
@@ -118,14 +117,28 @@ def build_program(
       seed=config.seed,
       agent=str(agent))
 
-    if wandb_init_kwargs and update_wandb_name:
-      wandb_init_kwargs['name'] = config_path_str
+    if wandb_name is None:
+        wandb_name = 'test'
+    wandb_name+= '-' + agent
+    if simple:
+        wandb_name+='-simple'
+    if one_room:
+        wandb_name+='-one_room'
+    if nowalls:
+        wandb_name+='-no_walls'
+    if deterministic_rooms:
+        wandb_name+='-deterministic_rooms'
+    if room_reward!=0:
+        wandb_name+='-room_reward'
+
+    if wandb_init_kwargs:
+      wandb_init_kwargs['name'] = wandb_name
       wandb_init_kwargs['config'] = dict(
-      is_simple=FLAGS.simple,
-      nowalls=FLAGS.nowalls,
-      one_room=FLAGS.one_room,
-      deterministic_rooms=FLAGS.deterministic_rooms,
-      room_reward=FLAGS.room_reward
+      is_simple=simple,
+      nowalls=nowalls,
+      one_room=one_room,
+      deterministic_rooms=deterministic_rooms,
+      room_reward=room_reward
       )
 
   return build_common_program(
@@ -143,7 +156,6 @@ def build_program(
     save_config_dict=save_config_dict,
     log_every=log_every,
     observers=observers
-    #envloop_class=EnvironmentLoop,
     )
 
 def main(_):
@@ -156,7 +168,7 @@ def main(_):
   wandb_init_kwargs = dict(
       project=FLAGS.wandb_project,
       entity=FLAGS.wandb_entity,
-      group=FLAGS.group if FLAGS.group else FLAGS.agent,  # organize individual runs into larger experiment
+      group=FLAGS.agent,  # organize individual runs into larger experiment
       notes=FLAGS.wandb_notes
   )
 
@@ -165,11 +177,12 @@ def main(_):
       num_actors=FLAGS.num_actors,
       config_kwargs=config_kwargs,
       wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
-      is_simple=FLAGS.simple,
+      simple=FLAGS.simple,
       nowalls=FLAGS.nowalls,
       one_room=FLAGS.one_room,
       deterministic_rooms=FLAGS.deterministic_rooms,
-      room_reward=FLAGS.room_reward
+      room_reward=FLAGS.room_reward,
+      wandb_name=FLAGS.wandb_name
   )
 
   # Launch experiment.

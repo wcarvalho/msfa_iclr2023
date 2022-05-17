@@ -114,9 +114,12 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
 
         loss_label = 'usfa'
         eval_network = config.eval_network
-    elif agent == 'usfa_cumulants':
+    elif agent == 'usfa_conv':
         config = data_utils.merge_configs(
-            dataclass_configs=[configs.USFAConfig()],
+            dataclass_configs=[
+                configs.USFAConfig(),
+                configs.QAuxConfig(),
+                configs.RewardConfig()],
             dict_configs=default_config
         )
 
@@ -125,7 +128,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
             config=config,
             env_spec=env_spec,
             use_seperate_eval=True,
-            predict_cumulants=True)
+            predict_cumulants=True,
+            cuulant_type='conv')
         LossFn = td_agent.USFALearning
         LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
         LossFnKwargs.update(
@@ -136,7 +140,43 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
                 stop_grad=True,
             ),
             aux_tasks=[
-                q_aux_loss(config), #TODO: figure out if we actually need this
+                q_aux_loss(config),
+                cumulants.CumulantRewardLoss(
+                    shorten_data_for_cumulant=True,
+                    coeff=config.reward_coeff,
+                    loss=config.reward_loss,
+                    balance=config.balance_reward,
+                ),
+            ])
+        loss_label = 'usfa'
+        eval_network = config.eval_network
+    elif agent == 'usfa_lstm':
+        config = data_utils.merge_configs(
+            dataclass_configs=[
+                configs.USFAConfig(),
+                configs.QAuxConfig(),
+                configs.RewardConfig()],
+            dict_configs=default_config
+        )
+
+        NetworkCls = nets.usfa  # default: 2M params
+        NetKwargs = dict(
+            config=config,
+            env_spec=env_spec,
+            use_seperate_eval=True,
+            predict_cumulants=True,
+            cumulant_type='lstm')
+        LossFn = td_agent.USFALearning
+        LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+        LossFnKwargs.update(
+            loss=config.sf_loss,
+            shorten_data_for_cumulant=True,
+            extract_cumulants=functools.partial(
+                losses.cumulants_from_preds,
+                stop_grad=True,
+            ),
+            aux_tasks=[
+                q_aux_loss(config),
                 cumulants.CumulantRewardLoss(
                     shorten_data_for_cumulant=True,
                     coeff=config.reward_coeff,

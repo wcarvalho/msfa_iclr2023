@@ -31,7 +31,7 @@ class CumulantsFromConvTask(AuxilliaryTask):
     super(CumulantsFromConvTask, self).__init__(
       unroll_only=True, timeseries=True)
     self.cumulant_fn = hk.nets.MLP(mlp_args)
-    self.convnet = hk.Sequential([hk.AvgPool(2,2,'VALID'),hk.Flatten(2)])
+    #self.convnet = hk.Sequential([hk.AvgPool(2,2,'VALID'),hk.Flatten(2)])
     self.normalize = normalize
 
     assert activation in ['identity', 'sigmoid']
@@ -46,17 +46,13 @@ class CumulantsFromConvTask(AuxilliaryTask):
     states = obs[:-1]
     next_states = obs[1:]
     concatted = jnp.concatenate((states, next_states),axis=-1) #concat along feature dim
-    conved = self.convnet(concatted)
-    cumulants = self.cumulant_fn(conved)
-
-    cumulants = self.cumulant_fn(cumulants)
+    #conved = self.convnet(concatted)
+    cumulants = self.cumulant_fn(concatted)
     cumulants = self.activation(cumulants)
-
-
 
     if self.normalize:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
-    return cumulants
+    return {"cumulants": cumulants}
 
 """EXAMPLE OF A CUMULANTS TASK"""
 class CumulantsFromMemoryAuxTask(AuxilliaryTask):
