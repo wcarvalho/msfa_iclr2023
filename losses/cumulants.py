@@ -84,8 +84,8 @@ class CumulantRewardLoss:
       phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
       phi_l1 = phi_l1.mean()
 
-      phi_l1 = phi_l1*self.l1_coeff
       metrics['loss_phi_l1'] = phi_l1
+      phi_l1 = phi_l1*self.l1_coeff
 
       final_error += phi_l1
 

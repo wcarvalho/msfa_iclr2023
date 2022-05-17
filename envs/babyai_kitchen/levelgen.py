@@ -426,11 +426,6 @@ class KitchenLevel(RoomGridLevel):
         if done:
             raise RuntimeError(f"`{self.mission}` started off as done")
 
-    # # Recreate the verifier
-    # if self.task:
-    #     import ipdb; ipdb.set_trace()
-    #     self.task.reset_verifier(self)
-
     # Compute the time step limit based on the maze size and instructions
     nav_time_room = int(self.room_size ** 2)
     nav_time_maze = nav_time_room * self.num_rows * self.num_cols
@@ -438,7 +433,7 @@ class KitchenLevel(RoomGridLevel):
         num_navs = self.task.num_navs
     else:
         num_navs = 2
-    self.max_steps = max(num_navs, 2) * nav_time_maze
+    self.max_steps = num_navs * nav_time_maze
     self.timesteps_complete = 0
     self.interaction_info = {}
 
