@@ -30,6 +30,8 @@ class Kitchen(object):
 
     self.reset()
 
+    self._active = self._objects
+
 
   def objects_with_property(self, props):
     return [object for object in self.objects 
@@ -54,6 +56,9 @@ class Kitchen(object):
 
   def update_carrying(self, carrying):
     self.carrying = carrying
+
+  def set_active_objects(self, types):
+    self._active = [o for o in self._objects if o.type in types]
 
   def reset(self, randomize_states=False):
     self.last_action_information = {}
@@ -96,7 +101,7 @@ class Kitchen(object):
         raise RuntimeError(f"Unknown action: {action}")
 
   def step(self):
-    for object in self.objects:
+    for object in self._active:
         object.step()
 
   # ======================================================
