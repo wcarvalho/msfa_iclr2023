@@ -36,17 +36,21 @@ def remove_excluded(objects, exclude):
 
 class KitchenTask(Instr):
   """docstring for KitchenTasks"""
-  def __init__(self, env, argument_options=None, task_rep=None):
+  def __init__(self, env, argument_options=None, task_reps=None):
     super(KitchenTask, self).__init__()
     self.argument_options = argument_options or dict(x=[])
     self._task_objects = []
     self.env = env
     self.finished = False
-    self._task_rep = task_rep
+    self._task_reps = task_reps
+    self._task_name = 'kitchentask'
     self.instruction = self.generate()
 
   def generate(self, exclude=[]):
     raise NotImplemented
+
+  def reset(self, exclude=[]):
+    self.instruction = self.generate(exclude)
 
   @property
   def default_task_rep(self):
@@ -54,11 +58,15 @@ class KitchenTask(Instr):
 
   @property
   def task_rep(self):
-    if self._task_rep is not None:
-      return self._task_rep 
+    if self._task_reps is not None:
+      return self._task_reps[self.task_name]
     else:
       return self.default_task_rep
-  
+
+  @property
+  def task_name(self):
+    return self._task_name
+
   @property
   def task_objects(self):
     return self._task_objects
@@ -118,6 +126,10 @@ class PickupTask(KitchenTask):
   def default_task_rep(self):
     return 'pickup x'
 
+  @property
+  def task_name(self):
+    return 'pickup'
+
   def generate(self, exclude=[]):
     # which option to pickup
     pickup_objects = get_matching_objects(self.env,
@@ -151,6 +163,9 @@ class PickupTask(KitchenTask):
 class ToggleTask(KitchenTask):
   @property
   def default_task_rep(self): return 'turnon x'
+
+  @property
+  def task_name(self): return 'toggle'
 
   def generate(self, exclude=[]):
 
@@ -196,6 +211,9 @@ class HeatTask(KitchenTask):
   def default_task_rep(self):
       return 'heat x'
 
+  @property
+  def task_name(self): return 'heat'
+
   def generate(self, exclude=[]):
     self.stove = self.env.objects_by_type(['stove'])[0]
 
@@ -235,6 +253,9 @@ class HeatTask(KitchenTask):
     ]
 
 class CleanTask(KitchenTask):
+
+  @property
+  def task_name(self): return 'clean'
 
   @property
   def default_task_rep(self):
@@ -278,6 +299,9 @@ class CleanTask(KitchenTask):
 
 class SliceTask(KitchenTask):
   """docstring for SliceTask"""
+
+  @property
+  def task_name(self): return 'slice'
 
   @property
   def default_task_rep(self):
@@ -331,6 +355,9 @@ class ChillTask(KitchenTask):
   """docstring for CookTask"""
 
   @property
+  def task_name(self): return 'chill'
+
+  @property
   def default_task_rep(self):
     return 'chill x'
 
@@ -378,6 +405,9 @@ class PickupCleanedTask(CleanTask):
   """docstring for CleanTask"""
 
   @property
+  def task_name(self): return 'pickup_cleaned'
+
+  @property
   def default_task_rep(self):
     return 'pickup cleaned x'
 
@@ -402,6 +432,8 @@ class PickupCleanedTask(CleanTask):
 class PickupSlicedTask(SliceTask):
   """docstring for SliceTask"""
 
+  @property
+  def task_name(self): return 'pickup_sliced'
   @property
   def default_task_rep(self):
     return 'pickup sliced x'
@@ -433,6 +465,8 @@ class PickupChilledTask(ChillTask):
   """docstring for CookTask"""
 
   @property
+  def task_name(self): return 'pickup_chilled'
+  @property
   def default_task_rep(self):
     return 'pickup chilled x'
 
@@ -461,6 +495,8 @@ class PickupHeatedTask(HeatTask):
   """docstring for CookTask"""
 
   @property
+  def task_name(self): return 'pickup_heated'
+  @property
   def default_task_rep(self):
     return 'pickup heated x'
 
@@ -487,6 +523,8 @@ class PickupHeatedTask(HeatTask):
 
 class PlaceTask(KitchenTask):
 
+  @property
+  def task_name(self): return 'place'
   @property
   def default_task_rep(self):
     return 'place x on y'
@@ -584,6 +622,8 @@ class PlaceTask(KitchenTask):
 class PickupPlacedTask(KitchenTask):
 
   @property
+  def task_name(self): return 'pickup_placed'
+  @property
   def default_task_rep(self):
     return 'pickup x on y'
 
@@ -604,6 +644,8 @@ class PickupPlacedTask(KitchenTask):
 class Slice2Task(SliceTask):
   """docstring for SliceTask"""
 
+  @property
+  def task_name(self): return 'slice2'
   @property
   def default_task_rep(self):
     return 'slice x and slice y'
@@ -660,6 +702,8 @@ class Slice2Task(SliceTask):
 
 class Toggle2Task(KitchenTask):
   @property
+  def task_name(self): return 'toggle2'
+  @property
   def default_task_rep(self):
     return 'turnon x and turnon y'
 
@@ -712,10 +756,13 @@ class Toggle2Task(KitchenTask):
 class CleanAndSliceTask(KitchenTask):
   """docstring for SliceTask"""
   def __init__(self, *args, **kwargs):
+
     self.clean_task = CleanTask(*args, **kwargs)
     self.slice_task = SliceTask(*args, **kwargs)
     super(CleanAndSliceTask, self).__init__(*args, **kwargs)
 
+  @property
+  def task_name(self): return 'clean_and_slice'
   @property
   def default_task_rep(self):
     part1 = self.clean_task.default_task_rep()
@@ -755,6 +802,8 @@ class ToggleAndSliceTask(KitchenTask):
     super(ToggleAndSliceTask, self).__init__(*args, **kwargs)
 
   @property
+  def task_name(self): return 'toggle_and_slice'
+  @property
   def default_task_rep(self):
     part1 = self.toggle_task.default_task_rep()
     part2 = self.slice_task.default_task_rep().replace("x", "y")
@@ -762,11 +811,11 @@ class ToggleAndSliceTask(KitchenTask):
 
   def generate(self, exclude=[]):
     slice_instr = self.slice_task.generate()
-    Toggle_instr = self.toggle_task.generate()
+    toggle_instr = self.toggle_task.generate()
 
     self._task_objects = self.toggle_task.task_objects + \
       self.slice_task.task_objects
-    instr =  f"{Toggle_instr} and {slice_instr}"
+    instr =  f"{toggle_instr} and {slice_instr}"
 
     return instr
 
@@ -792,6 +841,8 @@ class CleanAndToggleTask(KitchenTask):
     self.clean_task = CleanTask(*args, **kwargs)
     super(CleanAndToggleTask, self).__init__(*args, **kwargs)
 
+  @property
+  def task_name(self): return 'clean_and_toggle'
   @property
   def default_task_rep(self):
     part1 = self.toggle_task.default_task_rep()
@@ -829,6 +880,8 @@ class CleanAndToggleTask(KitchenTask):
 class CookTask(KitchenTask):
   """docstring for CookTask"""
 
+  @property
+  def task_name(self): return 'cook'
   @property
   def default_task_rep(self):
     return 'cook x with y'
@@ -888,6 +941,8 @@ class CookTask(KitchenTask):
 class PickupCookedTask(CookTask):
 
   @property
+  def task_name(self): return 'pickup_cooked'
+  @property
   def default_task_rep(self):
       return 'pickup cooked x'
 
@@ -919,6 +974,8 @@ class PickupCookedTask(CookTask):
 class PlaceSlicedTask(SliceTask):
   """docstring for SliceTask"""
 
+  @property
+  def task_name(self): return 'place_sliced'
   @property
   def default_task_rep(self):
     return 'place sliced x on y'
@@ -993,11 +1050,13 @@ class CleanAndSliceAndToggleTask(KitchenTask):
     super(CleanAndSliceAndToggleTask, self).__init__(*args, **kwargs)
 
   @property
+  def task_name(self): return 'clean_and_slice_and_toggle'
+  @property
   def default_task_rep(self):
     part1 = self.clean_task.default_task_rep()
     part2 = self.slice_task.default_task_rep().replace("x", "y")
     part3 = self.toggle_task.default_task_rep().replace("x", "z")
-    return f"{part1} and {part2}"
+    return f"{part1} and {part2} and {part3}"
 
   def generate(self, exclude=[]):
     slice_instr = self.slice_task.generate()
