@@ -229,7 +229,8 @@ class KitchenLevel(RoomGridLevel):
         placed_objects.add(random_object.type)
         if self.verbosity > 1:
             print(f"Added distractor: {random_object.type}")
-
+    self.kitchen.set_active_objects(placed_objects)
+  
   # ======================================================
   # functions for generating and validating tasks
   # ======================================================
@@ -254,14 +255,11 @@ class KitchenLevel(RoomGridLevel):
         else:
             available_tasks = envs.babyai_kitchen.tasks.all_tasks()
             task_class = available_tasks[task_kind]
-            task_kwargs=dict()
-            if task_kind in self.task_reps:
-              task_kwargs['task_rep'] = self.task_reps[task_kind]
 
             task = task_class(
                 env=self.kitchen,
                 argument_options=self.taskarg_options,
-                **task_kwargs)
+                task_reps=self.task_reps)
     else:
         raise RuntimeError(f"Instruction kind not supported: '{instruction_kind}'")
 
