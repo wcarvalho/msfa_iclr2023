@@ -1,14 +1,10 @@
-# -----------------------
-# clean, slice, toggle2, slice2
-# -----------------------
-
 train:
 
   # -----------------------
   # clean
   # -----------------------
-  - name: pickup
-    task_kinds: pickup
+  - name: toggle
+    task_kinds: toggle
     num_dists: 0
 
   - name: clean
@@ -28,11 +24,6 @@ train:
 
   - name: pickup_sliced
     task_kinds: pickup_sliced
-    num_dists: 0
-
-
-  - name: toggle
-    task_kinds: toggle
     num_dists: 0
 
   # -----------------------
@@ -56,3 +47,39 @@ train:
     num_dists: 0
 
 
+test:
+
+  - name: clean_and_slice
+    task_kinds: clean_and_slice
+    num_dists: 0
+
+  - name: clean_and_toggle
+    task_kinds: clean_and_toggle
+    num_dists: 0
+
+  - name: toggle_and_slice
+    task_kinds: toggle_and_slice
+    num_dists: 0
+
+  - name: clean_and_slice_and_toggle
+    task_kinds: clean_and_slice_and_toggle
+    num_dists: 0
+
+
+task_reps:
+
+  toggle: turnon x
+  clean: clean x
+  slice: slice x
+  cook: cook x
+
+  pickup_cleaned: clean x then pickup x
+  pickup_sliced: slice x then pickup x
+
+  toggle2: turnon x and turnon y
+  slice2: slice x and slice y
+
+  clean_and_slice: clean x and slice y
+  clean_and_toggle: clean x and turnon y
+  toggle_and_slice: turnon x and slice y
+  clean_and_slice_and_toggle: clean x and slice y and turnon z

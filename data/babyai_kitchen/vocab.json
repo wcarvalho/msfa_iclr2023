@@ -33,5 +33,6 @@
 "get": 32,
 "heated": 33,
 "turnon": 34,
-"microwave": 34
+"microwave": 34,
+"then": 35
 }

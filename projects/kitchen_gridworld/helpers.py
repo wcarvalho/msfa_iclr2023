@@ -47,7 +47,7 @@ def make_environment(evaluation: bool = False,
 
   task_rep_options=dict(
     pickup="envs/babyai_kitchen/tasks/task_reps/pickup.yaml",
-    lesslang="envs/babyai_kitchen/tasks/task_reps/lesslang.yaml"
+    lesslang="envs/babyai_kitchen/tasks/task_reps/lesslang.yaml",
     )
 
   task_reps_file = task_rep_options[task_reps]
@@ -110,6 +110,10 @@ def make_environment(evaluation: bool = False,
     task_dicts = tasks['test']
   else:
     task_dicts = tasks['train']
+
+  if 'task_reps' in tasks:
+    task_reps = tasks['task_reps']
+    import ipdb; ipdb.set_trace()
 
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
