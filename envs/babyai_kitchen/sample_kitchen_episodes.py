@@ -79,7 +79,7 @@ def main():
       else:
         time.sleep(.2)
 
-
+    all_rewards = []
     for mission_indx in range(int(args.missions)):
         env.seed(mission_indx)
         obs = env.reset()
@@ -97,7 +97,8 @@ def main():
         bot = KitchenBot(env)
         obss, actions, rewards, dones = bot.generate_traj(plot_fn=show)
         print("Reward:", sum(rewards))
-        if args.check_end:
+        all_rewards.append(sum(rewards))
+        if args.check_end and ((mission_indx+1) % args.check_end == 0):
           import ipdb; ipdb.set_trace()
 
 
