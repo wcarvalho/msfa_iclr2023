@@ -252,10 +252,14 @@ class UsfaHead(hk.Module):
     # -----------------------
     # policies + embeddings
     # -----------------------
-    z = data_utils.expand_tile_dim(w_train, axis=0, size=B)
-    # z = [B, N, D]
-    # w = [B, D]
+    if len(w_train.shape)==2:
+      # z = [B, N, D]
+      # w = [B, D]
+      z = data_utils.expand_tile_dim(w_train, axis=0, size=B)
+    else:
+      z = w_train
     preds = self.sfgpi(inputs=inputs, z=z, w=w, key=key)
+
 
     return preds
 
