@@ -109,18 +109,29 @@ def build_farm(config, **kwargs):
     out_layers=config.out_layers,
     **kwargs)
 
-def build_task_embedder(task_embedding, config, task_dim=None):
+def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=None):
   if task_embedding == 'none':
     embedder = embed_fn = Identity(task_dim)
     return embedder, embed_fn
   elif task_embedding == 'language':
+    lang_kwargs=dict()
+    if config.task_gated == 'none':
+      pass
+    elif config.task_gated == "sigmoid":
+      lang_kwargs['binary_gate']=False
+      lang_kwargs['gates'] = config.nmodules
+    elif config.task_gated == "binary":
+      lang_kwargs['binary_gate']=True
+      lang_kwargs['gates'] = config.nmodules
+
     embedder = LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         sentence_dim=config.word_dim,
-        task_dim=config.lang_task_dim,
+        task_dim=lang_task_dim,
         initializer=config.word_initializer,
-        compress=config.word_compress)
+        compress=config.word_compress,
+        **lang_kwargs)
     def embed_fn(task):
       """Convert task to ints, batchapply if necessary, and run through embedding function."""
       has_time = len(task.shape) == 3
@@ -128,6 +139,7 @@ def build_task_embedder(task_embedding, config, task_dim=None):
       return batchfn(embedder)(task.astype(jnp.int32))
 
     return embedder, embed_fn
+
   else:
     raise NotImplementedError(task_embedding)
 
@@ -164,7 +176,7 @@ def r2d1(config, env_spec,
   # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
+  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
 
   if task_input:
@@ -192,7 +204,7 @@ def r2d1_noise(config, env_spec,
   # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
+  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
 
   def add_noise_concat(inputs, memory_out, **kwargs):
@@ -229,7 +241,7 @@ def r2d1_farm(config, env_spec,
   # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
+  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
 
   def r2d1_farm_prediction_prep_fn(inputs, memory_out, **kwargs):
@@ -287,7 +299,7 @@ def usfa(config, env_spec,
   # task embedder + prep functions (will embed task)
   # -----------------------
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
+  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
   if task_embedding == "language":
     sf_out_dim = task_embedder.out_dim
@@ -364,18 +376,6 @@ def msf(
   assert config.phi_net in ['flat', 'independent', 'relational']
   num_actions = env_spec.actions.num_values
 
-
-  if task_embedding == 'none':
-    pass
-  elif task_embedding == 'language':
-    # make sure task dim can be evenly divided by num modules
-    task_dim = config.lang_task_dim
-    nmodules = config.nmodules
-    config.lang_task_dim = int(task_dim//nmodules)*nmodules
-  else:
-    raise NotImplementedError(task_embedding)
-
-
   # -----------------------
   # memory
   # -----------------------
@@ -385,7 +385,9 @@ def msf(
   # task related
   # -----------------------
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
+  task_embedder, embed_fn = build_task_embedder(task_embedding, config,
+    lang_task_dim=config.module_task_dim*config.nmodules,
+    task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
   if task_embedding == "language":
     sf_out_dim = task_embedder.out_dim

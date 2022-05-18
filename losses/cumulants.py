@@ -10,7 +10,8 @@ class CumulantRewardLoss:
     balance: float = 0,
     reward_bias: float = 0,
     nmodules: int = 1,
-    l1_coeff=None):
+    l1_coeff=None,
+    wl1_coeff=None):
     self.coeff = coeff
     loss = loss.lower()
     assert loss in ['l2', 'binary']
@@ -21,6 +22,7 @@ class CumulantRewardLoss:
     self.l1_coeff = l1_coeff
     self.reward_bias = reward_bias
     self.nmodules = nmodules
+    self.wl1_coeff = wl1_coeff
 
 
   def __call__(self, data, online_preds, key, **kwargs):
@@ -88,5 +90,15 @@ class CumulantRewardLoss:
       phi_l1 = phi_l1*self.l1_coeff
 
       final_error += phi_l1
+
+    if self.wl1_coeff is not None and self.wl1_coeff != 0:
+
+      w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
+      w_l1 = w_l1.mean()
+
+      metrics['loss_w_l1'] = w_l1
+      w_l1 = w_l1*self.wl1_coeff
+
+      final_error += w_l1
 
     return final_error, metrics

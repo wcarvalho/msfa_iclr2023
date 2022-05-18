@@ -86,8 +86,10 @@ class USFAConfig(R2D1Config):
   sf_loss: str = 'n_step_q_learning' # whether to use q_lambda or n-step q-learning for objective
   lambda_: float = .9 # lambda for q-lambda
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
-  phi_l1_coeff: float = 0.1 # coefficient for L1 on phi
+  phi_l1_coeff: float = 0.0 # coefficient for L1 on phi
+  w_l1_coeff: float = 0.0 # coefficient for L1 on w
   sf_layernorm: str = 'none' # coefficient for L1 on phi
+  task_gated: str='none'
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -137,7 +139,8 @@ class ModularUSFAConfig(USFAConfig):
 
   seperate_cumulant_params: bool=True # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
-  phi_l1_coeff: float = 0.01 # coefficient for L1 on phi
+  phi_l1_coeff: float = 0.00 # coefficient for L1 on phi
+  w_l1_coeff: float = 0.00 # coefficient for L1 on w
   module_l1: bool = False # apply L1 per module or for all phi
 
   sf_net: str = 'independent'
@@ -156,6 +159,9 @@ class ModularUSFAConfig(USFAConfig):
   relate_residual: str="sigtanh"
   res_relu_gate: bool=True
   layernorm_rel: bool=False
+
+  task_gated: str='sigmoid'
+  module_task_dim: int=4 # task dim per module
 
 
 @dataclasses.dataclass
@@ -187,4 +193,5 @@ class LangConfig:
   word_dim: int = 128  # dimension of word and sentence embeddings
   word_initializer: str = 'RandomNormal'
   word_compress: str = 'last'
-  lang_task_dim: int = 128  # dimension of task
+  lang_task_dim: int = 16  # dimension of task
+
