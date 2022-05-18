@@ -150,6 +150,28 @@ def get(search):
       #   "max_number_of_steps": tune.grid_search([30_000_000]),
       # },
     ]
+  elif search == 'gen':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['genv1']),
+        "w_l1_coeff": tune.grid_search([0, .001]),
+        "task_gated": tune.grid_search(['sigmoid', 'round', 'none']),
+        "lang_task_dim": tune.grid_search([16]),
+      },
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['genv1']),
+      #   "w_l1_coeff": tune.grid_search([.0005, .0001]),
+      #   "task_gated": tune.grid_search(['sigmoid', 'round', 'none']),
+      #   "lang_task_dim": tune.grid_search([16]),
+      # },
+    ]
 
   else:
     raise NotImplementedError(search)

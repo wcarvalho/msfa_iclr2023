@@ -78,8 +78,3 @@ task_reps:
 
   toggle2: turnon x and turnon y
   slice2: slice x and slice y
-
-  clean_and_slice: clean x and slice y
-  clean_and_toggle: clean x and turnon y
-  toggle_and_slice: turnon x and slice y
-  clean_and_slice_and_toggle: clean x and slice y and turnon z
