@@ -71,6 +71,10 @@ class CumulantRewardLoss:
         f'z.raw_loss_{self.loss}': raw_final_error,
         f'z.positive_error': positive_error,
         f'z.reward_pred': reward_pred.mean(),
+        f'z.task': task.mean(),
+        f'z.phi': cumulants.mean(),
+        f'z.task_std': task.std(),
+        f'z.phi_std': cumulants.std(),
       }
     else:
       final_error = error.mean()
@@ -89,7 +93,7 @@ class CumulantRewardLoss:
       metrics['loss_phi_l1'] = phi_l1
       phi_l1 = phi_l1*self.l1_coeff
 
-      final_error += phi_l1
+      final_error = final_error + phi_l1
 
     if self.wl1_coeff is not None and self.wl1_coeff != 0:
 
@@ -99,6 +103,6 @@ class CumulantRewardLoss:
       metrics['loss_w_l1'] = w_l1
       w_l1 = w_l1*self.wl1_coeff
 
-      final_error += w_l1
+      final_error = final_error + w_l1
 
     return final_error, metrics
