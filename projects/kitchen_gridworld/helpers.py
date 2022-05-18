@@ -23,6 +23,7 @@ from projects.msf.helpers import q_aux_sf_loss
 from projects.kitchen_gridworld import nets
 from projects.kitchen_gridworld import configs
 
+from envs.acme.tasks_wrapper import TrainTasksWrapper
 from envs.acme.multitask_kitchen import MultitaskKitchen
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, MissionIntegerWrapper
 from envs.babyai_kitchen.utils import InstructionsPreprocessor
@@ -34,7 +35,7 @@ from envs.babyai_kitchen.utils import InstructionsPreprocessor
 # ======================================================
 def make_environment(evaluation: bool = False,
                      tile_size=8,
-                     room_size=5,
+                     room_size=6,
                      num_dists=0,
                      step_penalty=0.0,
                      task_reps='pickup',
@@ -108,18 +109,23 @@ def make_environment(evaluation: bool = False,
 
   if evaluation and 'test' in tasks:
     task_dicts = tasks['test']
+    train_task_dicts = tasks['train']
+    separate_eval=True
   else:
     task_dicts = tasks['train']
+    train_task_dicts = tasks['train']
+    separate_eval=False
 
   if 'task_reps' in tasks:
     task_reps = tasks['task_reps']
-    import ipdb; ipdb.set_trace()
+
 
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
 
   env = MultitaskKitchen(
     task_dicts=task_dicts,
+    separate_eval=separate_eval, # hack so can access later
     tile_size=tile_size,
     path=path,
     num_dists=num_dists,
@@ -136,6 +142,12 @@ def make_environment(evaluation: bool = False,
   wrapper_list = [
     functools.partial(ObservationRemapWrapper,
         remap=dict(mission='task')),
+    functools.partial(TrainTasksWrapper,
+        instr_preproc=instr_preproc,
+        max_length=max_text_length,
+        task_reps=task_reps,
+        train_tasks=[t['task_kinds'] for t in train_task_dicts],
+      ),
     wrappers.ObservationActionRewardWrapper,
     wrappers.SinglePrecisionWrapper,
   ]
@@ -147,7 +159,7 @@ def make_environment(evaluation: bool = False,
 # ======================================================
 # Building Agent Networks
 # ======================================================
-def msf(config, env_spec, use_seperate_eval=True, predict_cumulants=True, learn_model=False, task_embedding='none'):
+def msf(config, env_spec, use_separate_eval=True, predict_cumulants=True, learn_model=False, task_embedding='none'):
 
   NetworkCls =  nets.msf
 
@@ -157,7 +169,7 @@ def msf(config, env_spec, use_seperate_eval=True, predict_cumulants=True, learn_
     predict_cumulants=predict_cumulants,
     learn_model=learn_model,
     task_embedding=task_embedding,
-    use_seperate_eval=use_seperate_eval)
+    use_separate_eval=use_separate_eval)
 
   LossFn = td_agent.USFALearning
 
@@ -246,7 +258,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
       config=config,
       env_spec=env_spec,
       task_embedding='language',
-      use_seperate_eval=False,
+      use_separate_eval=True,
       predict_cumulants=True)
 
     LossFn = td_agent.USFALearning
@@ -291,7 +303,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
       env_spec,
       predict_cumulants=True,
       learn_model=True,
-      use_seperate_eval=False,
+      use_separate_eval=True,
       task_embedding='language')
 
   elif agent == "msf_monolithic":
@@ -313,7 +325,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
       env_spec,
       predict_cumulants=True,
       learn_model=True,
-      use_seperate_eval=False,
+      use_separate_eval=True,
       task_embedding='language')
   else:
     raise NotImplementedError(agent)
