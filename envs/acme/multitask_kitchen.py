@@ -39,6 +39,7 @@ def convert_rawobs(obs):
     obs.pop('mission_idx', None)
     return Observation(**obs)
 
+
 class MultitaskKitchen(dm_env.Environment):
   """
   """
@@ -46,6 +47,7 @@ class MultitaskKitchen(dm_env.Environment):
   def __init__(self,
     task_dicts: dict=None,
     task_kinds: list=None,
+    separate_eval: bool=False,
     room_size=10,
     task_reps=None,
     sets: str=None,
@@ -62,6 +64,8 @@ class MultitaskKitchen(dm_env.Environment):
       columns: number of columns.
       seed: random seed for the RNG.
     """
+
+    self.separate_eval = separate_eval
     level_kwargs = dict(
       room_size=room_size,
       agent_view_size=agent_view_size,
@@ -107,15 +111,20 @@ class MultitaskKitchen(dm_env.Environment):
         **kwargs)
 
     if wrappers:
+      self.default_gym = self.env.env
       self.default_env = GymWrapper(self.env.env)
     else:
+      self.default_gym = self.env
       self.default_env = GymWrapper(self.env)
+
+
 
 
   def reset(self) -> dm_env.TimeStep:
     """Returns the first `TimeStep` of a new episode."""
     obs = self.env.reset()
     obs = convert_rawobs(obs)
+
     timestep = dm_env.restart(obs)
 
     return timestep
