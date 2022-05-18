@@ -33,6 +33,7 @@ test_sync:
 	python -m ipdb -c continue projects/kitchen_gridworld/train.py \
 	--agent $(agent) \
 	--test=True \
+	--evaluate=True \
 	--env_setting=$(env) \
 	--task_reps=$(task_reps) \
 	--wandb=$(wandb_test) \
@@ -45,6 +46,8 @@ test_async:
 	python -m ipdb -c continue projects/kitchen_gridworld/train_distributed.py \
 	--agent $(agent) \
 	--wandb=$(wandb_test) \
+	--env_setting=$(env) \
+	--task_reps=$(task_reps) \
 	--group=$(group)
 
 

@@ -62,6 +62,7 @@ def main(_):
     evaluation=True # test set (harder)
     )
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
+  separate_eval = env.separate_eval # HACK
   env_spec = acme.make_environment_spec(env)
 
   config=dict()
@@ -72,8 +73,8 @@ def main(_):
     config['nmodules'] = 4
     config['step_penalty'] = env.step_penalty
     config['module_l1'] = True
-    config['task_gated'] = 'binary'
-    config['w_l1_coeff'] = 0.01
+    config['task_gate'] = 'sample'
+    config['w_l1_coeff'] = 0.00
 
     # config['seperate_value_params'] = False
     # config['seperate_cumulant_params'] = False

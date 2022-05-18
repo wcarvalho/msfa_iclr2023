@@ -89,7 +89,7 @@ class USFAConfig(R2D1Config):
   phi_l1_coeff: float = 0.0 # coefficient for L1 on phi
   w_l1_coeff: float = 0.0 # coefficient for L1 on w
   sf_layernorm: str = 'none' # coefficient for L1 on phi
-  task_gated: str='none'
+  task_gate: str='none'
 
 @dataclasses.dataclass
 class QAuxConfig:
