@@ -31,7 +31,77 @@ def get_matching_objects(env, object_types=None, matchfn=None):
 def pickedup(env, obj):
   return env.carrying.type == obj.type
 
+class KitchenTask(Instr):
+  """docstring for KitchenTasks"""
+  def __init__(self, env, argument_options=None, task_rep=None):
+      super(KitchenTask, self).__init__()
+      self.argument_options = argument_options or dict(x=[])
+      self._task_objects = []
+      self.env = env
+      self.finished = False
+      self._task_rep = task_rep
+      self.instruction = self.generate()
 
+  def generate(self):
+      raise NotImplemented
+
+  @property
+  def default_task_rep(self):
+      raise NotImplemented
+
+  @property
+  def task_rep(self):
+    if self._task_rep is not None:
+      return self._task_rep 
+    else:
+      return self.default_task_rep
+  
+  @property
+  def task_objects(self):
+      return self._task_objects
+
+  def surface(self, *args, **kwargs):
+      return self.instruction
+
+  def terminate(self, *args, **kwargs):
+      self.finished = True
+
+  def get_reward_done(self):
+    if self.finished:
+      return False, False
+    else:
+      return self.check_status()
+
+  @property
+  def num_navs(self): return 1
+
+  def __repr__(self):
+      string = self.instruction
+      if self.task_objects:
+          for object in self.task_objects:
+              string += "\n" + str(object)
+
+      return string
+
+  def check_status(self):
+      return False, False
+
+  def check_actions(self, actions):
+      for action in self.task_actions():
+          if action == 'pickup':
+              assert 'pickup_contents' in actions or 'pickup_container' in actions
+          elif action == 'pickup_and':
+              assert 'pickup_contents' in actions and 'pickup_container' in actions
+          else:
+              assert action in actions
+
+  @staticmethod
+  def task_actions():
+      return [
+          'toggle',
+          'pickup_and',
+          'place'
+          ]
 
 # ======================================================
 # Length = 1
@@ -102,17 +172,14 @@ class ToggleTask(KitchenTask):
     def num_navs(self): return 2
 
     def check_status(self):
-        toggle1 = self.toggle.state['on'] == True
-        toggle2 = self.toggle2.state['on'] == True
-        reward = done = toggle1 and toggle2
+        reward = done = self.toggle.state['on'] == True
+
         return reward, done
 
     def subgoals(self):
       return [
         ActionsSubgoal(
           goto=self.toggle, actions=['toggle']),
-        ActionsSubgoal(
-          goto=self.toggle2, actions=['toggle']),
       ]
 
 # ======================================================

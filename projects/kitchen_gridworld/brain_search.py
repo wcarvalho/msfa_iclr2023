@@ -119,10 +119,9 @@ def get(search):
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['multiv5']),
-        "phi_l1_coeff": tune.grid_search([.01]),
-        "module_l1": tune.grid_search([True, False]),
-        "lang_task_dim": tune.grid_search([128]),
-        "max_number_of_steps": tune.grid_search([30_000_000]),
+        "phi_l1_coeff": tune.grid_search([0]),
+        "module_l1": tune.grid_search([True]),
+        "lang_task_dim": tune.grid_search([16]),
       },
       # {
       #   "seed": tune.grid_search([1, 2, 3]),

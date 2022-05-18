@@ -86,6 +86,7 @@ def main(_):
       room_size=room_size,
       num_dists=num_dists,
       )
+    # only use non-default
     env_path=dict()
     for k,v in env_kwargs.items():
       if v != default_env_kwargs[k]:
