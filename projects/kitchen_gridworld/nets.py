@@ -76,10 +76,11 @@ def replace_task_with_embedding(inputs, embed_fn):
       task=embed_fn(inputs.observation.task))
     return inputs._replace(observation=new_observation)
 
-def make__convert_floats_embed_task(embed_fn):
+def make__convert_floats_embed_task(embed_fn,
+  replace_fn=replace_task_with_embedding):
   def inputs_prep_fn(inputs):
     inputs = convert_floats(inputs)
-    inputs = replace_task_with_embedding(inputs, embed_fn)
+    inputs = replace_fn(inputs, embed_fn)
     return inputs
 
   return inputs_prep_fn
@@ -115,13 +116,11 @@ def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=Non
     return embedder, embed_fn
   elif task_embedding == 'language':
     lang_kwargs=dict()
-    if config.task_gated == 'none':
+    assert config.task_gate in ['none', 'round', 'sample', 'sigmoid']
+    if config.task_gate == 'none':
       pass
-    elif config.task_gated == "sigmoid":
-      lang_kwargs['binary_gate']=False
-      lang_kwargs['gates'] = config.nmodules
-    elif config.task_gated == "binary":
-      lang_kwargs['binary_gate']=True
+    else:
+      lang_kwargs['gate_type']=config.task_gate
       lang_kwargs['gates'] = config.nmodules
 
     embedder = LanguageTaskEmbedder(
@@ -278,17 +277,22 @@ def usfa_prep_fn(inputs, memory_out, *args, **kwargs):
     )
 
 def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
-  dim = inputs.observation.task.shape[-1]
-  w_train = jnp.identity(dim).astype(jnp.float32)
   return USFAInputs(
     w=inputs.observation.task,
-    w_train=w_train,
+    w_train=inputs.observation.train_tasks,
     memory_out=memory_out,
     )
 
+def replace_all_tasks_with_embedding(inputs, embed_fn):
+  """Replace both tasks and train tasks."""
+  new_observation = inputs.observation._replace(
+    task=embed_fn(inputs.observation.task),
+    train_tasks=jax.vmap(embed_fn)(inputs.observation.train_tasks))
+  return inputs._replace(observation=new_observation)
+
 def usfa(config, env_spec,
   task_embedding='none',
-  use_seperate_eval=True,
+  use_separate_eval=True,
   predict_cumulants=False,
   **net_kwargs):
 
@@ -300,7 +304,8 @@ def usfa(config, env_spec,
   # -----------------------
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
-  inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+  inputs_prep_fn = make__convert_floats_embed_task(embed_fn,
+    replace_fn=replace_all_tasks_with_embedding)
   if task_embedding == "language":
     sf_out_dim = task_embedder.out_dim
   elif task_embedding == "none":
@@ -326,7 +331,7 @@ def usfa(config, env_spec,
       normalize_task=config.normalize_task and config.embed_task,
       )
 
-  if use_seperate_eval:
+  if use_separate_eval:
     if task_embedding != "none":
       raise NotImplementedError("No way to get tasks yet... would need environment to give tasks somehow...")
     evaluation_prep_fn=usfa_eval_prep_fn
@@ -369,7 +374,7 @@ def msf(
   predict_cumulants=True,
   learn_model=True,
   task_embedding: str='none',
-  use_seperate_eval=True,
+  use_separate_eval=True,
   **net_kwargs):
 
   assert config.sf_net in ['flat', 'independent', 'relational']
@@ -388,22 +393,20 @@ def msf(
   task_embedder, embed_fn = build_task_embedder(task_embedding, config,
     lang_task_dim=config.module_task_dim*config.nmodules,
     task_dim=task_dim)
-  inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
   if task_embedding == "language":
     sf_out_dim = task_embedder.out_dim
   elif task_embedding == "none":
     sf_out_dim = env_spec.observations.observation.state_features.shape[0]
     raise RuntimeError("Is this a good default for sf_out_dim?? state features or task?? Task.")
 
-
+  inputs_prep_fn = make__convert_floats_embed_task(embed_fn,
+    replace_fn=replace_all_tasks_with_embedding)
   # -----------------------
   # USFA Head
   # -----------------------
   usfa_head, pred_prep_fn, eval_prep_fn = build_msf_head(config, sf_out_dim, num_actions)
 
-  if use_seperate_eval:
-    if task_embedding != "none":
-      raise NotImplementedError("No way to get tasks yet... would need environment to give tasks somehow...")
+  if use_separate_eval:
     evaluation_prep_fn=eval_prep_fn
     evaluation=usfa_head.evaluation
   else:
