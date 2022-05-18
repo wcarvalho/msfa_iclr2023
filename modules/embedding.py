@@ -88,6 +88,12 @@ def st_bernoulli(x, key):
 
   return zero + jax.lax.stop_gradient(x)
 
+def st_round(x):
+  """Straight-through bernoulli sample"""
+  zero = x - jax.lax.stop_gradient(x)
+  x = jnp.round(x)
+  return zero + jax.lax.stop_gradient(x)
+
 class LanguageTaskEmbedder(hk.Module):
   """Module that embed words and then runs them through GRU."""
   def __init__(self,
@@ -98,7 +104,7 @@ class LanguageTaskEmbedder(hk.Module):
       initializer='TruncatedNormal',
       compress='last',
       gates=None,
-      binary_gate=False,
+      gate_type='sample',
       **kwargs):
     super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
@@ -121,7 +127,8 @@ class LanguageTaskEmbedder(hk.Module):
       self.task_projection = hk.Linear(task_dim)
 
     self.gates = gates
-    self.binary_gate = binary_gate
+    self.gate_type = gate_type.lower()
+    assert self.gate_type in ['round', 'sample', 'sigmoid']
     if self.gates is not None and self.gates > 0:
       self.gate = hk.Linear(gates)
   
@@ -151,9 +158,11 @@ class LanguageTaskEmbedder(hk.Module):
     if self.gates is not None and self.gates > 0:
       gate = jax.nn.sigmoid(self.gate(task)) # [B, G]
       task_proj = jnp.stack(jnp.split(task_proj, self.gates, axis=-1), axis=1) # [B, G, D/G]
-      if self.binary_gate:
+      if self.gate_type == 'sample':
         gate = st_bernoulli(gate, key=hk.next_rng_key())
-      task_proj = task_proj*jnp.expand_dims(gate, 2)
+      elif self.gate_type == 'round':
+        gate = st_round(gate)
+      task_proj = jax.nn.tanh(task_proj)*jnp.expand_dims(gate, 2)
       task_proj = task_proj.reshape(B, -1)
 
     return task_proj
