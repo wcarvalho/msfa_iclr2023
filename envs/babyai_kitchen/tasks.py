@@ -59,7 +59,7 @@ class KitchenTask(Instr):
   @property
   def task_rep(self):
     if self._task_reps is not None:
-      return self._task_reps[self.task_name]
+      return self._task_reps.get(self.task_name, self.default_task_rep)
     else:
       return self.default_task_rep
 
