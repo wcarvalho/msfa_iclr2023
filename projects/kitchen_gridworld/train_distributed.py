@@ -39,6 +39,9 @@ flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
+flags.DEFINE_string('env_setting', 'EasyPickup', 'which environment setting.')
+flags.DEFINE_string('task_reps', 'pickup', 'which task reps to use.')
+
 
 # -----------------------
 # WANDB
@@ -81,8 +84,9 @@ def build_program(
     # setting=setting,
     **env_kwargs,
     )
-  env = environment_factory(False)
+  env = environment_factory(True)
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
+  separate_eval = env.separate_eval # HACK
   config_kwargs['step_penalty'] = env.step_penalty
   env_spec = acme.make_environment_spec(env)
   del env
@@ -138,6 +142,11 @@ def build_program(
   # -----------------------
   os.chdir(path)
   setting = env_kwargs.get('setting', 'default')
+  if separate_eval:
+    evaluator_factories=None # will create
+  else:
+    evaluator_factories=[]
+
   return build_common_program(
     environment_factory=environment_factory,
     env_spec=env_spec,
@@ -155,7 +164,7 @@ def build_program(
     loss_label='Loss',
     actor_label=f"actor_{setting}",
     evaluator_label=f"evaluator_{setting}",
-    # evaluator_factories=[], # no effect to not have evaluators
+    evaluator_factories=evaluator_factories, # no effect to not have evaluators
     **kwargs,
     )
 
@@ -180,6 +189,10 @@ def main(_):
     wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
     debug=FLAGS.debug,
     custom_loggers=FLAGS.custom_loggers,
+    env_kwargs=dict(
+      setting=FLAGS.env_setting,
+      task_reps=FLAGS.task_reps,
+    )
     )
 
   # Launch experiment.
