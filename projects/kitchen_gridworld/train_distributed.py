@@ -83,6 +83,7 @@ def build_program(
     )
   env = environment_factory(False)
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
+  config_kwargs['step_penalty'] = env.step_penalty
   env_spec = acme.make_environment_spec(env)
   del env
 
@@ -154,7 +155,7 @@ def build_program(
     loss_label='Loss',
     actor_label=f"actor_{setting}",
     evaluator_label=f"evaluator_{setting}",
-    evaluator_factories=[],
+    # evaluator_factories=[], # no effect to not have evaluators
     **kwargs,
     )
 

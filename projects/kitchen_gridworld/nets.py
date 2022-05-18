@@ -21,7 +21,7 @@ from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulant
 from modules.farm_usfa import FarmUsfaHead
 
 from modules.vision import AtariVisionTorso, BabyAIVisionTorso
-from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, ConcatFlatStatePolicy, UniqueStatePolicyPairs
+from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, ConcatFlatStatePolicy, UniqueStatePolicyPairs, QBias
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules import usfa as usfa_modules
 from modules import vae as vae_modules
@@ -109,18 +109,29 @@ def build_farm(config, **kwargs):
     out_layers=config.out_layers,
     **kwargs)
 
-def build_task_embedder(task_embedding, config, task_dim=None):
+def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=None):
   if task_embedding == 'none':
     embedder = embed_fn = Identity(task_dim)
     return embedder, embed_fn
   elif task_embedding == 'language':
+    lang_kwargs=dict()
+    if config.task_gated == 'none':
+      pass
+    elif config.task_gated == "sigmoid":
+      lang_kwargs['binary_gate']=False
+      lang_kwargs['gates'] = config.nmodules
+    elif config.task_gated == "binary":
+      lang_kwargs['binary_gate']=True
+      lang_kwargs['gates'] = config.nmodules
+
     embedder = LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         sentence_dim=config.word_dim,
-        task_dim=config.lang_task_dim,
+        task_dim=lang_task_dim,
         initializer=config.word_initializer,
-        compress=config.word_compress)
+        compress=config.word_compress,
+        **lang_kwargs)
     def embed_fn(task):
       """Convert task to ints, batchapply if necessary, and run through embedding function."""
       has_time = len(task.shape) == 3
@@ -128,6 +139,7 @@ def build_task_embedder(task_embedding, config, task_dim=None):
       return batchfn(embedder)(task.astype(jnp.int32))
 
     return embedder, embed_fn
+
   else:
     raise NotImplementedError(task_embedding)
 
@@ -164,7 +176,7 @@ def r2d1(config, env_spec,
   # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
+  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
 
   if task_input:
@@ -192,7 +204,7 @@ def r2d1_noise(config, env_spec,
   # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
+  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
 
   def add_noise_concat(inputs, memory_out, **kwargs):
@@ -229,7 +241,7 @@ def r2d1_farm(config, env_spec,
   # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
+  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
 
   def r2d1_farm_prediction_prep_fn(inputs, memory_out, **kwargs):
@@ -287,7 +299,7 @@ def usfa(config, env_spec,
   # task embedder + prep functions (will embed task)
   # -----------------------
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
+  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
   if task_embedding == "language":
     sf_out_dim = task_embedder.out_dim
@@ -310,6 +322,7 @@ def usfa(config, env_spec,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       multihead=config.multihead,
       concat_w=config.concat_w,
+      layernorm=config.sf_layernorm,
       normalize_task=config.normalize_task and config.embed_task,
       )
 
@@ -363,18 +376,6 @@ def msf(
   assert config.phi_net in ['flat', 'independent', 'relational']
   num_actions = env_spec.actions.num_values
 
-
-  if task_embedding == 'none':
-    pass
-  elif task_embedding == 'language':
-    # make sure task dim can be evenly divided by num modules
-    task_dim = config.lang_task_dim
-    nmodules = config.nmodules
-    config.lang_task_dim = int(task_dim//nmodules)*nmodules
-  else:
-    raise NotImplementedError(task_embedding)
-
-
   # -----------------------
   # memory
   # -----------------------
@@ -384,7 +385,9 @@ def msf(
   # task related
   # -----------------------
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, task_dim)
+  task_embedder, embed_fn = build_task_embedder(task_embedding, config,
+    lang_task_dim=config.module_task_dim*config.nmodules,
+    task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
   if task_embedding == "language":
     sf_out_dim = task_embedder.out_dim
@@ -416,6 +419,9 @@ def msf(
     phi_net = build_msf_phi_net(config, sf_out_dim)
     aux_tasks.append(phi_net)
 
+  add_bias = getattr(config, "step_penalty", 0) > 0
+  if add_bias:
+    aux_tasks.append(QBias())
 
   # -----------------------
   # Model
@@ -466,6 +472,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
         concat_w=False,
         task_embed=0,
         normalize_task=False,
+        layernorm=config.sf_layernorm,
         )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
@@ -509,6 +516,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
           policy_layers=config.policy_layers,
           multihead=config.seperate_value_params, # seperate params per cumulants
           vmap_multihead=config.farm_vmap,
+          layernorm=config.sf_layernorm,
           )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""

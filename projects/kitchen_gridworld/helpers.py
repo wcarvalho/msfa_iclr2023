@@ -36,6 +36,7 @@ def make_environment(evaluation: bool = False,
                      tile_size=8,
                      room_size=5,
                      num_dists=0,
+                     step_penalty=0.0,
                      task_reps='pickup',
                      max_text_length=10,
                      path='.',
@@ -119,6 +120,7 @@ def make_environment(evaluation: bool = False,
     path=path,
     num_dists=num_dists,
     task_reps=task_reps,
+    step_penalty=step_penalty,
     room_size=room_size,
     wrappers=[ # wrapper for babyAI gym env
       functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size),
@@ -158,13 +160,17 @@ def msf(config, env_spec, use_seperate_eval=True, predict_cumulants=True, learn_
   aux_tasks=[q_aux_sf_loss(config)]
 
   if predict_cumulants:
+    nmodules = config.nmodules if config.module_l1 else 1
     aux_tasks.append(
       cumulants.CumulantRewardLoss(
         shorten_data_for_cumulant=True,
         coeff=config.reward_coeff,
         loss=config.reward_loss,
         l1_coeff=config.phi_l1_coeff,
-        balance=config.balance_reward))
+        wl1_coeff=config.w_l1_coeff,
+        balance=config.balance_reward,
+        reward_bias=config.step_penalty,
+        nmodules=nmodules))
 
   if learn_model:
     if config.contrast_module_coeff > 0:
@@ -255,7 +261,9 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
           coeff=config.reward_coeff,
           loss=config.reward_loss,
           l1_coeff=config.phi_l1_coeff,
+          wl1_coeff=config.w_l1_coeff,
           balance=config.balance_reward,
+          reward_bias=config.step_penalty,
           ),
       ])
 

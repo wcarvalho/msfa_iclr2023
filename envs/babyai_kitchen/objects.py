@@ -250,26 +250,27 @@ class KitchenObject(WorldObj):
   def toggle(self):
     can_toggle = self.has_prop('on')
     # can't toggle, action fails
-    if not can_toggle: return self.action_info(
+    if not can_toggle:
+      return self.action_info(
         name='toggle',
         success=False,
         message='cannot toggle')
 
     # if on, toggle off
     if self.state['on']:
-        self.set_prop("on", False)
-        return self.action_info(
-            name='toggle',
-            success=True,
-            message='turned off')
+      self.set_prop("on", False)
+      return self.action_info(
+          name='toggle',
+          success=True,
+          message='turned off')
 
     # if off, toggle on
     else:
-        self.set_prop("on", True)
-        return self.action_info(
-            name='toggle',
-            success=True,
-            message='turned on')
+      self.set_prop("on", True)
+      return self.action_info(
+          name='toggle',
+          success=True,
+          message='turned on')
 
 
   def pickup_self(self):

@@ -15,6 +15,7 @@ class R2D1Config(configs.R2D1Config):
   evaluation_epsilon: float = 0.0
   num_epsilons: int = 256
   variable_update_period: int = 400 # how often to update actor
+  step_penalty: float = 0.00
 
   # Learner options
   burn_in_length: int = 0  # burn in during learning
@@ -23,7 +24,7 @@ class R2D1Config(configs.R2D1Config):
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
   seed: int = 3
-  max_number_of_steps: int = 20_000_000
+  max_number_of_steps: int = 30_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -85,7 +86,10 @@ class USFAConfig(R2D1Config):
   sf_loss: str = 'n_step_q_learning' # whether to use q_lambda or n-step q-learning for objective
   lambda_: float = .9 # lambda for q-lambda
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
-  phi_l1_coeff: float = 0.1 # coefficient for L1 on phi
+  phi_l1_coeff: float = 0.0 # coefficient for L1 on phi
+  w_l1_coeff: float = 0.0 # coefficient for L1 on w
+  sf_layernorm: str = 'none' # coefficient for L1 on phi
+  task_gated: str='none'
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -98,7 +102,7 @@ class QAuxConfig:
 @dataclasses.dataclass
 class RewardConfig:
   """Extra configuration options for USFA agent."""
-  reward_coeff: float = 1e-4 # coefficient for reward loss
+  reward_coeff: float = 50.0 # coefficient for reward loss
   value_coeff: float = 0.05 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
@@ -113,7 +117,7 @@ class FarmConfig:
 
   # Network hps
   module_size: int = 128
-  nmodules: int = 6
+  nmodules: int = 4
   out_layers: int = 0
   module_attn_size: int = None
   module_attn_heads: int = 2  # how many attention heads between modules
@@ -133,9 +137,11 @@ class ModularUSFAConfig(USFAConfig):
   embed_position: int = 16 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
 
-  seperate_cumulant_params: bool=False # seperate parameters per cumulant set
+  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
-  phi_l1_coeff: float = 0.01 # coefficient for L1 on phi
+  phi_l1_coeff: float = 0.00 # coefficient for L1 on phi
+  w_l1_coeff: float = 0.00 # coefficient for L1 on w
+  module_l1: bool = False # apply L1 per module or for all phi
 
   sf_net: str = 'independent'
   sf_net_heads: int = 2
@@ -154,6 +160,9 @@ class ModularUSFAConfig(USFAConfig):
   res_relu_gate: bool=True
   layernorm_rel: bool=False
 
+  task_gated: str='sigmoid'
+  module_task_dim: int=4 # task dim per module
+
 
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):
@@ -161,7 +170,7 @@ class FarmModelConfig(FarmConfig):
 
   # Network hps
   temperature: float = 0.01
-  reward_coeff: float = 1e-4 # coefficient for reward loss
+  reward_coeff: float = 50.0 # coefficient for reward loss
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
   out_layers: int = 0
   model_layers: int = 2
@@ -185,3 +194,4 @@ class LangConfig:
   word_initializer: str = 'RandomNormal'
   word_compress: str = 'last'
   lang_task_dim: int = 16  # dimension of task
+

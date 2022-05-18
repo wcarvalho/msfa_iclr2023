@@ -30,6 +30,7 @@ def get_matching_objects(env, object_types=None, matchfn=None):
 
 def pickedup(env, obj):
   return env.carrying.type == obj.type
+
 class KitchenTask(Instr):
   """docstring for KitchenTasks"""
   def __init__(self, env, argument_options=None, task_rep=None):
@@ -140,6 +141,45 @@ class PickupTask(KitchenTask):
       return [
         ActionsSubgoal(
           goto=self.pickup_object, actions=['pickup_contents'])
+      ]
+
+class ToggleTask(KitchenTask):
+    @property
+    def default_task_rep(self):
+        return 'Turnon x'
+
+    def generate(self):
+
+        x_options = self.argument_options.get('x', [])
+        if x_options:
+            totoggle_options = self.env.objects_by_type(x_options)
+        else:
+            totoggle_options = self.env.objects_with_property(['on'])
+
+        self.toggle = np.random.choice(totoggle_options)
+
+        self.toggle.set_prop("on", False)
+
+        self._task_objects = [
+            self.toggle,
+        ]
+        instr = self.task_rep.replace(
+          'x', self.toggle.name)
+
+        return instr
+
+    @property
+    def num_navs(self): return 2
+
+    def check_status(self):
+        reward = done = self.toggle.state['on'] == True
+
+        return reward, done
+
+    def subgoals(self):
+      return [
+        ActionsSubgoal(
+          goto=self.toggle, actions=['toggle']),
       ]
 
 # ======================================================
@@ -843,12 +883,14 @@ class PlaceSlicedTask(SliceTask):
 def all_tasks():
   return dict(
       pickup=PickupTask,
+      toggle=ToggleTask,
       place=PlaceTask,
       heat=HeatTask,
       clean=CleanTask,
       slice=SliceTask,
       chill=ChillTask,
       slice2=Slice2Task,
+      clean_and_slice=CleanAndSliceTask,
       toggle2=Toggle2Task,
       pickup_cleaned=PickupCleanedTask,
       pickup_sliced=PickupSlicedTask,

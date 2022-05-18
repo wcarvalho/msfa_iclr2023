@@ -193,12 +193,14 @@ def q_aux_sf_loss(config):
   else:
     raise NotImplementedError(config.sf_loss)
 
+  add_bias = getattr(config, "step_penalty", 0) > 0
   return loss(
           coeff=config.value_coeff,
           discount=config.discount,
           sched_end=config.q_aux_anneal,
           sched_end_val=config.q_aux_end_val,
-          tx_pair=tx_pair)
+          tx_pair=tx_pair,
+          add_bias=add_bias)
 
 def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, learn_model=False):
   config = data_utils.merge_configs(

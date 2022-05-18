@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as np
 Images = jnp.ndarray
 
-
+import distrax
 
 class OAREmbedding(hk.Module):
   """Module for embedding (observation, action, reward, task) inputs together."""
@@ -81,9 +81,25 @@ class Identity(hk.Module):
   def out_dim(self):
     return self.dim
 
+def st_bernoulli(x, key):
+  """Straight-through bernoulli sample"""
+  zero = x - jax.lax.stop_gradient(x)
+  x = distrax.Bernoulli(probs=x).sample(seed=key)
+
+  return zero + jax.lax.stop_gradient(x)
+
 class LanguageTaskEmbedder(hk.Module):
   """Module that embed words and then runs them through GRU."""
-  def __init__(self, vocab_size, word_dim, sentence_dim, task_dim=None, initializer='TruncatedNormal', compress='last', **kwargs):
+  def __init__(self,
+      vocab_size,
+      word_dim,
+      sentence_dim,
+      task_dim=None,
+      initializer='TruncatedNormal',
+      compress='last',
+      gates=None,
+      binary_gate=False,
+      **kwargs):
     super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
     self.word_dim = word_dim
@@ -97,12 +113,17 @@ class LanguageTaskEmbedder(hk.Module):
     self.sentence_dim = sentence_dim
     self.language_model = hk.GRU(sentence_dim)
 
-    if task_dim is None or task_dim is 0:
+    if task_dim is None or task_dim == 0:
       self.task_dim = sentence_dim
       self.task_projection = lambda x:x
     else:
       self.task_dim = task_dim
       self.task_projection = hk.Linear(task_dim)
+
+    self.gates = gates
+    self.binary_gate = binary_gate
+    if self.gates is not None and self.gates > 0:
+      self.gate = hk.Linear(gates)
   
   def __call__(self, x : jnp.ndarray):
     """Embed words, then run through GRU.
@@ -125,8 +146,17 @@ class LanguageTaskEmbedder(hk.Module):
     else:
       raise NotImplementedError(self.compress)
 
-    task = self.task_projection(task)
-    return task
+    task_proj = self.task_projection(task)
+
+    if self.gates is not None and self.gates > 0:
+      gate = jax.nn.sigmoid(self.gate(task)) # [B, G]
+      task_proj = jnp.stack(jnp.split(task_proj, self.gates, axis=-1), axis=1) # [B, G, D/G]
+      if self.binary_gate:
+        gate = st_bernoulli(gate, key=hk.next_rng_key())
+      task_proj = task_proj*jnp.expand_dims(gate, 2)
+      task_proj = task_proj.reshape(B, -1)
+
+    return task_proj
 
 
   @property

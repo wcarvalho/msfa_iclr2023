@@ -29,9 +29,12 @@ class USFAInputs(NamedTuple):
 def sample_gauss(mean, var, key, nsamples, axis):
   # gaussian (mean=mean, var=.1I)
   # mean = [B, D]
-  samples = data_utils.expand_tile_dim(mean, axis=axis, size=nsamples)
-  dims = samples.shape # [B, N, D]
-  samples =  samples + jnp.sqrt(var) * jax.random.normal(key, dims)
+  if nsamples > 1:
+    samples = data_utils.expand_tile_dim(mean, axis=axis, size=nsamples)
+    dims = samples.shape # [B, N, D]
+    samples =  samples + jnp.sqrt(var) * jax.random.normal(key, dims)
+  else:
+    samples = jnp.expand_dims(mean, axis=1) # [B, N, D]
   return samples.astype(mean.dtype)
 
 
@@ -44,13 +47,13 @@ class SfQNet(hk.Module):
       num_cumulants: int,
       hidden_sizes: Sequence[int],
       multihead: bool=False,
-      layernorm: bool=False,
+      layernorm: str='none',
   ):
     super().__init__(name='sf_network')
     self.num_actions = num_actions
     self.num_cumulants = num_cumulants
     self.multihead = multihead
-    self.layernorm = layernorm
+    self.layernorm = layernorm.lower()
     if multihead:
       self.mlp_factory = lambda: hk.nets.MLP([
           *hidden_sizes, num_actions])
@@ -68,6 +71,14 @@ class SfQNet(hk.Module):
     Returns:
         jnp.ndarray: 2-D tensor of action values of shape [batch_size, num_actions]
     """
+
+    if self.layernorm == 'sf_input':
+      inputs = hk.LayerNorm(
+          axis=-1,
+          param_axis=-1,
+          create_scale=False,
+          create_offset=False)(inputs)
+
     if self.multihead:
       # [B, z] --> [B, C, z]
       inputs = data_utils.expand_tile_dim(inputs, size=self.num_cumulants, axis=1)
@@ -83,13 +94,13 @@ class SfQNet(hk.Module):
       # [B, A, C]
       sf = jnp.reshape(sf, [sf.shape[0], self.num_actions, self.num_cumulants])
 
-    if self.layernorm:
-      sf = hk.LayerNorm(
-          axis=-1,
-          param_axis=-1,
-          create_scale=False,
-          create_offset=False)(sf)
-          import ipdb; ipdb.set_trace()
+    if self.layernorm == 'sf':
+      sf = sf - sf.reshape(sf.shape[0], -1).mean(-1)
+      # sf = hk.LayerNorm(
+      #     axis=-1,
+      #     param_axis=-1,
+      #     create_scale=False,
+      #     create_offset=False)(sf)
 
     q_values = jnp.sum(sf*w, axis=-1) # [B, A]
 
@@ -116,7 +127,7 @@ class UsfaHead(hk.Module):
     z_as_train_task: bool = False,
     multihead: bool = False,
     concat_w: bool = False,
-    layernorm: bool = False,
+    layernorm: str = 'none',
     ):
     """Summary
     
@@ -150,7 +161,7 @@ class UsfaHead(hk.Module):
     self.multihead = multihead
     self.concat_w = concat_w
 
-
+    assert layernorm in ['none', 'sf_input', 'sf']
     # -----------------------
     # function to combine state + policy
     # -----------------------
@@ -398,3 +409,12 @@ class CumulantsFromMemoryAuxTask(AuxilliaryTask):
     if self.normalize:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
     return {'cumulants' : cumulants}
+
+
+
+class QBias(AuxilliaryTask):
+  def __call__(self, predictions, **kwargs):
+    q_ = predictions["q"]
+    b = hk.Bias(bias_dims=[-1])(q_)
+
+    return {'qbias' : b}

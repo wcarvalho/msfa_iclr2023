@@ -21,32 +21,134 @@ def get(search):
       #   "seed": tune.grid_search([1, 2, 3]),
       #   "agent": tune.grid_search(['msf']),
       #   "setting": tune.grid_search(['multiv5']),
+      #   "room_size": tune.grid_search([7]),
+      #   "num_dists": tune.grid_search([5]),
       #   "max_number_of_steps": tune.grid_search([30_000_000]),
       # },
       {
         "seed": tune.grid_search([1, 2, 3]),
         "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
         "setting": tune.grid_search(['multiv5']),
+        "room_size": tune.grid_search([7]),
+        "num_dists": tune.grid_search([0]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
     ]
-  elif search == 'clean':
+  elif search == 'params':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['multiv5']),
+        "nmodules": tune.grid_search([4]),
+        "seperate_value_params": tune.grid_search([True, False]),
+        "seperate_cumulant_params": tune.grid_search([True, False]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+    ]
+  elif search == 'layernorm':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['multiv1']),
+        "sf_layernorm": tune.grid_search(['sf_input', 'sf']),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+      # {
+      #   "seed": tune.grid_search([1, 2, 3]),
+      #   "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+      #   "setting": tune.grid_search(['multiv5']),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
+    ]
+  elif search == 'reward':
     """
     Next:
     """
     space = [
       # {
-      #   "seed": tune.grid_search([1, 2, 3]),
-      #   "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
-      #   "max_number_of_steps": tune.grid_search([10_000_000]),
-      #   "setting": tune.grid_search(['clean']),
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search(['msf', 'usfa_lstm']),
+      #   "setting": tune.grid_search(['multiv5']),
+      #   "reward_coeff": tune.grid_search([10, 1, 1e-1]),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
       # },
       {
-        "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(['msf']),
-        "max_number_of_steps": tune.grid_search([10_000_000]),
-        "setting": tune.grid_search(['clean']),
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf', 'usfa_lstm']),
+        "setting": tune.grid_search(['multiv5']),
+        "module_l1": tune.grid_search([True]),
+        "reward_coeff": tune.grid_search([10, 1, 1e-1]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
       },
+    ]
+  elif search == 'reward_msf':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['multiv5']),
+        "reward_coeff": tune.grid_search([100, 50, 10, 5]),
+        "phi_l1_coeff": tune.grid_search([0.0]),
+        "lang_task_dim": tune.grid_search([16]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+      # {
+      #   "seed": tune.grid_search([1, 2, 3]),
+      #   "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+      #   "setting": tune.grid_search(['multiv5']),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
+    ]
+  elif search == 'phi':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['multiv5']),
+        "phi_l1_coeff": tune.grid_search([0]),
+        "module_l1": tune.grid_search([True]),
+        "lang_task_dim": tune.grid_search([16]),
+      },
+      # {
+      #   "seed": tune.grid_search([1, 2, 3]),
+      #   "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+      #   "setting": tune.grid_search(['multiv5']),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
+    ]
+  elif search == 'task':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['multiv5']),
+        "w_l1_coeff": tune.grid_search([0, 1, .1]),
+        "task_gated": tune.grid_search(['sigmoid', 'binary']),
+        "lang_task_dim": tune.grid_search([16]),
+      },
+      # {
+      #   "seed": tune.grid_search([1, 2, 3]),
+      #   "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+      #   "setting": tune.grid_search(['multiv5']),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
     ]
 
   else:
