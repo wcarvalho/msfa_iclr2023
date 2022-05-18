@@ -610,7 +610,7 @@ class Slice2Task(SliceTask):
 
     @property
     def default_task_rep(self):
-        return 'slice x and y'
+        return 'slice x and slice y'
 
     def generate(self):
         objects_to_slice = self.get_options()['x']
@@ -666,7 +666,7 @@ class Slice2Task(SliceTask):
 class Toggle2Task(KitchenTask):
     @property
     def default_task_rep(self):
-        return 'Turnon x and y'
+        return 'turnon x and turnon y'
 
     def generate(self):
         
@@ -710,6 +710,41 @@ class Toggle2Task(KitchenTask):
         ActionsSubgoal(
           goto=self.toggle2, actions=['toggle']),
       ]
+
+class CleanAndSliceTask(KitchenTask):
+    """docstring for SliceTask"""
+    def __init__(self, *args, **kwargs):
+      self.clean_task = CleanTask(*args, **kwargs)
+      self.slice_task = SliceTask(*args, **kwargs)
+      super(CleanAndSliceTask, self).__init__(*args, **kwargs)
+
+    @property
+    def default_task_rep(self):
+        return f'clean x and slice y'
+
+    def generate(self):
+        self.clean_task.generate()
+        self.slice_task.generate()
+
+        instr =  self.task_rep.replace(
+          'x', self.clean_task.object_to_clean.name).replace(
+          'y', self.slice_task.object_to_slice.name)
+
+        return instr
+
+    @property
+    def num_navs(self): return 2
+
+    def check_status(self):
+        _, clean = self.clean_task.object_to_clean.check_status()
+        _, sliced = self.slice_task.object_to_slice.check_status()
+        
+        reward = done = clean and sliced
+
+        return reward, done
+
+    def subgoals(self):
+      return self.clean_task.subgoals()+self.slice_task.subgoals()
 
 # ======================================================
 # length = 3
