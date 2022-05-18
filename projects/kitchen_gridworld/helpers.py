@@ -119,7 +119,6 @@ def make_environment(evaluation: bool = False,
   if 'task_reps' in tasks:
     task_reps = tasks['task_reps']
 
-
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
 
