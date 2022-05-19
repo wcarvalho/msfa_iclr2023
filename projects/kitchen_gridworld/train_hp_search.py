@@ -28,25 +28,19 @@ flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_string('search', 'baselines', 'which search to use.')
 flags.DEFINE_string('spaces', 'brain_search', 'which search to use.')
 flags.DEFINE_float('num_gpus', 1, 'number of gpus per job. accepts fractions.')
-flags.DEFINE_float('num_cpus', 3, 'number of gpus per job. accepts fractions.')
-flags.DEFINE_float('actors', 5, 'number of gpus per job. accepts fractions.')
+flags.DEFINE_integer('num_cpus', 3, 'number of gpus per job. accepts fractions.')
+flags.DEFINE_integer('actors', 5, 'number of gpus per job. accepts fractions.')
 
 FLAGS = flags.FLAGS
 
 def main(_):
-
-  # total_cpus = mp.cpu_count()
-  # jobs = jax.devices()
-
-  # import ipdb; ipdb.set_trace()
-
   mp.set_start_method('spawn')
-  num_cpus = FLAGS.num_cpus
-  num_gpus = FLAGS.num_gpus
+  num_cpus = int(FLAGS.num_cpus)
+  num_gpus = float(FLAGS.num_gpus)
   DEFAULT_ENV_SETTING = 'SmallL2NoDist'
   DEFAULT_TASK_REPS='pickup'
   DEFAULT_ROOM_SIZE=6
-  DEFAULT_NUM_ACTORS = FLAGS.actors
+  DEFAULT_NUM_ACTORS = int(FLAGS.actors)
   DEFAULT_NUM_DISTS = 0
   name_kwargs=[]
 
@@ -201,4 +195,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-  app.run(main)
+  app.run(ma

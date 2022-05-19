@@ -1,13 +1,13 @@
 agent?=msf
-cuda?=2,3
+cuda?=0,1
 folder?='results/kitchen_grid/final'
 wandb?=True
 wandb_test?=False
 custom_loggers?=True
 date?=False
 gpus?=1
-cpus?=6
-actors?=6
+cpus?=4
+actors?=5
 project?='kitchen_grid3'
 env?='EasyPickup'
 task_reps?='pickup'
