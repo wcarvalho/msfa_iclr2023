@@ -313,7 +313,6 @@ def usfa(config, env_spec,
     raise RuntimeError("Is this a good default for sf_out_dim?? state features or task?? Task.")
 
 
-
   prediction_head=UsfaHead(
       num_actions=num_actions,
       state_dim=sf_out_dim,
@@ -332,8 +331,6 @@ def usfa(config, env_spec,
       )
 
   if use_separate_eval:
-    if task_embedding != "none":
-      raise NotImplementedError("No way to get tasks yet... would need environment to give tasks somehow...")
     evaluation_prep_fn=usfa_eval_prep_fn
     evaluation=prediction_head.evaluation
   else:
