@@ -177,8 +177,3 @@ def get(search):
     raise NotImplementedError(search)
 
   return space
-
-
-# -----------------------
-# 
-# -----------------------
