@@ -57,6 +57,7 @@ class R2D1Config(configs.R2D1Config):
   eval_network: bool = True
   vision_torso: str = 'atari'
   r2d1_loss: str = 'n_step_q_learning'
+  task_gate: str='none'
 
 @dataclasses.dataclass
 class NoiseConfig(R2D1Config):
@@ -160,7 +161,7 @@ class ModularUSFAConfig(USFAConfig):
   res_relu_gate: bool=True
   layernorm_rel: bool=False
 
-  task_gated: str='sigmoid'
+  task_gate: str='none'
   module_task_dim: int=4 # task dim per module
 
 
