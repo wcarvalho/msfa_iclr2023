@@ -162,7 +162,7 @@ class ModularUSFAConfig(USFAConfig):
   layernorm_rel: bool=False
 
   task_gate: str='none'
-  module_task_dim: int=4 # task dim per module
+  module_task_dim: int=0 # task dim per module. if 0, use lang_task_dim and divide by nmodules
 
 
 @dataclasses.dataclass

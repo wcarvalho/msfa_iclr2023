@@ -5,7 +5,9 @@ wandb?=True
 wandb_test?=False
 custom_loggers?=True
 date?=False
-num_gpus?=1
+gpus?=1
+cpus?=6
+actors?=6
 project?='kitchen_grid3'
 env?='EasyPickup'
 task_reps?='pickup'
@@ -56,7 +58,9 @@ train_search:
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/kitchen_gridworld/train_hp_search.py \
 	--folder $(folder) \
-	--num_gpus $(num_gpus) \
+	--num_gpus $(gpus) \
+	--num_cpus $(cpus) \
+	--actors $(actors) \
 	--wandb=$(wandb) \
 	--date=$(date) \
 	--wandb_project $(project) \
@@ -65,19 +69,19 @@ train_search:
 	--notes $(notes)
 
 
-train_search_rldl:
-	cd ../..; \
-	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/kitchen_gridworld/train_hp_search.py \
-	--spaces rldl_search \
-	--folder $(folder) \
-	--num_gpus $(num_gpus) \
-	--wandb=$(wandb) \
-	--date=$(date) \
-	--wandb_project $(project) \
-	--group $(group) \
-	--search $(search) \
-	--notes $(notes)
+# train_search_rldl:
+# 	cd ../..; \
+# 	CUDA_VISIBLE_DEVICES=$(cuda) \
+# 	python projects/kitchen_gridworld/train_hp_search.py \
+# 	--spaces rldl_search \
+# 	--folder $(folder) \
+# 	--num_gpus $(gpus) \
+# 	--wandb=$(wandb) \
+# 	--date=$(date) \
+# 	--wandb_project $(project) \
+# 	--group $(group) \
+# 	--search $(search) \
+# 	--notes $(notes)
 
 
 
@@ -95,6 +99,6 @@ mprof_train_search:
 	--group $(group) \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--num_gpus $(num_gpus) \
+	--num_gpus $(gpus) \
 	--search $(search) \
 	--notes $(notes)

@@ -386,18 +386,25 @@ def msf(
   # -----------------------
   # task related
   # -----------------------
+  if config.module_task_dim > 0:
+    lang_task_dim=config.module_task_dim*config.nmodules
+  else:
+    lang_task_dim=config.lang_task_dim
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(task_embedding, config,
-    lang_task_dim=config.module_task_dim*config.nmodules,
+    lang_task_dim=lang_task_dim,
     task_dim=task_dim)
-  if task_embedding == "language":
-    sf_out_dim = task_embedder.out_dim
-  elif task_embedding == "none":
-    sf_out_dim = env_spec.observations.observation.state_features.shape[0]
-    raise RuntimeError("Is this a good default for sf_out_dim?? state features or task?? Task.")
 
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn,
     replace_fn=replace_all_tasks_with_embedding)
+
+
+  if task_embedding == "language":
+    sf_out_dim = task_embedder.out_dim
+  elif task_embedding == "none":
+    sf_out_dim = task_dim
+    raise RuntimeError("check this")
+
   # -----------------------
   # USFA Head
   # -----------------------

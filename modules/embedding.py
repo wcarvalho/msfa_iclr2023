@@ -157,11 +157,17 @@ class LanguageTaskEmbedder(hk.Module):
 
     if self.gates is not None and self.gates > 0:
       gate = jax.nn.sigmoid(self.gate(task)) # [B, G]
-      task_proj = jnp.stack(jnp.split(task_proj, self.gates, axis=-1), axis=1) # [B, G, D/G]
+
+      # [B, D] --> [B, G, D/G]
+      task_proj = jnp.stack(jnp.split(task_proj, self.gates, axis=-1), axis=1) 
+
+      # [B, G]
       if self.gate_type == 'sample':
         gate = st_bernoulli(gate, key=hk.next_rng_key())
       elif self.gate_type == 'round':
         gate = st_round(gate)
+
+      # [B, G, D/G] * [B, G, 1]
       task_proj = jax.nn.tanh(task_proj)*jnp.expand_dims(gate, 2)
       task_proj = task_proj.reshape(B, -1)
 
