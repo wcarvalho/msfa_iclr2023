@@ -1,5 +1,5 @@
-check?=0
-check_end?=25
+step?=0
+check?=25
 missions?=50
 roomsize?=7
 dists?=0
@@ -15,8 +15,8 @@ export TF_FORCE_GPU_ALLOW_GROWTH=true
 
 sample_kitchen:
 	python envs/babyai_kitchen/sample_kitchen_episodes.py \
-	--check $(check) \
-	--check-end $(check_end) \
+	--check $(step) \
+	--check-end $(check) \
 	--missions $(missions) \
 	--room-size $(roomsize) \
 	--num-distractors $(dists) \
@@ -24,8 +24,8 @@ sample_kitchen:
 
 sample_kitchen_pdb:
 	python -m ipdb -c continue envs/babyai_kitchen/sample_kitchen_episodes.py \
-	--check $(check) \
-	--check-end $(check_end) \
+	--check $(step) \
+	--check-end $(check) \
 	--missions $(missions) \
 	--room-size $(roomsize) \
 	--num-distractors $(dists) \

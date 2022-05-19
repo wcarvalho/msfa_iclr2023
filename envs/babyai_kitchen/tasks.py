@@ -794,6 +794,49 @@ class CleanAndSliceTask(KitchenTask):
     subgoals = self.clean_task.subgoals()+self.slice_task.subgoals()
     return subgoals
 
+class Clean2Task(KitchenTask):
+  """docstring for CleanTask"""
+  def __init__(self, *args, **kwargs):
+
+    self.clean_task = CleanTask(*args, **kwargs)
+    self.clean_task2 = CleanTask(*args, **kwargs)
+    super(Clean2Task, self).__init__(*args, **kwargs)
+
+  @property
+  def task_name(self): return 'clean2'
+
+  @property
+  def default_task_rep(self):
+    part1 = self.clean_task.default_task_rep()
+    part2 = self.clean_task2.default_task_rep().replace("x", "y")
+    return f"{part1} and {part2}"
+
+  def generate(self, exclude=[]):
+    clean_instr = self.clean_task.generate()
+    clean2_instr = self.clean_task2.generate(
+      exclude=self.clean_task.task_types)
+
+    self._task_objects = self.clean_task.task_objects + [
+          self.clean_task2.object_to_clean]
+    instr =  f"{clean_instr} and {clean2_instr}"
+
+    return instr
+
+  @property
+  def num_navs(self): return 2
+
+  def check_status(self):
+    _, clean = self.clean_task.check_status()
+    _, clean2 = self.clean_task2.check_status()
+    
+    reward = done = clean and clean2
+
+    return reward, done
+
+  def subgoals(self):
+    subgoals = self.clean_task.subgoals()+self.clean_task2.subgoals()
+    return subgoals
+
 class ToggleAndSliceTask(KitchenTask):
   """docstring for SliceTask"""
   def __init__(self, *args, **kwargs):
@@ -832,6 +875,47 @@ class ToggleAndSliceTask(KitchenTask):
 
   def subgoals(self):
     subgoals = self.toggle_task.subgoals()+self.slice_task.subgoals()
+    return subgoals
+
+class ToggleAndPickupTask(KitchenTask):
+  """docstring for PickupTask"""
+  def __init__(self, *args, **kwargs):
+    self.toggle_task = ToggleTask(*args, **kwargs)
+    self.pickup_task = PickupTask(*args, **kwargs)
+    super(ToggleAndPickupTask, self).__init__(*args, **kwargs)
+
+  @property
+  def task_name(self): return 'toggle_and_pickup'
+
+  @property
+  def default_task_rep(self):
+    part1 = self.toggle_task.default_task_rep()
+    part2 = self.pickup_task.default_task_rep().replace("x", "y")
+    return f"{part1} and {part2}"
+
+  def generate(self, exclude=[]):
+    pickup_instr = self.pickup_task.generate()
+    toggle_instr = self.toggle_task.generate(exclude=self.pickup_task.task_types)
+
+    self._task_objects = self.toggle_task.task_objects + \
+      self.pickup_task.task_objects
+    instr =  f"{toggle_instr} and {pickup_instr}"
+
+    return instr
+
+  @property
+  def num_navs(self): return 2
+
+  def check_status(self):
+    _, toggled = self.toggle_task.check_status()
+    _, pickupd = self.pickup_task.check_status()
+    
+    reward = done = toggled and pickupd
+
+    return reward, done
+
+  def subgoals(self):
+    subgoals = self.toggle_task.subgoals()+self.pickup_task.subgoals()
     return subgoals
 
 class CleanAndToggleTask(KitchenTask):
@@ -1097,11 +1181,13 @@ def all_tasks():
     slice=SliceTask,
     chill=ChillTask,
     slice2=Slice2Task,
+    clean2=Clean2Task,
+    toggle2=Toggle2Task,
     clean_and_slice=CleanAndSliceTask,
     clean_and_toggle=CleanAndToggleTask,
     toggle_and_slice=ToggleAndSliceTask,
+    toggle_and_pickup=ToggleAndPickupTask,
     clean_and_slice_and_toggle=CleanAndSliceAndToggleTask,
-    toggle2=Toggle2Task,
     pickup_cleaned=PickupCleanedTask,
     pickup_sliced=PickupSlicedTask,
     pickup_chilled=PickupChilledTask,
