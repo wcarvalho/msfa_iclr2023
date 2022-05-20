@@ -106,3 +106,51 @@ class CumulantRewardLoss:
       final_error = final_error + w_l1
 
     return final_error, metrics
+
+
+
+class CumulantCovLoss:
+  """"""
+  def __init__(self, coeff: float, blocks: int=None, loss: bool=False):
+    self.coeff = coeff
+    self.blocks = blocks
+    self.loss = loss.lower()
+    assert self.loss in ['mean', 'l1', 'l2']
+
+  def __call__(self, data, online_preds, **kwargs):
+    cumulants = online_preds.cumulants  # predicted  [T, B, D]
+
+    # -----------------------
+    # setup
+    # -----------------------
+    dim = cumulants.shape[-1]
+    block_size = dim//self.blocks
+    assert dim % self.blocks == 0
+    identity = jnp.identity(block_size).astype(cumulants.dtype)
+    block_id = jax.scipy.linalg.block_diag(*[identity for _ in range(self.blocks)])
+
+    # -----------------------
+    # compute
+    # -----------------------
+    def cov_diag(x: jnp.ndarray, block_id):
+      cov = jnp.cov(x, rowvar=False) # [D, D]
+      cov_off = (cov - block_id)
+      cov_on = (cov*block_id)
+      return cov, cov_off, cov_on
+
+    cov, cov_off, cov_on = jax.vmap(cov_diag, in_axes=(1, None), out_axes=0)(cumulants, block_id)
+
+    cov_off_mean = cov_off.mean()
+    cov_on_mean = cov_on.mean()
+    metrics = dict(
+      cov_off=cov_off_mean,
+      cov_on=cov_on_mean)
+
+    if self.loss == "mean":
+      loss = cov_off_mean
+    elif self.loss == "l1":
+      loss = jnp.linalg.norm(cov_off, ord=1, axis=(1,2)).mean()
+    elif self.loss == "l2":
+      loss = jnp.linalg.norm(cov_off, ord=2, axis=(1,2)).mean()
+
+    return loss*self.coeff, metrics

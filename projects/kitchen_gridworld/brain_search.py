@@ -166,7 +166,46 @@ def get(search):
       # {
       #   "seed": tune.grid_search([1]),
       #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['genv1', 'multiv5']),
+      #   "setting": tune.grid_search(['genv2', 'multiv5']),
+      #   "w_l1_coeff": tune.grid_search([0.0]),
+      #   "task_gate": tune.grid_search(['none']),
+      #   "lang_task_dim": tune.grid_search([16]),
+      # },
+    ]
+
+  elif search == 'cov':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['multiv6']),
+        "cov_coeff": tune.grid_search([1e-1, 1e-2, 1e-3]),
+        "cov_loss": tune.grid_search(['l1', 'l2']),
+        "nmodules": tune.grid_search([6]),
+        "lang_task_dim": tune.grid_search([24]),
+      },
+      # { # 2
+      #   "seed": tune.grid_search([1,2]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['multiv6']),
+      #   "cov_coeff": tune.grid_search([0]),
+      #   "nmodules": tune.grid_search([6]),
+      #   "lang_task_dim": tune.grid_search([24]),
+      # },
+      # { # 4
+      #   "seed": tune.grid_search([1,2]),
+      #   "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+      #   "setting": tune.grid_search(['multiv6']),
+      #   "lang_task_dim": tune.grid_search([24]),
+      # },
+
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['genv2', 'multiv5']),
       #   "w_l1_coeff": tune.grid_search([0.0]),
       #   "task_gate": tune.grid_search(['none']),
       #   "lang_task_dim": tune.grid_search([16]),
