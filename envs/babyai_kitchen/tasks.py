@@ -123,8 +123,7 @@ class KitchenTask(Instr):
 class PickupTask(KitchenTask):
 
   @property
-  def default_task_rep(self):
-    return 'pickup x'
+  def default_task_rep(self): return 'pickup x'
 
   @property
   def task_name(self):
@@ -258,8 +257,7 @@ class CleanTask(KitchenTask):
   def task_name(self): return 'clean'
 
   @property
-  def default_task_rep(self):
-    return 'clean x'
+  def default_task_rep(self): return 'clean x'
 
   def generate(self, exclude=[]):
     x_options = self.argument_options.get('x', [])
@@ -304,8 +302,7 @@ class SliceTask(KitchenTask):
   def task_name(self): return 'slice'
 
   @property
-  def default_task_rep(self):
-    return 'slice x'
+  def default_task_rep(self): return 'slice x'
 
   def get_options(self, exclude=[]):
     x_options = self.argument_options.get('x', [])
@@ -358,8 +355,7 @@ class ChillTask(KitchenTask):
   def task_name(self): return 'chill'
 
   @property
-  def default_task_rep(self):
-    return 'chill x'
+  def default_task_rep(self): return 'chill x'
 
   def generate(self, exclude=[]):
     self.fridge = self.env.objects_by_type(['fridge'])[0]
@@ -408,8 +404,7 @@ class PickupCleanedTask(CleanTask):
   def task_name(self): return 'pickup_cleaned'
 
   @property
-  def default_task_rep(self):
-    return 'pickup cleaned x'
+  def default_task_rep(self): return 'pickup cleaned x'
 
   def check_status(self):
     if self.env.carrying:
@@ -435,8 +430,7 @@ class PickupSlicedTask(SliceTask):
   @property
   def task_name(self): return 'pickup_sliced'
   @property
-  def default_task_rep(self):
-    return 'pickup sliced x'
+  def default_task_rep(self): return 'pickup sliced x'
 
   @property
   def num_navs(self): return 2
@@ -467,8 +461,7 @@ class PickupChilledTask(ChillTask):
   @property
   def task_name(self): return 'pickup_chilled'
   @property
-  def default_task_rep(self):
-    return 'pickup chilled x'
+  def default_task_rep(self): return 'pickup chilled x'
 
   @property
   def num_navs(self): return 2
@@ -497,8 +490,7 @@ class PickupHeatedTask(HeatTask):
   @property
   def task_name(self): return 'pickup_heated'
   @property
-  def default_task_rep(self):
-    return 'pickup heated x'
+  def default_task_rep(self): return 'pickup heated x'
 
   @property
   def num_navs(self): return 2
@@ -526,8 +518,7 @@ class PlaceTask(KitchenTask):
   @property
   def task_name(self): return 'place'
   @property
-  def default_task_rep(self):
-    return 'place x on y'
+  def default_task_rep(self): return 'place x on y'
 
   def generate(self, exclude=[]):
     if exclude:
@@ -624,8 +615,7 @@ class PickupPlacedTask(KitchenTask):
   @property
   def task_name(self): return 'pickup_placed'
   @property
-  def default_task_rep(self):
-    return 'pickup x on y'
+  def default_task_rep(self): return 'pickup x on y'
 
   def check_status(self):
     placed, placed = super().__check_status(self)
@@ -647,8 +637,7 @@ class Slice2Task(SliceTask):
   @property
   def task_name(self): return 'slice2'
   @property
-  def default_task_rep(self):
-    return 'slice x and slice y'
+  def default_task_rep(self): return 'slice x and y'
 
   def generate(self, exclude=[]):
     objects_to_slice = self.get_options(exclude)['x']
@@ -704,8 +693,7 @@ class Toggle2Task(KitchenTask):
   @property
   def task_name(self): return 'toggle2'
   @property
-  def default_task_rep(self):
-    return 'turnon x and turnon y'
+  def default_task_rep(self): return 'turnon x and y'
 
   def generate(self, exclude=[]):
     
@@ -967,8 +955,7 @@ class CookTask(KitchenTask):
   @property
   def task_name(self): return 'cook'
   @property
-  def default_task_rep(self):
-    return 'cook x with y'
+  def default_task_rep(self): return 'cook x with y'
 
   def generate(self, exclude=[]):
     x_options = self.argument_options.get('x', [])
@@ -1061,8 +1048,7 @@ class PlaceSlicedTask(SliceTask):
   @property
   def task_name(self): return 'place_sliced'
   @property
-  def default_task_rep(self):
-    return 'place sliced x on y'
+  def default_task_rep(self): return 'place sliced x on y'
 
   def generate(self, exclude=[]):
     # -----------------------
