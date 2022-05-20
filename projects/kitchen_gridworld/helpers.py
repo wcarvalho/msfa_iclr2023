@@ -187,6 +187,14 @@ def msf(config, env_spec, use_separate_eval=True, predict_cumulants=True, learn_
         reward_bias=config.step_penalty,
         nmodules=nmodules))
 
+  cov_coeff = getattr(config, 'cov_coeff', 0.0)
+
+  aux_tasks.append(
+    cumulants.CumulantCovLoss(
+      coeff=cov_coeff,
+      blocks=config.nmodules,
+      loss=config.cov_loss))
+
   if learn_model:
     if config.contrast_module_coeff > 0:
       aux_tasks.append(
