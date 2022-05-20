@@ -173,6 +173,17 @@ def get(search):
       # },
     ]
 
+  elif search == 'gen2':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1, 2, 3]),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+        "setting": tune.grid_search(['genv2']),
+      },
+    ]
   else:
     raise NotImplementedError(search)
 
