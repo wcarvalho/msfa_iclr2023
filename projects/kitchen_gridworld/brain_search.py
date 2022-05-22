@@ -181,12 +181,22 @@ def get(search):
       { # 6
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['multiv6']),
-        "cov_coeff": tune.grid_search([1e-1, 1e-2, 1e-3]),
-        "cov_loss": tune.grid_search(['l1', 'l2']),
-        "nmodules": tune.grid_search([6]),
-        "lang_task_dim": tune.grid_search([24]),
+        "setting": tune.grid_search(['genv2']),
+        "cov_coeff": tune.grid_search([100, 10, 1, .1]),
+        "reward_coeff": tune.grid_search([50.0]),
+        "cov_loss": tune.grid_search(['l1']),
+        "nmodules": tune.grid_search([4]),
+        "lang_task_dim": tune.grid_search([16]),
       },
+      # { # 6
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['genv2']),
+      #   "cov_coeff": tune.grid_search([0]),
+      #   "nmodules": tune.grid_search([4, 6]),
+      #   "module_task_dim": tune.grid_search([4]),
+      # },
+
       # { # 2
       #   "seed": tune.grid_search([1,2]),
       #   "agent": tune.grid_search(['msf']),
@@ -212,6 +222,27 @@ def get(search):
       # },
     ]
 
+  elif search == 'reward_usfa':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['usfa_lstm']),
+        "setting": tune.grid_search(['multiv5']),
+        "reward_coeff": tune.grid_search([100, 50, 10, 1]),
+        "lang_task_dim": tune.grid_search([16]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+      # {
+      #   "seed": tune.grid_search([1, 2, 3]),
+      #   "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+      #   "setting": tune.grid_search(['multiv5']),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
+    ]
+ 
   else:
     raise NotImplementedError(search)
 

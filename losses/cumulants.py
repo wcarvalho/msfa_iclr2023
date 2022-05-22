@@ -28,6 +28,8 @@ class CumulantRewardLoss:
   def __call__(self, data, online_preds, key, **kwargs):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
     task = online_preds.w  # ground-truth  [T, B, D]
+    not_done = data.discount[:-1]  # predicted  [T, B, D]
+    cumulants = cumulants*jnp.expand_dims(not_done, axis=2)
 
     rewards = data.reward  # ground-truth  [T, B]
     if self.reward_bias:
@@ -45,16 +47,21 @@ class CumulantRewardLoss:
     elif self.loss == 'binary':
       error = -distrax.Bernoulli(logits=reward_pred).log_prob(rewards)
 
+    not_done = not_done.reshape(-1)
+    error = error.reshape(-1)
+    error = error*not_done
 
     if self.balance > 0:
       # flatten
       raw_final_error = error.mean()
-      error = error.reshape(-1)
       nonzero = (rewards != 0).reshape(-1)
       nonzero = nonzero.astype(jnp.float32)
 
       # get all that have 0 reward and 
       zero = (jnp.abs(rewards) < 1e-5).reshape(-1)
+
+      valid = not_done > 0
+      zero = jnp.logical_and(zero, valid)
       probs = zero.astype(jnp.float32)*self.balance
       keep_zero = distrax.Independent(
         distrax.Bernoulli(probs=probs)).sample(seed=key)
@@ -119,6 +126,8 @@ class CumulantCovLoss:
 
   def __call__(self, data, online_preds, **kwargs):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
+    not_done = data.discount[:-1]  # predicted  [T, B, D]
+    cumulants = cumulants*jnp.expand_dims(not_done, axis=2)
 
     # -----------------------
     # setup
@@ -126,25 +135,33 @@ class CumulantCovLoss:
     dim = cumulants.shape[-1]
     block_size = dim//self.blocks
     assert dim % self.blocks == 0
-    identity = jnp.identity(block_size).astype(cumulants.dtype)
-    block_id = jax.scipy.linalg.block_diag(*[identity for _ in range(self.blocks)])
+    ones = jnp.ones((block_size, block_size)).astype(cumulants.dtype)
+    block_id = jax.scipy.linalg.block_diag(*[ones for _ in range(self.blocks)])
 
     # -----------------------
     # compute
     # -----------------------
-    def cov_diag(x: jnp.ndarray, block_id):
+    def cov_diag(x: jnp.ndarray,
+      block_id: jnp.ndarray):
+      """Summary
+      
+      Args:
+          x (jnp.ndarray): T x D
+          weights (jnp.ndarray): T x D
+          block_id (jnp.ndarray): D x D
+      
+      Returns:
+          TYPE: Description
+      """
       cov = jnp.cov(x, rowvar=False) # [D, D]
-      cov_off = (cov - block_id)
-      cov_on = (cov*block_id)
+      cov_on = cov*block_id
+      cov_off = cov - cov_on
       return cov, cov_off, cov_on
 
     cov, cov_off, cov_on = jax.vmap(cov_diag, in_axes=(1, None), out_axes=0)(cumulants, block_id)
 
     cov_off_mean = cov_off.mean()
     cov_on_mean = cov_on.mean()
-    metrics = dict(
-      cov_off=cov_off_mean,
-      cov_on=cov_on_mean)
 
     if self.loss == "mean":
       loss = cov_off_mean
@@ -152,5 +169,11 @@ class CumulantCovLoss:
       loss = jnp.linalg.norm(cov_off, ord=1, axis=(1,2)).mean()
     elif self.loss == "l2":
       loss = jnp.linalg.norm(cov_off, ord=2, axis=(1,2)).mean()
+
+    metrics = {
+      f'loss_cov_{self.loss}': loss,
+      "cov" : cov.mean(),
+      "cov_off" : cov_off_mean,
+      "cov_on" :cov_on_mean,}
 
     return loss*self.coeff, metrics

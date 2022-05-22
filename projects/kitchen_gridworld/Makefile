@@ -14,6 +14,7 @@ task_reps?='pickup'
 group?=''
 notes?=''
 distributed?='False'
+nojit?=0
 
 
 
@@ -22,6 +23,7 @@ export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
 
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export TF_FORCE_GPU_ALLOW_GROWTH=true
+export JAX_DISABLE_JIT=$(nojit)
 
 git_minor_pull:
 	git add -u; git commit -m "updates"; git pull

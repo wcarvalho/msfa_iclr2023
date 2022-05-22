@@ -207,8 +207,7 @@ class ToggleTask(KitchenTask):
 
 class HeatTask(KitchenTask):
   @property
-  def default_task_rep(self):
-      return 'heat x'
+  def default_task_rep(self): return 'heat x'
 
   @property
   def task_name(self): return 'heat'
@@ -404,7 +403,7 @@ class PickupCleanedTask(CleanTask):
   def task_name(self): return 'pickup_cleaned'
 
   @property
-  def default_task_rep(self): return 'pickup cleaned x'
+  def default_task_rep(self): return 'cleaned x'
 
   def check_status(self):
     if self.env.carrying:
@@ -430,7 +429,7 @@ class PickupSlicedTask(SliceTask):
   @property
   def task_name(self): return 'pickup_sliced'
   @property
-  def default_task_rep(self): return 'pickup sliced x'
+  def default_task_rep(self): return 'sliced x'
 
   @property
   def num_navs(self): return 2
@@ -490,7 +489,7 @@ class PickupHeatedTask(HeatTask):
   @property
   def task_name(self): return 'pickup_heated'
   @property
-  def default_task_rep(self): return 'pickup heated x'
+  def default_task_rep(self): return 'heated x'
 
   @property
   def num_navs(self): return 2
