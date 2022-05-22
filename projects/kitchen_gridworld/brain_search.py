@@ -178,24 +178,24 @@ def get(search):
     Next:
     """
     space = [
-      { # 6
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['genv2']),
-        "cov_coeff": tune.grid_search([100, 10, 1, .1]),
-        "reward_coeff": tune.grid_search([50.0]),
-        "cov_loss": tune.grid_search(['l1']),
-        "nmodules": tune.grid_search([4]),
-        "lang_task_dim": tune.grid_search([16]),
-      },
       # { # 6
       #   "seed": tune.grid_search([1]),
       #   "agent": tune.grid_search(['msf']),
       #   "setting": tune.grid_search(['genv2']),
-      #   "cov_coeff": tune.grid_search([0]),
-      #   "nmodules": tune.grid_search([4, 6]),
-      #   "module_task_dim": tune.grid_search([4]),
+      #   "cov_coeff": tune.grid_search([100, 10, 1, .1]),
+      #   "reward_coeff": tune.grid_search([50.0]),
+      #   "cov_loss": tune.grid_search(['l2']),
+      #   "nmodules": tune.grid_search([4]),
+      #   "lang_task_dim": tune.grid_search([16]),
       # },
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['genv2']),
+        "cov_coeff": tune.grid_search([0]),
+        "nmodules": tune.grid_search([4, 6]),
+        "module_task_dim": tune.grid_search([4]),
+      },
 
       # { # 2
       #   "seed": tune.grid_search([1,2]),
@@ -220,6 +220,21 @@ def get(search):
       #   "task_gate": tune.grid_search(['none']),
       #   "lang_task_dim": tune.grid_search([16]),
       # },
+    ]
+
+  elif search == 'mods':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['genv2']),
+        "cov_coeff": tune.grid_search([0]),
+        "nmodules": tune.grid_search([4, 6]),
+        "module_task_dim": tune.grid_search([4]),
+      },
     ]
 
   elif search == 'reward_usfa':

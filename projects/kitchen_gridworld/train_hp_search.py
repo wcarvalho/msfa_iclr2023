@@ -38,7 +38,7 @@ def main(_):
   num_cpus = int(FLAGS.num_cpus)
   num_gpus = float(FLAGS.num_gpus)
   DEFAULT_ENV_SETTING = 'SmallL2NoDist'
-  DEFAULT_TASK_REPS='pickup'
+  DEFAULT_TASK_REPS='lesslang'
   DEFAULT_ROOM_SIZE=6
   DEFAULT_NUM_ACTORS = int(FLAGS.actors)
   DEFAULT_NUM_DISTS = 0
