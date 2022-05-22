@@ -309,8 +309,7 @@ def usfa(config, env_spec,
   if task_embedding == "language":
     sf_out_dim = task_embedder.out_dim
   elif task_embedding == "none":
-    sf_out_dim = env_spec.observations.observation.task.shape[0]
-    raise RuntimeError("Is this a good default for sf_out_dim?? state features or task?? Task.")
+    sf_out_dim = task_dim
 
 
   prediction_head=UsfaHead(

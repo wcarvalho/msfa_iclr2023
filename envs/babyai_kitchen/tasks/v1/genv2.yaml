@@ -53,10 +53,6 @@ train:
 
 test:
 
-  - name: toggle_and_pickup # length 2
-    task_kinds: toggle_and_pickup
-    num_dists: 0
-
   - name: toggle_and_slice # length 3
     task_kinds: toggle_and_slice
     num_dists: 0
