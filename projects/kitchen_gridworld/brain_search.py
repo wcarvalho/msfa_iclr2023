@@ -178,15 +178,15 @@ def get(search):
     Next:
     """
     space = [
-      { # 6
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['multiv6']),
-        "cov_coeff": tune.grid_search([1e-1, 1e-2, 1e-3]),
-        "cov_loss": tune.grid_search(['l1', 'l2']),
-        "nmodules": tune.grid_search([6]),
-        "lang_task_dim": tune.grid_search([24]),
-      },
+      # { # 6
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['multiv6']),
+      #   "cov_coeff": tune.grid_search([1e-1, 1e-2, 1e-3]),
+      #   "cov_loss": tune.grid_search(['l1', 'l2']),
+      #   "nmodules": tune.grid_search([6]),
+      #   "lang_task_dim": tune.grid_search([24]),
+      # },
       # { # 2
       #   "seed": tune.grid_search([1,2]),
       #   "agent": tune.grid_search(['msf']),
@@ -195,12 +195,12 @@ def get(search):
       #   "nmodules": tune.grid_search([6]),
       #   "lang_task_dim": tune.grid_search([24]),
       # },
-      # { # 4
-      #   "seed": tune.grid_search([1,2]),
-      #   "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
-      #   "setting": tune.grid_search(['multiv6']),
-      #   "lang_task_dim": tune.grid_search([24]),
-      # },
+      { # 4
+        "seed": tune.grid_search([1,2]),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+        "setting": tune.grid_search(['multiv6']),
+        "lang_task_dim": tune.grid_search([24]),
+      },
 
       # {
       #   "seed": tune.grid_search([1]),
@@ -212,17 +212,6 @@ def get(search):
       # },
     ]
 
-  elif search == 'gen2':
-    """
-    Next:
-    """
-    space = [
-      {
-        "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
-        "setting": tune.grid_search(['genv2']),
-      },
-    ]
   else:
     raise NotImplementedError(search)
 
