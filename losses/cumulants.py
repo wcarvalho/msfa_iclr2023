@@ -118,7 +118,7 @@ class CumulantRewardLoss:
 
 class CumulantCovLoss:
   """"""
-  def __init__(self, coeff: float, blocks: int=None, loss: str='l1'):
+  def __init__(self, coeff: float, blocks: int=None, loss: str='l1_cov'):
     self.coeff = coeff
     assert coeff >= 0.0
     self.blocks = blocks
@@ -136,7 +136,6 @@ class CumulantCovLoss:
     dim = cumulants.shape[-1]
     if self.blocks == 0:
       block_id = jnp.identity(dim).astype(cumulants.dtype)
-      import ipdb; ipdb.set_trace()
     else:
       block_size = dim//self.blocks
       assert dim % self.blocks == 0
