@@ -94,6 +94,7 @@ def make_environment(evaluation: bool = False,
       tasks_file="envs/babyai_kitchen/tasks/unseen_arg/Clean_Cook_Slice.yaml",
       )
     )
+
   if setting in settings:
     settings=settings[setting]
     tasks_file = settings['tasks_file']
@@ -118,6 +119,8 @@ def make_environment(evaluation: bool = False,
 
   if 'task_reps' in tasks:
     task_reps = tasks['task_reps']
+  else:
+    import ipdb; ipdb.set_trace()
 
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
@@ -140,16 +143,26 @@ def make_environment(evaluation: bool = False,
   # wrappers for dm_env: used by agent/replay buffer
   wrapper_list = [
     functools.partial(ObservationRemapWrapper,
-        remap=dict(mission='task')),
-    functools.partial(TrainTasksWrapper,
-        instr_preproc=instr_preproc,
-        max_length=max_text_length,
-        task_reps=task_reps,
-        train_tasks=[t['task_kinds'] for t in train_task_dicts],
-      ),
+        remap=dict(mission='task'))]
+
+  if separate_eval:
+    wrapper_list.append(
+      functools.partial(TrainTasksWrapper,
+          instr_preproc=instr_preproc,
+          max_length=max_text_length,
+          task_reps=task_reps,
+          train_tasks=[t['task_kinds'] for t in train_task_dicts],
+        ),
+      )
+    import ipdb; ipdb.set_trace()
+  else:
+    import ipdb; ipdb.set_trace()
+  wrapper_list += [
     wrappers.ObservationActionRewardWrapper,
     wrappers.SinglePrecisionWrapper,
   ]
+
+
 
   return wrappers.wrap_all(env, wrapper_list)
 
@@ -288,6 +301,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
           balance=config.balance_reward,
           reward_bias=config.step_penalty,
           ),
+        cumulants.CumulantCovLoss(coeff=0.0, blocks=0.0) # get stats
       ])
 
     loss_label = 'usfa'
