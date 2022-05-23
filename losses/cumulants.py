@@ -28,8 +28,7 @@ class CumulantRewardLoss:
   def __call__(self, data, online_preds, key, **kwargs):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
     task = online_preds.w  # ground-truth  [T, B, D]
-    not_done = data.discount[:-1]  # predicted  [T, B, D]
-    cumulants = cumulants*jnp.expand_dims(not_done, axis=2)
+    not_done = data.discount  # predicted  [T, B, D]
 
     rewards = data.reward  # ground-truth  [T, B]
     if self.reward_bias:
@@ -39,7 +38,9 @@ class CumulantRewardLoss:
       shape = cumulants.shape[0]
       task = task[:shape]
       rewards = rewards[:shape]
+      not_done = not_done[:shape]
 
+    cumulants = cumulants*jnp.expand_dims(not_done, axis=2)
 
     reward_pred = jnp.sum(cumulants*task, -1)  # dot product  [T, B]
     if self.loss == 'l2':
@@ -57,11 +58,11 @@ class CumulantRewardLoss:
       nonzero = (rewards != 0).reshape(-1)
       nonzero = nonzero.astype(jnp.float32)
 
-      # get all that have 0 reward and 
+      # get all that have 0 reward
       zero = (jnp.abs(rewards) < 1e-5).reshape(-1)
 
-      valid = not_done > 0
-      zero = jnp.logical_and(zero, valid)
+      # valid = not_done > 0
+      # zero = jnp.logical_and(zero, valid)
       probs = zero.astype(jnp.float32)*self.balance
       keep_zero = distrax.Independent(
         distrax.Bernoulli(probs=probs)).sample(seed=key)
@@ -118,8 +119,9 @@ class CumulantRewardLoss:
 
 class CumulantCovLoss:
   """"""
-  def __init__(self, coeff: float, blocks: int=None, loss: bool=False):
+  def __init__(self, coeff: float, blocks: int=None, loss: str='mean'):
     self.coeff = coeff
+    assert coeff >= 0.0
     self.blocks = blocks
     self.loss = loss.lower()
     assert self.loss in ['mean', 'l1', 'l2']
@@ -133,10 +135,15 @@ class CumulantCovLoss:
     # setup
     # -----------------------
     dim = cumulants.shape[-1]
-    block_size = dim//self.blocks
-    assert dim % self.blocks == 0
-    ones = jnp.ones((block_size, block_size)).astype(cumulants.dtype)
-    block_id = jax.scipy.linalg.block_diag(*[ones for _ in range(self.blocks)])
+    if self.blocks == 0:
+      block_id = jnp.identity(dim).astype(cumulants.dtype)
+      import ipdb; ipdb.set_trace()
+    else:
+      block_size = dim//self.blocks
+      assert dim % self.blocks == 0
+      ones = jnp.ones((block_size, block_size)).astype(cumulants.dtype)
+      block_id = jax.scipy.linalg.block_diag(*[ones for _ in range(self.blocks)])
+
 
     # -----------------------
     # compute
@@ -156,30 +163,45 @@ class CumulantCovLoss:
       cov = jnp.cov(x, rowvar=False) # [D, D]
       cov_on = cov*block_id
       cov_off = cov - cov_on
-      return cov, cov_off, cov_on
+      corr = jnp.corrcoeff(x, rowvar=False)
+      corr_on = corr*block_id
+      corr_off = corr - cov_on
+      return cov, cov_off, cov_on, corr, corr_on, corr_off
 
-    cov, cov_off, cov_on = jax.vmap(cov_diag, in_axes=(1, None), out_axes=0)(cumulants, block_id)
+    cov, cov_off, cov_on, corr, corr_on, corr_off = jax.vmap(cov_diag, in_axes=(1, None), out_axes=0)(cumulants, block_id)
 
     cov_off_mean = cov_off.mean()
     cov_on_mean = cov_on.mean()
-
-    if self.loss == "mean":
-      loss = cov_off_mean
-    elif self.loss == "l1":
-      loss = jnp.linalg.norm(cov_off, ord=1, axis=(1,2)).mean()
-    elif self.loss == "l2":
-      loss = jnp.linalg.norm(cov_off, ord=2, axis=(1,2)).mean()
+    corr_off_mean = corr_off.mean()
+    corr_on_mean = corr_on.mean()
 
     if self.coeff > 0.0:
+      if self.loss == "mean":
+        loss = cov_off_mean
+      elif self.loss == "l1":
+        loss = jnp.linalg.norm(cov_off, ord=1, axis=(1,2)).mean()
+      elif self.loss == "l2":
+        loss = jnp.linalg.norm(cov_off, ord=2, axis=(1,2)).mean()
+
       metrics = {
         f'loss_cov_{self.loss}': loss,
         "cov" : cov.mean(),
+        "cov_on" :cov_on_mean,
         "cov_off" : cov_off_mean,
-        "cov_on" :cov_on_mean}
+        "corr_on" :corr_on_mean,
+        "corr_off" : corr_off_mean,
+        }
+      final_loss = loss*self.coeff
+
     else:
       metrics = {
         "cov" : cov.mean(),
+        "cov_on" :cov_on_mean,
         "cov_off" : cov_off_mean,
-        "cov_on" :cov_on_mean}
+        "corr_on" :corr_on_mean,
+        "corr_off" : corr_off_mean,
+      }
+      final_loss = 0.0
 
-    return loss*self.coeff, metrics
+    import ipdb; ipdb.set_trace()
+    return final_loss, metrics
