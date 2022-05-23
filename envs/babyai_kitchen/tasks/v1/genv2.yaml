@@ -3,10 +3,6 @@ train:
   # -----------------------
   # clean
   # -----------------------
-  - name: pickup
-    task_kinds: pickup
-    num_dists: 0
-
   - name: toggle
     task_kinds: toggle
     num_dists: 0

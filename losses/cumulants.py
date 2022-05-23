@@ -170,10 +170,16 @@ class CumulantCovLoss:
     elif self.loss == "l2":
       loss = jnp.linalg.norm(cov_off, ord=2, axis=(1,2)).mean()
 
-    metrics = {
-      f'loss_cov_{self.loss}': loss,
-      "cov" : cov.mean(),
-      "cov_off" : cov_off_mean,
-      "cov_on" :cov_on_mean,}
+    if self.coeff > 0.0:
+      metrics = {
+        f'loss_cov_{self.loss}': loss,
+        "cov" : cov.mean(),
+        "cov_off" : cov_off_mean,
+        "cov_on" :cov_on_mean}
+    else:
+      metrics = {
+        "cov" : cov.mean(),
+        "cov_off" : cov_off_mean,
+        "cov_on" :cov_on_mean}
 
     return loss*self.coeff, metrics
