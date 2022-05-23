@@ -214,7 +214,7 @@ def get(search):
     space = [
       { # 6
         "seed": tune.grid_search([1,2]),
-        "agent": tune.grid_search(['r2d1']),
+        "agent": tune.grid_search(['usfa_lstm']),
         "setting": tune.grid_search(['genv3']),
       },
     ]
