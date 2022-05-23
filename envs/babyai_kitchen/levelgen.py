@@ -1,7 +1,7 @@
 import numpy as np
 import collections
 from gym import spaces
-
+from pprint import pprint
 
 from gym_minigrid.minigrid import Grid, WorldObj
 from babyai.levels.levelgen import RoomGridLevel, RejectSampling
@@ -386,6 +386,7 @@ class KitchenLevel(RoomGridLevel):
         self.surface = self.task.surface(self)
         self.mission = self.surface
         self.instrs = self.task
+
 
         # make sure all task objects are on grid
         for obj in self.task.task_objects:

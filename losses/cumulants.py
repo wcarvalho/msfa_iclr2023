@@ -38,7 +38,7 @@ class CumulantRewardLoss:
       shape = cumulants.shape[0]
       task = task[:shape]
       rewards = rewards[:shape]
-      not_done = not_done[:shape]
+      not_done = not_done[1:]
 
     cumulants = cumulants*jnp.expand_dims(not_done, axis=2)
 
@@ -61,7 +61,6 @@ class CumulantRewardLoss:
       # get all that have 0 reward
       zero = (jnp.abs(rewards) < 1e-5).reshape(-1)
 
-      # valid = not_done > 0
       # zero = jnp.logical_and(zero, valid)
       probs = zero.astype(jnp.float32)*self.balance
       keep_zero = distrax.Independent(
@@ -119,16 +118,16 @@ class CumulantRewardLoss:
 
 class CumulantCovLoss:
   """"""
-  def __init__(self, coeff: float, blocks: int=None, loss: str='mean'):
+  def __init__(self, coeff: float, blocks: int=None, loss: str='l1'):
     self.coeff = coeff
     assert coeff >= 0.0
     self.blocks = blocks
     self.loss = loss.lower()
-    assert self.loss in ['mean', 'l1', 'l2']
+    assert self.loss in ['l1_cov', 'l2_cov', 'l1_corr', 'l2_corr']
 
   def __call__(self, data, online_preds, **kwargs):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
-    not_done = data.discount[:-1]  # predicted  [T, B, D]
+    not_done = data.discount[1:]  # predicted  [T, B, D]
     cumulants = cumulants*jnp.expand_dims(not_done, axis=2)
 
     # -----------------------
@@ -163,9 +162,9 @@ class CumulantCovLoss:
       cov = jnp.cov(x, rowvar=False) # [D, D]
       cov_on = cov*block_id
       cov_off = cov - cov_on
-      corr = jnp.corrcoeff(x, rowvar=False)
+      corr = jnp.corrcoef(x, rowvar=False)
       corr_on = corr*block_id
-      corr_off = corr - cov_on
+      corr_off = corr - corr_on
       return cov, cov_off, cov_on, corr, corr_on, corr_off
 
     cov, cov_off, cov_on, corr, corr_on, corr_off = jax.vmap(cov_diag, in_axes=(1, None), out_axes=0)(cumulants, block_id)
@@ -176,12 +175,14 @@ class CumulantCovLoss:
     corr_on_mean = corr_on.mean()
 
     if self.coeff > 0.0:
-      if self.loss == "mean":
-        loss = cov_off_mean
-      elif self.loss == "l1":
+      if self.loss == "l1_cov":
         loss = jnp.linalg.norm(cov_off, ord=1, axis=(1,2)).mean()
-      elif self.loss == "l2":
+      elif self.loss == "l2_cov":
         loss = jnp.linalg.norm(cov_off, ord=2, axis=(1,2)).mean()
+      elif self.loss == "l1_corr":
+        loss = jnp.linalg.norm(corr_off, ord=1, axis=(1,2)).mean()
+      elif self.loss == "l2_corr":
+        loss = jnp.linalg.norm(corr_off, ord=2, axis=(1,2)).mean()
 
       metrics = {
         f'loss_cov_{self.loss}': loss,
@@ -203,5 +204,4 @@ class CumulantCovLoss:
       }
       final_loss = 0.0
 
-    import ipdb; ipdb.set_trace()
     return final_loss, metrics

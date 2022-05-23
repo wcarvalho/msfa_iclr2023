@@ -119,8 +119,6 @@ def make_environment(evaluation: bool = False,
 
   if 'task_reps' in tasks:
     task_reps = tasks['task_reps']
-  else:
-    import ipdb; ipdb.set_trace()
 
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
@@ -145,18 +143,15 @@ def make_environment(evaluation: bool = False,
     functools.partial(ObservationRemapWrapper,
         remap=dict(mission='task'))]
 
-  if separate_eval:
-    wrapper_list.append(
-      functools.partial(TrainTasksWrapper,
-          instr_preproc=instr_preproc,
-          max_length=max_text_length,
-          task_reps=task_reps,
-          train_tasks=[t['task_kinds'] for t in train_task_dicts],
-        ),
-      )
-    import ipdb; ipdb.set_trace()
-  else:
-    import ipdb; ipdb.set_trace()
+  wrapper_list.append(
+    functools.partial(TrainTasksWrapper,
+        instr_preproc=instr_preproc,
+        max_length=max_text_length,
+        task_reps=task_reps,
+        train_tasks=[t['task_kinds'] for t in train_task_dicts],
+      ),
+    )
+
   wrapper_list += [
     wrappers.ObservationActionRewardWrapper,
     wrappers.SinglePrecisionWrapper,

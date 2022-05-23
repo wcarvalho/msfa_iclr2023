@@ -57,7 +57,7 @@ def main(_):
   env = helpers.make_environment(
     setting=setting,
     task_reps=FLAGS.task_reps,
-    evaluation=True # test set (harder)
+    evaluation=FLAGS.evaluate # test set (harder)
     )
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   separate_eval = env.separate_eval # HACK

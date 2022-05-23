@@ -144,7 +144,7 @@ class ModularUSFAConfig(USFAConfig):
   w_l1_coeff: float = 0.00 # coefficient for L1 on w
   module_l1: bool = False # apply L1 per module or for all phi
   cov_coeff: float = 0.0 # apply L1 per module or for all phi
-  cov_loss: str = 'mean' # apply L1 per module or for all phi
+  cov_loss: str = 'l1_cov' # apply L1 per module or for all phi
 
   sf_net: str = 'independent'
   sf_net_heads: int = 2

@@ -16,7 +16,7 @@ import numpy as np
 from agents.td_agent.types import TDNetworkFns, Predictions
 from agents.td_agent.configs import R2D1Config
 
-def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, eval_network: bool=False):
+def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, EvalNetKwargs=None, eval_network: bool=False):
   """Builds USF networks.
   
   Args:
@@ -29,7 +29,7 @@ def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, eval_networ
   Returns:
       TYPE: Description
   """
-
+  EvalNetKwargs = EvalNetKwargs or NetKwargs
   # ======================================================
   # Functions for use
   # ======================================================
@@ -83,7 +83,7 @@ def make_networks(batch_size : int, env_spec, NetworkCls, NetKwargs, eval_networ
   evaluation=None
   if eval_network:
     def eval_fn(x, s, k: Optional[int]=None):
-      model = NetworkCls(**NetKwargs)
+      model = NetworkCls(**EvalNetKwargs)
       return model.evaluate(x, s, k)
     eval_hk = hk.transform(eval_fn)
     evaluation = networks_lib.FeedForwardNetwork(

@@ -64,11 +64,3 @@ test:
   - name: clean_and_slice_and_toggle # length 6
     task_kinds: clean_and_slice_and_toggle
     num_dists: 0
-
-
-task_reps:
-
-  toggle: turnon x
-  clean: clean x
-  slice: slice x
-  cook: cook x

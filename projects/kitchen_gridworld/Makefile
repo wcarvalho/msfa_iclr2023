@@ -1,4 +1,5 @@
 agent?=msf
+eval?=1
 cuda?=0,1
 folder?='results/kitchen_grid/final'
 wandb?=True
@@ -37,7 +38,7 @@ test_sync:
 	python -m ipdb -c continue projects/kitchen_gridworld/train.py \
 	--agent $(agent) \
 	--test=True \
-	--evaluate=True \
+	--evaluate=$(eval) \
 	--env_setting=$(env) \
 	--task_reps=$(task_reps) \
 	--wandb=$(wandb_test) \
