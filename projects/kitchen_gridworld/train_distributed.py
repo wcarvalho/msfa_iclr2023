@@ -104,10 +104,12 @@ def build_program(
       config.prefetch_size = 0
       config.samples_per_insert_tolerance_rate = 0.1
       config.samples_per_insert = 6.0 # different
+      config.cov_coeff = 1e-3 # different
+      config.cov_loss = 'l1_corr' # different
       config.num_parallel_calls = 1
       config.min_replay_size = 100 # smaller
       config.max_replay_size = 10_000 # smaller
-      kwargs['colocate_learner_replay'] = False
+
 
   # -----------------------
   # define dict to save. add some extra stuff here

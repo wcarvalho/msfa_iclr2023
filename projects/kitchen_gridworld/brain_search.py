@@ -234,6 +234,22 @@ def get(search):
       },
     ]
 
+  elif search == 'phi2':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['genv3']),
+        "learning_rate": tune.grid_search([1e-1]),
+        "phi_l1_coeff": tune.grid_search([1, .1]),
+        "nmodules": tune.grid_search([4]),
+        "module_task_dim": tune.grid_search([4]),
+      },
+    ]
+
   else:
     raise NotImplementedError(search)
 

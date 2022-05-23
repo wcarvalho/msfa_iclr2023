@@ -93,9 +93,16 @@ class CumulantRewardLoss:
     if self.l1_coeff is not None and self.l1_coeff != 0:
 
       if self.nmodules > 1:
+        # cumulants = [T, B, D] --> [T, B, M, D/M]
         cumulants = jnp.stack(jnp.split(cumulants, self.nmodules, axis=-1), axis=2)
-      phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
-      phi_l1 = phi_l1.mean()
+        # [T, B, M]
+        phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
+        # sum over M, mean over [T, B]
+        phi_l1 = phi_l1.sum(-1).mean()
+      else:
+        # cumulants = [T, B, D]
+        phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
+        phi_l1 = phi_l1.mean()
 
       metrics['loss_phi_l1'] = phi_l1
       phi_l1 = phi_l1*self.l1_coeff
@@ -165,12 +172,15 @@ class CumulantCovLoss:
     dim = cumulants.shape[-1]
     if self.blocks == 0:
       block_id = jnp.identity(dim).astype(cumulants.dtype)
+      denom_on = block_id.sum()
+      denom_off = jnp.ones((dim, dim)).sum() - denom_on
     else:
       block_size = dim//self.blocks
       assert dim % self.blocks == 0
       ones = jnp.ones((block_size, block_size)).astype(cumulants.dtype)
       block_id = jax.scipy.linalg.block_diag(*[ones for _ in range(self.blocks)])
-
+      denom_on = block_id.sum()
+      denom_off = jnp.ones((dim, dim)).sum() - denom_on
 
     # -----------------------
     # compute
@@ -195,12 +205,18 @@ class CumulantCovLoss:
       corr_off = corr - corr_on
       return cov, cov_off, cov_on, corr, corr_on, corr_off
 
-    cov, cov_off, cov_on, corr, corr_on, corr_off = jax.vmap(cov_diag, in_axes=(1, None), out_axes=0)(cumulants, block_id)
+    # B, D, D
+    cov, cov_off, cov_on, corr, corr_on, corr_off = jax.vmap(cov_diag, in_axes=(1, None), out_axes=0)(
+      cumulants+1e-5, # to avoid numerical issues
+      block_id)
 
-    cov_off_mean = cov_off.mean()
-    cov_on_mean = cov_on.mean()
-    corr_off_mean = corr_off.mean()
-    corr_on_mean = corr_on.mean()
+    mean_off = lambda x: (x.sum((1, 2))/denom_off).mean(0)
+    mean_on = lambda x: (x.sum((1, 2))/denom_on).mean(0)
+
+    cov_off_mean =  mean_off(cov_off)
+    cov_on_mean =  mean_on(cov_on)
+    corr_off_mean =  mean_off(corr_off)
+    corr_on_mean =  mean_on(corr_on)
 
     if self.coeff > 0.0:
       if self.loss == "l1_cov":
