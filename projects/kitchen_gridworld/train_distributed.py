@@ -97,8 +97,11 @@ def build_program(
   if debug:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 100
-    config['cov_coeff'] = 0.1
-    config['cov_loss'] = 'l1_corr'
+    config['learning_rate'] = 1e-2
+    config['cov_coeff'] = 0.0
+    config['max_gradient_norm'] = 1.0
+    config['reward_coeff'] = 1.0
+    # config['cov_loss'] = 'l1_corr'
     print("="*50)
     print("="*20, "testing", "="*20)
     from pprint import pprint

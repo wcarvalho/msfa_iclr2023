@@ -48,7 +48,7 @@ class R2D1Config(configs.R2D1Config):
 
   # Priority options
   importance_sampling_exponent: float = 0.0
-  priority_exponent: float = 0.9
+  priority_exponent: float = 0.6
   max_priority_weight: float = 0.9
 
   # Network hps

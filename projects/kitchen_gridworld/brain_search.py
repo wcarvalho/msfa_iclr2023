@@ -214,12 +214,12 @@ def get(search):
     space = [
       { # 6
         "seed": tune.grid_search([1,2]),
-        "agent": tune.grid_search(['usfa_lstm']),
+        "agent": tune.grid_search(['r2d1']),
         "setting": tune.grid_search(['genv3']),
       },
     ]
 
-  elif search == 'phi6':
+  elif search == 'phi7':
     """
     Next:
     """
@@ -228,8 +228,7 @@ def get(search):
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['genv3']),
-        # "learning_rate": tune.grid_search([1e-3]),
-        # "reward_coeff": tune.grid_search([1]),
+        "learning_rate": tune.grid_search([1e-3]),
         "phi_l1_coeff": tune.grid_search([0, 1, 1e-1, 1e-2]),
         "nmodules": tune.grid_search([6]),
         "module_task_dim": tune.grid_search([4]),
