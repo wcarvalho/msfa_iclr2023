@@ -52,6 +52,7 @@ flags.DEFINE_bool('wandb', False, 'whether to log.')
 flags.DEFINE_string('wandb_project', 'kitchen_grid_dist', 'wand project.')
 flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
 flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
+flags.DEFINE_string('name', '', 'same as wandb name. way to identify runs in a group.')
 flags.DEFINE_string('notes', '', 'notes for wandb.')
 
 FLAGS = flags.FLAGS
@@ -87,27 +88,28 @@ def build_program(
   env = environment_factory(True)
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   separate_eval = env.separate_eval # HACK
-  config_kwargs['step_penalty'] = env.step_penalty
+  # config_kwargs['step_penalty'] = env.step_penalty
   env_spec = acme.make_environment_spec(env)
   del env
+
+
+  config = config_kwargs or dict()
+  if debug:
+    config['max_replay_size'] = 10_000
+    config['min_replay_size'] = 100
+    config['cov_coeff'] = 0.1
+    config['cov_loss'] = 'l1_corr'
+    print("="*50)
+    print("="*20, "testing", "="*20)
+    from pprint import pprint
+    pprint(config)
+    print("="*50)
 
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config)
 
-  if debug:
-      config.batch_size = 32
-      config.burn_in_length = 0
-      config.trace_length = 20 # shorter
-      config.sequence_period = 40
-      config.prefetch_size = 0
-      config.samples_per_insert_tolerance_rate = 0.1
-      config.samples_per_insert = 6.0 # different
-      config.num_parallel_calls = 1
-      config.min_replay_size = 100 # smaller
-      config.max_replay_size = 10_000 # smaller
-      kwargs['colocate_learner_replay'] = False
 
   # -----------------------
   # define dict to save. add some extra stuff here
@@ -177,10 +179,10 @@ def main(_):
   wandb_init_kwargs=dict(
     project=FLAGS.wandb_project,
     entity=FLAGS.wandb_entity,
+    name=FLAGS.name if FLAGS.name else FLAGS.agent,
     group=FLAGS.group if FLAGS.group else FLAGS.agent, # organize individual runs into larger experiment
     notes=FLAGS.notes,
   )
-
 
   program = build_program(
     agent=FLAGS.agent,
@@ -189,6 +191,7 @@ def main(_):
     wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
     debug=FLAGS.debug,
     custom_loggers=FLAGS.custom_loggers,
+    update_wandb_name=False,
     env_kwargs=dict(
       setting=FLAGS.env_setting,
       task_reps=FLAGS.task_reps,

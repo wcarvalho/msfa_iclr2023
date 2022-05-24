@@ -36,7 +36,7 @@ def remove_excluded(objects, exclude):
 
 class KitchenTask(Instr):
   """docstring for KitchenTasks"""
-  def __init__(self, env, argument_options=None, task_reps=None):
+  def __init__(self, env, argument_options=None, task_reps=None, init=True):
     super(KitchenTask, self).__init__()
     self.argument_options = argument_options or dict(x=[])
     self._task_objects = []
@@ -44,9 +44,16 @@ class KitchenTask(Instr):
     self.finished = False
     self._task_reps = task_reps
     self._task_name = 'kitchentask'
-    self.instruction = self.generate()
+    if init:
+      self.instruction = self.generate()
+    else:
+      self.instruction = ''
 
-  def generate(self, exclude=[]):
+    # check that object-states are valid by querying state id
+    for object in self.task_objects:
+      object.state_id()
+
+  def generate(self, exclude=[], argops=None):
     raise NotImplemented
 
   def reset(self, exclude=[]):
@@ -129,10 +136,10 @@ class PickupTask(KitchenTask):
   def task_name(self):
     return 'pickup'
 
-  def generate(self, exclude=[]):
+  def generate(self, exclude=[], argops=None):
     # which option to pickup
     pickup_objects = get_matching_objects(self.env,
-        object_types=self.argument_options.get('x', []),
+        object_types=argops or self.argument_options.get('x', []),
         matchfn=lambda o:o.pickupable)
     pickup_objects = remove_excluded(pickup_objects, exclude)
     self.pickup_object = np.random.choice(pickup_objects)
@@ -166,9 +173,9 @@ class ToggleTask(KitchenTask):
   @property
   def task_name(self): return 'toggle'
 
-  def generate(self, exclude=[]):
+  def generate(self, exclude=[], argops=None):
 
-    x_options = self.argument_options.get('x', [])
+    x_options = argops or self.argument_options.get('x', [])
     if x_options:
         totoggle_options = self.env.objects_by_type(x_options)
     else:
@@ -212,10 +219,10 @@ class HeatTask(KitchenTask):
   @property
   def task_name(self): return 'heat'
 
-  def generate(self, exclude=[]):
+  def generate(self, exclude=[], argops=None):
     self.stove = self.env.objects_by_type(['stove'])[0]
 
-    x_options = self.argument_options.get('x', [])
+    x_options = argops or self.argument_options.get('x', [])
     if x_options:
         objects_to_heat = self.env.objects_by_type(x_options)
     else:
@@ -258,8 +265,8 @@ class CleanTask(KitchenTask):
   @property
   def default_task_rep(self): return 'clean x'
 
-  def generate(self, exclude=[]):
-    x_options = self.argument_options.get('x', [])
+  def generate(self, exclude=[], argops=None):
+    x_options = argops or self.argument_options.get('x', [])
     exclude = ['sink']+exclude
     if x_options:
         objects_to_clean = self.env.objects_by_type(x_options)
@@ -303,8 +310,8 @@ class SliceTask(KitchenTask):
   @property
   def default_task_rep(self): return 'slice x'
 
-  def get_options(self, exclude=[]):
-    x_options = self.argument_options.get('x', [])
+  def get_options(self, exclude=[], argops=None):
+    x_options = argops or self.argument_options.get('x', [])
     if x_options:
         objects_to_slice = self.env.objects_by_type(x_options)
     else:
@@ -312,9 +319,9 @@ class SliceTask(KitchenTask):
     objects_to_slice = remove_excluded(objects_to_slice, exclude)
     return {'x': objects_to_slice}
 
-  def generate(self, exclude=[]):
+  def generate(self, exclude=[], argops=None):
 
-    objects_to_slice = self.get_options(exclude)['x']
+    objects_to_slice = self.get_options(exclude, argops)['x']
     self.object_to_slice = np.random.choice(objects_to_slice)
     self.object_to_slice.set_prop('sliced', False)
 
@@ -356,8 +363,8 @@ class ChillTask(KitchenTask):
   @property
   def default_task_rep(self): return 'chill x'
 
-  def generate(self, exclude=[]):
-    self.fridge = self.env.objects_by_type(['fridge'])[0]
+  def generate(self, exclude=[], argops=None):
+    self.fridge = argops or self.env.objects_by_type(['fridge'])[0]
 
     x_options = self.argument_options.get('x', [])
     if x_options:
@@ -519,8 +526,10 @@ class PlaceTask(KitchenTask):
   @property
   def default_task_rep(self): return 'place x on y'
 
-  def generate(self, exclude=[]):
+  def generate(self, exclude=[], argops=None):
     if exclude:
+      raise NotImplementedError
+    if argops:
       raise NotImplementedError
     # -----------------------
     # get possible containers/pickupable objects
@@ -638,8 +647,8 @@ class Slice2Task(SliceTask):
   @property
   def default_task_rep(self): return 'slice x and y'
 
-  def generate(self, exclude=[]):
-    objects_to_slice = self.get_options(exclude)['x']
+  def generate(self, exclude=[], argops=None):
+    objects_to_slice = self.get_options(exclude, argops)['x']
 
     choices = np.random.choice(objects_to_slice, 2, replace=False)
 
@@ -694,9 +703,9 @@ class Toggle2Task(KitchenTask):
   @property
   def default_task_rep(self): return 'turnon x and y'
 
-  def generate(self, exclude=[]):
-    
-    x_options = self.argument_options.get('x', [])
+  def generate(self, exclude=[], argops=None):
+
+    x_options = argops or self.argument_options.get('x', [])
     if x_options:
         totoggle_options = self.env.objects_by_type(x_options)
     else:
@@ -744,25 +753,33 @@ class CleanAndSliceTask(KitchenTask):
   """docstring for SliceTask"""
   def __init__(self, *args, **kwargs):
 
-    self.clean_task = CleanTask(*args, **kwargs)
-    self.slice_task = SliceTask(*args, **kwargs)
+    self.clean_task = CleanTask(*args, init=False, **kwargs)
+    self.slice_task = SliceTask(*args, init=False, **kwargs)
     super(CleanAndSliceTask, self).__init__(*args, **kwargs)
 
   @property
   def task_name(self): return 'clean_and_slice'
   @property
   def default_task_rep(self):
-    part1 = self.clean_task.default_task_rep()
-    part2 = self.slice_task.default_task_rep().replace("x", "y")
+    part1 = self.clean_task.default_task_rep
+    part2 = self.slice_task.default_task_rep.replace("x", "y")
     return f"{part1} and {part2}"
 
-  def generate(self, exclude=[]):
-    slice_instr = self.slice_task.generate()
-    clean_instr = self.clean_task.generate(exclude=['knife'])
+  def generate(self, exclude=[], argops=None):
+    if argops:
+      raise NotImplementedError
+    slice_instr = self.slice_task.generate(
+      argops=self.argument_options.get('y', None))
+    clean_instr = self.clean_task.generate(
+      exclude=['knife'],
+      argops=self.argument_options.get('x', None),
+      )
 
     self._task_objects = self.clean_task.task_objects + \
       self.slice_task.task_objects
-    instr =  f"{clean_instr} and {slice_instr}"
+    instr =  self.task_rep.replace(
+      'x', self.clean_task.task_objects[0].name).replace(
+      'y', self.slice_task.task_objects[0].name)
 
     return instr
 
@@ -785,8 +802,8 @@ class Clean2Task(KitchenTask):
   """docstring for CleanTask"""
   def __init__(self, *args, **kwargs):
 
-    self.clean_task = CleanTask(*args, **kwargs)
-    self.clean_task2 = CleanTask(*args, **kwargs)
+    self.clean_task = CleanTask(*args, init=False, **kwargs)
+    self.clean_task2 = CleanTask(*args, init=False, **kwargs)
     super(Clean2Task, self).__init__(*args, **kwargs)
 
   @property
@@ -794,14 +811,18 @@ class Clean2Task(KitchenTask):
 
   @property
   def default_task_rep(self):
-    part1 = self.clean_task.default_task_rep()
-    part2 = self.clean_task2.default_task_rep().replace("x", "y")
+    part1 = self.clean_task.default_task_rep
+    part2 = self.clean_task2.default_task_rep.replace("x", "y")
     return f"{part1} and {part2}"
 
-  def generate(self, exclude=[]):
-    clean_instr = self.clean_task.generate()
+  def generate(self, exclude=[], argops=None):
+    if argops:
+      raise NotImplementedError
+    clean_instr = self.clean_task.generate(
+      argops=self.argument_options.get('x', None))
     clean2_instr = self.clean_task2.generate(
-      exclude=self.clean_task.task_types)
+      exclude=self.clean_task.task_types,
+      argops=self.argument_options.get('y', None))
 
     self._task_objects = self.clean_task.task_objects + [
           self.clean_task2.object_to_clean]
@@ -827,25 +848,31 @@ class Clean2Task(KitchenTask):
 class ToggleAndSliceTask(KitchenTask):
   """docstring for SliceTask"""
   def __init__(self, *args, **kwargs):
-    self.toggle_task = ToggleTask(*args, **kwargs)
-    self.slice_task = SliceTask(*args, **kwargs)
+    self.toggle_task = ToggleTask(*args, init=False, **kwargs)
+    self.slice_task = SliceTask(*args, init=False, **kwargs)
     super(ToggleAndSliceTask, self).__init__(*args, **kwargs)
 
   @property
   def task_name(self): return 'toggle_and_slice'
   @property
   def default_task_rep(self):
-    part1 = self.toggle_task.default_task_rep()
-    part2 = self.slice_task.default_task_rep().replace("x", "y")
+    part1 = self.toggle_task.default_task_rep
+    part2 = self.slice_task.default_task_rep.replace("x", "y")
     return f"{part1} and {part2}"
 
-  def generate(self, exclude=[]):
-    slice_instr = self.slice_task.generate()
-    toggle_instr = self.toggle_task.generate()
+  def generate(self, exclude=[], argops=None):
+    if argops:
+      raise NotImplementedError
+    self.toggle_task.generate(
+      argops=self.argument_options.get('x', None))
+    self.slice_task.generate(
+      argops=self.argument_options.get('y', None))
 
     self._task_objects = self.toggle_task.task_objects + \
       self.slice_task.task_objects
-    instr =  f"{toggle_instr} and {slice_instr}"
+    instr =  self.task_rep.replace(
+      'x', self.toggle_task.task_objects[0].name).replace(
+      'y', self.slice_task.task_objects[0].name)
 
     return instr
 
@@ -867,8 +894,8 @@ class ToggleAndSliceTask(KitchenTask):
 class ToggleAndPickupTask(KitchenTask):
   """docstring for PickupTask"""
   def __init__(self, *args, **kwargs):
-    self.toggle_task = ToggleTask(*args, **kwargs)
-    self.pickup_task = PickupTask(*args, **kwargs)
+    self.toggle_task = ToggleTask(*args, init=False, **kwargs)
+    self.pickup_task = PickupTask(*args, init=False, **kwargs)
     super(ToggleAndPickupTask, self).__init__(*args, **kwargs)
 
   @property
@@ -876,17 +903,24 @@ class ToggleAndPickupTask(KitchenTask):
 
   @property
   def default_task_rep(self):
-    part1 = self.toggle_task.default_task_rep()
-    part2 = self.pickup_task.default_task_rep().replace("x", "y")
+    part1 = self.toggle_task.default_task_rep
+    part2 = self.pickup_task.default_task_rep.replace("x", "y")
     return f"{part1} and {part2}"
 
-  def generate(self, exclude=[]):
-    pickup_instr = self.pickup_task.generate()
-    toggle_instr = self.toggle_task.generate(exclude=self.pickup_task.task_types)
+  def generate(self, exclude=[], argops=None):
+    if argops:
+      raise NotImplementedError
+    pickup_instr = self.pickup_task.generate(
+      argops=self.argument_options.get('y', None))
+    toggle_instr = self.toggle_task.generate(
+      exclude=self.pickup_task.task_types,
+      argops=self.argument_options.get('x', None))
 
     self._task_objects = self.toggle_task.task_objects + \
       self.pickup_task.task_objects
-    instr =  f"{toggle_instr} and {pickup_instr}"
+    instr =  self.task_rep.replace(
+      'x', self.toggle_task.task_objects[0].name).replace(
+      'y', self.pickup_task.task_objects[0].name)
 
     return instr
 
@@ -908,25 +942,32 @@ class ToggleAndPickupTask(KitchenTask):
 class CleanAndToggleTask(KitchenTask):
   """docstring for CleanTask"""
   def __init__(self, *args, **kwargs):
-    self.toggle_task = ToggleTask(*args, **kwargs)
-    self.clean_task = CleanTask(*args, **kwargs)
+    self.toggle_task = ToggleTask(*args, init=False, **kwargs)
+    self.clean_task = CleanTask(*args, init=False, **kwargs)
     super(CleanAndToggleTask, self).__init__(*args, **kwargs)
 
   @property
   def task_name(self): return 'clean_and_toggle'
   @property
   def default_task_rep(self):
-    part1 = self.toggle_task.default_task_rep()
-    part2 = self.clean_task.default_task_rep().replace("x", "y")
+    part1 = self.toggle_task.default_task_rep
+    part2 = self.clean_task.default_task_rep.replace("x", "y")
     return f"{part1} and {part2}"
 
-  def generate(self, exclude=[]):
-    clean_instr = self.clean_task.generate()
-    Toggle_instr = self.toggle_task.generate(exclude=self.clean_task.task_types)
+  def generate(self, exclude=[], argops=None):
+    if argops:
+      raise NotImplementedError
+    clean_instr = self.clean_task.generate(
+      argops=self.argument_options.get('x', None))
+    Toggle_instr = self.toggle_task.generate(
+      exclude=self.clean_task.task_types,
+      argops=self.argument_options.get('y', None))
 
     self._task_objects = self.toggle_task.task_objects + \
       self.clean_task.task_objects
-    instr =  f"{Toggle_instr} and {clean_instr}"
+    instr =  self.task_rep.replace(
+      'x', self.toggle_task.task_objects[0].name).replace(
+      'y', self.clean_task.task_objects[0].name)
 
     return instr
 
@@ -956,9 +997,12 @@ class CookTask(KitchenTask):
   @property
   def default_task_rep(self): return 'cook x with y'
 
-  def generate(self, exclude=[]):
-    x_options = self.argument_options.get('x', [])
-    y_options = self.argument_options.get('y', [])
+  def generate(self, exclude=[], argops=None):
+    if argops:
+      raise NotImplementedError
+    else:
+      x_options = self.argument_options.get('x', [])
+      y_options = self.argument_options.get('y', [])
 
     if x_options:
         objects_to_cook = self.env.objects_by_type(x_options)
@@ -1049,7 +1093,10 @@ class PlaceSlicedTask(SliceTask):
   @property
   def default_task_rep(self): return 'place sliced x on y'
 
-  def generate(self, exclude=[]):
+  def generate(self, exclude=[], argops=None):
+    if exclude or argops:
+      raise NotImplementedError
+
     # -----------------------
     # x= object to slice
     # -----------------------
@@ -1113,29 +1160,39 @@ class PlaceSlicedTask(SliceTask):
 class CleanAndSliceAndToggleTask(KitchenTask):
   """docstring for SliceTask"""
   def __init__(self, *args, **kwargs):
-    self.clean_task = CleanTask(*args, **kwargs)
-    self.slice_task = SliceTask(*args, **kwargs)
-    self.toggle_task = ToggleTask(*args, **kwargs)
+    self.clean_task = CleanTask(*args, init=False, **kwargs)
+    self.slice_task = SliceTask(*args, init=False, **kwargs)
+    self.toggle_task = ToggleTask(*args, init=False, **kwargs)
     super(CleanAndSliceAndToggleTask, self).__init__(*args, **kwargs)
 
   @property
   def task_name(self): return 'clean_and_slice_and_toggle'
   @property
   def default_task_rep(self):
-    part1 = self.clean_task.default_task_rep()
-    part2 = self.slice_task.default_task_rep().replace("x", "y")
-    part3 = self.toggle_task.default_task_rep().replace("x", "z")
+    part1 = self.clean_task.default_task_rep
+    part2 = self.slice_task.default_task_rep.replace("x", "y")
+    part3 = self.toggle_task.default_task_rep.replace("x", "z")
     return f"{part1} and {part2} and {part3}"
 
-  def generate(self, exclude=[]):
-    slice_instr = self.slice_task.generate()
-    clean_instr = self.clean_task.generate(exclude=['knife'])
+  def generate(self, exclude=[], argops=None):
+    if exclude or argops:
+      raise NotImplementedError
+
+    slice_instr = self.slice_task.generate(
+      argops=self.argument_options.get('y', None))
+    clean_instr = self.clean_task.generate(
+      exclude=['knife'],
+      argops=self.argument_options.get('x', None))
     toggle_instr = self.toggle_task.generate(
-      exclude=self.clean_task.task_types)
+      exclude=self.clean_task.task_types,
+      argops=self.argument_options.get('z', None))
 
     self._task_objects = self.clean_task.task_objects + \
       self.slice_task.task_objects + self.toggle_task.task_objects
-    instr =  f"{clean_instr} and {slice_instr} and {toggle_instr}"
+    instr =  self.task_rep.replace(
+      'x', self.clean_task.task_objects[0].name).replace(
+      'y', self.slice_task.task_objects[0].name).replace(
+      'z', self.toggle_task.task_objects[0].name)
 
     return instr
 

@@ -3,25 +3,25 @@ train:
   # -----------------------
   # clean
   # -----------------------
-  - name: pickup
+  - name: "0.pickup"
     task_kinds: pickup
     taskarg_options:
       x: [plates, bowl]
     num_dists: 0
 
-  - name: toggle
+  - name: "1.toggle"
     task_kinds: toggle
     taskarg_options:
       x: [sink, stove]
     num_dists: 0
 
-  - name: clean
+  - name: "5.clean"
     task_kinds: clean
     taskarg_options:
       x: [pot, pan]
     num_dists: 0
 
-  - name: pickup_cleaned
+  - name: "6.pickup_cleaned"
     task_kinds: pickup_cleaned
     taskarg_options:
       x: [knife, fork, plates]
@@ -30,13 +30,13 @@ train:
   # -----------------------
   # slice
   # -----------------------
-  - name: slice
+  - name: "3.slice"
     task_kinds: slice
     taskarg_options:
       x: [onion, orange]
     num_dists: 0
 
-  - name: pickup_sliced
+  - name: "7.pickup_sliced"
     task_kinds: pickup_sliced
     taskarg_options:
       x: [tomato, apple, potato]
@@ -45,18 +45,18 @@ train:
   # -----------------------
   # 2 objects
   # -----------------------
-  - name: toggle2
+  - name: "2.toggle2"
     task_kinds: toggle2
     num_dists: 0
 
-  - name: slice2
+  - name: "4.slice2"
     task_kinds: slice2
     num_dists: 0
 
   # -----------------------
   # cook
   # -----------------------
-  - name: cook
+  - name: "8.cook"
     task_kinds: cook
     taskarg_options:
       y: [pot]

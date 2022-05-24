@@ -1,6 +1,7 @@
 agent?=msf
 eval?=1
 cuda?=0,1
+nan?=0
 folder?='results/kitchen_grid/final'
 wandb?=True
 wandb_test?=False
@@ -10,9 +11,10 @@ gpus?=1
 cpus?=3
 actors?=5
 project?='kitchen_grid3'
-env?='EasyPickup'
+env?='genv3'
 task_reps?='pickup'
 group?=''
+name?=''
 notes?=''
 distributed?='False'
 nojit?=0
@@ -25,6 +27,7 @@ export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export TF_FORCE_GPU_ALLOW_GROWTH=true
 export JAX_DISABLE_JIT=$(nojit)
+export JAX_DEBUG_NANS=$(nan)
 
 git_minor_pull:
 	git add -u; git commit -m "updates"; git pull
@@ -35,6 +38,7 @@ git_minor_push:
 test_sync:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
+	JAX_DEBUG_NANS=True \
 	python -m ipdb -c continue projects/kitchen_gridworld/train.py \
 	--agent $(agent) \
 	--test=True \
@@ -48,12 +52,15 @@ test_sync:
 test_async:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
+	JAX_DEBUG_NANS=True \
 	python -m ipdb -c continue projects/kitchen_gridworld/train_distributed.py \
 	--agent $(agent) \
 	--wandb=$(wandb_test) \
+	--debug=True \
 	--env_setting=$(env) \
 	--task_reps=$(task_reps) \
-	--group=$(group)
+	--group=$(group) \
+	--name=$(name)
 
 
 train_search:

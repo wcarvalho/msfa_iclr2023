@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--random-object-state', type=int, default=0)
     parser.add_argument('--num-rows', type=int, default=1)
     parser.add_argument('--tile-size', type=int, default=16)
+    parser.add_argument('--train', type=int, default=0)
     parser.add_argument('--steps', type=int, default=1)
     parser.add_argument('--show', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
@@ -61,8 +62,9 @@ def main():
         level_kwargs['num_rows'] = args.num_rows
         level_kwargs['num_cols'] = args.num_rows
 
+    key = 'train' if args.train else 'test'
     level_kwargs = babyai_utils.constuct_kitchenmultilevel_kwargs(
-        task_dicts=tasks['train'],
+        task_dicts=tasks[key],
         level_kwargs=level_kwargs,
         sets=sets)
 
@@ -104,7 +106,7 @@ def main():
         print(f"Reset {mission_indx}")
         print("="*50)
         print("Task:", obs['mission'])
-        print("Image Shape:", obs['image'].shape)
+        # print("Image Shape:", obs['image'].shape)
 
         if args.show:
           full = env.render('rgb_array', **render_kwargs)
@@ -114,6 +116,7 @@ def main():
         bot = KitchenBot(env)
         obss, actions, rewards, dones = bot.generate_traj(
           plot_fn=show if args.show else lambda x:x)
+        print('Rewards:', sum(rewards))
         if args.check_end:
           import ipdb; ipdb.set_trace()
 

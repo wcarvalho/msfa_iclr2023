@@ -53,11 +53,14 @@ FLAGS = flags.FLAGS
 
 def main(_):
   setting=FLAGS.env_setting
-
+  env_kwargs=dict(
+    room_size=7,
+    )
   env = helpers.make_environment(
     setting=setting,
     task_reps=FLAGS.task_reps,
-    evaluation=FLAGS.evaluate # test set (harder)
+    evaluation=FLAGS.evaluate, # test set (harder)
+    **env_kwargs
     )
   max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
   separate_eval = env.separate_eval # HACK
@@ -67,8 +70,12 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
+    config['phi_l1_coeff'] = 0.01
+    config['learning_rate'] = 1e-1
     print("="*50)
     print("="*20, "testing", "="*20)
+    from pprint import pprint
+    pprint(config)
     print("="*50)
 
   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(
