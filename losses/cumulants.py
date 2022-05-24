@@ -40,17 +40,15 @@ class CumulantRewardLoss:
       rewards = rewards[:shape]
       mask = mask[1:]
 
-    cumulants = cumulants*jnp.expand_dims(mask, axis=2)
-
     reward_pred = jnp.sum(cumulants*task, -1)  # dot product  [T, B]
     if self.loss == 'l2':
       error = rlax.l2_loss(predictions=reward_pred, targets=rewards)
     elif self.loss == 'binary':
       error = -distrax.Bernoulli(logits=reward_pred).log_prob(rewards)
 
-    # mask = mask.reshape(-1)
+    mask = mask.reshape(-1)
     error = error.reshape(-1)
-    # error = error*mask # probably redundant
+    error = error*mask
 
     if self.balance > 0:
       # flatten
