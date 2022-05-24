@@ -28,7 +28,7 @@ class CumulantRewardLoss:
   def __call__(self, data, online_preds, key, **kwargs):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
     task = online_preds.w  # ground-truth  [T, B, D]
-    not_done = data.discount  # predicted  [T, B, D]
+    mask = data.discount  # predicted  [T, B]
 
     rewards = data.reward  # ground-truth  [T, B]
     if self.reward_bias:
@@ -38,9 +38,9 @@ class CumulantRewardLoss:
       shape = cumulants.shape[0]
       task = task[:shape]
       rewards = rewards[:shape]
-      not_done = not_done[1:]
+      mask = mask[1:]
 
-    cumulants = cumulants*jnp.expand_dims(not_done, axis=2)
+    cumulants = cumulants*jnp.expand_dims(mask, axis=2)
 
     reward_pred = jnp.sum(cumulants*task, -1)  # dot product  [T, B]
     if self.loss == 'l2':
@@ -48,9 +48,9 @@ class CumulantRewardLoss:
     elif self.loss == 'binary':
       error = -distrax.Bernoulli(logits=reward_pred).log_prob(rewards)
 
-    not_done = not_done.reshape(-1)
+    # mask = mask.reshape(-1)
     error = error.reshape(-1)
-    error = error*not_done # probably redundant
+    # error = error*mask # probably redundant
 
     if self.balance > 0:
       # flatten
@@ -163,8 +163,8 @@ class CumulantCovLoss:
 
   def lossfn(self, data, online_preds, online_state, target_preds, target_state, steps):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
-    not_done = data.discount[1:]  # predicted  [T, B, D]
-    cumulants = cumulants*jnp.expand_dims(not_done, axis=2)
+    mask = data.discount[1:]  # predicted  [T, B, D]
+    cumulants = cumulants*jnp.expand_dims(mask, axis=2)
 
     # -----------------------
     # setup
