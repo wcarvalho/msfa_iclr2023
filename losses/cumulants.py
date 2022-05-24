@@ -50,7 +50,7 @@ class CumulantRewardLoss:
 
     not_done = not_done.reshape(-1)
     error = error.reshape(-1)
-    error = error*not_done
+    error = error*not_done # probably redundant
 
     if self.balance > 0:
       # flatten
@@ -118,14 +118,43 @@ class CumulantRewardLoss:
 
 class CumulantCovLoss:
   """"""
-  def __init__(self, coeff: float, blocks: int=None, loss: str='l1'):
+  def __init__(self, coeff: float, blocks: int=None, loss: str='l1_cov'):
     self.coeff = coeff
     assert coeff >= 0.0
     self.blocks = blocks
     self.loss = loss.lower()
     assert self.loss in ['l1_cov', 'l2_cov', 'l1_corr', 'l2_corr']
 
-  def __call__(self, data, online_preds, **kwargs):
+  def __call__(self, data, online_preds, online_state, target_preds, target_state, steps):
+    mask = data.discount[1:]  # predicted  [T, B]
+
+    ngood = mask.sum(0) # [B]
+    has_data = (ngood > 0).all()
+
+    def empty_loss(data, online_preds, online_state, target_preds, target_state, steps):
+      if self.coeff > 0.0:
+        metrics = {
+          f'loss_cov_{self.loss}': 0.0,
+          "cov" : 0.0,
+          "cov_on" : 0.0,
+          "cov_off" : 0.0,
+          "corr_on" : 0.0,
+          "corr_off" : 0.0,
+          }
+      else:
+        metrics = {
+          "cov" : 0.0,
+          "cov_on" : 0.0,
+          "cov_off" : 0.0,
+          "corr_on" : 0.0,
+          "corr_off" : 0.0,
+        }
+
+      return 0.0, metrics
+
+    return jax.lax.cond(has_data, self.lossfn, empty_loss, data, online_preds, online_state, target_preds, target_state, steps)
+
+  def lossfn(self, data, online_preds, online_state, target_preds, target_state, steps):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
     not_done = data.discount[1:]  # predicted  [T, B, D]
     cumulants = cumulants*jnp.expand_dims(not_done, axis=2)
@@ -136,7 +165,6 @@ class CumulantCovLoss:
     dim = cumulants.shape[-1]
     if self.blocks == 0:
       block_id = jnp.identity(dim).astype(cumulants.dtype)
-      import ipdb; ipdb.set_trace()
     else:
       block_size = dim//self.blocks
       assert dim % self.blocks == 0
