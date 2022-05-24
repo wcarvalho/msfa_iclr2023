@@ -207,19 +207,19 @@ def get(search):
       },
     ]
 
-  elif search == 'genv3':
+  elif search == 'genv3_2':
     """
     Next:
     """
     space = [
       { # 6
         "seed": tune.grid_search([1,2]),
-        "agent": tune.grid_search(['r2d1']),
+        "agent": tune.grid_search(['usfa_lstm']),
         "setting": tune.grid_search(['genv3']),
       },
     ]
 
-  elif search == 'mods2':
+  elif search == 'phi6':
     """
     Next:
     """
@@ -228,26 +228,31 @@ def get(search):
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['genv3']),
-        "cov_coeff": tune.grid_search([0]),
-        "nmodules": tune.grid_search([4, 6]),
+        # "learning_rate": tune.grid_search([1e-3]),
+        # "reward_coeff": tune.grid_search([1]),
+        "phi_l1_coeff": tune.grid_search([0, 1, 1e-1, 1e-2]),
+        "nmodules": tune.grid_search([6]),
         "module_task_dim": tune.grid_search([4]),
       },
-    ]
-
-  elif search == 'phi2':
-    """
-    Next:
-    """
-    space = [
-      { # 6
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['genv3']),
-        "learning_rate": tune.grid_search([1e-1, 1e-2]),
-        "phi_l1_coeff": tune.grid_search([0]),
-        "nmodules": tune.grid_search([4]),
-        "module_task_dim": tune.grid_search([4]),
-      },
+      # { # 6
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['genv3']),
+      #   "learning_rate": tune.grid_search([5e-3]),
+      #   "reward_coeff": tune.grid_search([10]),
+      #   "phi_l1_coeff": tune.grid_search([0, 1, .1, .01]),
+      #   "nmodules": tune.grid_search([4]),
+      #   "module_task_dim": tune.grid_search([4]),
+      # },
+      # { # 6
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['genv3']),
+      #   "learning_rate": tune.grid_search([1, 1e-3]),
+      #   "phi_l1_coeff": tune.grid_search([0]),
+      #   "nmodules": tune.grid_search([4]),
+      #   "module_task_dim": tune.grid_search([4]),
+      # },
     ]
 
   else:

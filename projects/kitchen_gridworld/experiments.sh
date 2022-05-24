@@ -11,5 +11,5 @@ make train_search group=mods2 search=mods2 cuda=0,1,2,4
 
 
 make train_search group=cov3 search=cov3 cuda=0,1,2,4
-make train_search group=genv3 search=genv3 cuda=0,1,2,3
-make train_search group=phi2 search=phi2 cuda=0,1,2,4
+make train_search group=genv3_2 search=genv3_2 cuda=0,1,2,3
+make train_search group=phi6 search=phi6 cuda=0,1,2,4

@@ -11,9 +11,10 @@ gpus?=1
 cpus?=3
 actors?=5
 project?='kitchen_grid3'
-env?='EasyPickup'
+env?='genv3'
 task_reps?='pickup'
 group?=''
+name?=''
 notes?=''
 distributed?='False'
 nojit?=0
@@ -37,6 +38,7 @@ git_minor_push:
 test_sync:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
+	JAX_DEBUG_NANS=True \
 	python -m ipdb -c continue projects/kitchen_gridworld/train.py \
 	--agent $(agent) \
 	--test=True \
@@ -50,12 +52,15 @@ test_sync:
 test_async:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
+	JAX_DEBUG_NANS=True \
 	python -m ipdb -c continue projects/kitchen_gridworld/train_distributed.py \
 	--agent $(agent) \
 	--wandb=$(wandb_test) \
+	--debug=True \
 	--env_setting=$(env) \
 	--task_reps=$(task_reps) \
-	--group=$(group)
+	--group=$(group) \
+	--name=$(name)
 
 
 train_search:
