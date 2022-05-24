@@ -53,7 +53,7 @@ class SGDLearner(learning_lib.SGDLearner):
                counter: Optional[counting.Counter] = None,
                logger: Optional[loggers.Logger] = None,
                num_sgd_steps_per_step: int = 1,
-               grad_period: int = 10,
+               grad_period: int = 25,
                clear_sgd_cache_period: int = 0):
     """Initialize the SGD learner."""
     self.network = network
