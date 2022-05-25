@@ -13,16 +13,25 @@ def get(search):
         },
     ]
 
-  elif search == 'cov4':
+  elif search == 'cov5':
     """
     Next:
     """
     space = [
+      # { # 6
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['genv3']),
+      #   "cov_coeff": tune.grid_search([1e-2, 1e-3, 1e-4, 1e-5]),
+      #   "cov_loss": tune.grid_search(['l2_corr']),
+      #   "nmodules": tune.grid_search([4]),
+      #   "lang_task_dim": tune.grid_search([16]),
+      # },
       { # 6
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['genv3']),
-        "cov_coeff": tune.grid_search([1e-2, 1e-3]),
+        "cov_coeff": tune.grid_search([1e-3, 1e-4]),
         "cov_loss": tune.grid_search(['l2_cov']),
         "nmodules": tune.grid_search([4]),
         "lang_task_dim": tune.grid_search([16]),
