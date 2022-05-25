@@ -98,7 +98,8 @@ def build_program(
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 100
     config['learning_rate'] = 1e-2
-    config['cov_coeff'] = 0.0
+    # config['cov_loss'] = 'l2_corr'
+    config['cov_coeff'] = None
     config['max_gradient_norm'] = 1.0
     config['reward_coeff'] = 1.0
     # config['cov_loss'] = 'l1_corr'

@@ -195,13 +195,14 @@ def msf(config, env_spec, use_separate_eval=True, predict_cumulants=True, learn_
         reward_bias=config.step_penalty,
         nmodules=nmodules))
 
-  cov_coeff = getattr(config, 'cov_coeff', 0.0)
+  cov_coeff = getattr(config, 'cov_coeff', None)
 
-  aux_tasks.append(
-    cumulants.CumulantCovLoss(
-      coeff=cov_coeff,
-      blocks=config.nmodules,
-      loss=config.cov_loss))
+  if cov_coeff is not None:
+    aux_tasks.append(
+      cumulants.CumulantCovLoss(
+        coeff=cov_coeff,
+        blocks=config.nmodules,
+        loss=config.cov_loss))
 
   if learn_model:
     if config.contrast_module_coeff > 0:
@@ -276,16 +277,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
       use_separate_eval=True,
       predict_cumulants=True)
 
-    LossFn = td_agent.USFALearning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(
-      loss=config.sf_loss,
-      shorten_data_for_cumulant=True,
-      extract_cumulants=functools.partial(
-        losses.cumulants_from_preds,
-        stop_grad=True,
-      ),
-      aux_tasks=[
+    aux_tasks=[
         q_aux_sf_loss(config),
         cumulants.CumulantRewardLoss(
           shorten_data_for_cumulant=True,
@@ -296,8 +288,21 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
           balance=config.balance_reward,
           reward_bias=config.step_penalty,
           ),
-        cumulants.CumulantCovLoss(coeff=0.0, blocks=0.0) # get stats
-      ])
+      ]
+    if config.cov_coeff is not None:
+      aux_tasks.append(
+        cumulants.CumulantCovLoss(coeff=config.cov_coeff, blocks=0.0) # get stats
+        )
+    LossFn = td_agent.USFALearning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      loss=config.sf_loss,
+      shorten_data_for_cumulant=True,
+      extract_cumulants=functools.partial(
+        losses.cumulants_from_preds,
+        stop_grad=True,
+      ),
+      aux_tasks=aux_tasks)
 
     loss_label = 'usfa'
     eval_network = config.eval_network

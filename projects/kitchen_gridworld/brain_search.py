@@ -213,8 +213,10 @@ def get(search):
     """
     space = [
       { # 6
-        "seed": tune.grid_search([1,2]),
-        "agent": tune.grid_search(['r2d1']),
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['usfa_lstm']),
+        "label": tune.grid_search(['error_reorder2']),
+        "cov_coeff": tune.grid_search([None, 0]),
         "setting": tune.grid_search(['genv3']),
       },
     ]
