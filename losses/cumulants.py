@@ -45,11 +45,6 @@ class CumulantRewardLoss:
     elif self.loss == 'binary':
       error = -distrax.Bernoulli(logits=reward_pred).log_prob(rewards)
 
-<<<<<<< HEAD
-    error = error.reshape(-1)
-=======
->>>>>>> a643849eb023dcccf23169bdcb6318f651ad21cf
-
     if self.balance > 0:
       # flatten
       raw_final_error = error.mean()
