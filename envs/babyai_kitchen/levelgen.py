@@ -485,19 +485,25 @@ class KitchenLevel(RoomGridLevel):
         # if object_infront != None and object_infront.type == 'lava':
         #     done = True
     else:
-        action_info = self.kitchen.interact(
-            action=self.idx2action[int(action)],
-            object_infront=object_infront,
-            fwd_pos=fwd_pos,
-            grid=self.grid,
-            env=self, # only used for backwards compatibility with toggle
-        )
-        if action_info['success']:
-          self.interaction_info = dict(
-            action=str(self.idx2action[int(action)]),
-            object=str(object_infront.type) if object_infront else None)
-        self.carrying = self.kitchen.carrying
-        interaction = True
+        try:
+          action_info = self.kitchen.interact(
+              action=self.idx2action[int(action)],
+              object_infront=object_infront,
+              fwd_pos=fwd_pos,
+              grid=self.grid,
+              env=self, # only used for backwards compatibility with toggle
+          )
+          if action_info['success']:
+            self.interaction_info = dict(
+              action=str(self.idx2action[int(action)]),
+              object=str(object_infront.type) if object_infront else None)
+          self.carrying = self.kitchen.carrying
+          interaction = True
+        except Exception as e:
+          print("Action:", int(action))
+          print("Actions available:", self.idx2action)
+          print("Object in front:", object_infront)
+          raise e
 
     step_info = self.kitchen.step()
 

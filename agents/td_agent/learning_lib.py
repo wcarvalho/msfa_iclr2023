@@ -153,7 +153,7 @@ class SGDLearner(learning_lib.SGDLearner):
       except Exception as e:
         from pprint import pprint
         pprint(extra.metrics['mean_grad'])
-        raise e
+        pass
 
       if self._state.steps % self._grad_period == 0:
         for k, v in extra.metrics['mean_grad'].items():

@@ -130,6 +130,7 @@ def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=Non
         task_dim=lang_task_dim,
         initializer=config.word_initializer,
         compress=config.word_compress,
+        tanh=config.lang_tanh,
         **lang_kwargs)
     def embed_fn(task):
       """Convert task to ints, batchapply if necessary, and run through embedding function."""

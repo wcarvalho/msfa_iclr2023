@@ -89,6 +89,7 @@ class USFAConfig(R2D1Config):
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
   phi_l1_coeff: float = 0.0 # coefficient for L1 on phi
   w_l1_coeff: float = 0.0 # coefficient for L1 on w
+  cov_coeff: float = 0.0 # coeff for covariance loss on phi
   sf_layernorm: str = 'none' # coefficient for L1 on phi
   task_gate: str='none'
 
@@ -143,7 +144,6 @@ class ModularUSFAConfig(USFAConfig):
   phi_l1_coeff: float = 0.00 # coefficient for L1 on phi
   w_l1_coeff: float = 0.00 # coefficient for L1 on w
   module_l1: bool = False # apply L1 per module or for all phi
-  cov_coeff: float = 0.0 # apply L1 per module or for all phi
   cov_loss: str = 'l1_cov' # apply L1 per module or for all phi
 
   sf_net: str = 'independent'
@@ -197,4 +197,5 @@ class LangConfig:
   word_initializer: str = 'RandomNormal'
   word_compress: str = 'last'
   lang_task_dim: int = 16  # dimension of task
+  lang_tanh: bool = False  # whether to apply tanh
 

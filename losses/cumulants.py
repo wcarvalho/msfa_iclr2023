@@ -28,17 +28,16 @@ class CumulantRewardLoss:
   def __call__(self, data, online_preds, key, **kwargs):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
     task = online_preds.w  # ground-truth  [T, B, D]
-    mask = data.discount  # predicted  [T, B]
 
     rewards = data.reward  # ground-truth  [T, B]
     if self.reward_bias:
       rewards = rewards + self.reward_bias # offset time-step penality
+      raise NotImplementedError("check balancing")
 
     if self.shorten_data_for_cumulant and cumulants.shape[0] < task.shape[0]:
       shape = cumulants.shape[0]
       task = task[:shape]
       rewards = rewards[:shape]
-      mask = mask[1:]
 
     reward_pred = jnp.sum(cumulants*task, -1)  # dot product  [T, B]
     if self.loss == 'l2':
@@ -46,37 +45,44 @@ class CumulantRewardLoss:
     elif self.loss == 'binary':
       error = -distrax.Bernoulli(logits=reward_pred).log_prob(rewards)
 
+<<<<<<< HEAD
     error = error.reshape(-1)
+=======
+>>>>>>> a643849eb023dcccf23169bdcb6318f651ad21cf
 
     if self.balance > 0:
       # flatten
       raw_final_error = error.mean()
+      error = error.reshape(-1)
       nonzero = (rewards != 0).reshape(-1)
-      nonzero = nonzero.astype(jnp.float32)
 
       # get all that have 0 reward
       zero = (jnp.abs(rewards) < 1e-5).reshape(-1)
 
-      # zero = jnp.logical_and(zero, valid)
       probs = zero.astype(jnp.float32)*self.balance
       keep_zero = distrax.Independent(
         distrax.Bernoulli(probs=probs)).sample(seed=key)
-      keep_zero = keep_zero.astype(jnp.float32)
 
+      nonzero = nonzero.astype(jnp.float32)
+      keep_zero = keep_zero.astype(jnp.float32)
 
       all_keep = (nonzero + keep_zero)
       total_keep = all_keep.sum()
+      positive_keep = nonzero.sum()
       final_error = (error*all_keep).sum()/(1e-5+total_keep)
-      positive_error = (error*nonzero).sum()/(1e-5+nonzero.sum())
+      positive_error = (error*nonzero).sum()/(1e-5+positive_keep)
 
       metrics = {
         f'loss_reward_{self.loss}': final_error,
         f'z.raw_loss_{self.loss}': raw_final_error,
         f'z.positive_error': positive_error,
+        f'z.keep_all': total_keep,
+        f'z.keep_positive': positive_keep,
         f'z.reward_pred': reward_pred.mean(),
+        f'z.reward': rewards.mean(),
         f'z.task': task.mean(),
-        f'z.phi': cumulants.mean(),
         f'z.task_std': task.std(),
+        f'z.phi': cumulants.mean(),
         f'z.phi_std': cumulants.std(),
       }
     else:
@@ -107,8 +113,17 @@ class CumulantRewardLoss:
 
     if self.wl1_coeff is not None and self.wl1_coeff != 0:
 
-      w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
-      w_l1 = w_l1.mean()
+      if self.nmodules > 1:
+        # cumulants = [T, B, D] --> [T, B, M, D/M]
+        task = jnp.stack(jnp.split(task, self.nmodules, axis=-1), axis=2)
+        # [T, B, M]
+        w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
+        # sum over M, mean over [T, B]
+        w_l1 = w_l1.sum(-1).mean()
+        import ipdb; ipdb.set_trace()
+      else:
+        w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
+        w_l1 = w_l1.mean()
 
       metrics['loss_w_l1'] = w_l1
       w_l1 = w_l1*self.wl1_coeff
@@ -125,41 +140,49 @@ class CumulantCovLoss:
     self.coeff = coeff
     assert coeff >= 0.0
     self.blocks = blocks
+    self.random = True
     self.loss = loss.lower()
     assert self.loss in ['l1_cov', 'l2_cov', 'l1_corr', 'l2_corr']
 
-  def __call__(self, data, online_preds, online_state, target_preds, target_state, steps):
-    mask = data.discount[1:]  # predicted  [T, B]
+  # def __call__(self, data, online_preds, online_state, target_preds, target_state, steps):
+  #   mask = jnp.abs(data.discount[1:])  # predicted  [T, B]
 
-    ngood = mask.sum(0) # [B]
-    has_data = (ngood > 0).all()
+  #   ngood = mask.sum(0) # [B]
+  #   has_data = (ngood > 0).all()
 
-    def empty_loss(data, online_preds, online_state, target_preds, target_state, steps):
-      if self.coeff > 0.0:
-        metrics = {
-          f'loss_cov_{self.loss}': 0.0,
-          "cov" : 0.0,
-          "cov_on" : 0.0,
-          "cov_off" : 0.0,
-          "corr_on" : 0.0,
-          "corr_off" : 0.0,
-          }
-      else:
-        metrics = {
-          "cov" : 0.0,
-          "cov_on" : 0.0,
-          "cov_off" : 0.0,
-          "corr_on" : 0.0,
-          "corr_off" : 0.0,
-        }
+  #   def empty_loss(data, online_preds, online_state, target_preds, target_state, steps):
+  #     if self.coeff > 0.0:
+  #       metrics = {
+  #         f'loss_cov_{self.loss}': 0.0,
+  #         "cov" : 0.0,
+  #         "cov_on" : 0.0,
+  #         "cov_off" : 0.0,
+  #         "corr_on" : 0.0,
+  #         "corr_off" : 0.0,
+  #         }
+  #     else:
+  #       metrics = {
+  #         "cov" : 0.0,
+  #         "cov_on" : 0.0,
+  #         "cov_off" : 0.0,
+  #         "corr_on" : 0.0,
+  #         "corr_off" : 0.0,
+  #       }
 
-      return 0.0, metrics
+  #     return online_preds.cumulants[0,0,0]*0.0, metrics
 
-    return jax.lax.cond(has_data, self.lossfn, empty_loss, data, online_preds, online_state, target_preds, target_state, steps)
+  #   if self.coeff > 0.0:
+  #     return jax.lax.cond(
+  #       has_data, # Condition
+  #       self.lossfn, # True
+  #       empty_loss, # False
+  #       data, online_preds, online_state, target_preds, target_state, steps)
+  #   else:
+  #     return self.lossfn(data, online_preds, online_state, target_preds, target_state, steps)
 
-  def lossfn(self, data, online_preds, online_state, target_preds, target_state, steps):
+  def __call__(self, data, online_preds, online_state, target_preds, target_state, key, steps):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
-    mask = data.discount[1:]  # predicted  [T, B, D]
+    mask = jnp.abs(data.discount[1:])  # predicted  [T, B, D]
     cumulants = cumulants*jnp.expand_dims(mask, axis=2)
 
     # -----------------------
@@ -201,9 +224,13 @@ class CumulantCovLoss:
       corr_off = corr - corr_on
       return cov, cov_off, cov_on, corr, corr_on, corr_off
 
-    # B, D, D
+    # sim Gauss(0, 1e-5)
+    noise = 1e-5 * jax.random.normal(key, cumulants.shape)
+    cumulants_ = cumulants + noise  # to avoid numerical issues w/ corr
+
+    # [B, D, D]
     cov, cov_off, cov_on, corr, corr_on, corr_off = jax.vmap(cov_diag, in_axes=(1, None), out_axes=0)(
-      cumulants+1e-5, # to avoid numerical issues
+      cumulants_,
       block_id)
 
     mean_off = lambda x: (x.sum((1, 2))/denom_off).mean(0)

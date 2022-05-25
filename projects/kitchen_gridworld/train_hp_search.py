@@ -39,6 +39,7 @@ def main(_):
   num_gpus = float(FLAGS.num_gpus)
   DEFAULT_ENV_SETTING = 'SmallL2NoDist'
   DEFAULT_TASK_REPS='lesslang'
+  DEFAULT_LABEL=''
   DEFAULT_ROOM_SIZE=7
   DEFAULT_NUM_ACTORS = int(FLAGS.actors)
   DEFAULT_NUM_DISTS = 0
@@ -71,6 +72,7 @@ def main(_):
     task_reps = config.pop('task_reps', DEFAULT_TASK_REPS)
     room_size = config.pop('room_size', DEFAULT_ROOM_SIZE)
     num_dists = config.pop('num_dists', DEFAULT_NUM_DISTS)
+    label = config.pop('label', DEFAULT_LABEL)
 
     # -----------------------
     # add env kwargs to path desc
@@ -93,7 +95,8 @@ def main(_):
     for k,v in env_kwargs.items():
       if v != default_env_kwargs[k]:
         env_path[k]=v
-
+    if label:
+      env_path['L']=label
     # -----------------------
     # get log dir for experiment
     # -----------------------

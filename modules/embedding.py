@@ -97,14 +97,15 @@ def st_round(x):
 class LanguageTaskEmbedder(hk.Module):
   """Module that embed words and then runs them through GRU."""
   def __init__(self,
-      vocab_size,
-      word_dim,
-      sentence_dim,
-      task_dim=None,
-      initializer='TruncatedNormal',
-      compress='last',
-      gates=None,
-      gate_type='sample',
+      vocab_size: int,
+      word_dim: int,
+      sentence_dim: int,
+      task_dim: int=None,
+      initializer: str='TruncatedNormal',
+      compress: str ='last',
+      gates: int=None,
+      gate_type: str='sample',
+      tanh: bool=False,
       **kwargs):
     super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
@@ -127,6 +128,7 @@ class LanguageTaskEmbedder(hk.Module):
       self.task_projection = hk.Linear(task_dim)
 
     self.gates = gates
+    self.tanh = tanh
     self.gate_type = gate_type.lower()
     assert self.gate_type in ['round', 'sample', 'sigmoid']
     if self.gates is not None and self.gates > 0:
@@ -153,22 +155,24 @@ class LanguageTaskEmbedder(hk.Module):
     else:
       raise NotImplementedError(self.compress)
 
+    # [B, D]
     task_proj = self.task_projection(task)
 
+    if self.tanh:
+      task_proj = jax.nn.tanh(task_proj)
+
     if self.gates is not None and self.gates > 0:
-      gate = jax.nn.sigmoid(self.gate(task)) # [B, G]
-
-      # [B, D] --> [B, G, D/G]
-      task_proj = jnp.stack(jnp.split(task_proj, self.gates, axis=-1), axis=1) 
-
       # [B, G]
+      gate = jax.nn.sigmoid(self.gate(task))
       if self.gate_type == 'sample':
         gate = st_bernoulli(gate, key=hk.next_rng_key())
       elif self.gate_type == 'round':
         gate = st_round(gate)
 
+      # [B, D] --> [B, G, D/G]
+      task_proj = jnp.stack(jnp.split(task_proj, self.gates, axis=-1), axis=1) 
       # [B, G, D/G] * [B, G, 1]
-      task_proj = jax.nn.tanh(task_proj)*jnp.expand_dims(gate, 2)
+      task_proj = task_proj*jnp.expand_dims(gate, 2)
       task_proj = task_proj.reshape(B, -1)
 
     return task_proj
