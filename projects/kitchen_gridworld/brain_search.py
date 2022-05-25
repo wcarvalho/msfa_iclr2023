@@ -52,7 +52,7 @@ def get(search):
       },
     ]
 
-  elif search == 'phi7':
+  elif search == 'phi8':
     """
     Next:
     """
@@ -63,7 +63,7 @@ def get(search):
         "setting": tune.grid_search(['genv3']),
         "learning_rate": tune.grid_search([1e-3]),
         "phi_l1_coeff": tune.grid_search([0, 1, 1e-1, 1e-2]),
-        "nmodules": tune.grid_search([6]),
+        "nmodules": tune.grid_search([4]),
         "module_task_dim": tune.grid_search([4]),
       },
       # { # 6
