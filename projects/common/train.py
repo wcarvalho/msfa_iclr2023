@@ -81,7 +81,9 @@ def run(env,
     log_every=5.0,
     observers=None,
     actor_label='actor',
-    wandb_init_kwargs=None):
+    wandb_init_kwargs=None,
+    init_only=False,
+    **kwargs):
 
   # -----------------------
   # loggers + observers
@@ -116,7 +118,7 @@ def run(env,
       learner_kwargs=dict(clear_sgd_cache_period=config.clear_sgd_cache_period)
       )
 
-  kwargs={}
+  kwargs=kwargs or {}
   if evaluate:
     kwargs['behavior_policy_constructor'] = functools.partial(td_agent.make_behavior_policy, evaluation=True)
 
@@ -126,6 +128,8 @@ def run(env,
   PredCls = create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs)
   # insert into global namespace for pickling, etc.
   NetKwargs.update(PredCls=PredCls)
+  if init_only:
+    return
 
   agent = td_agent.TDAgent(
       env_spec,

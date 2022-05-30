@@ -101,6 +101,7 @@ def build_farm(config, **kwargs):
   return farm.FarmSharedOutput(
     module_size=config.module_size,
     nmodules=config.nmodules,
+    memory_size=config.memory_size,
     image_attn=config.image_attn,
     module_attn_heads=config.module_attn_heads,
     module_attn_size=config.module_attn_size,
@@ -382,6 +383,9 @@ def msf(
   # memory
   # -----------------------
   farm_memory = build_farm(config)
+  config.nmodules = farm_memory.nmodules
+  config.memory_size = farm_memory.memory_size
+  config.module_size = farm_memory.module_size
 
   # -----------------------
   # task related

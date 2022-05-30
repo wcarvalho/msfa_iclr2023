@@ -264,10 +264,27 @@ class ModuleAttention(hk.Module):
     out = out.transpose((1,0,2))  # [B, N, D]
     return out
 
+def get_farm_sizes(module_size, nmodules, memory_size):
+  isnone = [x is None for x in [module_size, nmodules, memory_size]]
+  assert sum(isnone) <=1, "underspecified"
+
+  if module_size is None:
+    module_size = memory_size / nmodules
+  elif nmodules is None:
+    nmodules = memory_size/module_size
+  elif memory_size is None:
+    memory_size = nmodules*module_size
+
+  assert memory_size == nmodules *module_size
+
+  return int(module_size), int(nmodules), int(memory_size)
+
+
 class FARM(hk.RNNCore):
   def __init__(self,
     module_size: int,
     nmodules: int,
+    memory_size: int=None,
     module_attn_size: int = None,
     module_attn_heads: int=4,
     shared_module_attn: bool=True,
@@ -287,7 +304,13 @@ class FARM(hk.RNNCore):
         name (Optional[str], optional): Description
     """
     super().__init__(name=name)
+
+    module_size, nmodules, memory_size = get_farm_sizes(module_size, nmodules, memory_size)
+
+    if module_attn_heads > 0 and module_attn_heads < 1:
+      module_attn_heads = int(nmodules*float(module_attn_heads))
     self.module_attn_heads = module_attn_heads
+
     self.memory = StructuredLSTM(module_size, nmodules, vmap=vmap)
     self._feature_attention = FeatureAttention(projection_dim, vmap=vmap)
     self.image_attn = image_attn
@@ -305,6 +328,7 @@ class FARM(hk.RNNCore):
 
     self.module_size = module_size
     self.nmodules = nmodules
+    self.memory_size = memory_size
     self.projection_dim = projection_dim
 
   def __call__(

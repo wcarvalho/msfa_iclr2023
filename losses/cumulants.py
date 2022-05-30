@@ -115,7 +115,6 @@ class CumulantRewardLoss:
         w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
         # sum over M, mean over [T, B]
         w_l1 = w_l1.sum(-1).mean()
-        import ipdb; ipdb.set_trace()
       else:
         w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
         w_l1 = w_l1.mean()

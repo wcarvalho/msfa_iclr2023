@@ -18,6 +18,7 @@ name?=''
 notes?=''
 distributed?='False'
 nojit?=0
+init?=0
 
 
 
@@ -46,7 +47,8 @@ test_sync:
 	--env_setting=$(env) \
 	--task_reps=$(task_reps) \
 	--wandb=$(wandb_test) \
-	--group=$(group)
+	--group=$(group) \
+	--init_only=$(init)
 
 
 test_async:

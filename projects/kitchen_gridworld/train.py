@@ -42,6 +42,7 @@ flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
 # wandb
 # -----------------------
 flags.DEFINE_bool('wandb', False, 'whether to log.')
+flags.DEFINE_bool('init_only', False, 'whether to end after network initialization.')
 flags.DEFINE_string('wandb_project', 'kitchen_grid_local', 'wand project.')
 flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
 flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
@@ -70,9 +71,13 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    # config['lang_tanh'] = False
-    # config['cov_loss'] = 'l1_corr'
-    config['w_l1_coeff'] = 1e-2
+    config['memory_size'] = 512
+    config['nmodules'] = None
+    config['module_task_dim'] = 4
+    config['separate_value_params'] = False
+    config['module_size'] = 64
+    config['module_attn_heads'] = .5
+    # config['nmodules'] = 6
     print("="*50)
     print("="*20, "testing", "="*20)
     from pprint import pprint
@@ -117,6 +122,8 @@ def main(_):
     num_episodes=FLAGS.num_episodes,
     wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
     actor_label=actor_label,
+    debug=FLAGS.test,
+    init_only=FLAGS.init_only,
     )
 
 

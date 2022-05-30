@@ -48,7 +48,7 @@ class R2D1Config(configs.R2D1Config):
 
   # Priority options
   importance_sampling_exponent: float = 0.0
-  priority_exponent: float = 0.6
+  priority_exponent: float = 0.9
   max_priority_weight: float = 0.9
 
   # Network hps
@@ -89,7 +89,7 @@ class USFAConfig(R2D1Config):
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
   phi_l1_coeff: float = 0.0 # coefficient for L1 on phi
   w_l1_coeff: float = 0.0 # coefficient for L1 on w
-  cov_coeff: float = 0.0 # coeff for covariance loss on phi
+  cov_coeff: float = None # coeff for covariance loss on phi
   sf_layernorm: str = 'none' # coefficient for L1 on phi
   task_gate: str='none'
 
