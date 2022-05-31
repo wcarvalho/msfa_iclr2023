@@ -528,6 +528,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
           multihead=config.seperate_value_params, # seperate params per cumulants
           vmap_multihead=config.farm_vmap,
           layernorm=config.sf_layernorm,
+          position_embed=config.embed_position,
           )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""

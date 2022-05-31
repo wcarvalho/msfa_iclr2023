@@ -80,7 +80,6 @@ class QLearningAuxLoss(nstep.QLearning):
       'z.q_sf_max': online_q.max(),
       'z.q_sf_min': online_q.min()}
 
-
     return loss, metrics
 
 

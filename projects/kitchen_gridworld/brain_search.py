@@ -145,7 +145,8 @@ def get(search):
       },
     ]
 
-  elif search == 'size':
+
+  elif search == 'size3':
     """
     Next:
     """
@@ -154,29 +155,15 @@ def get(search):
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['genv3']),
-        "memory_size": tune.grid_search([32, 64]),
-        "nmodules": tune.grid_search([2, 4]),
-        "module_task_dim": tune.grid_search([4]),
-        "seperate_value_params": tune.grid_search([False]),
-        "module_size": tune.grid_search([None]),
+        "memory_size": tune.grid_search([512]),
+        "nmodules": tune.grid_search([16]),
+        "module_task_dim": tune.grid_search([1]),
+        "cov_coeff": tune.grid_search([None, .1]),
+        "module_size": tune.grid_search([64]),
+        "embed_position": tune.grid_search([16, 32]),
         "module_attn_heads": tune.grid_search([.5]),
       },
-      # { # 6
-      #   "seed": tune.grid_search([1]),
-      #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['genv3']),
-      #   "memory_size": tune.grid_search([512]),
-      #   "nmodules": tune.grid_search([None]),
-      #   "module_task_dim": tune.grid_search([4]),
-      #   "module_size": tune.grid_search([32, 64]),
-      #   "module_attn_heads": tune.grid_search([.25, .5]),
-      # },
     ]
-
-
-
-
-
   else:
     raise NotImplementedError(search)
 

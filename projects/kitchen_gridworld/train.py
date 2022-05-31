@@ -71,9 +71,9 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['memory_size'] = 512
+    config['memory_size'] = 256
     config['nmodules'] = None
-    config['module_task_dim'] = 4
+    config['module_task_dim'] = 2
     config['separate_value_params'] = False
     config['module_size'] = 64
     config['module_attn_heads'] = .5
