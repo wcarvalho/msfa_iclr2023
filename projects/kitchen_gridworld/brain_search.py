@@ -154,7 +154,7 @@ def get(search):
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['genv3']),
-        "memory_size": tune.grid_search([128, 256]),
+        "memory_size": tune.grid_search([32, 64]),
         "nmodules": tune.grid_search([2, 4]),
         "module_task_dim": tune.grid_search([4]),
         "seperate_value_params": tune.grid_search([False]),
