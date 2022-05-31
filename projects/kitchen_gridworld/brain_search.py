@@ -38,15 +38,16 @@ def get(search):
       },
     ]
 
-  elif search == 'genv3_2':
+  elif search == 'slice':
     """
     Next:
     """
     space = [
       { # 6
-        "seed": tune.grid_search([3]),
+        "seed": tune.grid_search([1,2]),
         "agent": tune.grid_search(['r2d1']),
-        "setting": tune.grid_search(['genv3']),
+        "setting": tune.grid_search(['slice']),
+        "max_number_of_steps": tune.grid_search([15_000_000]),
       },
     ]
 
@@ -145,7 +146,7 @@ def get(search):
       },
     ]
 
-  elif search == 'size':
+  elif search == 'position':
     """
     Next:
     """
@@ -154,11 +155,11 @@ def get(search):
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['genv3']),
-        "memory_size": tune.grid_search([128, 256]),
-        "nmodules": tune.grid_search([2, 4]),
+        "memory_size": tune.grid_search([256, 512]),
+        "nmodules": tune.grid_search([4]),
         "module_task_dim": tune.grid_search([4]),
-        "seperate_value_params": tune.grid_search([False]),
         "module_size": tune.grid_search([None]),
+        "embed_position": tune.grid_search([16]),
         "module_attn_heads": tune.grid_search([.5]),
       },
       # { # 6
@@ -172,6 +173,25 @@ def get(search):
       #   "module_attn_heads": tune.grid_search([.25, .5]),
       # },
     ]
+
+  elif search == 'size3':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['genv3']),
+        "memory_size": tune.grid_search([256, 512]),
+        "nmodules": tune.grid_search([None]),
+        "module_task_dim": tune.grid_search([1, 2]),
+        "module_size": tune.grid_search([64]),
+        "embed_position": tune.grid_search([0]),
+        "module_attn_heads": tune.grid_search([.5]),
+      },
+    ]
+
 
 
 

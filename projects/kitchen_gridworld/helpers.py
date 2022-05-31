@@ -17,6 +17,7 @@ from agents.td_agent import losses
 
 from losses.contrastive_model import ModuleContrastLoss, TimeContrastLoss
 from losses import cumulants
+from losses import msfa_stats
 
 
 from projects.msf.helpers import q_aux_sf_loss
@@ -180,7 +181,10 @@ def msf(config, env_spec, use_separate_eval=True, predict_cumulants=True, learn_
 
   LossFn = td_agent.USFALearning
 
-  aux_tasks=[q_aux_sf_loss(config)]
+  aux_tasks=[
+    q_aux_sf_loss(config),
+    msfa_stats.MsfaStats()
+  ]
 
   if predict_cumulants:
     nmodules = config.nmodules if config.module_l1 else 1

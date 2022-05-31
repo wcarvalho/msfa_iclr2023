@@ -10,6 +10,7 @@ from utils import data as data_utils
 
 from modules.basic_archs import AuxilliaryTask
 from modules.embedding import OneHotTask
+from modules.embedding import embed_position
 from modules.duelling import DuellingSfQNet
 from utils import vmap
 from utils import data as data_utils
@@ -23,6 +24,7 @@ class FarmUsfaHead(UsfaHead):
     cumulants_per_module: int,
     vmap_multihead: str = 'lift',
     relational_net = lambda x:x,
+    position_embed: int=0,
     **kwargs,
     ):
     super(FarmUsfaHead, self).__init__(
@@ -33,6 +35,7 @@ class FarmUsfaHead(UsfaHead):
     self.relational_net = relational_net
     self._cumulants_per_module = cumulants_per_module
     self.sf_factory = lambda: hk.nets.MLP([self.hidden_size, self.num_actions*cumulants_per_module])
+    self.position_embed = position_embed
 
   def compute_sf(self,
     state : jnp.ndarray,
@@ -68,6 +71,9 @@ class FarmUsfaHead(UsfaHead):
         vmap=self.vmap_multihead)
     else:
       # [B, M, A*C]
+      if self.position_embed:
+        state_policy = embed_position(
+          factors=state_policy, size=self.position_embed)
       sf = hk.BatchApply(self.sf_factory())(state_policy)
 
     sf = jnp.reshape(sf, [B, M, A, C])
@@ -81,6 +87,7 @@ class FarmUsfaHead(UsfaHead):
           create_scale=False,
           create_offset=False)(sf)
 
+    # vmap loop over A for SF
     q = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)(sf, task)
     q = q.sum(-1)
 
