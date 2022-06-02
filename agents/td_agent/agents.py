@@ -17,6 +17,7 @@
 
 import functools
 from typing import Callable, Optional
+import logging
 
 from acme import core
 from acme import environment_loop
@@ -25,6 +26,7 @@ from acme import specs
 from acme.agents.jax import builders
 from acme.agents.jax.r2d2 import networks as r2d2_networks
 from acme.jax import networks as networks_lib
+from acme.jax import savers
 from acme.jax import types
 from acme.jax import utils
 from acme.jax.layouts import distributed_layout
