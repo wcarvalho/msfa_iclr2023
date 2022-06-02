@@ -101,7 +101,7 @@ class Kitchen(object):
         raise RuntimeError(f"Unknown action: {action}")
 
   def step(self):
-    for object in self._active:
+    for object in self.objects:
         object.step()
 
   # ======================================================
