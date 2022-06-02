@@ -25,6 +25,19 @@ def get(search):
         "setting": tune.grid_search(['genv4']),
       },
     ]
+
+  elif search == 'similar4':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+        "setting": tune.grid_search(['similar']),
+      },
+    ]
+
   elif search == 'size4':
     """
     Next:
@@ -35,7 +48,8 @@ def get(search):
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['genv4']),
         "nmodules": tune.grid_search([1, 2, 4, 8]),
-        "module_size": tune.grid_search([32]),
+        "module_size": tune.grid_search([64]),
+        "memory_size": tune.grid_search([None]),
       },
     ]
 
