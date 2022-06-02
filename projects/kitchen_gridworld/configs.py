@@ -118,11 +118,12 @@ class FarmConfig:
   """Extra configuration options for FARM module."""
 
   # Network hps
+  memory_size = None
   module_size: int = 128
   nmodules: int = 4
   out_layers: int = 0
   module_attn_size: int = None
-  module_attn_heads: int = 2  # how many attention heads between modules
+  module_attn_heads: float = .5  # how many attention heads between modules
   shared_module_attn: bool = True # share params for module attention
   projection_dim: int = 16
   farm_vmap: str = "lift"  # vmap over different parameter sets 
@@ -136,7 +137,7 @@ class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
   normalize_delta: bool = True # whether to normalize delta between states
   normalize_state: bool = True # whether to normalize delta between states
-  embed_position: int = 16 # whether to add position embeddings to modules
+  embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
 
   seperate_cumulant_params: bool=True # seperate parameters per cumulant set
@@ -164,7 +165,7 @@ class ModularUSFAConfig(USFAConfig):
   layernorm_rel: bool=False
 
   task_gate: str='none'
-  module_task_dim: int=0 # task dim per module. if 0, use lang_task_dim and divide by nmodules
+  module_task_dim: int=1 # task dim per module. if 0, use lang_task_dim and divide by nmodules
 
 
 @dataclasses.dataclass

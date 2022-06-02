@@ -30,6 +30,7 @@ def build_common_program(
   LossFnKwargs,
   wandb_init_kwargs=None,
   log_every=5.0, # how often to log
+  max_ckpts_to_keep=24,
   colocate_learner_replay=False,
   observers=None,
   custom_loggers=True,
@@ -124,6 +125,7 @@ def build_common_program(
     dictionary=save_config_dict)
 
   ckpt_config= distributed_layout.CheckpointingConfig(
+    max_to_keep=max_ckpts_to_keep,
     directory=log_dir)
 
   # -----------------------
