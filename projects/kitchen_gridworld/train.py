@@ -55,7 +55,7 @@ FLAGS = flags.FLAGS
 def main(_):
   setting=FLAGS.env_setting
   env_kwargs=dict(
-    room_size=7,
+    room_size=5,
     )
   env = helpers.make_environment(
     setting=setting,
@@ -73,9 +73,9 @@ def main(_):
     config['min_replay_size'] = 10
     config['memory_size'] = 256
     config['nmodules'] = None
-    config['module_task_dim'] = 2
+    config['module_task_dim'] = 1
     config['separate_value_params'] = False
-    config['module_size'] = 64
+    config['module_size'] = 256
     config['module_attn_heads'] = .5
     # config['nmodules'] = 6
     print("="*50)
