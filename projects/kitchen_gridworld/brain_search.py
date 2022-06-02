@@ -48,7 +48,7 @@ def get(search):
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['genv4']),
         "nmodules": tune.grid_search([1, 2, 4, 8]),
-        "module_size": tune.grid_search([64]),
+        "module_size": tune.grid_search([32]),
         "memory_size": tune.grid_search([None]),
       },
     ]
