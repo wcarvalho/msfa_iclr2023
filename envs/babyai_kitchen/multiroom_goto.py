@@ -79,6 +79,7 @@ class MultiroomGotoEnv(KitchenLevel):
         self.room_location = None #same purpose, just instead of a number, it's 2 coords
         self.room_reward = room_reward
         self.got_room_reward = False
+        self.carrying = None
 
         self.random_mission = True
         if mission_object:
@@ -102,7 +103,7 @@ class MultiroomGotoEnv(KitchenLevel):
         self.select_mission()
 
         kwargs["task_kinds"] = ['goto','pickup']
-        kwargs['actions'] = ['left', 'right', 'forward','pickup_contents']
+        kwargs['actions'] = ['left', 'right', 'forward','pickup_contents', 'place_down']
         if (not one_room) and (not walls_gone):
             kwargs['actions'].append('open')
         kwargs['kitchen'] = kitchen
@@ -243,12 +244,26 @@ class MultiroomGotoEnv(KitchenLevel):
         if obj_type in self._task_objects:
             obj_idx = self.type2idx[obj_type]
 
-            pickup_vector[obj_idx] = 1
-            reward = float(self.mission_arr[obj_idx])
-            self.grid.set(*fwd_pos, None)
+            action_info = self.kitchen.interact(
+                action='pickup_contents',
+                object_infront=object,
+                fwd_pos=fwd_pos,
+                grid=self.grid,
+                env=self,  # only used for backwards compatibility with toggle
+            )
+            self.carrying = self.kitchen.carrying
+            if self.verbosity==1:
+                print(action_info)
+            if action_info['success']:
+                self.grid.set(*fwd_pos, None)
+                pickup_vector[obj_idx] += 1
+                reward = float(self.mission_arr[obj_idx])
+                if self.remaining[obj_idx] > 0:
+                    self.remaining[obj_idx] -= 1
+            else:
+                reward = 0.0
 
-            if self.remaining[obj_idx]>0:
-                self.remaining[obj_idx] -= 1
+
 
             return reward
         assert obj_type=="wall" or obj_type=="door"
@@ -356,9 +371,17 @@ class MultiroomGotoEnv(KitchenLevel):
                 if object_infront.type=='door':
                     object_infront.is_open = not object_infront.is_open
 
+        elif action == self.actiondict.get('place_down',-1):
+            #first check that we are carrying something and that space in front is empty
+            if self.carrying is not None and self.grid.get(*fwd_pos)==None:
+                self.grid.set(*fwd_pos, self.carrying)
+                self.carrying = None
+                self.kitchen.update_carrying(None)
+
+
         # pickup or no-op if not pickup_required
         else:
-            if object_infront and self.pickup_required:
+            if object_infront and self.pickup_required and self.carrying is None:
                 # get reward
                 reward = self.remove_object(fwd_pos, pickup)
 
@@ -416,18 +439,18 @@ if __name__ == '__main__':
 
     env = MultiroomGotoEnv(
         agent_view_size=5,
-        objectlist=[{'pan': 1}, {'tomato': 1}, {'knife':1}],
-        pickup_required=False,
+        objectlist=[{'pan': 1,'pot':1,'stove':1}, {'tomato': 1,'lettuce':1, 'onion':1}, {'knife':1,'apple':1, 'orange':1}],
+        pickup_required=True,
         tile_size=tile_size,
         epsilon=0.0,
         room_size=5,
         doors_start_open=True,
         stop_when_gone=True,
-        walls_gone=True,
+        walls_gone=False,
         verbosity=1,
         one_room=False,
-        deterministic_rooms=True,
-        room_reward=1.0
+        deterministic_rooms=False,
+        room_reward=.25
     )
 
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)

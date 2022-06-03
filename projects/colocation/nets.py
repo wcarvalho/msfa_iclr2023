@@ -77,13 +77,16 @@ def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
     memory_out=memory_out,
     )
 
-def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False, cumulant_type = 'conv',**kwargs):
+def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False, cumulant_type = 'conv',train_task_as_z = None,**kwargs):
+  if train_task_as_z is None:
+    train_task_as_z = predict_cumulants
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
   task_embed = 0
   if predict_cumulants:
-    task_embed = LinearTaskEmbed(config.cumulant_dimension)
-    state_dim = config.cumulant_dimension
+    #task_embed = LinearTaskEmbed(config.cumulant_dimension)
+    #state_dim = config.cumulant_dimension
+    pass
   prediction_head=UsfaHead(
       num_actions=num_actions,
       state_dim=state_dim,
@@ -97,7 +100,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False, cu
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       task_embed=task_embed,
     ##SPECIAL TIME
-      train_task_as_z=predict_cumulants
+      train_task_as_z=train_task_as_z
       )
   aux_tasks = []
   if predict_cumulants:
@@ -111,7 +114,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False, cu
     elif cumulant_type=='conv':
       aux_tasks.append(
         CumulantsFromConvTask(
-          [config.cumulant_hidden_size, config.cumulant_dimension],
+          [config.cumulant_hidden_size, state_dim],
           normalize=config.normalize_cumulants,
           activation=config.cumulant_act))
     else:

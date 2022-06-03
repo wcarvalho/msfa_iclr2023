@@ -50,8 +50,9 @@ def get(search):
         "simple": tune.grid_search([False]),
         "nowalls": tune.grid_search([False]),
         "one_room": tune.grid_search([False]),
-        "deterministic_rooms":tune.grid_search([True, False]),
-        "room_reward": tune.grid_search([.25])
+        "deterministic_rooms":tune.grid_search([False]),
+        "room_reward": tune.grid_search([.25]),
+        "train_task_as_z": tune.grid_search([1])
         },
     ]
 

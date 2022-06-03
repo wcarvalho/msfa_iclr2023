@@ -3,14 +3,15 @@ Param search.
 """
 
 """ Train command:
+ssh -L 16006:127.0.0.1:6006 nameer@deeplearn9.eecs.umich.edu
 
  PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=0,1,2,3 \
+    CUDA_VISIBLE_DEVICES=0,1,2 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/colocation/train_hp_search.py \
-    --search usfa_comparison_oneseed --num_gpus 4 --wandb_name usfa_showdown
+    --search usfa_comparison_oneseed --num_gpus 1 --wandb_name usfa_showdown-5-28
     
 """
 
@@ -54,6 +55,7 @@ def main(_):
   DEFAULT_ONE_ROOM = False
   DEFAULT_DETERMINISTIC_ROOMS = True
   DEFAULT_ROOM_REWARD = 0.
+  DEFAULT_TRAIN_TASK_AS_Z = None
 
   space = importlib.import_module(f'projects.colocation.{FLAGS.spaces}').get(FLAGS.search)
 
@@ -74,6 +76,7 @@ def main(_):
     one_room = config.pop('one_room',DEFAULT_ONE_ROOM)
     deterministic_rooms = config.pop('deterministic_rooms',DEFAULT_DETERMINISTIC_ROOMS)
     room_reward = config.pop('room_reward',DEFAULT_ROOM_REWARD)
+    train_task_as_z = config.pop('train_task_as_z', DEFAULT_TRAIN_TASK_AS_Z)
 
 
     # -----------------------
@@ -102,7 +105,8 @@ def main(_):
       one_room=one_room,
       deterministic_rooms=deterministic_rooms,
       room_reward=room_reward,
-      wandb_name=wandb_name
+      wandb_name=wandb_name,
+      train_task_as_z=train_task_as_z
       )
 
     if program is None: return

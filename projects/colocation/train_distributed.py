@@ -5,11 +5,20 @@ Run Successor Feature based agents and baselines on
 Command I run to train:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=1 \
+    CUDA_VISIBLE_DEVICES=3 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     python projects/colocation/train_distributed.py \
-    --agent usfa_cumulants --room_reward .25
+    --agent usfa_conv --room_reward .25 --wandb_name 6-1 --train_task_as_z 1 --seed 1
+
+command for memray:
+    PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
+    CUDA_VISIBLE_DEVICES=3 \
+    XLA_PYTHON_CLIENT_PREALLOCATE=false \
+    TF_FORCE_GPU_ALLOW_GROWTH=true \
+    memray run --native --follow-fork --trace-python-allocators projects/colocation/train_distributed.py \
+    --agent usfa_lstm --room_reward .25 --wandb_name memray_test --train_task_as_z -1
 
 
 Command for tensorboard
@@ -40,7 +49,9 @@ from utils import make_logger, gen_log_dir
 import pickle
 from projects.common.train_distributed import build_common_program
 from projects.common.observers import LevelReturnObserver
-from projects.colocation.observers import RoomReturnObserver, FullReturnObserver
+from projects.colocation.observers import RoomReturnObserver, FullReturnObserver, PickupCountObserver
+import string
+import random
 
 
 # -----------------------
@@ -53,6 +64,7 @@ flags.DEFINE_bool('nowalls',False,'No doors in environment')
 flags.DEFINE_bool('one_room',False, 'all in one room')
 flags.DEFINE_bool('deterministic_rooms',False,'rooms are not in random order')
 flags.DEFINE_float('room_reward',0,'reward for entering the correct room')
+flags.DEFINE_integer('train_task_as_z', 0, '0 for None, -1 for no, 1 for yes')
 
 
 flags.DEFINE_string('agent', 'usfa_conv', 'which agent.')
@@ -83,8 +95,17 @@ def build_program(
   nowalls: bool = False,
   one_room: bool = False,
   deterministic_rooms: bool = False,
-  room_reward: float = 0
+  room_reward: float = 0,
+  train_task_as_z: int = 0,
     ):
+  if train_task_as_z==0:
+      train_task_as_z = None
+  elif train_task_as_z==-1:
+      train_task_as_z = False
+  elif train_task_as_z==1:
+      train_task_as_z=True
+  else:
+      raise NotImplementedError("Invalid value for train_task_as_z: {0}".format(train_task_as_z))
   # -----------------------
   # load env stuff
   # -----------------------
@@ -96,10 +117,10 @@ def build_program(
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec, agent=agent)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec, agent=agent, train_task_as_z=train_task_as_z)
 
   #observers
-  observers = [LevelReturnObserver(), RoomReturnObserver(),FullReturnObserver()]
+  observers = [LevelReturnObserver(), RoomReturnObserver(),FullReturnObserver(), PickupCountObserver()]
 
 
   save_config_dict = config.__dict__
@@ -117,9 +138,15 @@ def build_program(
       seed=config.seed,
       agent=str(agent))
 
+  # generate unique hash for name
+
     if wandb_name is None:
         wandb_name = 'test'
     wandb_name+= '-' + agent
+    if train_task_as_z or (train_task_as_z is None and (agent=='usfa_lstm' or agent=='usfa_conv')):
+        wandb_name+='-new_sampling'
+    else:
+        wandb_name+='-og_sampling'
     if simple:
         wandb_name+='-simple'
     if one_room:
@@ -130,6 +157,11 @@ def build_program(
         wandb_name+='-deterministic_rooms'
     if room_reward!=0:
         wandb_name+='-room_reward'
+
+    letters = string.ascii_lowercase
+    hashcode = ''.join(random.choice(letters) for _ in range(10))
+    wandb_name+=hashcode
+
 
     if wandb_init_kwargs:
       wandb_init_kwargs['name'] = wandb_name
@@ -182,7 +214,8 @@ def main(_):
       one_room=FLAGS.one_room,
       deterministic_rooms=FLAGS.deterministic_rooms,
       room_reward=FLAGS.room_reward,
-      wandb_name=FLAGS.wandb_name
+      wandb_name=FLAGS.wandb_name,
+      train_task_as_z=FLAGS.train_task_as_z
   )
 
   # Launch experiment.

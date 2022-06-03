@@ -69,7 +69,7 @@ def q_aux_loss(config):
           sched_end_val=config.q_aux_end_val,
           tx_pair=config.tx_pair)
 
-def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1"):
+def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1", train_task_as_z = None):
     default_config = dict()
     default_config.update(config_kwargs or {})
     if agent=='r2d1':
@@ -129,7 +129,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
             env_spec=env_spec,
             use_seperate_eval=True,
             predict_cumulants=True,
-            cuulant_type='conv')
+            cuulant_type='conv',
+            train_task_as_z=train_task_as_z)
         LossFn = td_agent.USFALearning
         LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
         LossFnKwargs.update(
@@ -165,7 +166,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
             env_spec=env_spec,
             use_seperate_eval=True,
             predict_cumulants=True,
-            cumulant_type='lstm')
+            cumulant_type='lstm',
+            train_task_as_z=train_task_as_z)
         LossFn = td_agent.USFALearning
         LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
         LossFnKwargs.update(

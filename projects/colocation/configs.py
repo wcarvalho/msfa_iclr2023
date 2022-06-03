@@ -22,7 +22,7 @@ class R2D1Config(configs.R2D1Config):
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
   seed: int = 3
-  max_number_of_steps: int = 20_000_000
+  max_number_of_steps: int = 10_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -74,7 +74,7 @@ class USFAConfig(R2D1Config):
   policy_layers = 0
   batch_size: int = 32
   cumulant_hidden_size: int=128 # hidden size for cumulant pred
-  cumulant_dimension: int = 8 # actual cumulant dimensions
+  cumulant_dimension: int = 9 # actual cumulant dimensions NOT USED RIGHT NOW BECAUSE NOT TASK EMBEDDING
   embed_task: bool = False  # whether to embed task
   normalize_task: bool = False # whether to normalize task embedding
   eval_network: bool = True

@@ -2,6 +2,8 @@ import abc
 import dataclasses
 import itertools
 from typing import Any, Dict, List, Optional, Sequence, Union
+import collections
+import os
 
 from acme.utils.loggers.base import Logger
 from acme.utils.observers import EnvLoopObserver
@@ -79,3 +81,34 @@ class RoomReturnObserver(EnvLoopObserver):
         f'0.room/{self.room}/episode_return': self._episode_return,
     }
     return result
+
+
+"""Observer to monitor pickups
+It will just count total number of pickups and that's it
+"""
+
+
+class PickupCountObserver(EnvLoopObserver):
+
+  def __init__(self):
+    super(PickupCountObserver, self).__init__()
+
+  def observe_first(self, env: dm_env.Environment, timestep: dm_env.TimeStep
+                    ) -> None:
+    """Observes the initial state."""
+
+    self.num_pickups = 0 #reset number of pickups
+    self.pickup_counts = np.array(timestep.observation.observation.state_features) #keep track of the pickups
+
+  def observe(self, env: dm_env.Environment, timestep: dm_env.TimeStep,
+              action: np.ndarray) -> None:
+    """Records one environment step."""
+    new_pickup = np.array(timestep.observation.observation.state_features)
+    if (np.sum(new_pickup)>np.sum(self.pickup_counts)):
+      self.num_pickups+=1
+    self.pickup_counts = new_pickup
+
+
+  def get_metrics(self) -> Dict[str, Number]:
+    """Returns metrics collected for the current episode."""
+    return {f'0.total_pickups':float(self.num_pickups)}
