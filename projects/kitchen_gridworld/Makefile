@@ -16,7 +16,7 @@ task_reps?='pickup'
 group?=''
 name?=''
 notes?=''
-distributed?='False'
+dist?='False'
 nojit?=0
 init?=0
 
@@ -80,6 +80,21 @@ train_search:
 	--search $(search) \
 	--notes $(notes)
 
+lp_search:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/kitchen_gridworld/train_hp_search_lp.py \
+	--folder $(folder) \
+	--num_gpus $(gpus) \
+	--num_cpus $(cpus) \
+	--actors $(actors) \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project $(project) \
+	--group $(group) \
+	--search $(search) \
+	--notes $(notes)
+
 
 # train_search_rldl:
 # 	cd ../..; \
@@ -101,7 +116,7 @@ video_maker:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python -m ipdb -c continue projects/kitchen_gridworld/create_episode_data.py \
-	--distributed=$(distributed)
+	--distributed=$(dist)
 
 mprof_train_search:
 	cd ../..; \
