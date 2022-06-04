@@ -105,6 +105,7 @@ def build_farm(config, **kwargs):
     image_attn=config.image_attn,
     module_attn_heads=config.module_attn_heads,
     module_attn_size=config.module_attn_size,
+    normalize_attn=config.normalize_attn,
     shared_module_attn=config.shared_module_attn,
     projection_dim=config.projection_dim,
     vmap=config.farm_vmap,
@@ -382,7 +383,7 @@ def msf(
   # -----------------------
   # memory
   # -----------------------
-  farm_memory = build_farm(config)
+  farm_memory = build_farm(config, return_attn=True)
   config.nmodules = farm_memory.nmodules
   config.memory_size = farm_memory.memory_size
   config.module_size = farm_memory.module_size
@@ -488,12 +489,12 @@ def build_msf_head(config, sf_out_dim, num_actions):
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
       return usfa_prep_fn(inputs=inputs, 
-        memory_out=flatten_structured_memory(memory_out))
+        memory_out=flatten_structured_memory(memory_out.hidden))
 
     def eval_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
       return usfa_eval_prep_fn(inputs=inputs, 
-        memory_out=flatten_structured_memory(memory_out))
+        memory_out=flatten_structured_memory(memory_out.hidden))
 
   else:
     if config.sf_net == "independent":
@@ -532,11 +533,15 @@ def build_msf_head(config, sf_out_dim, num_actions):
           )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
-      return usfa_prep_fn(inputs=inputs, memory_out=memory_out)
+      return usfa_prep_fn(
+        inputs=inputs,
+        memory_out=memory_out.hidden)
 
     def eval_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
-      return usfa_eval_prep_fn(inputs=inputs, memory_out=memory_out)
+      return usfa_eval_prep_fn(
+        inputs=inputs,
+        memory_out=memory_out.hidden)
 
   return head, pred_prep_fn, eval_prep_fn
 
@@ -559,6 +564,7 @@ def build_msf_phi_net(config, sf_out_dim):
           normalize_cumulants=config.normalize_cumulants,
           normalize_delta=normalize_delta,
           construction=config.cumulant_const,
+          input_source =config.cumulant_source,
           )
   else:
     if config.phi_net == "independent":
@@ -585,6 +591,7 @@ def build_msf_phi_net(config, sf_out_dim):
         layers=config.cumulant_layers,
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
+        input_source =config.cumulant_source,
         relational_net=relational_net,
         normalize_delta=normalize_delta,
         normalize_state=normalize_state,

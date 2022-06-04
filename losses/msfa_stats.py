@@ -18,7 +18,7 @@ class MsfaStats:
     # -----------------------
     # means across modules
     # -----------------------
-    T, B, N, D = online_preds.memory_out.shape
+    T, B, N, D = online_preds.memory_out.hidden.shape
 
     # [T, B, A, C] --> [T, B, A, N, C/N]
     online_sf = jnp.stack(jnp.split(online_sf, N, axis=-1), axis=3)

@@ -23,8 +23,8 @@ class OldModuleContrastLoss:
 
     model_preds = online_preds.model_outputs  # [T, B, N, D]
 
-    state = online_preds.memory_out[:-1]  # [T, B, N, D]
-    next_state = online_preds.memory_out[1:]  # [T, B, N, D]
+    state = online_preds.memory_out.hidden[:-1]  # [T, B, N, D]
+    next_state = online_preds.memory_out.hidden[1:]  # [T, B, N, D]
 
     if self.prediction == 'delta':
       prediction = model_preds
@@ -106,8 +106,8 @@ class ModuleContrastLoss:
   def __call__(self, data, online_preds, online_state, **kwargs):
 
     model_preds = online_preds.model_outputs  # [T, B, N, D]
-    state = online_preds.memory_out[:-1]  # [T, B, N, D]
-    next_state = online_preds.memory_out[1:]  # [T, B, N, D]
+    state = online_preds.memory_out.hidden[:-1]  # [T, B, N, D]
+    next_state = online_preds.memory_out.hidden[1:]  # [T, B, N, D]
 
     if self.prediction == 'delta':
       prediction = model_preds
@@ -208,8 +208,8 @@ class TimeContrastLoss:
 
     model_preds = online_preds.model_outputs  # [T, B, N, D]
 
-    state = online_preds.memory_out[:-1]  # [T, B, N, D]
-    next_state = online_preds.memory_out[1:]  # [T, B, N, D]
+    state = online_preds.memory_out.hidden[:-1]  # [T, B, N, D]
+    next_state = online_preds.memory_out.hidden[1:]  # [T, B, N, D]
 
     # -----------------------
     # L2 norm
