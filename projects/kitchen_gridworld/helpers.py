@@ -167,9 +167,8 @@ def make_environment(evaluation: bool = False,
 # ======================================================
 # Building Agent Networks
 # ======================================================
-def msf(config, env_spec, use_separate_eval=True, predict_cumulants=True, learn_model=False, task_embedding='none'):
+def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=True, learn_model=False, task_embedding='none'):
 
-  NetworkCls =  nets.msf
 
   NetKwargs=dict(
     config=config,
@@ -326,6 +325,28 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     return msf(
       config,
       env_spec,
+      NetworkCls=nets.msf,
+      predict_cumulants=True,
+      learn_model=True,
+      use_separate_eval=True,
+      task_embedding='language')
+
+  elif agent == "conv_msf":
+  # USFA + cumulants from FARM + Q-learning
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.ModularUSFAConfig(),
+        configs.QAuxConfig(),
+        configs.RewardConfig(),
+        configs.FarmModelConfig(),
+        configs.LangConfig(),
+      ],
+      dict_configs=default_config)
+    config.cumulant_source = 'conv'
+
+    return msf(
+      config,
+      env_spec,
       predict_cumulants=True,
       learn_model=True,
       use_separate_eval=True,
@@ -348,6 +369,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     return msf(
       config,
       env_spec,
+      NetworkCls=nets.msf,
       predict_cumulants=True,
       learn_model=True,
       use_separate_eval=True,

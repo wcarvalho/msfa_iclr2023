@@ -22,6 +22,7 @@ cd ..
 
 
 git clone https://github.com/maximecb/gym-minigrid.git _gym-minigrid
+git checkout 03cf21f61bce58ab13a1de450f6269edd636183a
 cd _gym-minigrid
 pip install --editable .
 cd ..
