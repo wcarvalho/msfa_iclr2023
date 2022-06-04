@@ -24,7 +24,9 @@ from absl import app
 from absl import flags
 import acme
 import functools
+import jax
 
+from acme.agents import agent as acme_agent
 from acme.jax import savers
 from agents import td_agent
 from projects.common.train import run
@@ -95,14 +97,6 @@ def evaluate(config_kwargs, agent_name, path, num_episodes=5):
   # insert into global namespace for pickling, etc.
   NetKwargs.update(PredCls=PredCls)
 
-  # -----------------------
-  # agent
-  # -----------------------
-  builder=functools.partial(td_agent.TDBuilder,
-      LossFn=LossFn,
-      LossFnKwargs=LossFnKwargs,
-      learner_kwargs=dict(clear_sgd_cache_period=config.clear_sgd_cache_period)
-      )
 
   # -----------------------
   # video utils:
@@ -116,40 +110,74 @@ def evaluate(config_kwargs, agent_name, path, num_episodes=5):
   # -----------------------
   # prepare networks
   # -----------------------
-  agent = td_agent.TDAgent(
-      env_spec,
-      networks=td_agent.make_networks(
+  networks=td_agent.make_networks(
         batch_size=config.batch_size,
         env_spec=env_spec,
         NetworkCls=NetworkCls,
         NetKwargs=NetKwargs,
-        eval_network=True),
-      builder=builder,
-      workdir=path,
-      config=config,
-      seed=config.seed,
-      **kwargs,
-      )
+        eval_network=True)
 
+  # -----------------------
+  # builder
+  # -----------------------
+  builder = td_agent.TDBuilder(
+    networks=networks,
+    config=config,
+    LossFn=LossFn,
+    LossFnKwargs=LossFnKwargs,
+    learner_kwargs=dict(clear_sgd_cache_period=config.clear_sgd_cache_period)
+    )
+
+  # -----------------------
+  # learner
+  # -----------------------
+  key = jax.random.PRNGKey(config.seed)
+  learner_key, key = jax.random.split(key)
+  learner = builder.make_learner(
+        random_key=learner_key,
+        networks=networks,
+        dataset=None,
+        replay_client=None,
+        counter=None)
+
+  # -----------------------
+  # load checkpoint
+  # -----------------------
   dirs = glob(os.path.join(path, "2022*")); dirs.sort()
   ckpt_config= distributed_layout.CheckpointingConfig(
     directory=dirs[-1],
     add_uid=False,
     max_to_keep=None)
-  checkpointer = savers.Checkpointer(
-          {'learner': agent._learner},
+  checkpointer = savers.CheckpointingRunner(
+          learner,
+          key='learner',
           subdirectory='learner',
+          # enable_checkpointing=False,
           **vars(ckpt_config)
           )
 
   # -----------------------
+  # actor
+  # -----------------------
+  policy_network = video_utils.make_behavior_policy(networks, config, evaluation=True)
+  actor_key, key = jax.random.split(key)
+  actor = builder.make_actor(
+      actor_key, policy_network, variable_source=learner)
+
+  # -----------------------
   # make env + run
   # -----------------------
-  agent._actor = video_utils.ActorStorageWrapper(
-    agent=agent._actor,
+  actor = video_utils.ActorStorageWrapper(
+    agent=actor,
+    networks=networks,
     observer=observer,
     epsilon=config.evaluation_epsilon,
     seed=config.seed)
+
+  agent = acme_agent.Agent(actor=actor, learner=learner,
+    min_observations=0,
+    observations_per_step=1)
+
   loop = EnvironmentLoop(
     env,
     agent,
@@ -283,7 +311,7 @@ def evaluate_distributed(config_kwargs, agent_name, path, root_path='.', cuda_id
       log_every=10000).build()
 
 
-  controller = lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING,
+  controller = lp.launch(program, lp.LaunchType.LOCAL_MULTI_THREADING,
     terminal='current_terminal',
     local_resources = {
       'actor':
@@ -298,7 +326,7 @@ def main(_):
   basepath = './results/kitchen_grid/final'
   searches = dict(
       # usfa='baselines3/*usfa,*', # 
-      msf='capacity1/*msf*0.01*', # model, not relational
+      msf='vocab_fix/*', # model, not relational
       # usfa_lstm='baselines3/*usfa_lstm,*', # 
       # uvfa='baselines3/*r2d1*', # 
     )

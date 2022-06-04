@@ -190,10 +190,29 @@ def make_behavior_policy(
 
   return behavior_policy
 
+def get_cumulants(unroll_fn, params, prior_observation, observation, state, rng):
+
+  rng, key_rng = jax.random.split(rng, 2)
+
+  # [T=2, B=1, D, ...]
+  both_obs = jax.tree_map(lambda *arrs: jnp.stack(arrs), *(
+    utils.tile_nested(prior_observation, 1),
+    utils.tile_nested(observation, 1)))
+
+  # [B=1, D, ...]
+  state = utils.tile_nested(state, 1)
+
+
+  # jax.tree_map(lambda x:x.shape, both_obs)
+  # jax.tree_map(lambda x:x.shape, state)
+  preds, unroll_state = unroll_fn.apply(params, rng, both_obs, state.recurrent_state, key_rng)
+  return preds.cumulants[0,0]
+
+
 
 class ActorStorageWrapper(object):
   """docstring for ActorStorageWrapper"""
-  def __init__(self, agent , observer : DataStorer, epsilon : float, seed : int):
+  def __init__(self, agent , observer : DataStorer, epsilon : float, seed : int, networks=None):
     """Summary
     
     Args:
@@ -206,26 +225,47 @@ class ActorStorageWrapper(object):
     self.agent = agent
     self.observer = observer
     self.epsilon = epsilon
+    self.networks = networks
     self.rng = jax.random.PRNGKey(seed)
 
   def __getattr__(self, name):
     return getattr(self.agent, name)
 
+  def observe_first(self, timestep: dm_env.TimeStep):
+    """In first time-step, get empty observation. Needed for cumulants.
+    """
+    self.prior_obs = utils.zeros_like(timestep.observation)
+    self.agent.observe_first(timestep)
+
   def select_action(self,
                     observation: networks_lib.Observation) -> types.NestedArray:
+
+    state_pre_update = self._state
     preds, self.agent._state = self._policy(self._params, observation, self._state)
 
     self.rng, sample_rng = jax.random.split(self.rng, 2)
     action = rlax.epsilon_greedy(self.epsilon).sample(sample_rng, preds.q)
 
-    # -----------------------
-    # store
-    # -----------------------
-    self.observer.store(dict(
+
+    computed = dict(
           observation=observation,
           action=action,
           preds=preds,
-          lstm_state=self.agent._state.recurrent_state))
+          lstm_state=self.agent._state.recurrent_state)
+    if self.networks is not None:
+      computed['cumulants'] = get_cumulants(
+        unroll_fn=self.networks.unroll,
+        params=self._params,
+        prior_observation=self.prior_obs, # from timestep t-1
+        observation=observation, # from timestep t
+        state=state_pre_update,
+        rng=sample_rng)
+
+    # -----------------------
+    # store
+    # -----------------------
+    self.observer.store(computed)
+    self.prior_obs = observation
 
     return utils.to_numpy(action)
 
