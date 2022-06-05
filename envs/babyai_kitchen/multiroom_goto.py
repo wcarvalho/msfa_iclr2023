@@ -20,7 +20,6 @@ _____________________
 |_____|_______|_____|
 |     | start |     |
 |_____|_______|_____|
-
 """
 class MultiroomGotoEnv(KitchenLevel):
     def __init__(self,
@@ -121,13 +120,13 @@ class MultiroomGotoEnv(KitchenLevel):
         self.observation_space.spaces['mission'] = spaces.Box(
             low=0,
             high=255,
-            shape=(self.num_objects,),
+            shape=(self.num_objects + 4,),
             dtype='uint8'
         )
         self.observation_space.spaces['pickup'] = spaces.Box(
             low=0,
             high=255,
-            shape=(self.num_objects,),
+            shape=(self.num_objects + 4,),
             dtype='uint8'
         )
 
@@ -225,14 +224,18 @@ class MultiroomGotoEnv(KitchenLevel):
                     door2.is_open = True
                     door3.is_open = True
 
+        #now we gotta update the mission arr based on the room reward
+        room_embed_task = np.zeros(4,dtype=np.uint8)
+        self.mission_arr = np.concatenate([self.mission_arr,room_embed_task],dtype=np.uint8)
+
 
     def reset(self):
         obs = super().reset()
         self.got_room_reward = False
         assert self.carrying is None
-        obs['pickup'] = np.zeros(self.num_objects, dtype=np.uint8)
+        obs['pickup'] = np.zeros(self.num_objects + 4, dtype=np.uint8) #plus 4 is for room we are in
+        obs['pickup'][self.num_objects] = 1 #because we are in 0'th room
         obs['mission'] = self.mission_arr
-
         return obs
 
     def remove_object(self, fwd_pos, pickup_vector):
@@ -387,6 +390,9 @@ class MultiroomGotoEnv(KitchenLevel):
 
 
         #get the room reward for going in the right room for the first time
+        # add room to pickup
+        room_embed = np.zeros(4,dtype=np.uint8)
+        ROOM_ORDER = [(0, 1), (1, 0), (2, 1)]
         if not self.got_room_reward:
             curr_i = self.agent_pos[0]//(self.room_size - 1)
             curr_j = self.agent_pos[1] // (self.room_size - 1)
@@ -395,6 +401,14 @@ class MultiroomGotoEnv(KitchenLevel):
                 self.got_room_reward = True
                 if self.verbosity==1:
                     print("Got reward for entering correct room: {0}".format(self.room_reward))
+
+                # check index of room we are in and add this to pickup
+                if (curr_i, curr_j) in ROOM_ORDER:
+                    room_embed[ROOM_ORDER.index((curr_i, curr_j)) + 1] = 1
+                else:
+                    room_embed[0] = 1
+
+        pickup = np.concatenate([pickup, room_embed],dtype=np.uint8)
 
         # print("remaining: " + str(self.remaining))
 
@@ -419,6 +433,9 @@ class MultiroomGotoEnv(KitchenLevel):
         obs['mission'] = self.mission_arr
         obs['pickup'] = pickup
 
+        if self.verbosity==1:
+            print("Pickup: " + str(pickup))
+
         return obs, reward, done, info
 
 
@@ -439,7 +456,7 @@ if __name__ == '__main__':
 
     env = MultiroomGotoEnv(
         agent_view_size=5,
-        objectlist=[{'pan': 1,'pot':1,'stove':1}, {'tomato': 1,'lettuce':1, 'onion':1}, {'knife':1,'apple':1, 'orange':1}],
+        objectlist=[{'pan': 1,'pot':1,'bowl':1}, {'tomato': 1,'lettuce':1, 'onion':1}, {'knife':1,'apple':1, 'orange':1}],
         pickup_required=True,
         tile_size=tile_size,
         epsilon=0.0,

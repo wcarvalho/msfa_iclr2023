@@ -8,17 +8,9 @@ Command I run to train:
     CUDA_VISIBLE_DEVICES=3 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
+    WANDB_START_METHOD="thread" \
     python projects/colocation/train_distributed.py \
     --agent usfa_conv --room_reward .25 --wandb_name 6-1 --train_task_as_z 1 --seed 1
-
-command for memray:
-    PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=3 \
-    XLA_PYTHON_CLIENT_PREALLOCATE=false \
-    TF_FORCE_GPU_ALLOW_GROWTH=true \
-    memray run --native --follow-fork --trace-python-allocators projects/colocation/train_distributed.py \
-    --agent usfa_lstm --room_reward .25 --wandb_name memray_test --train_task_as_z -1
 
 
 Command for tensorboard
@@ -67,7 +59,7 @@ flags.DEFINE_float('room_reward',0,'reward for entering the correct room')
 flags.DEFINE_integer('train_task_as_z', 0, '0 for None, -1 for no, 1 for yes')
 
 
-flags.DEFINE_string('agent', 'usfa_conv', 'which agent.')
+flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
@@ -97,6 +89,7 @@ def build_program(
   deterministic_rooms: bool = False,
   room_reward: float = 0,
   train_task_as_z: int = 0,
+  randomize_name: bool = True
     ):
   if train_task_as_z==0:
       train_task_as_z = None
@@ -117,7 +110,7 @@ def build_program(
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec, agent=agent, train_task_as_z=train_task_as_z)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec, agent=agent, train_task_as_z=train_task_as_z, config_kwargs=config_kwargs)
 
   #observers
   observers = [LevelReturnObserver(), RoomReturnObserver(),FullReturnObserver(), PickupCountObserver()]
@@ -157,10 +150,10 @@ def build_program(
         wandb_name+='-deterministic_rooms'
     if room_reward!=0:
         wandb_name+='-room_reward'
-
-    letters = string.ascii_lowercase
-    hashcode = ''.join(random.choice(letters) for _ in range(10))
-    wandb_name+=hashcode
+    if randomize_name:
+        letters = string.ascii_lowercase
+        hashcode = ''.join(random.choice(letters) for _ in range(10))
+        wandb_name+=hashcode
 
 
     if wandb_init_kwargs:

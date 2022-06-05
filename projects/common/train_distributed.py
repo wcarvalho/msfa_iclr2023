@@ -94,7 +94,6 @@ def build_common_program(
       wandb_config = wandb_init_kwargs.get("config", {})
       wandb_config.update(save_config_dict)
       wandb_init_kwargs['config'] = wandb_config
-
     def wandb_wrap_logger(_logger_fn):
       """This will start wandb inside each child process"""
       def make_logger(*args, **kwargs):
@@ -105,6 +104,8 @@ def build_common_program(
 
     if wandb_init_kwargs is not None:
       import wandb
+      wandb.require(experiment="service")
+      wandb.setup()
       wandb.init(**wandb_init_kwargs)
 
       logger_fn = wandb_wrap_logger(logger_fn)
