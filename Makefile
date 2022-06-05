@@ -1,7 +1,7 @@
 step?=0
 check?=25
 missions?=50
-roomsize?=6
+roomsize?=7
 dists?=0
 train?=1
 verb?=2
