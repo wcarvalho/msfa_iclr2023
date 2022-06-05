@@ -229,7 +229,8 @@ class KitchenLevel(RoomGridLevel):
         placed_objects.add(random_object.type)
         if self.verbosity > 1:
             print(f"Added distractor: {random_object.type}")
-    self.kitchen.set_active_objects(placed_objects)
+    # TODO: test ``active objects''
+    # self.kitchen.set_active_objects(placed_objects)
   
   # ======================================================
   # functions for generating and validating tasks
@@ -432,7 +433,7 @@ class KitchenLevel(RoomGridLevel):
         num_navs = self.task.num_navs
     else:
         num_navs = 2
-    self.max_steps = num_navs * nav_time_maze
+    self.max_steps = max(2, num_navs) * nav_time_maze
     self.timesteps_complete = 0
     self.interaction_info = {}
 

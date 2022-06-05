@@ -181,3 +181,24 @@ class LanguageTaskEmbedder(hk.Module):
   @property
   def out_dim(self):
     return self.task_dim
+
+
+def embed_position(factors: jnp.ndarray, size: int):
+  """Summary
+  
+  Args:
+      factors (jnp.ndarray): B x N x ...
+      size (int): size of embedding
+  
+  Returns:
+      TYPE: Description
+  """
+  N = factors.shape[1]
+  embedder = hk.Embed(
+    vocab_size=N,
+    embed_dim=size)
+  embeddings = embedder(jnp.arange(N)) # N x D
+  concat = lambda a,b: jnp.concatenate((a, b), axis=-1)
+  factors = jax.vmap(concat, in_axes=(0, None), out_axes=0)(
+    factors, embeddings)
+  return factors

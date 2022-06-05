@@ -68,6 +68,7 @@ class FarmCumulants(AuxilliaryTask):
     construction='timestep',
     normalize_delta=True,
     normalize_cumulants=True,
+    input_source='lstm',
     **kwargs):
     """Summary
     
@@ -109,26 +110,35 @@ class FarmCumulants(AuxilliaryTask):
     self.construction = construction.lower()
     self.construction_options = ['timestep', 'delta', 'concat']
 
+
+    assert input_source in ['lstm', 'conv']
+    self.input_source = input_source
+
   def __call__(self, memory_out, predictions, **kwargs):
+    if self.input_source == 'conv':
+      inputs = memory_out.attn
+    else:
+      inputs = memory_out.hidden
+
     if hk.running_init():
       # during init, T=1
-      memory_out = jnp.concatenate((memory_out, memory_out), axis=0)
+      inputs = jnp.concatenate((inputs, inputs), axis=0)
 
     assert self.construction in self.construction_options
     if self.construction == 'delta':
-      states = memory_out[:-1]  # [T, B, M, D]
-      next_states = memory_out[1:]  # [T, B, M, D]
+      states = inputs[:-1]  # [T, B, M, D]
+      next_states = inputs[1:]  # [T, B, M, D]
 
       cumulants = next_states - states
       if self.normalize_delta:
         cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
     elif self.construction == 'concat':
-      states = memory_out[:-1]  # [T, B, M, D]
-      next_states = memory_out[1:]  # [T, B, M, D]
+      states = inputs[:-1]  # [T, B, M, D]
+      next_states = inputs[1:]  # [T, B, M, D]
       cumulants = jnp.concatenate((next_states, states), axis=-1)
 
     elif self.construction == 'timestep':
-      cumulants = memory_out
+      cumulants = inputs
 
     if self.aggregation == "sum":
       cumulants = cumulants.sum(axis=MODULE_AXIS)
@@ -160,21 +170,32 @@ class FarmIndependentCumulants(FarmCumulants):
     self.relational_net = relational_net
 
   def __call__(self, memory_out, predictions, **kwargs):
+    if self.input_source == 'conv':
+      # [T, B, N, H, W, D]
+      inputs = memory_out.attn
+      T, B, N = inputs.shape[:3]
+      D = inputs.shape[-1]
+      # compress so not so many params
+      inputs = hk.BatchApply(hk.Conv2D(D//2, [1, 1], 1), num_dims=3)(inputs)
+      inputs = inputs.reshape(T, B, N, -1)
+    else:
+      inputs = memory_out.hidden
+
     if hk.running_init():
       # during init, T=1
-      memory_out = jnp.concatenate((memory_out, memory_out), axis=0)
+      inputs = jnp.concatenate((inputs, inputs), axis=0)
 
     if self.construction == 'delta':
-      states = memory_out[:-1]  # [T, B, M, D]
-      next_states = memory_out[1:]  # [T, B, M, 2D]
+      states = inputs[:-1]  # [T, B, M, D]
+      next_states = inputs[1:]  # [T, B, M, 2D]
 
       cumulants = next_states - states
       if self.normalize_delta:
         cumulants = cumulants / (1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
 
     elif self.construction == 'delta_concat':
-      states = memory_out[:-1]  # [T, B, M, D]
-      next_states = memory_out[1:]  # [T, B, M, 2D]
+      states = inputs[:-1]  # [T, B, M, D]
+      next_states = inputs[1:]  # [T, B, M, 2D]
 
       cumulants = next_states - states
 
@@ -185,12 +206,12 @@ class FarmIndependentCumulants(FarmCumulants):
       cumulants = jnp.concatenate((states, cumulants), axis=-1)
 
     elif self.construction == 'concat':
-      states = memory_out[:-1]  # [T, B, M, D]
-      next_states = memory_out[1:]  # [T, B, M, 2D]
+      states = inputs[:-1]  # [T, B, M, D]
+      next_states = inputs[1:]  # [T, B, M, 2D]
       cumulants = jnp.concatenate((next_states, states), axis=-1)
 
     elif self.construction == 'timestep':
-      cumulants = memory_out
+      cumulants = inputs
 
     cumulants = hk.BatchApply(self.relational_net)(cumulants)
 

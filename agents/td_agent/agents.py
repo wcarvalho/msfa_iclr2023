@@ -17,6 +17,7 @@
 
 import functools
 from typing import Callable, Optional
+import logging
 
 from acme import core
 from acme import environment_loop
@@ -25,6 +26,7 @@ from acme import specs
 from acme.agents.jax import builders
 from acme.agents.jax.r2d2 import networks as r2d2_networks
 from acme.jax import networks as networks_lib
+from acme.jax import savers
 from acme.jax import types
 from acme.jax import utils
 from acme.jax.layouts import distributed_layout
@@ -132,6 +134,50 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
         multithreading_colocate_learner_and_reverb=multithreading_colocate_learner_and_reverb,
         **kwargs)
 
+  def learner(
+      self,
+      random_key: networks_lib.PRNGKey,
+      replay: reverb.Client,
+      counter: counting.Counter,
+  ):
+    """The Learning part of the agent."""
+
+    iterator = self._builder.make_dataset_iterator(replay)
+
+    dummy_seed = 1
+    environment_spec = (
+        self._environment_spec or
+        specs.make_environment_spec(self._environment_factory(dummy_seed)))
+
+    # Creates the networks to optimize (online) and target networks.
+    networks = self._network_factory(environment_spec)
+
+    if self._prefetch_size > 1:
+      # When working with single GPU we should prefetch to device for
+      # efficiency. If running on TPU this isn't necessary as the computation
+      # and input placement can be done automatically. For multi-gpu currently
+      # the best solution is to pre-fetch to host although this may change in
+      # the future.
+      device = jax.devices()[0] if self._device_prefetch else None
+      iterator = utils.prefetch(
+          iterator, buffer_size=self._prefetch_size, device=device)
+    else:
+      logging.info('Not prefetching the iterator.')
+
+    counter = counting.Counter(counter, 'learner')
+
+    learner = self._builder.make_learner(random_key, networks, iterator, replay,
+                                         counter)
+    kwargs = {}
+    if self._checkpointing_config:
+      kwargs = vars(self._checkpointing_config)
+    # Return the learning agent.
+    return savers.CheckpointingRunner(
+        learner,
+        key='learner',
+        subdirectory='learner',
+        time_delta_minutes=60,
+        **kwargs)
 
 class TDAgent(local_layout.LocalLayout):
   """Local TD-based learning agent.

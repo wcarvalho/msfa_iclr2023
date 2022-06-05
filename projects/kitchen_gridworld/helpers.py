@@ -17,6 +17,7 @@ from agents.td_agent import losses
 
 from losses.contrastive_model import ModuleContrastLoss, TimeContrastLoss
 from losses import cumulants
+from losses import msfa_stats
 
 
 from projects.msf.helpers import q_aux_sf_loss
@@ -166,9 +167,8 @@ def make_environment(evaluation: bool = False,
 # ======================================================
 # Building Agent Networks
 # ======================================================
-def msf(config, env_spec, use_separate_eval=True, predict_cumulants=True, learn_model=False, task_embedding='none'):
+def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=True, learn_model=False, task_embedding='none'):
 
-  NetworkCls =  nets.msf
 
   NetKwargs=dict(
     config=config,
@@ -180,7 +180,10 @@ def msf(config, env_spec, use_separate_eval=True, predict_cumulants=True, learn_
 
   LossFn = td_agent.USFALearning
 
-  aux_tasks=[q_aux_sf_loss(config)]
+  aux_tasks=[
+    q_aux_sf_loss(config),
+    msfa_stats.MsfaStats()
+  ]
 
   if predict_cumulants:
     nmodules = config.nmodules if config.module_l1 else 1
@@ -322,6 +325,28 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     return msf(
       config,
       env_spec,
+      NetworkCls=nets.msf,
+      predict_cumulants=True,
+      learn_model=True,
+      use_separate_eval=True,
+      task_embedding='language')
+
+  elif agent == "conv_msf":
+  # USFA + cumulants from FARM + Q-learning
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.ModularUSFAConfig(),
+        configs.QAuxConfig(),
+        configs.RewardConfig(),
+        configs.FarmModelConfig(),
+        configs.LangConfig(),
+      ],
+      dict_configs=default_config)
+    config.cumulant_source = 'conv'
+
+    return msf(
+      config,
+      env_spec,
       predict_cumulants=True,
       learn_model=True,
       use_separate_eval=True,
@@ -344,6 +369,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     return msf(
       config,
       env_spec,
+      NetworkCls=nets.msf,
       predict_cumulants=True,
       learn_model=True,
       use_separate_eval=True,

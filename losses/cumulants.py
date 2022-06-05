@@ -67,6 +67,9 @@ class CumulantRewardLoss:
       final_error = (error*all_keep).sum()/(1e-5+total_keep)
       positive_error = (error*nonzero).sum()/(1e-5+positive_keep)
 
+      # [T, B, D] --> [T, B]
+      phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
+      phi_l1_rewarding = (phi_l1.reshape(-1)*nonzero).sum()/(1e-5+positive_keep)
       metrics = {
         f'loss_reward_{self.loss}': final_error,
         f'z.raw_loss_{self.loss}': raw_final_error,
@@ -78,6 +81,7 @@ class CumulantRewardLoss:
         f'z.task': task.mean(),
         f'z.task_std': task.std(),
         f'z.phi': cumulants.mean(),
+        f'z.phi_l1_rewarding': phi_l1_rewarding,
         f'z.phi_std': cumulants.std(),
       }
     else:

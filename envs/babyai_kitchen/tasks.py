@@ -995,7 +995,7 @@ class CookTask(KitchenTask):
   @property
   def task_name(self): return 'cook'
   @property
-  def default_task_rep(self): return 'cook x with y'
+  def default_task_rep(self): return 'cook x with y on z'
 
   def generate(self, exclude=[], argops=None):
     if argops:
@@ -1030,8 +1030,10 @@ class CookTask(KitchenTask):
         self.object_to_cook_on
     ]
 
-    task = self.task_rep.replace('x', self.object_to_cook.name)
-    task = task.replace('y', self.object_to_cook_with.name)
+    task = self.task_rep.replace(
+      'x', self.object_to_cook.name).replace(
+      'y', self.object_to_cook_with.name).replace(
+      'z', self.object_to_cook_on.name)
     return task
 
   @property

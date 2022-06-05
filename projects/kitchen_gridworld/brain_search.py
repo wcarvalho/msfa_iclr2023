@@ -1,181 +1,135 @@
 from ray import tune
 
 def get(search):
-  if search == 'r2d1':
+  if search == 'slice4':
     """
     Next:
     """
     space = [
-      {
-        "seed": tune.grid_search([1, 2, 3]),
-        "agent": tune.grid_search(['r2d1']),
-        "setting": tune.grid_search(['L2_Multi']),
-        },
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+        "setting": tune.grid_search(['slice']),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
     ]
 
-  elif search == 'cov5':
+  elif search == 'cook4':
     """
     Next:
     """
     space = [
+      { # 6
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['usfa_lstm']),
+        "setting": tune.grid_search(['cook']),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+    ]
+
+  elif search == 'genv4':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
+        "setting": tune.grid_search(['genv4']),
+      },
+    ]
+
+  elif search == 'similar4':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['r2d1']),
+        "setting": tune.grid_search(['similar']),
+        "lang_task_dim": tune.grid_search([32, 128]),
+      },
       # { # 6
       #   "seed": tune.grid_search([1]),
       #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['genv3']),
-      #   "cov_coeff": tune.grid_search([1e-2, 1e-3, 1e-4, 1e-5]),
-      #   "cov_loss": tune.grid_search(['l2_corr']),
+      #   "setting": tune.grid_search(['similar']),
+      #   "memory_size": tune.grid_search([512]),
+      #   "module_size": tune.grid_search([None]),
       #   "nmodules": tune.grid_search([4]),
-      #   "lang_task_dim": tune.grid_search([16]),
+      #   "module_task_dim": tune.grid_search([1, 4]),
+      #   "phi_l1_coeff": tune.grid_search([1e-3, 0]),
       # },
+    ]
+
+  elif search == 'size4':
+    """
+    Next:
+    """
+    space = [
       { # 6
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['genv3']),
-        "cov_coeff": tune.grid_search([1e-3, 1e-4]),
-        "cov_loss": tune.grid_search(['l2_cov']),
+        "setting": tune.grid_search(['genv4']),
+        "nmodules": tune.grid_search([1, 2, 4, 8]),
+        "module_size": tune.grid_search([128]),
+        "memory_size": tune.grid_search([None]),
+      },
+    ]
+
+  elif search == 'relations':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "group": tune.grid_search(['relations']),
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['genv4']),
+        "module_attn_heads": tune.grid_search([.25, .5, .75]),
+        "module_size": tune.grid_search([128]),
+        "memory_size": tune.grid_search([512]),
+      },
+    ]
+
+  elif search == 'capacity5':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['genv4']),
+        "task_reps": tune.grid_search(['pickup']),
+        "memory_size": tune.grid_search([512]),
+        "module_size": tune.grid_search([None]),
+        "nmodules": tune.grid_search([4, 8]),
+        "lang_task_dim": tune.grid_search([16]),
+        "module_task_dim": tune.grid_search([0]),
+        "phi_l1_coeff": tune.grid_search([1e-3, 1e-4]),
+      },
+    ]
+
+  elif search == 'conv_msf':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['conv_msf']),
+        "setting": tune.grid_search(['genv4', 'multiv5']),
+        "task_reps": tune.grid_search(['pickup']),
+        "memory_size": tune.grid_search([512]),
+        "module_size": tune.grid_search([None]),
         "nmodules": tune.grid_search([4]),
         "lang_task_dim": tune.grid_search([16]),
+        "module_task_dim": tune.grid_search([0]),
+        "normalize_attn": tune.grid_search([True, False]),
       },
     ]
-
-  elif search == 'genv3_2':
-    """
-    Next:
-    """
-    space = [
-      { # 6
-        "seed": tune.grid_search([3]),
-        "agent": tune.grid_search(['r2d1']),
-        "setting": tune.grid_search(['genv3']),
-      },
-    ]
-
-  elif search == 'phi8':
-    """
-    Next:
-    """
-    space = [
-      { # 6
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['genv3']),
-        "learning_rate": tune.grid_search([1e-3]),
-        "phi_l1_coeff": tune.grid_search([1e-3, 1e-4]),
-        "module_l1": tune.grid_search([True, False]),
-        "importance_sampling_exponent": tune.grid_search([.6]),
-        "nmodules": tune.grid_search([4]),
-        "module_task_dim": tune.grid_search([4]),
-      },
-      # { # 6
-      #   "seed": tune.grid_search([1]),
-      #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['genv3']),
-      #   "learning_rate": tune.grid_search([5e-3]),
-      #   "reward_coeff": tune.grid_search([10]),
-      #   "phi_l1_coeff": tune.grid_search([0, 1, .1, .01]),
-      #   "nmodules": tune.grid_search([4]),
-      #   "module_task_dim": tune.grid_search([4]),
-      # },
-      # { # 6
-      #   "seed": tune.grid_search([1]),
-      #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['genv3']),
-      #   "learning_rate": tune.grid_search([1, 1e-3]),
-      #   "phi_l1_coeff": tune.grid_search([0]),
-      #   "nmodules": tune.grid_search([4]),
-      #   "module_task_dim": tune.grid_search([4]),
-      # },
-    ]
-
-  elif search == 'tanhsig':
-    """
-    Next:
-    """
-    space = [
-      { # 6
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['genv3']),
-        "w_l1_coeff": tune.grid_search([1e-3, 1e-4]),
-        "lang_tanh": tune.grid_search([True]),
-        "task_gate": tune.grid_search(['sigmoid']),
-        "importance_sampling_exponent": tune.grid_search([.6]),
-        "module_l1": tune.grid_search([True, False]),
-      },
-      # { # 6
-      #   "seed": tune.grid_search([1]),
-      #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['genv3']),
-      #   "learning_rate": tune.grid_search([5e-3]),
-      #   "reward_coeff": tune.grid_search([10]),
-      #   "phi_l1_coeff": tune.grid_search([0, 1, .1, .01]),
-      #   "nmodules": tune.grid_search([4]),
-      #   "module_task_dim": tune.grid_search([4]),
-      # },
-      # { # 6
-      #   "seed": tune.grid_search([1]),
-      #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['genv3']),
-      #   "learning_rate": tune.grid_search([1, 1e-3]),
-      #   "phi_l1_coeff": tune.grid_search([0]),
-      #   "nmodules": tune.grid_search([4]),
-      #   "module_task_dim": tune.grid_search([4]),
-      # },
-    ]
-
-  elif search == 'faster':
-    """
-    Next:
-    """
-    space = [
-      # { # 6
-      #   "seed": tune.grid_search([1]),
-      #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['genv3']),
-      #   "importance_sampling_exponent": tune.grid_search([.6]),
-      #   "learning_rate": tune.grid_search([1e-3]),
-      # },
-      { # 6
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['genv3']),
-        "importance_sampling_exponent": tune.grid_search([.0]),
-        "learning_rate": tune.grid_search([1e-2]),
-        "reward_coeff": tune.grid_search([1, .5]),
-      },
-    ]
-
-  elif search == 'size':
-    """
-    Next:
-    """
-    space = [
-      { # 6
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['genv3']),
-        "memory_size": tune.grid_search([128, 256]),
-        "nmodules": tune.grid_search([2, 4]),
-        "module_task_dim": tune.grid_search([4]),
-        "seperate_value_params": tune.grid_search([False]),
-        "module_size": tune.grid_search([None]),
-        "module_attn_heads": tune.grid_search([.5]),
-      },
-      # { # 6
-      #   "seed": tune.grid_search([1]),
-      #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['genv3']),
-      #   "memory_size": tune.grid_search([512]),
-      #   "nmodules": tune.grid_search([None]),
-      #   "module_task_dim": tune.grid_search([4]),
-      #   "module_size": tune.grid_search([32, 64]),
-      #   "module_attn_heads": tune.grid_search([.25, .5]),
-      # },
-    ]
-
-
-
-
 
   else:
     raise NotImplementedError(search)

@@ -1,7 +1,3 @@
-# -----------------------
-# clean, slice, toggle2, slice2, cook
-# -----------------------
-
 train:
 
   # -----------------------
@@ -26,6 +22,10 @@ train:
     task_kinds: slice
     num_dists: 0
 
+  - name: pickup_sliced
+    task_kinds: pickup_sliced
+    num_dists: 0
+
   # -----------------------
   # 2 objects
   # -----------------------
@@ -35,4 +35,11 @@ train:
 
   - name: slice2
     task_kinds: slice2
+    num_dists: 0
+
+  # -----------------------
+  # cook
+  # -----------------------
+  - name: cook
+    task_kinds: cook
     num_dists: 0
