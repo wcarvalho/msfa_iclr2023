@@ -82,6 +82,7 @@ class CumulantRewardLoss:
         f'z.task_std': task.std(),
         f'z.phi': cumulants.mean(),
         f'z.phi_l1_rewarding': phi_l1_rewarding,
+        f'z.phi_l1_all': phi_l1.mean(),
         f'z.phi_std': cumulants.std(),
       }
     else:
