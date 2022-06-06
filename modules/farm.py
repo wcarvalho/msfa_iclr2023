@@ -22,6 +22,16 @@ class LSTMState(NamedTuple):
   hidden: jnp.ndarray
   cell: jnp.ndarray
 
+class FarmState(NamedTuple):
+  """An LSTM core state consists of hidden and cell vectors.
+  Attributes:
+    hidden: Hidden state.
+    cell: Cell state.
+  """
+  hidden: jnp.ndarray
+  cell: jnp.ndarray
+  conv_state: LSTMState=None
+
 class FarmInputs(NamedTuple):
   """An LSTM core state consists of hidden and cell vectors.
   Attributes:
@@ -137,9 +147,6 @@ class FeatureAttention(hk.Module):
     multiply = jax.vmap(jnp.multiply, in_axes=(None, 1), out_axes=1)
     image = multiply(image, coefficients)
 
-    # second projection
-    image = hk.BatchApply(hk.Conv2D(self.dim, [1, 1], 1))(image)
-
     return image
 
 def get_farm_sizes(module_size, nmodules, memory_size):
@@ -170,6 +177,8 @@ class FARM(hk.RNNCore):
     image_attn: bool=True,
     return_attn: bool=False,
     normalize_attn: bool=False,
+    recurrent_features: bool=False,
+    input_shape: Tuple = (5, 5),
     vmap: str = 'switch',
     name: Optional[str] = None):
     """
@@ -192,6 +201,13 @@ class FARM(hk.RNNCore):
     self.module_attn_heads = module_attn_heads
 
     self.memory = StructuredLSTM(module_size, nmodules, vmap=vmap)
+
+    self.recurrent_features = recurrent_features
+    if self.recurrent_features:
+      self.input_shape = input_shape
+      self.conv_memory = hk.Conv2DLSTM(self.input_shape, 16, [3,3])
+
+
     self._feature_attention = FeatureAttention(
       projection_dim, 
       normalize=normalize_attn,
@@ -229,28 +245,71 @@ class FARM(hk.RNNCore):
         # [B, N, D]        [B, D]
         prev_state.hidden, inputs.vector)
 
-    # [B, N, H, W, D]
-    image_attn = self.image_attention(query, inputs.image)
-    B, N = image_attn.shape[:2]
-    image_attn_flat = image_attn.reshape(B, N, -1)
+    # -----------------------
+    # conv-lstm
+    # -----------------------
+    assert self.input_shape == inputs.image.shape[1:3]
+    image = inputs.image
+    conv_state=None
+    if self.recurrent_features:
+      image, conv_state = self.conv_memory(image, prev_state.conv_state)
 
+
+    # -----------------------
+    # feature attention
+    # -----------------------
+    # [B, N, H, W, D]
+    image_attn = self.image_attention(query, image)
+    D = image_attn.shape[-1]
+
+    # second projection
+    image_attn_proj = hk.BatchApply(hk.Conv2D(D, [1, 1], 1))(image_attn)
+
+    B, N = image_attn_proj.shape[:2]
+    image_attn_flat = image_attn_proj.reshape(B, N, -1)
+
+    # -----------------------
+    # module attention
+    # -----------------------
     if self.module_attn_heads > 0:
       # [B, N , D]
       query = self.module_attention(query, prev_state.hidden)
 
+    # -----------------------
+    # lstm update
+    # -----------------------
     memory_input = [query, image_attn_flat]
     memory_input = jnp.concatenate(memory_input, axis=-1)
-    hidden, state = self.memory(memory_input, prev_state)
+    hidden, lstm_state = self.memory(memory_input, prev_state)
 
     if self.return_attn:
       output = FarmOutputs(hidden=hidden, attn=image_attn)
     else:
       output = hidden
 
+    state = FarmState(
+        hidden=lstm_state.hidden,
+        cell=lstm_state.cell,
+        conv_state=conv_state,
+        )
+
     return output, state
 
   def initial_state(self, batch_size: Optional[int]) -> LSTMState:
-    return self.memory.initial_state(batch_size)
+    lstm_state = self.memory.initial_state(batch_size)
+    if self.recurrent_features:
+      conv_state = self.conv_memory.initial_state(batch_size)
+      state = FarmState(
+        hidden=lstm_state.hidden,
+        cell=lstm_state.cell,
+        conv_state=conv_state,
+        )
+    else:
+      state = FarmState(
+        hidden=lstm_state.hidden,
+        cell=lstm_state.cell,
+        )
+    return state
 
 
   def image_attention(self, query, image):
