@@ -93,6 +93,7 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
     **log_path_config
     )
 
+  os.environ['LAUNCHPAD_LOGGING_DIR']=log_dir
   print("="*50)
   if not os.path.exists(log_dir):
     print(f"RUNNING\n{log_dir}")
