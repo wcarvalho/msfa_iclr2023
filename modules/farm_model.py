@@ -176,8 +176,17 @@ class FarmIndependentCumulants(FarmCumulants):
       T, B, N = inputs.shape[:3]
       D = inputs.shape[-1]
       # compress so not so many params
-      inputs = hk.BatchApply(hk.Conv2D(D//2, [1, 1], 1), num_dims=3)(inputs)
+
+      if self.seperate_params:
+        inputs = batch_multihead(
+          x=inputs,
+          fn=lambda: hk.Conv2D(D//2, [1, 1], 1),
+          wrap_vmap=lambda fn: hk.BatchApply(fn),
+          )
+      else:
+        inputs = hk.BatchApply(hk.Conv2D(D//2, [1, 1], 1), num_dims=3)(inputs)
       inputs = inputs.reshape(T, B, N, -1)
+
     else:
       inputs = memory_out.hidden
 

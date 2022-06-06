@@ -27,6 +27,7 @@ flags.DEFINE_string('root', None, 'root folder.')
 flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_string('search', 'baselines', 'which search to use.')
 flags.DEFINE_string('spaces', 'brain_search', 'which search to use.')
+flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
 flags.DEFINE_float('num_gpus', 1, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('num_cpus', 3, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('actors', 5, 'number of gpus per job. accepts fractions.')
@@ -38,7 +39,8 @@ DEFAULT_ROOM_SIZE=7
 DEFAULT_NUM_ACTORS = 5
 DEFAULT_NUM_DISTS = 0
 
-def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, use_wandb, wait=False):
+def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, use_wandb, terminal, wait=False):
+
   """Create and run launchpad program
   """
   agent = config.pop('agent', 'r2d1')
@@ -51,7 +53,7 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
   group = config.pop('group', group)
   label = config.pop('label', DEFAULT_LABEL)
 
-  os.environ["CUDA_VISIBLE_DEVICES"]=f"{cuda}"
+  os.environ['CUDA_VISIBLE_DEVICES']=str(cuda)
   # -----------------------
   # add env kwargs to path desc
   # -----------------------
@@ -125,8 +127,7 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
     )
 
   local_resources = {
-      "learner": PythonProcess(
-          env={"JAX_PLATFORM_NAME": "gpu", "CUDA_VISIBLE_DEVICES": f"{cuda}"}
+      "learner": PythonProcess(env={"CUDA_VISIBLE_DEVICES": str(cuda)}
       ),
       "evaluator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
       "actor": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
@@ -136,23 +137,18 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
   }
 
   if program is None: return
-  controller = lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING, terminal='current_terminal', 
+  controller = lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING, terminal=terminal, 
     local_resources=local_resources
     )
 
-  print("SHORT SLEEP???")
   time.sleep(60) # sleep for 60 seconds to avoid collisions
-
-  if wait:
-    print("="*30)
-    print("WAITING")
-    print("="*30)
-    controller.wait()
+  controller.wait()
 
 
 
 def main(_):
   FLAGS = flags.FLAGS
+  terminal = FLAGS.terminal
   mp.set_start_method('spawn')
   num_cpus = int(FLAGS.num_cpus)
   num_gpus = float(FLAGS.num_gpus)
@@ -185,7 +181,7 @@ def main(_):
   import sklearn
   import jax
   configs = []
-  gpus = [i.id for i in jax.devices()]
+  gpus = [int(i) for i in os.environ['CUDA_VISIBLE_DEVICES'].split(",")]
   idx = 0
   for x in space:
     y = {k:list(v.values())[0] for k,v in x.items()}
@@ -193,21 +189,30 @@ def main(_):
 
     # assign gpus
     for g in grid:
-      g['cuda'] = gpus[idx]
+      g['cuda'] = gpus[idx%len(gpus)]
       idx += 1
     configs.extend(grid)
+
+  from pprint import pprint 
+  pprint(configs)
+
 
   idx = 1
   processes = []
   for config in configs:
     wait = idx % len(gpus) == 0
-    print('wait', wait)
     p = mp.Process(
       target=create_and_run_program, 
-      args=(config, root_path, folder, group, wandb_init_kwargs, use_wandb, wait))
+      args=(config, root_path, folder, group, wandb_init_kwargs, use_wandb, terminal, wait))
     p.start()
+    processes.append(p)
     if wait:
-      p.join() # this blocks until the process terminates
+      for p in processes:
+        p.join() # this blocks until the process terminates
+      processes = []
+      print("="*50)
+      print("Running new set")
+      print("="*50)
     idx += 1
 
 

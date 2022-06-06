@@ -20,8 +20,7 @@ dist?='False'
 nojit?=0
 init?=0
 
-
-
+export WANDB_START_METHOD=thread
 export PYTHONPATH:=$(PYTHONPATH):.
 export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
 

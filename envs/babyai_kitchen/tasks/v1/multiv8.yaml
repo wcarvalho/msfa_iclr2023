@@ -5,6 +5,10 @@ train:
     task_kinds: pickup
     num_dists: 0
 
+  - name: "0.place"
+    task_kinds: place
+    num_dists: 0
+
   - name: "1.toggle2"
     task_kinds: toggle2
     num_dists: 0
