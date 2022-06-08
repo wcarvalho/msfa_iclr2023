@@ -55,7 +55,7 @@ FLAGS = flags.FLAGS
 def main(_):
   setting=FLAGS.env_setting
   env_kwargs=dict(
-    room_size=6,
+    room_size=7,
     )
   env = helpers.make_environment(
     setting=setting,
