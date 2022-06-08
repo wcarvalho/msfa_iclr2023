@@ -27,13 +27,13 @@ try:
 except ImportError:
   WANDB_AVAILABLE=False
 
-def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, return_kwpath=False, **kwargs):
+def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, return_kwpath=False, path_skip=[], **kwargs):
 
   strkey = '%Y.%m.%d'
   if hourminute:
     strkey += '-%H.%M'
   job_name = datetime.datetime.now().strftime(strkey)
-  kwpath = ','.join([f'{key[:4]}={value}' for key, value in kwargs.items()])
+  kwpath = ','.join([f'{key[:4]}={value}' for key, value in kwargs.items() if not key in path_skip])
 
   if date:
     path = Path(base_dir).joinpath(job_name).joinpath(kwpath)
