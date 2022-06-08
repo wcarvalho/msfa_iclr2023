@@ -18,6 +18,8 @@ name?=''
 notes?=''
 dist?='False'
 nojit?=0
+skip?=0
+ray?=0
 init?=0
 
 export WANDB_START_METHOD=thread
@@ -92,7 +94,10 @@ lp_search:
 	--wandb_project $(project) \
 	--group $(group) \
 	--search $(search) \
-	--notes $(notes)
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--agent $(agent) \
 
 
 # train_search_rldl:
