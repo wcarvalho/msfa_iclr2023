@@ -267,7 +267,7 @@ if __name__ == '__main__':
     import cv2
     import tqdm
 
-    tile_size=20
+    tile_size=26
     optimal=True
     size='large'
     sizes = dict(

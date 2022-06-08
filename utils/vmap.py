@@ -54,7 +54,7 @@ def multihead_lift(x, fn):
   Raises:
       RuntimeError: error if x is not jnp.ndarray
   """
-  assert len(x.shape)==2, "only know how to deal with N x D"
+  # assert len(x.shape)==2, "only know how to deal with N x D"
 
   # inner function will vmap over dimension N
   N = x.shape[0]

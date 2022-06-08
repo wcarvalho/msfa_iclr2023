@@ -347,6 +347,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     return msf(
       config,
       env_spec,
+      NetworkCls=nets.msf,
       predict_cumulants=True,
       learn_model=True,
       use_separate_eval=True,

@@ -109,6 +109,8 @@ def build_common_program(
 
     if wandb_init_kwargs is not None:
       import wandb
+      wandb.require("service")
+      wandb.setup()
       wandb.init(**wandb_init_kwargs)
 
       logger_fn = wandb_wrap_logger(logger_fn)

@@ -23,11 +23,11 @@ def main():
         default="envs/babyai_kitchen/tasks/default_sets.yaml")
     parser.add_argument('--missions', help='# of unique missions',
         default=10)
-    parser.add_argument('--room-size', type=int, default=5)
+    parser.add_argument('--room-size', type=int, default=7)
     parser.add_argument('--agent-view-size', type=int, default=7)
     parser.add_argument('--random-object-state', type=int, default=0)
     parser.add_argument('--num-rows', type=int, default=1)
-    parser.add_argument('--tile-size', type=int, default=16)
+    parser.add_argument('--tile-size', type=int, default=20)
     parser.add_argument('--train', type=int, default=0)
     parser.add_argument('--steps', type=int, default=1)
     parser.add_argument('--show', type=int, default=1)
@@ -117,6 +117,7 @@ def main():
         obss, actions, rewards, dones = bot.generate_traj(
           plot_fn=show if args.show else lambda x:x)
         print('Rewards:', sum(rewards))
+        print('Epsiode Length:', len(rewards))
         if args.check_end:
           import ipdb; ipdb.set_trace()
 

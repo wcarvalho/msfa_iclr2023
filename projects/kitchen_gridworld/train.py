@@ -75,7 +75,7 @@ def main(_):
     config['cumulant_source'] = 'conv'
     config['module_size'] = None
     config['memory_size'] = 512
-    config['nmodules'] = 4
+    config['nmodules'] = 8
     print("="*50)
     print("="*20, "testing", "="*20)
     from pprint import pprint

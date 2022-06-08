@@ -804,6 +804,7 @@ class Clean2Task(KitchenTask):
 
     self.clean_task = CleanTask(*args, init=False, **kwargs)
     self.clean_task2 = CleanTask(*args, init=False, **kwargs)
+    raise RuntimeError("fix subgoals. need to pickup object and remove from sink")
     super(Clean2Task, self).__init__(*args, **kwargs)
 
   @property
@@ -989,6 +990,135 @@ class CleanAndToggleTask(KitchenTask):
 # ======================================================
 # length = 3
 # ======================================================
+
+class Slice3Task(SliceTask):
+  """docstring for SliceTask"""
+
+  @property
+  def task_name(self): return 'slice3'
+  @property
+  def default_task_rep(self): return 'slice x and y and z'
+
+  def generate(self, exclude=[], argops=None):
+    objects_to_slice = self.get_options(exclude, argops)['x']
+
+    choices = np.random.choice(objects_to_slice, 3, replace=False)
+
+    self.object_to_slice = choices[0]
+    self.object_to_slice2 = choices[1]
+    self.object_to_slice3 = choices[2]
+
+    self.object_to_slice.set_prop('sliced', False)
+    self.object_to_slice2.set_prop('sliced', False)
+    self.object_to_slice3.set_prop('sliced', False)
+
+    self.knife = self.env.objects_by_type(["knife"])[0]
+
+    self._task_objects = [
+      self.object_to_slice,
+      self.object_to_slice2,
+      self.object_to_slice3,
+      self.knife]
+
+    instr =  self.task_rep.replace(
+      'x', self.object_to_slice.name).replace(
+      'y', self.object_to_slice2.name).replace(
+      'z', self.object_to_slice3.name)
+
+    return instr
+
+  @property
+  def num_navs(self): return 3
+
+  def check_status(self):
+    sliced1  = self.object_to_slice.state['sliced'] == True
+    sliced2 = self.object_to_slice2.state['sliced'] == True
+    sliced3 = self.object_to_slice3.state['sliced'] == True
+
+    reward = done = sliced1 and sliced2 and sliced3
+
+    return reward, done
+
+  def subgoals(self):
+    return [
+      ActionsSubgoal(
+        goto=self.knife, actions=['pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_slice, actions=['slice']),
+      ActionsSubgoal(
+        goto=self.object_to_slice2, actions=['slice']),
+      ActionsSubgoal(
+        goto=self.object_to_slice3, actions=['slice'])
+    ]
+
+  @staticmethod
+  def task_actions():
+    return [
+        'slice',
+        'pickup_and',
+        'place'
+        ]
+
+class Toggle3Task(KitchenTask):
+  @property
+  def task_name(self): return 'toggle3'
+  @property
+  def default_task_rep(self): return 'turnon x and y and z'
+
+  def generate(self, exclude=[], argops=None):
+
+    x_options = argops or self.argument_options.get('x', [])
+    if x_options:
+        totoggle_options = self.env.objects_by_type(x_options)
+    else:
+        totoggle_options = self.env.objects_with_property(['on'])
+
+    totoggle_options = remove_excluded(totoggle_options, exclude)
+    assert len(totoggle_options) > 2
+
+    choices = np.random.choice(totoggle_options, 3, replace=False)
+
+    self.toggle1 = choices[0]
+    self.toggle2 = choices[1]
+    self.toggle3 = choices[2]
+
+    self.toggle1.set_prop("on", False)
+    self.toggle2.set_prop("on", False)
+    self.toggle3.set_prop("on", False)
+
+    self._task_objects = [
+        self.toggle1,
+        self.toggle2,
+        self.toggle3,
+    ]
+    instr = self.task_rep.replace(
+      'x', self.toggle1.name).replace(
+      'y', self.toggle2.name).replace(
+      'z', self.toggle3.name)
+
+    return instr
+
+  @property
+  def num_navs(self): return 3
+
+  def check_status(self):
+    toggle1 = self.toggle1.state['on'] == True
+    toggle2 = self.toggle2.state['on'] == True
+    toggle3 = self.toggle3.state['on'] == True
+    reward = done = toggle1 and toggle2 and toggle3
+    return reward, done
+
+  def subgoals(self):
+    return [
+      ActionsSubgoal(
+        goto=self.toggle1, actions=['toggle']),
+      ActionsSubgoal(
+        goto=self.toggle2, actions=['toggle']),
+      ActionsSubgoal(
+        goto=self.toggle3, actions=['toggle']),
+    ]
+
+
 class CookTask(KitchenTask):
   """docstring for CookTask"""
 
@@ -1225,8 +1355,10 @@ def all_tasks():
     slice=SliceTask,
     chill=ChillTask,
     slice2=Slice2Task,
-    clean2=Clean2Task,
     toggle2=Toggle2Task,
+    slice3=Slice3Task,
+    toggle3=Toggle3Task,
+    # clean2=Clean2Task,
     clean_and_slice=CleanAndSliceTask,
     clean_and_toggle=CleanAndToggleTask,
     toggle_and_slice=ToggleAndSliceTask,
