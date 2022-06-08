@@ -110,6 +110,7 @@ def build_farm(config, **kwargs):
     projection_dim=config.projection_dim,
     vmap=config.farm_vmap,
     out_layers=config.out_layers,
+    recurrent_features=config.recurrent_conv,
     **kwargs)
 
 def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=None):
@@ -565,6 +566,7 @@ def build_msf_phi_net(config, sf_out_dim):
           normalize_delta=normalize_delta,
           construction=config.cumulant_const,
           input_source =config.cumulant_source,
+          conv_size=config.phi_conv_size,
           )
   else:
     if config.phi_net == "independent":
@@ -592,6 +594,7 @@ def build_msf_phi_net(config, sf_out_dim):
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
         input_source =config.cumulant_source,
+        conv_size=config.phi_conv_size,
         relational_net=relational_net,
         normalize_delta=normalize_delta,
         normalize_state=normalize_state,
