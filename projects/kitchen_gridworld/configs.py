@@ -24,7 +24,7 @@ class R2D1Config(configs.R2D1Config):
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
   seed: int = 3
-  max_number_of_steps: int = 30_000_000
+  max_number_of_steps: int = 40_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -128,6 +128,7 @@ class FarmConfig:
   projection_dim: int = 16
   farm_vmap: str = "lift"  # vmap over different parameter sets 
   image_attn: bool = True # whether to use feature attention on image
+  recurrent_conv: bool = False # whether to use feature attention on image
   normalize_attn: bool = False # whether to use feature attention on image
   farm_task_input: bool = False # give task as input to FARM
   farm_policy_task_input: bool = False # give task as input to FARM policy
@@ -142,6 +143,7 @@ class ModularUSFAConfig(USFAConfig):
   position_hidden: bool = False # whether to add position embeddings to modules
 
   cumulant_source: str = 'lstm' # whether to normalize cumulants
+  phi_conv_size: int = 0 # size of conv for cumulants
   seperate_cumulant_params: bool=True # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
   phi_l1_coeff: float = 0.00 # coefficient for L1 on phi

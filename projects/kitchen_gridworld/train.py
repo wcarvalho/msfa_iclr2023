@@ -73,6 +73,8 @@ def main(_):
     config['min_replay_size'] = 10
     config['normalize_attn'] = True
     config['cumulant_source'] = 'conv'
+    config['phi_conv_size'] = 8
+    config['recurrent_conv'] = False
     config['module_size'] = None
     config['memory_size'] = 512
     config['nmodules'] = 8
