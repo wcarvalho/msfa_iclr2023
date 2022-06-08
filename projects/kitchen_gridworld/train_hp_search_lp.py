@@ -2,7 +2,7 @@
 Param search.
 """
 
-
+import functools
 from absl import app
 from absl import flags
 from pathlib import Path
@@ -31,6 +31,8 @@ flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
 flags.DEFINE_float('num_gpus', 1, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('num_cpus', 3, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('actors', 5, 'number of gpus per job. accepts fractions.')
+flags.DEFINE_integer('skip', 1, 'skip run jobs.')
+flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
 
 DEFAULT_ENV_SETTING = 'SmallL2NoDist'
 DEFAULT_TASK_REPS='pickup'
@@ -39,21 +41,22 @@ DEFAULT_ROOM_SIZE=7
 DEFAULT_NUM_ACTORS = 5
 DEFAULT_NUM_DISTS = 0
 
-def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, use_wandb, terminal, wait=False):
-
+def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, use_wandb, terminal, skip):
   """Create and run launchpad program
   """
+
   agent = config.pop('agent', 'r2d1')
   num_actors = config.pop('num_actors', DEFAULT_NUM_ACTORS)
   setting = config.pop('setting', DEFAULT_ENV_SETTING)
   task_reps = config.pop('task_reps', DEFAULT_TASK_REPS)
   room_size = config.pop('room_size', DEFAULT_ROOM_SIZE)
   num_dists = config.pop('num_dists', DEFAULT_NUM_DISTS)
-  cuda = config.pop('cuda', '')
+  cuda = config.pop('cuda', None)
   group = config.pop('group', group)
   label = config.pop('label', DEFAULT_LABEL)
 
-  os.environ['CUDA_VISIBLE_DEVICES']=str(cuda)
+  if cuda:
+    os.environ['CUDA_VISIBLE_DEVICES']=str(cuda)
   # -----------------------
   # add env kwargs to path desc
   # -----------------------
@@ -90,18 +93,20 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
     hourminute=False,
     return_kwpath=True,
     date=False,
+    path_skip=['max_number_of_steps'],
     **log_path_config
     )
 
-  os.environ['LAUNCHPAD_LOGGING_DIR']=log_dir
+  # os.environ['LAUNCHPAD_LOGGING_DIR']=log_dir
   print("="*50)
-  if not os.path.exists(log_dir):
-    print(f"RUNNING\n{log_dir}")
-    print("="*50)
-  else:
+  if os.path.exists(log_dir) and skip:
     print(f"SKIPPING\n{log_dir}")
     print("="*50)
     return
+  else:
+    print(f"RUNNING\n{log_dir}")
+    print("="*50)
+
 
   # -----------------------
   # wandb settings
@@ -138,12 +143,54 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
   }
 
   if program is None: return
-  controller = lp.launch(program, lp.LaunchType.LOCAL_MULTI_PROCESSING, terminal=terminal, 
+  controller = lp.launch(program,
+    lp.LaunchType.LOCAL_MULTI_PROCESSING,
+    terminal=terminal, 
     local_resources=local_resources
     )
 
   time.sleep(60) # sleep for 60 seconds to avoid collisions
   controller.wait()
+
+
+def manual_parallel(fn, space):
+  """Run in parallel manually."""
+  from pprint import pprint 
+  import sklearn
+  import jax
+  configs = []
+  gpus = [int(i) for i in os.environ['CUDA_VISIBLE_DEVICES'].split(",")]
+  idx = 0
+  for x in space:
+    y = {k:list(v.values())[0] for k,v in x.items()}
+    grid = list(sklearn.model_selection.ParameterGrid(y))
+
+    # assign gpus
+    for g in grid:
+      g['cuda'] = gpus[idx%len(gpus)]
+      idx += 1
+    configs.extend(grid)
+
+  pprint(configs)
+
+
+  idx = 1
+  processes = []
+  for config in configs:
+    wait = idx % len(gpus) == 0
+    p = mp.Process(
+      target=fn,
+      args=(config,))
+    p.start()
+    processes.append(p)
+    if wait:
+      for p in processes:
+        p.join() # this blocks until the process terminates
+      processes = []
+      print("="*50)
+      print("Running new set")
+      print("="*50)
+    idx += 1
 
 
 
@@ -153,9 +200,8 @@ def main(_):
   mp.set_start_method('spawn')
   num_cpus = int(FLAGS.num_cpus)
   num_gpus = float(FLAGS.num_gpus)
-  name_kwargs=[]
 
-  space = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search)
+  space = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
   if isinstance(space, dict):
     space = [space]
   elif isinstance(space, list):
@@ -179,43 +225,48 @@ def main(_):
     save_code=True,
   )
 
-  import sklearn
-  import jax
-  configs = []
-  gpus = [int(i) for i in os.environ['CUDA_VISIBLE_DEVICES'].split(",")]
-  idx = 0
-  for x in space:
-    y = {k:list(v.values())[0] for k,v in x.items()}
-    grid = list(sklearn.model_selection.ParameterGrid(y))
+  skip = FLAGS.skip
 
-    # assign gpus
-    for g in grid:
-      g['cuda'] = gpus[idx%len(gpus)]
-      idx += 1
-    configs.extend(grid)
+  if FLAGS.ray:
+    def train_function(config):
+      """Run inside threads and creates new process.
+      """
+      p = mp.Process(
+        target=create_and_run_program, 
+        args=(config,),
+        kwargs=dict(
+          root_path=root_path,
+          folder=folder,
+          group=group,
+          wandb_init_kwargs=wandb_init_kwargs,
+          use_wandb=use_wandb,
+          terminal=terminal,
+          skip=skip)
+        )
+      p.start()
+      p.join() # this blocks until the process terminates
+      # this will call right away and end.
 
-  from pprint import pprint 
-  pprint(configs)
+    experiment_specs = [tune.Experiment(
+          name="goto",
+          run=train_function,
+          config=s,
+          resources_per_trial={"cpu": num_cpus, "gpu": num_gpus}, 
+          local_dir='/tmp/ray',
+        ) for s in space
+    ]
+    all_trials = tune.run_experiments(experiment_specs)
 
-
-  idx = 1
-  processes = []
-  for config in configs:
-    wait = idx % len(gpus) == 0
-    p = mp.Process(
-      target=create_and_run_program, 
-      args=(config, root_path, folder, group, wandb_init_kwargs, use_wandb, terminal, wait))
-    p.start()
-    processes.append(p)
-    if wait:
-      for p in processes:
-        p.join() # this blocks until the process terminates
-      processes = []
-      print("="*50)
-      print("Running new set")
-      print("="*50)
-    idx += 1
-
+  else:
+    manual_parallel(fn=functools.partial(create_and_run_program,
+      root_path=root_path,
+      folder=folder,
+      group=group,
+      wandb_init_kwargs=wandb_init_kwargs,
+      use_wandb=use_wandb,
+      terminal=terminal,
+      skip=skip),
+    space=space)
 
 
 
