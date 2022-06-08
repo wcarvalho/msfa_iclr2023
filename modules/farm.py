@@ -203,9 +203,9 @@ class FARM(hk.RNNCore):
     self.memory = StructuredLSTM(module_size, nmodules, vmap=vmap)
 
     self.recurrent_features = recurrent_features
-    if self.recurrent_features:
-      self.input_shape = input_shape
-      self.conv_memory = hk.Conv2DLSTM(self.input_shape, 16, [3,3])
+    self.input_shape = input_shape
+    self.conv_memory = hk.Conv2DLSTM(self.input_shape, 16, [3,3])
+
 
 
     self._feature_attention = FeatureAttention(
@@ -248,11 +248,12 @@ class FARM(hk.RNNCore):
     # -----------------------
     # conv-lstm
     # -----------------------
-    assert self.input_shape == inputs.image.shape[1:3]
     image = inputs.image
-    conv_state=None
+    conv_state = prev_state.conv_state
     if self.recurrent_features:
+      assert self.input_shape == inputs.image.shape[1:3]
       image, conv_state = self.conv_memory(image, prev_state.conv_state)
+      image = jax.nn.relu(image)
 
 
     # -----------------------
@@ -297,18 +298,12 @@ class FARM(hk.RNNCore):
 
   def initial_state(self, batch_size: Optional[int]) -> LSTMState:
     lstm_state = self.memory.initial_state(batch_size)
-    if self.recurrent_features:
-      conv_state = self.conv_memory.initial_state(batch_size)
-      state = FarmState(
-        hidden=lstm_state.hidden,
-        cell=lstm_state.cell,
-        conv_state=conv_state,
-        )
-    else:
-      state = FarmState(
-        hidden=lstm_state.hidden,
-        cell=lstm_state.cell,
-        )
+    conv_state = self.conv_memory.initial_state(batch_size)
+    state = FarmState(
+      hidden=lstm_state.hidden,
+      cell=lstm_state.cell,
+      conv_state=conv_state,
+      )
     return state
 
 
