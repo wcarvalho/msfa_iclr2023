@@ -56,7 +56,7 @@ class R2D1Config(configs.R2D1Config):
   out_hidden_size = 512
   eval_network: bool = True
   vision_torso: str = 'atari'
-  r2d1_loss: str = 'n_step_q_learning'
+  r2d1_loss: str = 'transformed_n_step_q_learning'
   task_gate: str='none'
 
 @dataclasses.dataclass
@@ -72,7 +72,7 @@ class USFAConfig(R2D1Config):
   variance: float = 0.5
   # Network hps
   policy_size = 32
-  policy_layers = 2
+  policy_layers = 2 # [DIFF FROM MSF]
   batch_size: int = 32
   cumulant_hidden_size: int=256 # hidden size for cumulant pred
   cumulant_layers: int=2 # hidden size for cumulant pred

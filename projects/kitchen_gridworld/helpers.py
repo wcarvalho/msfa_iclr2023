@@ -56,55 +56,10 @@ def make_environment(evaluation: bool = False,
   with open(os.path.join(path, task_reps_file), 'r') as f:
     task_reps = yaml.load(f, Loader=yaml.SafeLoader)
 
-
-  settings = dict(
-    EasyPickup=dict(
-      tasks_file="envs/babyai_kitchen/tasks/multitask/all_pickup_easy.yaml",
-      ),
-    SmallL2NoDist=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_no_dist.yaml",
-      ),
-    SmallL2NoDistV2=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_no_dist_v2.yaml",
-      ),
-    SmallL2SliceChill=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_slice_chill.yaml",
-      ),
-    SmallL2Transfer=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_slice_chill_clean_transfer.yaml",
-      ),
-    SmallL2TransferEasy=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/length=2_slice_chill_clean_transfer_easy.yaml",
-      ),
-    L2_Args_Multi=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-Args-Multi.yaml",
-      ),
-    L2_Task_Multi=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-ArgTask-Multi.yaml",
-      ),
-    L2_Multi=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-Multi.yaml",
-      ),
-    L2_Multi_Gen=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/L2-Multi-gen-room-dists.yaml",
-      ),
-    increasingL=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/increasingL.yaml",
-      ),
-    Clean_Cook_Slice=dict(
-      tasks_file="envs/babyai_kitchen/tasks/unseen_arg/Clean_Cook_Slice.yaml",
-      )
-    )
-
-  if setting in settings:
-    settings=settings[setting]
-    tasks_file = settings['tasks_file']
-    tasks_file = os.path.join(path, tasks_file)
-  else:
-    tasks_file = f"envs/babyai_kitchen/tasks/v1/{setting}.yaml"
-    tasks_file = os.path.join(path, tasks_file)
-    if not os.path.exists(tasks_file):
-      raise RuntimeError(f"don't know how to handle setting: {setting}")
+  tasks_file = f"envs/babyai_kitchen/tasks/v1/{setting}.yaml"
+  tasks_file = os.path.join(path, tasks_file)
+  if not os.path.exists(tasks_file):
+    raise RuntimeError(f"don't know how to handle setting: {setting}")
   
   with open(tasks_file, 'r') as f:
     tasks = yaml.load(f, Loader=yaml.SafeLoader)
@@ -257,6 +212,28 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
       )
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
+  elif agent == "r2d1_dot":
+  # Recurrent DQN (2.2M params)
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.R2D1Config(),
+        configs.LangConfig(),
+      ],
+      dict_configs=default_config)
+
+    NetworkCls=nets.usfa # default: 2M params
+    NetKwargs=dict(
+      config=config,
+      env_spec=env_spec,
+      task_embedding='language',
+      )
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 

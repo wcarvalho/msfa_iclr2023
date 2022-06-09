@@ -59,7 +59,7 @@ from agents.td_agent.agents import DistributedTDAgent
 
 class DataStorer(object):
   """Metric: Average return over many episodes"""
-  def __init__(self, path, agent, seed, episodes=20, exit=False):
+  def __init__(self, agent, seed, results_path=None, episodes=20, exit=False):
     super(DataStorer, self).__init__()
     self.all_episode_data = collections.defaultdict(list)
     self.level = None
@@ -67,14 +67,8 @@ class DataStorer(object):
     self.seed = seed
     self.episodes = episodes
     self.exit = exit
-    self.results_path = os.path.join(
-        path,
-        'episode_data',
-        )
-    if not os.path.exists(self.results_path):
-      paths.process_path(self.results_path, add_uid=False)
-    self.results_file = os.path.join(self.results_path, 'data.npz')
-    
+    self.set_results_path(results_path)
+
     self.idx = 0
 
   def observe_first(self, env: dm_env.Environment, timestep: dm_env.TimeStep
@@ -135,17 +129,25 @@ class DataStorer(object):
           cloudpickle.dump(self.all_episode_data, file)
 
         if self.exit:
-          import launchpad as lp  # pylint: disable=g-import-not-at-top
-          lp.stop()
+          try:
+            import launchpad as lp  # pylint: disable=g-import-not-at-top
+            lp.stop()
+          except Exception as e:
+            pass
           import os; os._exit(0)
         self.all_episode_data = collections.defaultdict(list)
-
 
   def get_metrics(self):
     """Returns metrics collected for the current episode."""
 
     return {}
 
+  def set_results_path(self, results_path):
+    if not results_path: return
+    self.results_path = results_path
+    if not os.path.exists(self.results_path):
+      paths.process_path(self.results_path, add_uid=False)
+    self.results_file = os.path.join(self.results_path, 'data.npz')
 
 def make_behavior_policy(
     networks: TDNetworkFns,

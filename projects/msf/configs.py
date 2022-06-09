@@ -96,7 +96,7 @@ class QAuxConfig:
 @dataclasses.dataclass
 class RewardConfig:
   """Extra configuration options for USFA agent."""
-  reward_coeff: float = 1e-3 # coefficient for reward loss
+  reward_coeff: float = 100 # coefficient for reward loss
   value_coeff: float = 0.5 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
@@ -128,7 +128,7 @@ class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
   normalize_delta: bool = True # whether to normalize delta between states
   normalize_state: bool = True # whether to normalize delta between states
-  embed_position: int = 16 # whether to add position embeddings to modules
+  embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
 
   seperate_cumulant_params: bool=True # seperate parameters per cumulant set
@@ -159,7 +159,7 @@ class FarmModelConfig(FarmConfig):
 
   # Network hps
   temperature: float = 0.01
-  reward_coeff: float = 1e-4 # coefficient for reward loss
+  reward_coeff: float = 10 # coefficient for reward loss
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'
@@ -170,14 +170,3 @@ class FarmModelConfig(FarmConfig):
   contrast_time_coeff: float = 0.0
   extra_module_negatives: int = 4
   extra_time_negatives: int = 0
-
-
-
-@dataclasses.dataclass
-class VAEConfig:
-  """Extra configuration options for USFA agent."""
-  vae_coeff: float = 1e-4 # coefficient for loss
-  latent_source: str = "samples" # coefficient for loss
-  latent_dim: int = 128 # latent dim for compression
-  beta: float = 25 # beta for KL
-

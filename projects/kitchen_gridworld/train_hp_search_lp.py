@@ -37,7 +37,7 @@ flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
 DEFAULT_ENV_SETTING = 'SmallL2NoDist'
 DEFAULT_TASK_REPS='pickup'
 DEFAULT_LABEL=''
-DEFAULT_ROOM_SIZE=7
+DEFAULT_ROOM_SIZE = 7
 DEFAULT_NUM_ACTORS = 5
 DEFAULT_NUM_DISTS = 0
 

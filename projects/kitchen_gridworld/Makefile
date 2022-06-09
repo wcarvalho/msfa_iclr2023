@@ -1,6 +1,6 @@
 agent?=msf
 eval?=1
-cuda?=0,1
+cuda?=3
 nan?=0
 folder?='results/kitchen_grid/final'
 wandb?=True
@@ -21,6 +21,9 @@ nojit?=0
 skip?=0
 ray?=0
 init?=0
+or?=1
+eps?=5
+ckpts?=-1
 
 export WANDB_START_METHOD=thread
 export PYTHONPATH:=$(PYTHONPATH):.
@@ -116,11 +119,13 @@ lp_search:
 
 
 
-video_maker:
+generate_analysis_data:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python -m ipdb -c continue projects/kitchen_gridworld/create_episode_data.py \
-	--distributed=$(dist)
+	python -m ipdb -c continue projects/kitchen_gridworld/create_analysis_data.py \
+	--overwrite=$(or) \
+	--ckpts=$(ckpts) \
+	--num_episodes=$(eps)
 
 mprof_train_search:
 	cd ../..; \

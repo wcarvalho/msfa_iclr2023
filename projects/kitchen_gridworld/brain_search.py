@@ -23,21 +23,25 @@ def get(search, agent):
         "seed": tune.grid_search([1, 2, 3]),
         "agent": tune.grid_search([agent]),
         "setting": tune.grid_search(['pickup']),
+        "r2d1_loss": tune.grid_search(['pickup']),
         "max_number_of_steps": tune.grid_search([4_000_000]),
       },
     ]
 
-  elif search == 'pickup_lang':
+  elif search == 'pickup_lang2':
     """
     Next:
     """
     space = [
       { # 6
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1']),
+        "agent": tune.grid_search([agent]),
         "setting": tune.grid_search(['pickup']),
         "group": tune.grid_search(['pickup2']),
-        "lang_task_dim": tune.grid_search([0, 16, 128, 256]),
+        "out_hidden_size": tune.grid_search([512, 1024]),
+        "memory_size": tune.grid_search([512, 1024]),
+        # "lang_task_dim": tune.grid_search([0, 16]),
+        # "learning_rate": tune.grid_search([1e-4]),
         "max_number_of_steps": tune.grid_search([4_000_000]),
       },
     ]
