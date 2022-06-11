@@ -89,11 +89,13 @@ class LevelAvgReturnObserver(EnvLoopObserver):
     result = {}
 
     if self.idx % self.reset == 0:
+      # add latest (otherwise deleted)
+      self.returns[self.level].append(self._episode_return)
+
       for key, returns in self.returns.items():
         avg = np.array(returns).mean()
         result[f'0.task/{key}/avg_return'] = float(avg)
         self.returns[key] = []
-
 
     return result
 
