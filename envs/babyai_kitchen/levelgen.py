@@ -109,9 +109,6 @@ class KitchenLevel(RoomGridLevel):
     # ======================================================
     # action space
     # ======================================================
-    if load_actions_from_tasks:
-        raise RuntimeError("Always use those set by __init__.")
-        actions = self.load_actions_from_tasks(task_kinds)
     self.actiondict = {action:idx for idx, action in enumerate(actions, start=0)}
 
     # -----------------------
@@ -121,7 +118,7 @@ class KitchenLevel(RoomGridLevel):
     pickup_idx = self.actiondict['pickup_contents']
     backwards = {
       'pickup': pickup_idx,
-      'done': -1
+      'done': len(self.actiondict)
       }
     candrop = 'place' in self.actiondict
     if candrop:
@@ -155,25 +152,6 @@ class KitchenLevel(RoomGridLevel):
         dtype='uint8'
     )
 
-  def load_actions_from_tasks(self, task_kinds):
-    actions = set()
-    for kind in task_kinds:
-        kind = kind.lower()
-
-        if kind == "none": 
-            continue
-
-        task_class = envs.babyai_kitchen.tasks.TASKS[kind]
-        task_actions = task_class.task_actions()
-
-        for task_action in task_actions:
-            if task_action in ["pickup", 'pickup_and']:
-                actions.add('pickup_contents')
-                actions.add('pickup_container')
-            else:
-                actions.add(task_action)
-
-    return ['left', 'right', 'forward'] + list(actions)
 
   # ======================================================
   # functions for generating grid + objeccts
@@ -382,6 +360,7 @@ class KitchenLevel(RoomGridLevel):
     # - instruction
     # -----------------------
     # when call reset during initialization, don't load
+    self.kitchen.reset()
     self.task = self.reset_task()
     if self.task is not None:
         self.surface = self.task.surface(self)
