@@ -55,7 +55,7 @@ FLAGS = flags.FLAGS
 def main(_):
   setting=FLAGS.env_setting
   env_kwargs=dict(
-    room_size=7,
+    room_size=6,
     )
   env = helpers.make_environment(
     setting=setting,
@@ -63,21 +63,27 @@ def main(_):
     evaluation=FLAGS.evaluate, # test set (harder)
     **env_kwargs
     )
-  max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
+  max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
+
   separate_eval = env.separate_eval # HACK
   env_spec = acme.make_environment_spec(env)
+
 
   config=dict()
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['normalize_attn'] = True
-    config['cumulant_source'] = 'conv'
-    config['phi_conv_size'] = 8
-    config['recurrent_conv'] = False
-    config['module_size'] = None
+    # config['normalize_attn'] = True
+    # config['cumulant_source'] = 'conv'
+    # config['phi_conv_size'] = 8
+    # config['recurrent_conv'] = False
+    config['q_mask_loss'] = False
+    config['sf_mask_loss'] = False
+    config['qaux_mask_loss'] = False
     config['memory_size'] = 512
-    config['nmodules'] = 8
+    config['nmodules'] = 4
+    config['lang_relu'] = True
+    config['module_task_dim'] = 1
     print("="*50)
     print("="*20, "testing", "="*20)
     from pprint import pprint

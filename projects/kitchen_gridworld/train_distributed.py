@@ -62,10 +62,6 @@ def build_program(
   num_actors : int,
   wandb_init_kwargs=None,
   update_wandb_name=True, # use path from logdir to populate wandb name
-  # setting='SmallL2NoDist',
-  # task_reps='lesslang',
-  # room_size=8,
-  # num_dists=0,
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
   log_every=5.0, # how often to log
@@ -86,7 +82,7 @@ def build_program(
     **env_kwargs,
     )
   env = environment_factory(True)
-  max_vocab_size = len(env.env.instr_preproc.vocab) # HACK
+  max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
   separate_eval = env.separate_eval # HACK
   # config_kwargs['step_penalty'] = env.step_penalty
   env_spec = acme.make_environment_spec(env)
