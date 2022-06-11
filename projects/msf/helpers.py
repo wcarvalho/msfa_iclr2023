@@ -200,7 +200,8 @@ def q_aux_sf_loss(config):
           sched_end=config.q_aux_anneal,
           sched_end_val=config.q_aux_end_val,
           tx_pair=tx_pair,
-          add_bias=add_bias)
+          add_bias=add_bias,
+          mask_loss=config.qaux_mask_loss)
 
 def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, learn_model=False):
   config = data_utils.merge_configs(
