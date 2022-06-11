@@ -134,6 +134,7 @@ def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=Non
         initializer=config.word_initializer,
         compress=config.word_compress,
         tanh=config.lang_tanh,
+        relu=config.lang_relu,
         **lang_kwargs)
     def embed_fn(task):
       """Convert task to ints, batchapply if necessary, and run through embedding function."""
@@ -160,7 +161,7 @@ def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
   return jnp.concatenate((memory_out, task), axis=-1)
 
 def r2d1(config, env_spec,
-  task_input=True,
+  task_input: str='qfn',
   task_embedding: str='none',
    **kwargs):
   """Summary
@@ -179,11 +180,25 @@ def r2d1(config, env_spec,
   # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
+  task_embedder, embed_fn = build_task_embedder(
+    task_embedding=task_embedding,
+    config=config,
+    lang_task_dim=config.lang_task_dim,
+    task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
 
-  if task_input:
+  embedder = OAREmbedding(num_actions=num_actions)
+  def task_in_memory_prep_fn(inputs, obs):
+    task = inputs.observation.task
+    oar = embedder(inputs, obs)
+    return jnp.concatenate((oar, task), axis=-1)
+
+  if task_input == 'qfn':
+    memory_prep_fn = embedder
     prediction_prep_fn = r2d1_prediction_prep_fn
+  elif task_input == 'memory':
+    memory_prep_fn=task_in_memory_prep_fn
+    prediction_prep_fn = None # just use memory_out
   else:
     prediction_prep_fn = None # just use memory_out
 
@@ -191,7 +206,7 @@ def r2d1(config, env_spec,
     inputs_prep_fn=inputs_prep_fn,
     vision_prep_fn=get_image_from_inputs,
     vision=AtariVisionTorso(flatten=True),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory_prep_fn=memory_prep_fn,
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=prediction_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
