@@ -40,6 +40,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
   clip_rewards : bool = False
   max_abs_reward: float = 1.
   loss_coeff: float = 1.
+  mask_loss: bool = True
 
   # auxilliary tasks
   aux_tasks: Union[Callable, Sequence[Callable]]=None
@@ -243,11 +244,16 @@ class R2D2Learning(RecurrentTDLearning):
         rewards[:-1],
         discounts[:-1])
 
-    mask=(discounts > 0).astype(jnp.float32)[:-1]
+
     # average over {T} --> # [B]
-    batch_loss = masked_mean(
-      x=(0.5 * jnp.square(batch_td_error)),
-      mask=mask)
+    if self.mask_loss:
+      # [T, B]
+      mask=(discounts > 0).astype(jnp.float32)[:-1]
+      batch_loss = masked_mean(
+        x=(0.5 * jnp.square(batch_td_error)),
+        mask=mask)
+    else:
+      batch_loss = 0.5 * jnp.square(batch_td_error).mean(axis=0)
 
     metrics = {
       'z.q_mean': online_preds.q.mean(),
@@ -412,11 +418,17 @@ class USFALearning(RecurrentTDLearning):
       cumulants,        # [T, B, C]       (vmap None,1)
       discounts)        # [T, B]          (vmap None,1)
 
-    mask=(discounts > 0).astype(jnp.float32)[:-1]
-    # average over {T, N, C} --> # [B]
-    batch_loss = masked_mean(
-      x=(0.5 * jnp.square(batch_td_error)).mean(axis=(2,3)),
-      mask=mask)
+
+
+    if self.mask_loss:
+      # [T, B]
+      mask=(discounts > 0).astype(jnp.float32)[:-1]
+      # average over {T, N, C} --> # [B]
+      batch_loss = masked_mean(
+        x=(0.5 * jnp.square(batch_td_error)).mean(axis=(2,3)),
+        mask=mask)
+    else:
+      batch_loss = 0.5 * jnp.square(batch_td_error).mean(axis=(0, 2,3))
 
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
 
