@@ -182,6 +182,7 @@ def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=
   LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
   LossFnKwargs.update(
     loss=config.sf_loss,
+    mask_loss=config.sf_mask_loss,
     shorten_data_for_cumulant=True, # needed since using delta for cumulant
     extract_cumulants=losses.cumulants_from_preds,
     aux_tasks=aux_tasks)
@@ -208,32 +209,14 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     NetKwargs=dict(
       config=config,
       env_spec=env_spec,
+      task_input='qfn',
       task_embedding='language',
       )
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(loss=config.r2d1_loss)
-    loss_label = 'r2d1'
-    eval_network = config.eval_network
-
-  elif agent == "r2d1_dot":
-  # Recurrent DQN (2.2M params)
-    config = data_utils.merge_configs(
-      dataclass_configs=[
-        configs.R2D1Config(),
-        configs.LangConfig(),
-      ],
-      dict_configs=default_config)
-
-    NetworkCls=nets.usfa # default: 2M params
-    NetKwargs=dict(
-      config=config,
-      env_spec=env_spec,
-      task_embedding='language',
-      )
-    LossFn = td_agent.R2D2Learning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(loss=config.r2d1_loss)
+    LossFnKwargs.update(
+      loss=config.r2d1_loss,
+      mask_loss=config.q_mask_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
@@ -277,6 +260,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
       loss=config.sf_loss,
+      mask_loss=config.sf_mask_loss,
       shorten_data_for_cumulant=True,
       extract_cumulants=functools.partial(
         losses.cumulants_from_preds,
