@@ -25,20 +25,20 @@ from projects.kitchen_gridworld.train_distributed import build_program
 flags.DEFINE_string('folder', 'set', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
 flags.DEFINE_bool('date', True, 'use date.')
-flags.DEFINE_string('search', 'baselines', 'which search to use.')
+flags.DEFINE_string('search', '', 'which search to use.')
 flags.DEFINE_string('spaces', 'brain_search', 'which search to use.')
 flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
 flags.DEFINE_float('num_gpus', 1, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('num_cpus', 3, 'number of gpus per job. accepts fractions.')
-flags.DEFINE_integer('actors', 5, 'number of gpus per job. accepts fractions.')
+flags.DEFINE_integer('actors', 4, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('skip', 1, 'skip run jobs.')
 flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
 
-DEFAULT_ENV_SETTING = 'SmallL2NoDist'
+DEFAULT_ENV_SETTING = 'multiv9'
 DEFAULT_TASK_REPS='pickup'
 DEFAULT_LABEL=''
 DEFAULT_ROOM_SIZE = 7
-DEFAULT_NUM_ACTORS = 5
+DEFAULT_NUM_ACTORS = 4
 DEFAULT_NUM_DISTS = 0
 
 def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, use_wandb, terminal, skip):
@@ -173,7 +173,6 @@ def manual_parallel(fn, space):
 
   pprint(configs)
 
-
   idx = 1
   processes = []
   for config in configs:
@@ -201,6 +200,7 @@ def main(_):
   num_cpus = int(FLAGS.num_cpus)
   num_gpus = float(FLAGS.num_gpus)
 
+  assert FLAGS.search != '', 'set search!'
   space = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
   if isinstance(space, dict):
     space = [space]
