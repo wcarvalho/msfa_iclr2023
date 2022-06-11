@@ -29,6 +29,7 @@ class R2D1Config(configs.R2D1Config):
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
   loss_coeff: float = 1.0
+  q_mask_loss: bool = False # whether to mask outside of data.discount
   schedule_end: int = None
   final_lr_scale: float = 1e-5
 
@@ -55,6 +56,7 @@ class R2D1Config(configs.R2D1Config):
   memory_size = 512
   out_hidden_size = 512
   eval_network: bool = True
+  lang_relu: bool = False
   vision_torso: str = 'atari'
   r2d1_loss: str = 'transformed_n_step_q_learning'
   task_gate: str='none'
@@ -92,6 +94,7 @@ class USFAConfig(R2D1Config):
   cov_coeff: float = None # coeff for covariance loss on phi
   sf_layernorm: str = 'none' # coefficient for L1 on phi
   task_gate: str='none'
+  sf_mask_loss: bool=False
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -99,6 +102,7 @@ class QAuxConfig:
   loss_coeff: float = 1.0
   q_aux_anneal: int = 0.0
   q_aux_end_val: float = 0.0
+  qaux_mask_loss: bool=False
 
 
 @dataclasses.dataclass
@@ -118,9 +122,9 @@ class FarmConfig:
   """Extra configuration options for FARM module."""
 
   # Network hps
-  memory_size = None
-  module_size: int = 128
-  nmodules: int = 4
+  memory_size = 512
+  module_size: int = None
+  nmodules: int = 8
   out_layers: int = 0
   module_attn_size: int = None
   module_attn_heads: float = .5  # how many attention heads between modules

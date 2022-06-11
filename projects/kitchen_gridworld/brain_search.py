@@ -1,34 +1,47 @@
 from ray import tune
 
 def get(search, agent):
-  if search == 'slice4':
-    """
-    Next:
-    """
-    space = [
-      { # 6
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['r2d1', 'usfa_lstm']),
-        "setting": tune.grid_search(['place_sliced']),
-        "max_number_of_steps": tune.grid_search([30_000_000]),
-      },
-    ]
-
-  elif search == 'pickup2':
-    """
-    Next:
-    """
+  if search == 'slice5':
     space = [
       { # 6
         "seed": tune.grid_search([1, 2, 3]),
         "agent": tune.grid_search([agent]),
-        "setting": tune.grid_search(['pickup']),
-        "r2d1_loss": tune.grid_search(['pickup']),
-        "max_number_of_steps": tune.grid_search([4_000_000]),
+        "setting": tune.grid_search(['place_sliced']),
+        "max_number_of_steps": tune.grid_search([40_000_000]),
       },
     ]
 
-  elif search == 'pickup_lang2':
+  elif search == 'multiv9_5':
+    space = [
+      { # 6
+        "seed": tune.grid_search([1,2,3]),
+        "agent": tune.grid_search([agent]),
+        "setting": tune.grid_search(['multiv9']),
+        "max_number_of_steps": tune.grid_search([40_000_000]),
+      }
+    ]
+
+  elif search == 'cook5':
+    space = [
+      { # 6
+        "seed": tune.grid_search([1, 2, 3]),
+        "agent": tune.grid_search([agent]),
+        "setting": tune.grid_search(['cook']),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+    ]
+
+  elif search == 'similar5':
+    space = [
+      { # 6
+        "seed": tune.grid_search([1, 2, 3]),
+        "agent": tune.grid_search([agent]),
+        "setting": tune.grid_search(['similar']),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+    ]
+
+  elif search == 'pickup5':
     """
     Next:
     """
@@ -37,25 +50,28 @@ def get(search, agent):
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search([agent]),
         "setting": tune.grid_search(['pickup']),
-        "group": tune.grid_search(['pickup2']),
-        "out_hidden_size": tune.grid_search([512, 1024]),
-        "memory_size": tune.grid_search([512, 1024]),
-        # "lang_task_dim": tune.grid_search([0, 16]),
-        # "learning_rate": tune.grid_search([1e-4]),
-        "max_number_of_steps": tune.grid_search([4_000_000]),
+        "sf_mask_loss": tune.grid_search([True, False]),
+        "qaux_mask_loss": tune.grid_search([True, False]),
+        "max_number_of_steps": tune.grid_search([1_500_000]),
       },
     ]
 
-  elif search == 'cook4':
+  elif search == 'pickup_lang3':
     """
     Next:
     """
     space = [
       { # 6
-        "seed": tune.grid_search([1, 2]),
-        "agent": tune.grid_search(['usfa_lstm']),
-        "setting": tune.grid_search(['cook']),
-        "max_number_of_steps": tune.grid_search([30_000_000]),
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search([
+          'r2d1']),
+        # "word_initializer": tune.grid_search(['RandomNormal', 'TruncatedNormal']),
+        # "samples_per_insert": tune.grid_search([0.0, 6.0]),
+        "sequence_period": tune.grid_search([40]),
+        # "burn_period": tune.grid_search([40]),
+        "setting": tune.grid_search(['pickup']),
+        "mask_loss": tune.grid_search([True, False]),
+        "max_number_of_steps": tune.grid_search([4_000_000]),
       },
     ]
 
@@ -72,18 +88,6 @@ def get(search, agent):
       },
     ]
 
-  elif search == 'multiv9':
-    """
-    Next:
-    """
-    space = [
-      { # 6
-        "seed": tune.grid_search([seed]),
-        "agent": tune.grid_search(['r2d1']),
-        "setting": tune.grid_search(['multiv9']),
-      }
-      for seed in [1,2,3]
-    ]
 
   else:
     raise NotImplementedError(search)

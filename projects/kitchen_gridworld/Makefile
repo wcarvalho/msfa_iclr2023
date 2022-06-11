@@ -69,10 +69,11 @@ test_async:
 	--name=$(name)
 
 
-train_search:
+meta_search:
 	cd ../..; \
+	echo ${searches}; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/kitchen_gridworld/train_hp_search.py \
+	python projects/kitchen_gridworld/meta_hp_search.py \
 	--folder $(folder) \
 	--num_gpus $(gpus) \
 	--num_cpus $(cpus) \
@@ -81,8 +82,11 @@ train_search:
 	--date=$(date) \
 	--wandb_project $(project) \
 	--group $(group) \
-	--search $(search) \
-	--notes $(notes)
+	--searches "${searches}" \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--agent $(agent) \
 
 lp_search:
 	cd ../..; \
