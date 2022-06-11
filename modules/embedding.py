@@ -95,7 +95,7 @@ def st_round(x):
   return zero + jax.lax.stop_gradient(x)
 
 class LanguageTaskEmbedder(hk.Module):
-  """Module that embed words and then runs them through GRU."""
+  """Module that embed words and then runs them through GRU. The Token`0` is treated as padding and masked out."""
   def __init__(self,
       vocab_size: int,
       word_dim: int,
@@ -106,6 +106,7 @@ class LanguageTaskEmbedder(hk.Module):
       gates: int=None,
       gate_type: str='sample',
       tanh: bool=False,
+      relu: bool=False,
       **kwargs):
     super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
@@ -129,6 +130,7 @@ class LanguageTaskEmbedder(hk.Module):
 
     self.gates = gates
     self.tanh = tanh
+    self.relu = relu
     self.gate_type = gate_type.lower()
     assert self.gate_type in ['round', 'sample', 'sigmoid']
     if self.gates is not None and self.gates > 0:
@@ -144,10 +146,21 @@ class LanguageTaskEmbedder(hk.Module):
         TYPE: Description
     """
     B, N = x.shape
-    initial = self.language_model.initial_state(B)
+
+    # -----------------------
+    # embed words + mask
+    # -----------------------
     words = self.embedder(x) # B x N x D
+    mask = (x > 0).astype(words.dtype)
+    words = words*jnp.expand_dims(mask, axis=-1)
+
+    # -----------------------
+    # pass through GRU
+    # -----------------------
+    initial = self.language_model.initial_state(B)
     words = jnp.transpose(words, (1,0,2))  # N x B x D
     sentence, _ = hk.static_unroll(self.language_model, words, initial)
+
     if self.compress == "last":
       task = sentence[-1] # embedding at end
     elif self.compress == "sum":
@@ -160,6 +173,8 @@ class LanguageTaskEmbedder(hk.Module):
 
     if self.tanh:
       task_proj = jax.nn.tanh(task_proj)
+    if self.relu:
+      task_proj = jax.nn.relu(task_proj)
 
     if self.gates is not None and self.gates > 0:
       # [B, G]
