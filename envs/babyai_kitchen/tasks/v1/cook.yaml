@@ -4,18 +4,20 @@
 
 train:
 
-  - name: pickup
+  - name: "0.pickup"
     task_kinds: pickup
     num_dists: 0
 
-  - name: place
-    task_kinds: place
-    num_dists: 0
-
-  - name: heat
+  - name: "1.heat"
     task_kinds: heat
     num_dists: 0
 
-  - name: cook
+  - name: "2.place"
+    task_kinds: place
+    num_dists: 0
+
+  - name: "3.cook"
     task_kinds: cook
+    taskarg_options:
+      y: [pot]
     num_dists: 0
