@@ -145,11 +145,13 @@ class KitchenLevel(RoomGridLevel):
     # ======================================================
     # potentially want to keep square and just put black for non-visible?
     shape=(self.agent_view_height, self.agent_view_width, 3)
+
+
     self.observation_space.spaces['image'] = spaces.Box(
         low=0,
-        high=255,
+        high=self.kitchen._max_states,
         shape=shape,
-        dtype='uint8'
+        dtype='int32'
     )
 
 

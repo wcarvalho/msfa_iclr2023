@@ -38,6 +38,7 @@ DEFAULT_ENV_SETTING = 'multiv9'
 DEFAULT_TASK_REPS='pickup'
 DEFAULT_LABEL=''
 DEFAULT_ROOM_SIZE = 7
+DEFAULT_SYMBOLIC = False
 DEFAULT_NUM_ACTORS = 4
 DEFAULT_NUM_DISTS = 0
 
@@ -47,10 +48,6 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
 
   agent = config.pop('agent', 'r2d1')
   num_actors = config.pop('num_actors', DEFAULT_NUM_ACTORS)
-  setting = config.pop('setting', DEFAULT_ENV_SETTING)
-  task_reps = config.pop('task_reps', DEFAULT_TASK_REPS)
-  room_size = config.pop('room_size', DEFAULT_ROOM_SIZE)
-  num_dists = config.pop('num_dists', DEFAULT_NUM_DISTS)
   cuda = config.pop('cuda', None)
   group = config.pop('group', group)
   label = config.pop('label', DEFAULT_LABEL)
@@ -65,14 +62,13 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
     'task_reps' : DEFAULT_TASK_REPS,
     'room_size' : DEFAULT_ROOM_SIZE,
     'num_dists' : DEFAULT_NUM_DISTS,
+    'symbolic' : DEFAULT_SYMBOLIC,
   }
 
-  env_kwargs=dict(
-    setting=setting,
-    task_reps=task_reps,
-    room_size=room_size,
-    num_dists=num_dists,
-    )
+  env_kwargs = dict()
+  for key, value in default_env_kwargs.items():
+    env_kwargs[key] = config.pop(key, value)
+
   # only use non-default
   env_path=dict()
   for k,v in env_kwargs.items():
@@ -151,6 +147,7 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
 
   time.sleep(60) # sleep for 60 seconds to avoid collisions
   controller.wait()
+  time.sleep(60) # sleep for 60 seconds to avoid collisions
 
 
 def manual_parallel(fn, space):

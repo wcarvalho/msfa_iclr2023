@@ -69,27 +69,28 @@ def build_program(
   path='.', # path that's being run from
   log_dir=None, # where to save everything
   debug: bool=False,
-  env_kwargs=dict(),
+  env_kwargs=None,
   **kwargs,
   ):
+  config = config_kwargs or dict()
+  env_kwargs = env_kwargs or dict()
   # -----------------------
   # load env stuff
   # -----------------------
   environment_factory = lambda is_eval: helpers.make_environment(
     evaluation=is_eval,
     path=path,
-    # setting=setting,
     **env_kwargs,
     )
   env = environment_factory(True)
   max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
   separate_eval = env.separate_eval # HACK
+  config['symbolic'] = env_kwargs.get('symbolic', False)
   # config_kwargs['step_penalty'] = env.step_penalty
   env_spec = acme.make_environment_spec(env)
   del env
 
 
-  config = config_kwargs or dict()
   if debug:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 100
@@ -101,6 +102,7 @@ def build_program(
     # config['cov_loss'] = 'l1_corr'
     print("="*50)
     print("="*20, "testing", "="*20)
+    import ipdb; ipdb.set_trace()
     from pprint import pprint
     pprint(config)
     print("="*50)
@@ -195,6 +197,7 @@ def main(_):
     env_kwargs=dict(
       setting=FLAGS.env_setting,
       task_reps=FLAGS.task_reps,
+      symbolic=True,
     )
     )
 

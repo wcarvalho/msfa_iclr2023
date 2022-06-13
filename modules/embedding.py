@@ -22,7 +22,7 @@ class OAREmbedding(hk.Module):
     self.observation = observation
 
   def __call__(self,
-    inputs: observation_action_reward.OAR, obs: jnp.array=None) -> jnp.ndarray:
+    inputs: observation_action_reward.OAR, obs: jnp.array=None, extras=None) -> jnp.ndarray:
     """Embed each of the (observation, action, reward) inputs & concatenate."""
 
     # Do a one-hot embedding of the actions.
@@ -38,6 +38,8 @@ class OAREmbedding(hk.Module):
 
     # Concatenate on final dimension.
     items = [action, reward]
+    if extras:
+      items = items + extras
 
     if self.observation:
       assert obs is not None, "provide observation"
@@ -47,6 +49,28 @@ class OAREmbedding(hk.Module):
       items = jnp.concatenate(items, axis=-1)  # [T?, B, D+A+1]
 
     return items
+
+
+class BabyAIEmbedding(OAREmbedding):
+  """docstring for SymbolicBabyAIEmbedding"""
+  def __init__(self, *args, symbolic=False, **kwargs):
+    super(BabyAIEmbedding, self).__init__(*args, **kwargs)
+    self.symbolic = symbolic
+
+  def __call__(self, inputs: observation_action_reward.OAR, obs: jnp.array=None):
+
+    if self.symbolic:
+      direction = inputs.observation.direction
+      rank = len(direction.shape)
+      direction = jax.nn.one_hot(direction.astype(jnp.int32), num_classes=5)
+      extras = [direction]
+    else:
+      extras = None
+    return super(BabyAIEmbedding, self).__call__(
+      inputs=inputs,
+      obs=obs,
+      extras=extras)
+
 
 
 class OneHotTask(hk.Module):

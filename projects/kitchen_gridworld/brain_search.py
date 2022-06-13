@@ -1,6 +1,7 @@
 from ray import tune
 
-def get(search, agent):
+def get(search, agent=''):
+  agent = agent or 'r2d1'
   if search == 'slice5':
     space = [
       { # 6
@@ -41,18 +42,18 @@ def get(search, agent):
       },
     ]
 
-  elif search == 'pickup5':
+  elif search == 'pickup6':
     """
     Next:
     """
     space = [
       { # 6
-        "seed": tune.grid_search([1]),
+        "seed": tune.grid_search([1, 2]),
         "agent": tune.grid_search([agent]),
         "setting": tune.grid_search(['pickup']),
-        "sf_mask_loss": tune.grid_search([True, False]),
-        "qaux_mask_loss": tune.grid_search([True, False]),
-        "max_number_of_steps": tune.grid_search([1_500_000]),
+        "symbolic": tune.grid_search([False, True]),
+        "label": tune.grid_search(['ray_more_cpu']),
+        "max_number_of_steps": tune.grid_search([2_000_000]),
       },
     ]
 

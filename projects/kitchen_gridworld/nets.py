@@ -14,13 +14,13 @@ import functools
 from agents import td_agent
 from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
-from modules.embedding import OAREmbedding, LanguageTaskEmbedder, Identity
+from modules.embedding import BabyAIEmbedding, OAREmbedding, LanguageTaskEmbedder, Identity
 from modules import farm
 from modules.relational import RelationalLayer, RelationalNet
 from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulants
 from modules.farm_usfa import FarmUsfaHead
 
-from modules.vision import AtariVisionTorso, BabyAIVisionTorso
+from modules.vision import AtariVisionTorso, BabyAIVisionTorso, BabyAIymbolicVisionTorso
 from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, ConcatFlatStatePolicy, UniqueStatePolicyPairs, QBias
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules import usfa as usfa_modules
@@ -44,14 +44,18 @@ def convert_floats(inputs):
 def get_image_from_inputs(inputs : observation_action_reward.OAR):
   return inputs.observation.image/255.0
 
-def make_farm_prep_fn(num_actions, task_input=False, embed_task=None):
+def get_obs_from_inputs(inputs : observation_action_reward.OAR):
+  return inputs.observation
+
+def make_farm_prep_fn(num_actions, task_input=False, embed_task=None, symbolic=False):
   """
   Return farm inputs, (1) obs features (2) [action, reward] vector
   """
-  embedder = OAREmbedding(
+  embedder = BabyAIEmbedding(
     num_actions=num_actions,
     observation=False,
-    concat=False)
+    concat=False,
+    symbolic=symbolic)
 
   def prep(inputs, obs):
     vector = embedder(inputs)
@@ -88,14 +92,28 @@ def make__convert_floats_embed_task(embed_fn,
 # ======================================================
 # Building Modules
 # ======================================================
-def build_vision_net(config, **kwargs):
-  if config.vision_torso == 'atari':
-    vision = AtariVisionTorso(**kwargs)
-  elif config.vision_torso == 'babyai':
-    vision = BabyAIVisionTorso(**kwargs)
+def build_vision_net(config, env_spec, **kwargs):
+  if config.symbolic:
+    config.vision_torso = 'symbolic'
+    num_symbols = env_spec.observations.observation.image.maximum.max()
+    num_channels = len(env_spec.observations.observation.image.shape)
+    vision = BabyAIymbolicVisionTorso(
+      # num_channels=num_channels,
+      num_symbols=num_symbols, **kwargs)
   else:
-    raise NotImplementedError
+    if config.vision_torso == 'atari':
+      vision = AtariVisionTorso(**kwargs)
+    elif config.vision_torso == 'babyai':
+      vision = BabyAIVisionTorso(**kwargs)
+    else:
+      raise NotImplementedError
   return vision
+
+def build_vision_prep_fn(config):
+  if config.symbolic:
+    return get_obs_from_inputs
+  else:
+    return get_image_from_inputs
 
 def build_farm(config, **kwargs):
   return farm.FarmSharedOutput(
@@ -187,7 +205,7 @@ def r2d1(config, env_spec,
     task_dim=task_dim)
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
 
-  embedder = OAREmbedding(num_actions=num_actions)
+  embedder = BabyAIEmbedding(num_actions=num_actions, symbolic=config.symbolic)
   def task_in_memory_prep_fn(inputs, obs):
     task = inputs.observation.task
     oar = embedder(inputs, obs)
@@ -204,8 +222,8 @@ def r2d1(config, env_spec,
 
   net = BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
+    vision_prep_fn=build_vision_prep_fn(config),
+    vision=build_vision_net(config, env_spec, flatten=True),
     memory_prep_fn=memory_prep_fn,
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=prediction_prep_fn,
@@ -242,9 +260,9 @@ def r2d1_noise(config, env_spec,
 
   return BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    vision_prep_fn=build_vision_prep_fn(config),
+    vision=build_vision_net(config, env_spec, flatten=True),
+    memory_prep_fn=BabyAIEmbedding(num_actions=num_actions, symbolic=config.symbolic),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=add_noise_concat, # add noise
     evaluation_prep_fn=evaluation_prep_fn, # (maybe) don't add noise
@@ -275,16 +293,63 @@ def r2d1_farm(config, env_spec,
 
   return BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=False, conv_dim=0),
+    vision_prep_fn=build_vision_prep_fn(config),
+    vision=build_vision_net(config, env_spec, flatten=False, conv_dim=0),
     memory_prep_fn=make_farm_prep_fn(num_actions,
-      task_input=config.farm_task_input),
+      task_input=config.farm_task_input,
+      symbolic=config.symbolic),
     memory=build_farm(config),
     prediction_prep_fn=prediction_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
     **net_kwargs
   )
 
+
+# ======================================================
+# Modular R2D1
+# ======================================================
+
+def modr2d1(config, env_spec,
+  task_embedding: str='none',
+   **kwargs):
+  """Summary
+  
+  Args:
+      config (TYPE): Description
+      env_spec (TYPE): Description
+      task_input (bool, optional): whether to give task as input to agent. No=basic baseline.
+      task_embedding (str, optional): Options: [identity, language]
+      **kwargs: Description
+  
+  Returns:
+      TYPE: Description
+  """
+  # config.lang_task_dim = 0 # use GRU output
+  num_actions = env_spec.actions.num_values
+  task_dim = env_spec.observations.observation.task.shape[0]
+  task_embedder, embed_fn = build_task_embedder(
+    task_embedding=task_embedding,
+    config=config,
+    lang_task_dim=config.lang_task_dim,
+    task_dim=task_dim)
+  inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+
+  memory_prep_fn = BabyAIEmbedding(num_actions=num_actions, symbolic=config.symbolic)
+  prediction_prep_fn = r2d1_prediction_prep_fn
+
+  net = BasicRecurrent(
+    inputs_prep_fn=inputs_prep_fn,
+    vision_prep_fn=build_vision_prep_fn(config),
+    vision=build_vision_net(config, env_spec, flatten=True),
+    memory_prep_fn=make_farm_prep_fn(num_actions,
+      task_input=config.farm_task_input,
+      symbolic=config.symbolic),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=prediction_prep_fn,
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    **kwargs
+  )
+  return net
 
 # ======================================================
 # USFA
@@ -316,7 +381,7 @@ def usfa(config, env_spec,
   **net_kwargs):
 
   num_actions = env_spec.actions.num_values
-  vision_net = build_vision_net(config, flatten=True)
+  vision_net = build_vision_net(config, env_spec, flatten=True)
 
   # -----------------------
   # task embedder + prep functions (will embed task)
@@ -366,9 +431,9 @@ def usfa(config, env_spec,
 
   net = BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
-    vision_prep_fn=get_image_from_inputs,
+    vision_prep_fn=build_vision_prep_fn(config),
     vision=vision_net,
-    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory_prep_fn=BabyAIEmbedding(num_actions=num_actions, symbolic=config.symbolic),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=usfa_prep_fn,
     prediction=prediction_head,
@@ -469,10 +534,11 @@ def msf(
 
   return BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=False),
+    vision_prep_fn=build_vision_prep_fn(config),
+    vision=build_vision_net(config, env_spec, flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions,
-      task_input=config.farm_task_input),
+      task_input=config.farm_task_input,
+      symbolic=config.symbolic),
     memory=farm_memory,
     prediction_prep_fn=pred_prep_fn,
     prediction=usfa_head,

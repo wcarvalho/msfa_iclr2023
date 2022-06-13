@@ -153,6 +153,8 @@ class KitchenObject(WorldObj):
     self.state[prop] = val
 
   def render(self, screen):
+    """Used for producing image
+    """
     obj_img = self.state_image()
     np.copyto(dst=screen, src=obj_img[:, :, :3])
     fill_coords(screen, point_in_rect(0, 0.031, 0, 1), (100, 100, 100))
@@ -184,7 +186,9 @@ class KitchenObject(WorldObj):
 
   def encode(self):
     """Encode the a description of this object as a 3-tuple of integers"""
-    return (self.object_id, 0, self.state_id())
+    raw_state_idx = self.state_id()
+    object_wise_state_idx = self.object_id + raw_state_idx
+    return (self.object_id, 0, object_wise_state_idx)
 
   @staticmethod
   def decode(type_idx, color_idx, state):

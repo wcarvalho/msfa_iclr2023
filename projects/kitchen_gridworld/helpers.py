@@ -41,6 +41,7 @@ def make_environment(evaluation: bool = False,
                      step_penalty=0.0,
                      task_reps='lesslang',
                      max_text_length=10,
+                     symbolic=False,
                      path='.',
                      setting=None,
                      ) -> dm_env.Environment:
@@ -79,6 +80,13 @@ def make_environment(evaluation: bool = False,
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
 
+  env_wrappers = [functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc,
+        max_length=max_text_length)]
+
+  if not symbolic:
+    env_wrappers.append(
+      functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size))
+
   env = MultitaskKitchen(
     task_dicts=task_dicts,
     separate_eval=separate_eval, # hack so can access later
@@ -88,10 +96,8 @@ def make_environment(evaluation: bool = False,
     task_reps=task_reps,
     step_penalty=step_penalty,
     room_size=room_size,
-    wrappers=[ # wrapper for babyAI gym env
-      functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size),
-      functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc,
-        max_length=max_text_length)],
+    wrappers=env_wrappers,
+    symbolic=symbolic,
     )
 
   # wrappers for dm_env: used by agent/replay buffer

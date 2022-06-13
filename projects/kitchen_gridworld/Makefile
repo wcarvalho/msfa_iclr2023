@@ -8,8 +8,8 @@ wandb_test?=False
 custom_loggers?=True
 date?=False
 gpus?=1
-cpus?=3
-actors?=5
+cpus?=5
+actors?=3
 project?='kitchen_grid3'
 env?='genv3'
 task_reps?='pickup'
@@ -24,6 +24,7 @@ init?=0
 or?=1
 eps?=5
 ckpts?=-1
+terminal?='output_to_files'
 
 export WANDB_START_METHOD=thread
 export PYTHONPATH:=$(PYTHONPATH):.
@@ -104,6 +105,7 @@ lp_search:
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
+	--terminal $(terminal) \
 	--agent $(agent) \
 
 
