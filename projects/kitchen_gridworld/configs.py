@@ -66,6 +66,14 @@ class NoiseConfig(R2D1Config):
   """Extra configuration options for R2D1 + noise agent."""
   variance: float = 0.5
 
+@dataclasses.dataclass
+class ModR2d1Config(R2D1Config):
+  """Extra configuration options for USFA agent."""
+  policy_size: int = 32 # embed dim for task input to q-fn
+  policy_layers: int = 2 # number of layers to embed task for input to q-fn
+  struct_w: bool = False # break up task per module
+  dot_qheads: bool = False # break up q-heads and dot-product
+  module_task_dim: int=0 # task dim per module. if 0, use lang_task_dim and divide by nmodules
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config):
@@ -73,8 +81,8 @@ class USFAConfig(R2D1Config):
   npolicies: int = 10 # number of policies to sample
   variance: float = 0.5
   # Network hps
-  policy_size = 32
-  policy_layers = 2 # [DIFF FROM MSF]
+  policy_size: int = 32
+  policy_layers: int = 2 # [DIFF FROM MSF]
   batch_size: int = 32
   cumulant_hidden_size: int=256 # hidden size for cumulant pred
   cumulant_layers: int=2 # hidden size for cumulant pred
@@ -122,9 +130,9 @@ class FarmConfig:
   """Extra configuration options for FARM module."""
 
   # Network hps
-  memory_size = 512
+  memory_size: int = 512
   module_size: int = None
-  nmodules: int = 8
+  nmodules: int = 4
   out_layers: int = 0
   module_attn_size: int = None
   module_attn_heads: float = .5  # how many attention heads between modules
@@ -145,6 +153,7 @@ class ModularUSFAConfig(USFAConfig):
   normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
+  struct_w: bool = False # break up task per module
 
   cumulant_source: str = 'lstm' # whether to normalize cumulants
   phi_conv_size: int = 0 # size of conv for cumulants
@@ -173,7 +182,7 @@ class ModularUSFAConfig(USFAConfig):
   layernorm_rel: bool=False
 
   task_gate: str='none'
-  module_task_dim: int=1 # task dim per module. if 0, use lang_task_dim and divide by nmodules
+  module_task_dim: int=0 # task dim per module. if 0, use lang_task_dim and divide by nmodules
 
 
 @dataclasses.dataclass

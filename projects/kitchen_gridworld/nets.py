@@ -19,6 +19,7 @@ from modules import farm
 from modules.relational import RelationalLayer, RelationalNet
 from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulants
 from modules.farm_usfa import FarmUsfaHead
+from modules.farm_uvfa import FarmUvfaHead, FarmUvfaInputs
 
 from modules.vision import AtariVisionTorso, BabyAIVisionTorso, BabyAIymbolicVisionTorso
 from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, ConcatFlatStatePolicy, UniqueStatePolicyPairs, QBias
@@ -116,7 +117,7 @@ def build_vision_prep_fn(config):
     return get_image_from_inputs
 
 def build_farm(config, **kwargs):
-  return farm.FarmSharedOutput(
+  farm_memory = farm.FarmSharedOutput(
     module_size=config.module_size,
     nmodules=config.nmodules,
     memory_size=config.memory_size,
@@ -130,6 +131,19 @@ def build_farm(config, **kwargs):
     out_layers=config.out_layers,
     recurrent_features=config.recurrent_conv,
     **kwargs)
+
+  config.nmodules = farm_memory.nmodules
+  config.memory_size = farm_memory.memory_size
+  config.module_size = farm_memory.module_size
+
+  # -----------------------
+  # task related
+  # -----------------------
+  if config.module_task_dim > 0:
+    config.lang_task_dim=config.module_task_dim*config.nmodules
+  
+  return farm_memory
+
 
 def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=None):
   if task_embedding == 'none':
@@ -270,41 +284,6 @@ def r2d1_noise(config, env_spec,
     **net_kwargs
   )
 
-def r2d1_farm(config, env_spec,
-  task_embedding: str='none',
-  **net_kwargs):
-
-  # config.lang_task_dim = 0 # use GRU output
-  num_actions = env_spec.actions.num_values
-  task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
-  inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
-
-  def r2d1_farm_prediction_prep_fn(inputs, memory_out, **kwargs):
-    farm_memory_out = flatten_structured_memory(memory_out)
-    return r2d1_prediction_prep_fn(
-      inputs=inputs, memory_out=farm_memory_out)
-
-  if config.farm_policy_task_input:
-    prediction_prep_fn = r2d1_farm_prediction_prep_fn
-  else:
-    # only give hidden-state as input
-    prediction_prep_fn = flatten_structured_memory
-
-  return BasicRecurrent(
-    inputs_prep_fn=inputs_prep_fn,
-    vision_prep_fn=build_vision_prep_fn(config),
-    vision=build_vision_net(config, env_spec, flatten=False, conv_dim=0),
-    memory_prep_fn=make_farm_prep_fn(num_actions,
-      task_input=config.farm_task_input,
-      symbolic=config.symbolic),
-    memory=build_farm(config),
-    prediction_prep_fn=prediction_prep_fn,
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
-    **net_kwargs
-  )
-
-
 # ======================================================
 # Modular R2D1
 # ======================================================
@@ -324,7 +303,9 @@ def modr2d1(config, env_spec,
   Returns:
       TYPE: Description
   """
-  # config.lang_task_dim = 0 # use GRU output
+  farm_memory = build_farm(config, return_attn=True)
+
+
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(
@@ -335,18 +316,31 @@ def modr2d1(config, env_spec,
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
 
   memory_prep_fn = BabyAIEmbedding(num_actions=num_actions, symbolic=config.symbolic)
-  prediction_prep_fn = r2d1_prediction_prep_fn
+  def prediction_prep_fn(inputs, memory_out, **kwargs):
+    """
+    Concat [task + noise] with memory output.
+    """
+    return FarmUvfaInputs(
+      w=inputs.observation.task,
+      memory_out=memory_out,
+      )
 
   net = BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
     vision_prep_fn=build_vision_prep_fn(config),
-    vision=build_vision_net(config, env_spec, flatten=True),
+    vision=build_vision_net(config, env_spec, flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions,
       task_input=config.farm_task_input,
       symbolic=config.symbolic),
-    memory=hk.LSTM(config.memory_size),
+    memory=farm_memory,
     prediction_prep_fn=prediction_prep_fn,
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    prediction=FarmUvfaHead(
+      num_actions=num_actions,
+      hidden_sizes=[config.out_hidden_size],
+      task_embed_dim=config.policy_size,
+      task_embed_layers=config.policy_layers,
+      struct_w_input=config.struct_w,
+      dot_heads=config.dot_qheads),
     **kwargs
   )
   return net
@@ -465,20 +459,10 @@ def msf(
   # memory
   # -----------------------
   farm_memory = build_farm(config, return_attn=True)
-  config.nmodules = farm_memory.nmodules
-  config.memory_size = farm_memory.memory_size
-  config.module_size = farm_memory.module_size
 
-  # -----------------------
-  # task related
-  # -----------------------
-  if config.module_task_dim > 0:
-    lang_task_dim=config.module_task_dim*config.nmodules
-  else:
-    lang_task_dim=config.lang_task_dim
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(task_embedding, config,
-    lang_task_dim=lang_task_dim,
+    lang_task_dim=config.lang_task_dim,
     task_dim=task_dim)
 
   inputs_prep_fn = make__convert_floats_embed_task(embed_fn,
