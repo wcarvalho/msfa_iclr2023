@@ -34,5 +34,6 @@
 "heated": 33,
 "turnon": 34,
 "microwave": 35,
-"then": 36
+"then": 36,
+"toggle": 37
 }

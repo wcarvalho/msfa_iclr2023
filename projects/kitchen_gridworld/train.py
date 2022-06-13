@@ -54,7 +54,7 @@ FLAGS = flags.FLAGS
 
 def main(_):
   setting=FLAGS.env_setting
-  symbolic=True
+  symbolic=False
   env_kwargs=dict(
     room_size=6,
     symbolic=symbolic,
@@ -73,20 +73,13 @@ def main(_):
 
 
   config=dict()
+  config['symbolic'] = symbolic
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['symbolic'] = symbolic
-    # config['normalize_attn'] = True
-    # config['cumulant_source'] = 'conv'
-    # config['phi_conv_size'] = 8
-    # config['recurrent_conv'] = False
-    config['sf_mask_loss'] = False
-    config['qaux_mask_loss'] = False
-    config['memory_size'] = 512
-    config['nmodules'] = 4
-    config['lang_relu'] = True
-    config['module_task_dim'] = 1
+    config['dot_qheads'] = False
+    config['struct_w'] = False
+
     print("="*50)
     print("="*20, "testing", "="*20)
     from pprint import pprint

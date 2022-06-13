@@ -12,13 +12,27 @@ def get(search, agent=''):
       },
     ]
 
-  elif search == 'multiv9_5':
+  elif search == 'gen5_modr2d1':
     space = [
       { # 6
-        "seed": tune.grid_search([1,2,3]),
-        "agent": tune.grid_search([agent]),
-        "setting": tune.grid_search(['multiv9']),
-        "max_number_of_steps": tune.grid_search([40_000_000]),
+        "seed": tune.grid_search([1]),
+        "setting": tune.grid_search(['genv5']),
+        "agent": tune.grid_search(['modr2d1']),
+        "struct_w": tune.grid_search([False, True]),
+        "nmodules": tune.grid_search([4]),
+        "task_reps": tune.grid_search(['object']),
+        "dot_qheads": tune.grid_search([False, True]),
+        "max_number_of_steps": tune.grid_search([10_000_000]),
+      }
+    ]
+  elif search == 'gen5':
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "setting": tune.grid_search(['genv5']),
+        "agent": tune.grid_search(['r2d1', 'msf']),
+        "task_reps": tune.grid_search(['no_object']),
+        "max_number_of_steps": tune.grid_search([10_000_000]),
       }
     ]
 
@@ -53,6 +67,22 @@ def get(search, agent=''):
         "setting": tune.grid_search(['pickup']),
         "symbolic": tune.grid_search([False, True]),
         "label": tune.grid_search(['ray_more_cpu']),
+        "max_number_of_steps": tune.grid_search([2_000_000]),
+      },
+    ]
+
+  elif search == 'modr2d1':
+    """
+    Next:
+    """
+    space = [
+      { # 6
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['modr2d1']),
+        "setting": tune.grid_search(['pickup']),
+        "struct_w": tune.grid_search([False, True]),
+        "nmodules": tune.grid_search([4]),
+        "dot_qheads": tune.grid_search([False, True]),
         "max_number_of_steps": tune.grid_search([2_000_000]),
       },
     ]

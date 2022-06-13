@@ -144,8 +144,6 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
     terminal=terminal, 
     local_resources=local_resources
     )
-
-  time.sleep(60) # sleep for 60 seconds to avoid collisions
   controller.wait()
   time.sleep(60) # sleep for 60 seconds to avoid collisions
 
@@ -179,6 +177,7 @@ def manual_parallel(fn, space):
       args=(config,))
     p.start()
     processes.append(p)
+    time.sleep(30) # sleep for 60 seconds to avoid collisions
     if wait:
       for p in processes:
         p.join() # this blocks until the process terminates
@@ -187,6 +186,7 @@ def manual_parallel(fn, space):
       print("Running new set")
       print("="*50)
     idx += 1
+    time.sleep(60) # sleep for 60 seconds to avoid collisions
 
 
 
