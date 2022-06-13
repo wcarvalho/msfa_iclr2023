@@ -177,7 +177,7 @@ def manual_parallel(fn, space):
       args=(config,))
     p.start()
     processes.append(p)
-    time.sleep(30) # sleep for 60 seconds to avoid collisions
+    time.sleep(60) # sleep for 60 seconds to avoid collisions
     if wait:
       for p in processes:
         p.join() # this blocks until the process terminates
@@ -186,7 +186,7 @@ def manual_parallel(fn, space):
       print("Running new set")
       print("="*50)
     idx += 1
-    time.sleep(60) # sleep for 60 seconds to avoid collisions
+    time.sleep(120) # sleep for 120 seconds to finish syncing++
 
 
 
@@ -255,15 +255,16 @@ def main(_):
     all_trials = tune.run_experiments(experiment_specs)
 
   else:
-    manual_parallel(fn=functools.partial(create_and_run_program,
-      root_path=root_path,
-      folder=folder,
-      group=group,
-      wandb_init_kwargs=wandb_init_kwargs,
-      use_wandb=use_wandb,
-      terminal=terminal,
-      skip=skip),
-    space=space)
+    manual_parallel(
+      fn=functools.partial(create_and_run_program,
+        root_path=root_path,
+        folder=folder,
+        group=group,
+        wandb_init_kwargs=wandb_init_kwargs,
+        use_wandb=use_wandb,
+        terminal=terminal,
+        skip=skip),
+      space=space)
 
 
 
