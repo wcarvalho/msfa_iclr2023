@@ -48,19 +48,15 @@ def make_environment(evaluation: bool = False,
   setting = setting or 'SmallL2NoDist'
   """Loads environments."""
 
-  task_rep_options=dict(
-    pickup="envs/babyai_kitchen/tasks/task_reps/pickup.yaml",
-    lesslang="envs/babyai_kitchen/tasks/task_reps/lesslang.yaml",
-    )
-
-  task_reps_file = task_rep_options[task_reps]
+  task_reps_file = f"envs/babyai_kitchen/tasks/task_reps/{task_reps}.yaml"
+  task_reps_file = os.path.join(path, task_reps_file)
+  assert os.path.exists(task_reps_file)
   with open(os.path.join(path, task_reps_file), 'r') as f:
     task_reps = yaml.load(f, Loader=yaml.SafeLoader)
 
   tasks_file = f"envs/babyai_kitchen/tasks/v1/{setting}.yaml"
   tasks_file = os.path.join(path, tasks_file)
-  if not os.path.exists(tasks_file):
-    raise RuntimeError(f"don't know how to handle setting: {setting}")
+  assert os.path.exists(tasks_file)
   
   with open(tasks_file, 'r') as f:
     tasks = yaml.load(f, Loader=yaml.SafeLoader)
@@ -226,6 +222,30 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
+  elif agent == "modr2d1":
+  # Recurrent DQN (2.2M params)
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.ModR2d1Config(),
+        configs.FarmConfig(),
+        configs.LangConfig(),
+      ],
+      dict_configs=default_config)
+
+    NetworkCls=nets.modr2d1 # default: 2M params
+    NetKwargs=dict(
+      config=config,
+      env_spec=env_spec,
+      task_embedding='language',
+      )
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      loss=config.r2d1_loss,
+      mask_loss=config.q_mask_loss)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
   elif agent == "usfa_lstm":
   # USFA + cumulants from LSTM + Q-learning (2.5M params)
 
@@ -298,27 +318,6 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
       use_separate_eval=True,
       task_embedding='language')
 
-  elif agent == "conv_msf":
-  # USFA + cumulants from FARM + Q-learning
-    config = data_utils.merge_configs(
-      dataclass_configs=[
-        configs.ModularUSFAConfig(),
-        configs.QAuxConfig(),
-        configs.RewardConfig(),
-        configs.FarmModelConfig(),
-        configs.LangConfig(),
-      ],
-      dict_configs=default_config)
-    config.cumulant_source = 'conv'
-
-    return msf(
-      config,
-      env_spec,
-      NetworkCls=nets.msf,
-      predict_cumulants=True,
-      learn_model=True,
-      use_separate_eval=True,
-      task_embedding='language')
 
   elif agent == "msf_monolithic":
   # USFA + cumulants from FARM + Q-learning
