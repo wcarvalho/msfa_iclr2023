@@ -40,7 +40,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
   clip_rewards : bool = False
   max_abs_reward: float = 1.
   loss_coeff: float = 1.
-  mask_loss: bool = True
+  mask_loss: bool = False
 
   # auxilliary tasks
   aux_tasks: Union[Callable, Sequence[Callable]]=None
