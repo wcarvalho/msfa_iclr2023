@@ -267,8 +267,14 @@ class R2D2Learning(RecurrentTDLearning):
 def cumulants_from_env(data, online_preds, online_state, target_preds, target_state):
   return data.observation.observation.state_features # [T, B, C]
 
-def cumulants_from_preds(data, online_preds, online_state, target_preds, target_state,
+def cumulants_from_preds(
+  data,
+  online_preds,
+  online_state,
+  target_preds,
+  target_state,
   stop_grad=True):
+  import ipdb; ipdb.set_trace()
   if stop_grad:
     return jax.lax.stop_gradient(online_preds.cumulants) # [T, B, C]
   else:
@@ -284,7 +290,7 @@ class USFALearning(RecurrentTDLearning):
 
   extract_cumulants: Callable = cumulants_from_env
   shorten_data_for_cumulant: bool = False
-  loss: str = 'n_step_q_learning_regular'
+  loss: str = 'n_step_q_learning'
   lambda_: float  = .9
 
   def error(self, data, online_preds, online_state, target_preds, target_state, **kwargs):
@@ -382,7 +388,8 @@ class USFALearning(RecurrentTDLearning):
     target_sf = target_preds.sf
 
     # pseudo rewards, [T, B, C]
-    cumulants = self.extract_cumulants(data=data, online_preds=online_preds, online_state=online_state,
+    cumulants = self.extract_cumulants(
+      data=data, online_preds=online_preds, online_state=online_state,
       target_preds=target_preds, target_state=target_state)
     cumulants = cumulants.astype(online_sf.dtype)
 
@@ -405,11 +412,11 @@ class USFALearning(RecurrentTDLearning):
     # ======================================================
     # Prepare loss (via vmaps)
     # ======================================================
-    # vmap over batch dimension
+    # vmap over batch dimension (B)
     sf_loss = jax.vmap(sf_loss, in_axes=1, out_axes=1)
-    # vmap over policy dimension
+    # vmap over policy dimension (N)
     sf_loss = jax.vmap(sf_loss, in_axes=(2, None, 2, 2, None, None), out_axes=2)
-    # output = [T, B, N, C]
+    # output = [0=T, 1=B, 2=N, 3=C]
     batch_td_error = sf_loss(
       online_sf,        # [T, B, N, A, C] (vmap 2,1)
       online_actions,   # [T, B]          (vmap None,1)
@@ -428,7 +435,7 @@ class USFALearning(RecurrentTDLearning):
         x=(0.5 * jnp.square(batch_td_error)).mean(axis=(2,3)),
         mask=mask)
     else:
-      batch_loss = 0.5 * jnp.square(batch_td_error).mean(axis=(0, 2,3))
+      batch_loss = (0.5 * jnp.square(batch_td_error)).mean(axis=(0,2,3))
 
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
 
