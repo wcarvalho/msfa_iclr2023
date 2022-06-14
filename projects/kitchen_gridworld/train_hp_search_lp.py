@@ -20,6 +20,8 @@ from utils import gen_log_dir
 import os
 import importlib
 
+from projects.common.train_search import run_experiments, listify_space
+
 from projects.kitchen_gridworld.train_distributed import build_program
 
 flags.DEFINE_string('folder', 'set', 'folder.')
@@ -42,155 +44,6 @@ DEFAULT_SYMBOLIC = False
 DEFAULT_NUM_ACTORS = 4
 DEFAULT_NUM_DISTS = 0
 
-def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, use_wandb, terminal, skip):
-  """Create and run launchpad program
-  """
-
-  agent = config.pop('agent', 'r2d1')
-  num_actors = config.pop('num_actors', DEFAULT_NUM_ACTORS)
-  cuda = config.pop('cuda', None)
-  group = config.pop('group', group)
-  label = config.pop('label', DEFAULT_LABEL)
-
-  if cuda:
-    os.environ['CUDA_VISIBLE_DEVICES']=str(cuda)
-  # -----------------------
-  # add env kwargs to path desc
-  # -----------------------
-  default_env_kwargs = {
-    'setting' : DEFAULT_ENV_SETTING,
-    'task_reps' : DEFAULT_TASK_REPS,
-    'room_size' : DEFAULT_ROOM_SIZE,
-    'num_dists' : DEFAULT_NUM_DISTS,
-    'symbolic' : DEFAULT_SYMBOLIC,
-  }
-
-  env_kwargs = dict()
-  for key, value in default_env_kwargs.items():
-    env_kwargs[key] = config.pop(key, value)
-
-  # only use non-default
-  env_path=dict()
-  for k,v in env_kwargs.items():
-    if v != default_env_kwargs[k]:
-      env_path[k]=v
-  if label:
-    env_path['L']=label
-  # -----------------------
-  # get log dir for experiment
-  # -----------------------
-  log_path_config=dict(
-    agent=agent,
-    **env_path,
-    **config
-    )
-  log_dir, config_path_str = gen_log_dir(
-    base_dir=os.path.join(root_path, folder, group),
-    hourminute=False,
-    return_kwpath=True,
-    date=False,
-    path_skip=['max_number_of_steps'],
-    **log_path_config
-    )
-
-  # os.environ['LAUNCHPAD_LOGGING_DIR']=log_dir
-  print("="*50)
-  if os.path.exists(log_dir) and skip:
-    print(f"SKIPPING\n{log_dir}")
-    print("="*50)
-    return
-  else:
-    print(f"RUNNING\n{log_dir}")
-    print("="*50)
-
-
-  # -----------------------
-  # wandb settings
-  # -----------------------
-  name = config_path_str
-  wandb_init_kwargs['name']=name # short display name for run
-  if group is not None:
-    wandb_init_kwargs['group']=group # short display name for run
-
-  # needed for various services (wandb, etc.)
-  os.chdir(root_path)
-
-  # -----------------------
-  # launch experiment
-  # -----------------------
-  program = build_program(
-    agent=agent,
-    num_actors=num_actors,
-    config_kwargs=config, 
-    wandb_init_kwargs=wandb_init_kwargs if use_wandb else None,
-    env_kwargs=env_kwargs,
-    path=root_path,
-    log_dir=log_dir,
-    )
-
-  local_resources = {
-      "actor": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      "evaluator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      # "counter": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      # "replay": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      # "coordinator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-  }
-  if cuda:
-    local_resources['learner'] = PythonProcess(
-      env={"CUDA_VISIBLE_DEVICES": str(cuda)})
-
-  if program is None: return
-  controller = lp.launch(program,
-    lp.LaunchType.LOCAL_MULTI_PROCESSING,
-    terminal=terminal, 
-    local_resources=local_resources
-    )
-  controller.wait()
-  time.sleep(60) # sleep for 60 seconds to avoid collisions
-
-
-def manual_parallel(fn, space):
-  """Run in parallel manually."""
-  from pprint import pprint 
-  import sklearn
-  import jax
-  configs = []
-  gpus = [int(i) for i in os.environ['CUDA_VISIBLE_DEVICES'].split(",")]
-  idx = 0
-  for x in space:
-    y = {k:list(v.values())[0] for k,v in x.items()}
-    grid = list(sklearn.model_selection.ParameterGrid(y))
-
-    # assign gpus
-    for g in grid:
-      g['cuda'] = gpus[idx%len(gpus)]
-      idx += 1
-    configs.extend(grid)
-
-  pprint(configs)
-
-  idx = 1
-  processes = []
-  for config in configs:
-    wait = idx % len(gpus) == 0
-    p = mp.Process(
-      target=fn,
-      args=(config,))
-    p.start()
-    processes.append(p)
-    time.sleep(60) # sleep for 60 seconds to avoid collisions
-    if wait:
-      for p in processes:
-        p.join() # this blocks until the process terminates
-      processes = []
-      print("="*50)
-      print("Running new set")
-      print("="*50)
-    idx += 1
-    time.sleep(120) # sleep for 120 seconds to finish syncing++
-
-
-
 def main(_):
   FLAGS = flags.FLAGS
   terminal = FLAGS.terminal
@@ -200,12 +53,10 @@ def main(_):
 
   assert FLAGS.search != '', 'set search!'
   space = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
-  if isinstance(space, dict):
-    space = [space]
-  elif isinstance(space, list):
-    assert isinstance(space[0], dict)
-  else:
-    raise RuntimeError(type(space))
+  if FLAGS.idx is not None:
+    assert isinstance(space, list)
+    space = space[FLAGS.idx]
+
 
   # root_path is needed to tell program absolute path
   # this is used for BabyAI
@@ -223,49 +74,25 @@ def main(_):
     save_code=True,
   )
 
-  skip = FLAGS.skip
-
-  if FLAGS.ray:
-    def train_function(config):
-      """Run inside threads and creates new process.
-      """
-      p = mp.Process(
-        target=create_and_run_program, 
-        args=(config,),
-        kwargs=dict(
-          root_path=root_path,
-          folder=folder,
-          group=group,
-          wandb_init_kwargs=wandb_init_kwargs,
-          use_wandb=use_wandb,
-          terminal=terminal,
-          skip=skip)
-        )
-      p.start()
-      p.join() # this blocks until the process terminates
-      # this will call right away and end.
-
-    experiment_specs = [tune.Experiment(
-          name="goto",
-          run=train_function,
-          config=s,
-          resources_per_trial={"cpu": num_cpus, "gpu": num_gpus}, 
-          local_dir='/tmp/ray',
-        ) for s in space
-    ]
-    all_trials = tune.run_experiments(experiment_specs)
-
-  else:
-    manual_parallel(
-      fn=functools.partial(create_and_run_program,
-        root_path=root_path,
-        folder=folder,
-        group=group,
-        wandb_init_kwargs=wandb_init_kwargs,
-        use_wandb=use_wandb,
-        terminal=terminal,
-        skip=skip),
-      space=space)
+  default_env_kwargs = {
+    'setting' : DEFAULT_ENV_SETTING,
+    'task_reps' : DEFAULT_TASK_REPS,
+    'room_size' : DEFAULT_ROOM_SIZE,
+    'num_dists' : DEFAULT_NUM_DISTS,
+    'symbolic' : DEFAULT_SYMBOLIC,
+  }
+  run_experiments(
+    build_program_fn=build_program,
+    space=space,
+    root_path=root_path,
+    folder=folder,
+    group=group,
+    wandb_init_kwargs=wandb_init_kwargs,
+    default_env_kwargs=default_env_kwargs,
+    use_wandb=use_wandb,
+    terminal=FLAGS.terminal,
+    skip=FLAGS.skip,
+    use_ray=FLAGS.ray)
 
 
 

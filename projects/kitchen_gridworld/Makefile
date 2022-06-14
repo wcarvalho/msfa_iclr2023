@@ -95,7 +95,7 @@ meta_search:
 	cd ../..; \
 	echo ${searches}; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/kitchen_gridworld/meta_hp_search.py \
+	python projects/kitchen_gridworld/train_search_meta.py \
 	--folder $(folder) \
 	--num_gpus $(gpus) \
 	--num_cpus $(cpus) \

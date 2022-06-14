@@ -8,18 +8,9 @@ from pprint import pprint
 from absl import flags
 import subprocess
 from projects.kitchen_gridworld.train_distributed import build_program
+from projects.msf.goto_search_lp import main
 
-flags.DEFINE_string('folder', 'set', 'folder.')
-flags.DEFINE_string('root', None, 'root folder.')
-flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_spaceseplist('searches', 'baselines', 'which search to use.')
-flags.DEFINE_string('spaces', 'brain_search', 'which search to use.')
-flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
-flags.DEFINE_float('num_gpus', 1, 'number of gpus per job. accepts fractions.')
-flags.DEFINE_integer('num_cpus', 3, 'number of gpus per job. accepts fractions.')
-flags.DEFINE_integer('actors', 4, 'number of gpus per job. accepts fractions.')
-flags.DEFINE_integer('skip', 1, 'skip run jobs.')
-flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
 
 
 def main(_):
