@@ -10,6 +10,7 @@ search?='baselines'
 group?=''
 notes?=''
 skip?=1
+spaces?='msf_search'
 ray?=0
 
 
@@ -54,6 +55,7 @@ meta_search:
 	--date=$(date) \
 	--wandb_project $(project) \
 	--group $(group) \
+	--spaces $(spaces) \
 	--searches "${searches}" \
 	--notes $(notes) \
 	--skip $(skip) \

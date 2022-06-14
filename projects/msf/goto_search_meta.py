@@ -13,8 +13,12 @@ from projects.msf.goto_search_lp import main
 flags.DEFINE_spaceseplist('searches', 'baselines', 'which search to use.')
 
 def main(_):
+  """This will loop through the spaces list in FLAGS.spaces and run each item on a different GPU
+  
+  Args:
+      _ (TYPE): Description
+  """
   FLAGS = flags.FLAGS
-
 
   print(FLAGS.searches)
   gpus = [int(i) for i in os.environ['CUDA_VISIBLE_DEVICES'].split(",")]
@@ -25,11 +29,13 @@ def main(_):
       --folder={FLAGS.folder}
       --wandb={FLAGS.wandb}
       --date={FLAGS.date}
+      --spaces={FLAGS.spaces}
       --wandb_project={FLAGS.wandb_project}
       --group={FLAGS.group}
       --search={search}
       --notes={FLAGS.notes}
       --skip={FLAGS.skip}
+      --idx={idx}
       --ray={FLAGS.ray}
       --agent={FLAGS.agent} """
     command = command.replace("\n", '')
