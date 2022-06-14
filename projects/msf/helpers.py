@@ -260,6 +260,7 @@ def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, lear
   LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
   LossFnKwargs.update(
     loss=config.sf_loss,
+    mask_loss=config.sf_mask_loss,
     shorten_data_for_cumulant=True, # needed since using delta for cumulant
     extract_cumulants=losses.cumulants_from_preds,
     aux_tasks=aux_tasks)
@@ -354,6 +355,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
       loss=config.sf_loss,
+      mask_loss=config.sf_mask_loss,
       lambda_=config.lambda_,
       )
 
@@ -382,6 +384,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
       loss=config.sf_loss,
+      mask_loss=config.sf_mask_loss,
       shorten_data_for_cumulant=True,
       extract_cumulants=functools.partial(
         losses.cumulants_from_preds,

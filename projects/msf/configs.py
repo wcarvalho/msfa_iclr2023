@@ -50,8 +50,8 @@ class R2D1Config(configs.R2D1Config):
   max_priority_weight: float = 0.9
 
   # Network hps
-  memory_size = 512
-  out_hidden_size = 128
+  memory_size: int = 512
+  out_hidden_size: int = 128
   eval_network: bool = True
   vision_torso: str = 'atari'
   r2d1_loss: str = 'n_step_q_learning'
@@ -84,6 +84,7 @@ class USFAConfig(R2D1Config):
   sf_loss: str = 'n_step_q_learning' # whether to use q_lambda or n-step q-learning for objective
   lambda_: float = .9 # lambda for q-lambda
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
+  sf_mask_loss: bool=False
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -91,6 +92,7 @@ class QAuxConfig:
   loss_coeff: float = 1.0
   q_aux_anneal: int = 0.0
   q_aux_end_val: float = 0.0
+  qaux_mask_loss: bool=False
 
 
 @dataclasses.dataclass

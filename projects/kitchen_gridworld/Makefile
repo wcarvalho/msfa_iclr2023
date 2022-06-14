@@ -70,25 +70,6 @@ test_async:
 	--name=$(name)
 
 
-meta_search:
-	cd ../..; \
-	echo ${searches}; \
-	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/kitchen_gridworld/meta_hp_search.py \
-	--folder $(folder) \
-	--num_gpus $(gpus) \
-	--num_cpus $(cpus) \
-	--actors $(actors) \
-	--wandb=$(wandb) \
-	--date=$(date) \
-	--wandb_project $(project) \
-	--group $(group) \
-	--searches "${searches}" \
-	--notes $(notes) \
-	--skip $(skip) \
-	--ray $(ray) \
-	--agent $(agent) \
-
 lp_search:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
@@ -108,6 +89,26 @@ lp_search:
 	--terminal $(terminal) \
 	--agent $(agent) \
 
+
+
+meta_search:
+	cd ../..; \
+	echo ${searches}; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/kitchen_gridworld/meta_hp_search.py \
+	--folder $(folder) \
+	--num_gpus $(gpus) \
+	--num_cpus $(cpus) \
+	--actors $(actors) \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project $(project) \
+	--group $(group) \
+	--searches "${searches}" \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--agent $(agent)
 
 # train_search_rldl:
 # 	cd ../..; \

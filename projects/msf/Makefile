@@ -6,8 +6,11 @@ custom_loggers?=True
 date?=False
 num_gpus?=1
 project?='msf2'
+search?='baselines'
 group?=''
 notes?=''
+skip?=1
+ray?=0
 
 
 export PYTHONPATH:=$(PYTHONPATH):.
@@ -32,9 +35,8 @@ test_async:
 goto_search:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/msf/goto_search.py \
+	python projects/msf/goto_search_lp.py \
 	--folder $(folder) \
-	--num_gpus $(num_gpus) \
 	--wandb=$(wandb) \
 	--date=$(date) \
 	--wandb_project $(project) \
@@ -42,19 +44,21 @@ goto_search:
 	--search $(search) \
 	--notes $(notes)
 
-goto_search_rldl:
+meta_search:
 	cd ../..; \
+	echo ${searches}; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/msf/goto_search_rldl.py \
+	python projects/msf/goto_search_meta.py \
 	--folder $(folder) \
-	--num_gpus $(num_gpus) \
 	--wandb=$(wandb) \
 	--date=$(date) \
 	--wandb_project $(project) \
 	--group $(group) \
-	--search $(search) \
-	--notes $(notes)
-
+	--searches "${searches}" \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--agent $(agent)
 
 evaluate_sync:
 	cd ../..; \

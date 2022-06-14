@@ -166,7 +166,7 @@ def r2d1_farm(config, env_spec, **net_kwargs):
     vision=AtariVisionTorso(flatten=False, conv_dim=0),
     memory_prep_fn=make_farm_prep_fn(num_actions,
       task_input=config.farm_task_input),
-    memory=build_farm(config),
+    memory=build_farm(config, return_attn=True),
     prediction_prep_fn=prediction_prep_fn,
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
     **net_kwargs
@@ -280,7 +280,7 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
-  farm_memory = build_farm(config)
+  farm_memory = build_farm(config, return_attn=True)
 
   usfa_head = build_usfa_farm_head(
     config=config,
@@ -361,7 +361,7 @@ def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, 
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
-  farm_memory = build_farm(config)
+  farm_memory = build_farm(config, return_attn=True)
 
   cumulants_per_module = state_dim//farm_memory.nmodules
   usfa_head = FarmUsfaHead(
@@ -450,12 +450,12 @@ def build_msf_head(config, state_dim, num_actions):
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
       return usfa_prep_fn(inputs=inputs, 
-        memory_out=flatten_structured_memory(memory_out))
+        memory_out=flatten_structured_memory(memory_out.hidden))
 
     def eval_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
       return usfa_eval_prep_fn(inputs=inputs, 
-        memory_out=flatten_structured_memory(memory_out))
+        memory_out=flatten_structured_memory(memory_out.hidden))
 
   else:
     if config.sf_net == "independent":
@@ -493,11 +493,11 @@ def build_msf_head(config, state_dim, num_actions):
           )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
-      return usfa_prep_fn(inputs=inputs, memory_out=memory_out)
+      return usfa_prep_fn(inputs=inputs, memory_out=memory_out.hidden)
 
     def eval_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
-      return usfa_eval_prep_fn(inputs=inputs, memory_out=memory_out)
+      return usfa_eval_prep_fn(inputs=inputs, memory_out=memory_out.hidden)
 
   return head, pred_prep_fn, eval_prep_fn
 
@@ -564,7 +564,7 @@ def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
 
-  farm_memory = build_farm(config)
+  farm_memory = build_farm(config, return_attn=True)
 
   assert config.sf_net in ['flat', 'independent', 'relational', 'relational']
   assert config.phi_net in ['flat', 'independent', 'relational']

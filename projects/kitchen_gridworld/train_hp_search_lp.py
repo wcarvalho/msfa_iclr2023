@@ -129,14 +129,15 @@ def create_and_run_program(config, root_path, folder, group, wandb_init_kwargs, 
     )
 
   local_resources = {
-      "learner": PythonProcess(env={"CUDA_VISIBLE_DEVICES": str(cuda)}
-      ),
-      "evaluator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
       "actor": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      "counter": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      "replay": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      "coordinator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      "evaluator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      # "counter": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      # "replay": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      # "coordinator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
   }
+  if cuda:
+    local_resources['learner'] = PythonProcess(
+      env={"CUDA_VISIBLE_DEVICES": str(cuda)})
 
   if program is None: return
   controller = lp.launch(program,
