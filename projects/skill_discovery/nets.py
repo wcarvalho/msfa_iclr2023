@@ -81,7 +81,8 @@ def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=Non
       """Convert task to ints, batchapply if necessary, and run through embedding function."""
       has_time = len(task.shape) == 3
       batchfn = hk.BatchApply if has_time else lambda x:x
-      return batchfn(embedder)(task.astype(jnp.int32))
+      new_embedder = batchfn(embedder)
+      return new_embedder(task.astype(jnp.int32))
 
     return embedder, embed_fn
 

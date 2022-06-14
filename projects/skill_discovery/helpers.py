@@ -67,12 +67,20 @@ def make_environment(evaluation: bool = False,
 
   if task_kinds == 'none':
     raise NotImplementedError
+    all_level_kwargs=dict(
+      my_env_1_obj=dict(task_kinds='none', num_dists=1),
+      my_env_2_obj=dict(task_kinds='none', num_dists=2),
+      )
+  else:
+    # dict {env_name : env_kwargs}
+    all_level_kwargs=dict(
+      # use PickupTask class in envs.babyai_kitchen.tasks
+      my_env=dict(task_kinds='pickup'), 
+      )
 
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
 
-  all_level_kwargs=dict(
-    'reward'='pickup')
   env = BabyAISkills(
     room_size=room_size,
     num_dists=num_dists,
