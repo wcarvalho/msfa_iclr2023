@@ -31,7 +31,6 @@ class KitchenComboLevel(KitchenLevel):
     rootdir='.',
     verbosity=0,
     ntasks=1,
-    respawn=False,
     kitchen=None,
     objects=None,
     # pickup_required=True,
@@ -45,7 +44,6 @@ class KitchenComboLevel(KitchenLevel):
         rootdir (str, optional): Description
         verbosity (int, optional): Description
         ntasks (int, optional): How many times to spawn each objects type
-        respawn (bool, optional): Description
         kitchen (None, optional): Description
         **kwargs: Description
     """
@@ -53,11 +51,12 @@ class KitchenComboLevel(KitchenLevel):
     # self._task_objects = [k for k,v in task2reward.items() if v > 0]
     # self.pickup_required = pickup_required
 
-    assert respawn==True
     self.mission_arr = np.array(
         list(self.task2reward.values()),
         dtype=np.int32,
         )
+    self.train_tasks = np.identity(len(self.mission_arr), dtype=np.int32,)
+
     assert (self.mission_arr >= 0).all()
     # self.object_names = list(task2reward.keys())
     # if objects:
@@ -68,7 +67,6 @@ class KitchenComboLevel(KitchenLevel):
     # self.type2idx = {o:idx for idx, o in enumerate(objects)}
     # self._task_oidxs = [self.type2idx[o] for o in self._task_objects]
     self.ntasks = ntasks
-    self.respawn = respawn
     kitchen = kitchen or Kitchen(
         # objects=objects,
         tile_size=tile_size,
@@ -83,13 +81,14 @@ class KitchenComboLevel(KitchenLevel):
 
     # kwargs["task_kinds"] = ['pickup']
     # kwargs['actions'] = ['left', 'right', 'forward', 'pickup_contents']
-    kwargs['kitchen'] = kitchen
+    # kwargs['kitchen'] = kitchen
     super().__init__(
         *args,
         tile_size=tile_size,
         rootdir=rootdir,
         verbosity=verbosity,
         objects=objects,
+        kitchen=kitchen,
         **kwargs)
     # -----------------------
     # backwards compatibility
@@ -97,18 +96,18 @@ class KitchenComboLevel(KitchenLevel):
     # self.actions.drop = len(self.actions)
     # self.actions.toggle = len(self.actions)
 
-    # self.observation_space.spaces['mission'] = spaces.Box(
-    #     low=0,
-    #     high=255,
-    #     shape=(len(self.task2reward),),
-    #     dtype='int32'
-    # )
-    # self.observation_space.spaces['pickup'] = spaces.Box(
-    #     low=0,
-    #     high=255,
-    #     shape=(len(self.task2reward),),
-    #     dtype='int32'
-    # )
+    self.observation_space.spaces['mission'] = spaces.Box(
+        low=0,
+        high=255,
+        shape=(len(self.task2reward),),
+        dtype='int32'
+    )
+    self.observation_space.spaces['train_tasks'] = spaces.Box(
+        low=0,
+        high=255,
+        shape=(len(self.task2reward), len(self.task2reward)),
+        dtype='int32'
+    )
 
   # @property
   # def task_objects(self):
@@ -166,6 +165,7 @@ class KitchenComboLevel(KitchenLevel):
     assert self.carrying is None
     # obs['pickup'] = np.zeros(len(self.task2reward), dtype=np.int32)
     obs['mission'] = self.mission_arr
+    obs['train_tasks'] = self.train_tasks
 
     return obs
 
@@ -215,6 +215,7 @@ class KitchenComboLevel(KitchenLevel):
         self.reset_checker(checker)
     # print('action', self.idx2action[action])
     obs['mission'] = self.mission_arr
+    obs['train_tasks'] = self.train_tasks
     return obs, total_reward, done, info
 
 
@@ -254,7 +255,6 @@ if __name__ == '__main__':
     env = KitchenComboLevel(
         agent_view_size=5,
         task2reward=task2reward,
-        respawn=True,
         use_time_limit=False,
         tile_size=tile_size,
         **sizes[size],

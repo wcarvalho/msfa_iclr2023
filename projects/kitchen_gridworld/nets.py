@@ -94,7 +94,7 @@ def make__convert_floats_embed_task(embed_fn,
 # Building Modules
 # ======================================================
 def build_vision_net(config, env_spec, **kwargs):
-  if config.symbolic:
+  if getattr(config, "symbolic", False):
     config.vision_torso = 'symbolic'
     num_symbols = env_spec.observations.observation.image.maximum.max()
     num_channels = len(env_spec.observations.observation.image.shape)
@@ -111,7 +111,7 @@ def build_vision_net(config, env_spec, **kwargs):
   return vision
 
 def build_vision_prep_fn(config):
-  if config.symbolic:
+  if getattr(config, "symbolic", False):
     return get_obs_from_inputs
   else:
     return get_image_from_inputs
@@ -124,12 +124,10 @@ def build_farm(config, **kwargs):
     image_attn=config.image_attn,
     module_attn_heads=config.module_attn_heads,
     module_attn_size=config.module_attn_size,
-    normalize_attn=config.normalize_attn,
     shared_module_attn=config.shared_module_attn,
     projection_dim=config.projection_dim,
     vmap=config.farm_vmap,
     out_layers=config.out_layers,
-    recurrent_features=config.recurrent_conv,
     **kwargs)
 
   config.nmodules = farm_memory.nmodules
@@ -139,13 +137,13 @@ def build_farm(config, **kwargs):
   # -----------------------
   # task related
   # -----------------------
-  if config.module_task_dim > 0:
+  if getattr(config, 'module_task_dim', 0) > 0:
     config.lang_task_dim=config.module_task_dim*config.nmodules
   
   return farm_memory
 
 
-def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=None):
+def build_task_embedder(task_embedding, config, task_dim=None):
   if task_embedding == 'none':
     embedder = embed_fn = Identity(task_dim)
     return embedder, embed_fn
@@ -162,7 +160,7 @@ def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=Non
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         sentence_dim=config.word_dim,
-        task_dim=lang_task_dim,
+        task_dim=config.lang_task_dim,
         initializer=config.word_initializer,
         compress=config.word_compress,
         tanh=config.lang_tanh,
@@ -178,7 +176,6 @@ def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=Non
 
   else:
     raise NotImplementedError(task_embedding)
-
 
 
 # ======================================================
@@ -215,11 +212,13 @@ def r2d1(config, env_spec,
   task_embedder, embed_fn = build_task_embedder(
     task_embedding=task_embedding,
     config=config,
-    lang_task_dim=config.lang_task_dim,
     task_dim=task_dim)
-  inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+  if task_embedding != 'none':
+    inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+  else:
+    inputs_prep_fn = convert_floats
 
-  embedder = BabyAIEmbedding(num_actions=num_actions, symbolic=config.symbolic)
+  embedder = BabyAIEmbedding(num_actions=num_actions)
   def task_in_memory_prep_fn(inputs, obs):
     task = inputs.observation.task
     oar = embedder(inputs, obs)
@@ -254,8 +253,11 @@ def r2d1_noise(config, env_spec,
   # config.lang_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
-  inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+  task_embedder, embed_fn = build_task_embedder(task_embedding=task_embedding, config=config, task_dim=task_dim)
+  if task_embedding != 'none':
+    inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+  else:
+    inputs_prep_fn = convert_floats
 
   def add_noise_concat(inputs, memory_out, **kwargs):
     """
@@ -276,7 +278,7 @@ def r2d1_noise(config, env_spec,
     inputs_prep_fn=inputs_prep_fn,
     vision_prep_fn=build_vision_prep_fn(config),
     vision=build_vision_net(config, env_spec, flatten=True),
-    memory_prep_fn=BabyAIEmbedding(num_actions=num_actions, symbolic=config.symbolic),
+    memory_prep_fn=BabyAIEmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=add_noise_concat, # add noise
     evaluation_prep_fn=evaluation_prep_fn, # (maybe) don't add noise
@@ -311,11 +313,12 @@ def modr2d1(config, env_spec,
   task_embedder, embed_fn = build_task_embedder(
     task_embedding=task_embedding,
     config=config,
-    lang_task_dim=config.lang_task_dim,
     task_dim=task_dim)
-  inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+  if task_embedding != 'none':
+    inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+  else:
+    inputs_prep_fn = convert_floats
 
-  memory_prep_fn = BabyAIEmbedding(num_actions=num_actions, symbolic=config.symbolic)
   def prediction_prep_fn(inputs, memory_out, **kwargs):
     """
     Concat [task + noise] with memory output.
@@ -331,7 +334,7 @@ def modr2d1(config, env_spec,
     vision=build_vision_net(config, env_spec, flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions,
       task_input=config.farm_task_input,
-      symbolic=config.symbolic),
+    ),
     memory=farm_memory,
     prediction_prep_fn=prediction_prep_fn,
     prediction=FarmUvfaHead(
@@ -381,9 +384,15 @@ def usfa(config, env_spec,
   # task embedder + prep functions (will embed task)
   # -----------------------
   task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config, lang_task_dim=config.lang_task_dim, task_dim=task_dim)
-  inputs_prep_fn = make__convert_floats_embed_task(embed_fn,
-    replace_fn=replace_all_tasks_with_embedding)
+  task_embedder, embed_fn = build_task_embedder(
+    task_embedding=task_embedding,
+    config=config,
+    task_dim=task_dim)
+  if task_embedding != 'none':
+    inputs_prep_fn = make__convert_floats_embed_task(embed_fn, replace_fn=replace_all_tasks_with_embedding)
+  else:
+    inputs_prep_fn = convert_floats
+
   if task_embedding == "language":
     sf_out_dim = task_embedder.out_dim
   elif task_embedding == "none":
@@ -403,7 +412,6 @@ def usfa(config, env_spec,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       multihead=config.multihead,
       concat_w=config.concat_w,
-      layernorm=config.sf_layernorm,
       normalize_task=config.normalize_task and config.embed_task,
       )
 
@@ -427,7 +435,9 @@ def usfa(config, env_spec,
     inputs_prep_fn=inputs_prep_fn,
     vision_prep_fn=build_vision_prep_fn(config),
     vision=vision_net,
-    memory_prep_fn=BabyAIEmbedding(num_actions=num_actions, symbolic=config.symbolic),
+    memory_prep_fn=BabyAIEmbedding(
+      num_actions=num_actions,
+    ),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=usfa_prep_fn,
     prediction=prediction_head,
@@ -454,26 +464,36 @@ def msf(
   assert config.sf_net in ['flat', 'independent', 'relational']
   assert config.phi_net in ['flat', 'independent', 'relational']
   num_actions = env_spec.actions.num_values
+  task_dim = env_spec.observations.observation.task.shape[0]
+
+  if task_embedding == 'none' and task_dim < config.nmodules:
+    # if not embedding and don't have enough modules, reduce
+    module_size = config.module_size
+    if config.module_size is None:
+      module_size = config.memory_size//config.nmodules
+    config.nmodules = task_dim
+    config.memory_size = config.nmodules*module_size
 
   # -----------------------
   # memory
   # -----------------------
   farm_memory = build_farm(config, return_attn=True)
 
-  task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding, config,
-    lang_task_dim=config.lang_task_dim,
+  task_embedder, embed_fn = build_task_embedder(
+    task_embedding=task_embedding,
+    config=config,
     task_dim=task_dim)
 
-  inputs_prep_fn = make__convert_floats_embed_task(embed_fn,
+  if task_embedding != 'none':
+    inputs_prep_fn = make__convert_floats_embed_task(embed_fn,
     replace_fn=replace_all_tasks_with_embedding)
-
+  else:
+    inputs_prep_fn = convert_floats
 
   if task_embedding == "language":
     sf_out_dim = task_embedder.out_dim
   elif task_embedding == "none":
     sf_out_dim = task_dim
-    raise RuntimeError("check this")
 
   # -----------------------
   # USFA Head
@@ -522,7 +542,7 @@ def msf(
     vision=build_vision_net(config, env_spec, flatten=False),
     memory_prep_fn=make_farm_prep_fn(num_actions,
       task_input=config.farm_task_input,
-      symbolic=config.symbolic),
+    ),
     memory=farm_memory,
     prediction_prep_fn=pred_prep_fn,
     prediction=usfa_head,
@@ -550,7 +570,6 @@ def build_msf_head(config, sf_out_dim, num_actions):
         concat_w=False,
         task_embed=0,
         normalize_task=False,
-        layernorm=config.sf_layernorm,
         )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
@@ -596,7 +615,6 @@ def build_msf_head(config, sf_out_dim, num_actions):
           eval_task_support=config.eval_task_support,
           multihead=config.seperate_value_params, # seperate params per cumulants
           # vmap_multihead=config.farm_vmap,
-          # layernorm=config.sf_layernorm,
           # position_embed=config.embed_position,
           )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
@@ -632,8 +650,6 @@ def build_msf_phi_net(config, sf_out_dim):
           normalize_cumulants=config.normalize_cumulants,
           normalize_delta=normalize_delta,
           construction=config.cumulant_const,
-          input_source =config.cumulant_source,
-          conv_size=config.phi_conv_size,
           )
   else:
     if config.phi_net == "independent":
@@ -660,8 +676,6 @@ def build_msf_phi_net(config, sf_out_dim):
         layers=config.cumulant_layers,
         seperate_params=config.seperate_cumulant_params,
         construction=config.cumulant_const,
-        input_source =config.cumulant_source,
-        conv_size=config.phi_conv_size,
         relational_net=relational_net,
         normalize_delta=normalize_delta,
         normalize_state=normalize_state,

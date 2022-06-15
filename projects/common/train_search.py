@@ -7,8 +7,8 @@ from launchpad.nodes.python.local_multi_processing import PythonProcess
 # from ray.tune.suggest.hyperopt import HyperOptSearch
 from sklearn.model_selection import ParameterGrid
 
+import wandb
 import functools
-from ray import tune
 import multiprocessing as mp
 import jax
 import time
@@ -210,7 +210,10 @@ def run_experiments(
     print("DEBUGGING")
     print("="*30)
 
+  wandb.require("service")
+  wandb.setup()
   if use_ray:
+    from ray import tune
     def train_function(config):
       """Run inside threads and creates new process.
       """

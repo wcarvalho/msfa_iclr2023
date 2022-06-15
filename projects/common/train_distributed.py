@@ -34,7 +34,7 @@ def build_common_program(
   colocate_learner_replay=False,
   observers=None,
   custom_loggers=True,
-  loss_label=None,
+  loss_label='Loss',
   actor_label='actor',
   evaluator_label='evaluator',
   build=True,
@@ -108,12 +108,9 @@ def build_common_program(
         return _logger_fn(*args, **kwargs)
       return make_logger
 
+    wandb_obj=None
     if wandb_init_kwargs is not None:
       import wandb
-      start_service = wandb_init_kwargs.pop('start_service', False)
-      if start_service:
-        wandb.require("service")
-        wandb.setup()
       wandb_obj = wandb.init(**wandb_init_kwargs)
 
       logger_fn = wandb_wrap_logger(logger_fn)

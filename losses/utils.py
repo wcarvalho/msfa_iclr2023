@@ -9,4 +9,4 @@ def episode_mean(x, done):
     batch_loss = jnp.multiply(x, jnp.expand_dims(done, dims))
   else:
     batch_loss = jnp.multiply(x, done)
-  return (batch_loss.sum(0)+1e-5)/(done.sum(0)+1e-5)
+  return (batch_loss.sum(0))/(done.sum(0)+1e-5)

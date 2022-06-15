@@ -143,17 +143,14 @@ def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=
   ]
 
   if predict_cumulants:
-    nmodules = config.nmodules if config.module_l1 else 1
     aux_tasks.append(
       cumulants.CumulantRewardLoss(
         shorten_data_for_cumulant=True,
         coeff=config.reward_coeff,
         loss=config.reward_loss,
-        l1_coeff=config.phi_l1_coeff,
-        wl1_coeff=config.w_l1_coeff,
-        balance=config.balance_reward,
-        reward_bias=config.step_penalty,
-        nmodules=nmodules))
+        l1_coeff=getattr(config, "phi_l1_coeff", 0.0),
+        wl1_coeff=getattr(config, "w_l1_coeff", 0.0),
+        balance=config.balance_reward))
 
   cov_coeff = getattr(config, 'cov_coeff', None)
 
@@ -189,8 +186,8 @@ def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=
     extract_cumulants=losses.cumulants_from_preds,
     aux_tasks=aux_tasks)
 
-  loss_label = 'usfa'
-  eval_network = config.eval_network
+  loss_label = None
+  eval_network = False
 
   return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
 

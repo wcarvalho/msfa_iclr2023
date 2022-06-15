@@ -1,4 +1,4 @@
-git difimport numpy as np
+import numpy as np
 from babyai.levels.verifier import Instr
 from envs.babyai_kitchen.world import Kitchen
 from envs.babyai_kitchen.types import ActionsSubgoal
