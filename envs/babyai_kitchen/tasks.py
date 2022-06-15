@@ -1,4 +1,4 @@
-import numpy as np
+git difimport numpy as np
 from babyai.levels.verifier import Instr
 from envs.babyai_kitchen.world import Kitchen
 from envs.babyai_kitchen.types import ActionsSubgoal
@@ -43,6 +43,7 @@ class KitchenTask(Instr):
     self.env = env
     self.finished = False
     self._task_reps = task_reps
+    self._time_complete = 0
     self._task_name = 'kitchentask'
     if init:
       self.instruction = self.generate()
@@ -59,6 +60,22 @@ class KitchenTask(Instr):
   def reset(self, exclude=[]):
     self.instruction = self.generate(exclude)
 
+  def reset_task(self):
+    self.reset_objects()
+    self.finished = False
+    self._time_complete = 0
+
+  def reset_objects(self):
+    raise NotImplemented
+
+  def increment_done(self, n=1):
+    if self.finished:
+      self._time_complete += n
+
+  @property
+  def time_complete(self):
+    return self._time_complete
+  
   @property
   def default_task_rep(self):
     raise NotImplemented
@@ -150,10 +167,11 @@ class PickupTask(KitchenTask):
 
     return self.task_rep.replace('x', self.pickup_object.type)
 
+  def reset_objects(self):
+    pass
+
   def check_status(self):
     if self.env.carrying:
-        # let's any match fit, not just the example used for defining the task. 
-        # e.g., if multiple pots, any pot will work inside container
         done = reward = self.env.carrying.type == self.pickup_object.type
     else:
         done = reward = False
@@ -285,6 +303,10 @@ class CleanTask(KitchenTask):
 
     return self.task_rep.replace('x', self.object_to_clean.name)
 
+  def reset_objects(self):
+    self.object_to_clean.set_prop('dirty', True)
+    self.sink.set_prop('on', False)
+
   def subgoals(self):
     return [
       ActionsSubgoal(
@@ -318,6 +340,9 @@ class SliceTask(KitchenTask):
         objects_to_slice = self.env.objects_with_property(['sliced'])
     objects_to_slice = remove_excluded(objects_to_slice, exclude)
     return {'x': objects_to_slice}
+
+  def reset_objects(self):
+    self.object_to_slice.set_prop('sliced', False)
 
   def generate(self, exclude=[], argops=None):
 
@@ -386,6 +411,11 @@ class ChillTask(KitchenTask):
         self.fridge,
     ]
     return self.task_rep.replace('x', self.object_to_chill.name)
+
+  def reset_objects(self):
+    self.object_to_chill.set_prop("temp", "room")
+    self.fridge.set_prop("temp", 'room')
+    self.fridge.set_prop("on", False)
 
   @property
   def num_navs(self): return 2

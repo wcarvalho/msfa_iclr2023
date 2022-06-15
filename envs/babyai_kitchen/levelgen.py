@@ -218,9 +218,10 @@ class KitchenLevel(RoomGridLevel):
   def rand_task(
     self,
     task_kinds,
-    instr_kinds,
-    use_subtasks,
-    depth=0
+    instr_kinds=['action'],
+    use_subtasks=False,
+    depth=0,
+    **kwargs
     ):
 
     if use_subtasks:
@@ -229,8 +230,12 @@ class KitchenLevel(RoomGridLevel):
     instruction_kind = np.random.choice(instr_kinds)
 
     if instruction_kind == 'action':
-        task_kind = np.random.choice(task_kinds)
-        task_kind = task_kind.lower()
+        if isinstance(task_kinds, list):
+          task_kind = np.random.choice(task_kinds).lower()
+        elif isinstance(task_kinds, str):
+          task_kind = task_kinds
+        else:
+          raise RuntimeError
         if task_kind == 'none':
             task = None
         else:
@@ -240,7 +245,8 @@ class KitchenLevel(RoomGridLevel):
             task = task_class(
                 env=self.kitchen,
                 argument_options=self.taskarg_options,
-                task_reps=self.task_reps)
+                task_reps=self.task_reps,
+                **kwargs)
     else:
         raise RuntimeError(f"Instruction kind not supported: '{instruction_kind}'")
 
