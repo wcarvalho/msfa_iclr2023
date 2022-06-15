@@ -274,7 +274,6 @@ def cumulants_from_preds(
   target_preds,
   target_state,
   stop_grad=True):
-  import ipdb; ipdb.set_trace()
   if stop_grad:
     return jax.lax.stop_gradient(online_preds.cumulants) # [T, B, C]
   else:

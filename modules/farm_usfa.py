@@ -25,6 +25,8 @@ class FarmUsfaHead(UsfaHead):
     vmap_multihead: str = 'lift',
     relational_net = lambda x:x,
     position_embed: int=0,
+    struct_policy: bool=False,
+    argmax_mod: bool=False,
     **kwargs,
     ):
     super(FarmUsfaHead, self).__init__(
@@ -35,7 +37,11 @@ class FarmUsfaHead(UsfaHead):
     self.relational_net = relational_net
     self._cumulants_per_module = cumulants_per_module
     self.sf_factory = lambda: hk.nets.MLP([self.hidden_size, self.num_actions*cumulants_per_module])
+    self.policy_net_factory = lambda: hk.nets.MLP(
+          [self.policy_size]*self.policy_layers)
     self.position_embed = position_embed
+    self.struct_policy = struct_policy
+    self.argmax_mod = argmax_mod
 
   def compute_sf(self,
     state : jnp.ndarray,
@@ -51,10 +57,34 @@ class FarmUsfaHead(UsfaHead):
     B, M, _ = state.shape
     A, C = self.num_actions, self._cumulants_per_module
 
+
+    # -----------------------
+    # get input
+    # -----------------------
     def concat(x,y): return jnp.concatenate((x,y), axis=-1)
-    concat = jax.vmap(concat, in_axes=(1, None), out_axes=1)
-    # [B, M, D_z+D_h]
-    state_policy = concat(state, policy)
+    if self.struct_policy:
+      # create 1-hot like vectors for each module with only its subset of task dimensions
+      # e.g. [w1, w2, ...] --> [w1, 0, 0, 0]
+      block_size = policy.shape[-1]//M
+      ones = jnp.ones((1, block_size)).astype(policy.dtype)
+
+      # Policy = [B, D_z]
+      # [M, D_z]
+      block_id = jax.scipy.linalg.block_diag(*[ones for _ in range(M)])
+
+      mul = jax.vmap(jnp.multiply, in_axes=(None, 0))
+      mul = jax.vmap(mul, in_axes=(0, None))
+      # [B, M, W]
+      struct_policy = mul(policy, block_id)
+      policy_embed = hk.BatchApply(self.policynet)(struct_policy) # [B, N, D_z]
+      state_policy = concat(state, policy_embed)
+
+    else:
+      policy_embed = hk.BatchApply(self.policynet)(policy) # [B, N, D_z]
+      vmap_concat = jax.vmap(concat, in_axes=(1, None), out_axes=1)
+      # [B, M, D_z+D_h]
+      state_policy = vmap_concat(state, policy_embed)
+
 
     if self.layernorm == 'sf_input':
       state_policy = hk.LayerNorm(
@@ -88,16 +118,17 @@ class FarmUsfaHead(UsfaHead):
           create_offset=False)(sf)
 
     # vmap loop over A for SF
-    q = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)(sf, task)
-    q = q.sum(-1)
+    q_prod = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)(sf, task)
+    
 
-    return sf, q
+    return sf, q_prod
 
   def sfgpi(self,
     inputs: USFAInputs,
     z: jnp.ndarray,
     w: jnp.ndarray,
     key: networks_lib.PRNGKey,
+    setting='train',
     **kwargs) -> USFAPreds:
     """M = number of modules. N = number of policies.
 
@@ -111,14 +142,26 @@ class FarmUsfaHead(UsfaHead):
         USFAPreds: Description
     """
 
-    z_embedding = hk.BatchApply(self.policynet)(z) # [B, N, D_z]
-
     compute_sf = jax.vmap(self.compute_sf,
       in_axes=(None, 1, None), out_axes=1)
 
-    # [B, N, A, D_w], [B, N, A]
     memory_out = self.relational_net(inputs.memory_out)
-    sf, q_values = compute_sf(memory_out, z_embedding, w)
+    # [B, N, A, D_w]
+    sf, q_values_prod = compute_sf(memory_out, z, w)
+
+    if self.argmax_mod and setting=='eval':
+      M = memory_out.shape[1]
+      # [B, N, A, M, D_w/M]
+      q_values_mod = jnp.stack(jnp.split(q_values_prod, M, axis=-1), axis=2)
+      # [B, N, A, M]
+      q_values = q_values_mod.sum(-1)
+      # -----------------------
+      # GPI modules
+      # -----------------------
+      # [B, N, A, M] --> [B, N, A]
+      q_values = jnp.max(q_values, axis=-1)
+    else:
+      q_values = q_values_prod.sum(-1)
 
     # -----------------------
     # GPI

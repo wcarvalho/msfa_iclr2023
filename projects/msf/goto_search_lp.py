@@ -33,6 +33,7 @@ flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
 flags.DEFINE_integer('idx', None, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('skip', 1, 'skip run jobs.')
 flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
+flags.DEFINE_integer('debug_search', 0, 'whether to use ray tune.')
 
 
 FLAGS = flags.FLAGS
@@ -82,7 +83,8 @@ def main(_):
     use_wandb=use_wandb,
     terminal=FLAGS.terminal,
     skip=FLAGS.skip,
-    use_ray=FLAGS.ray)
+    use_ray=FLAGS.ray,
+    debug=FLAGS.debug_search)
 
 
 if __name__ == '__main__':

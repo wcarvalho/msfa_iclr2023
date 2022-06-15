@@ -675,3 +675,27 @@ def build_usfa_farm_head(config, state_dim, num_actions, farm_memory, sf_input_f
       normalize_task=config.normalize_task and config.embed_task,
       )
   return usfa_head
+
+
+  elif agent == "msf_delta_model":
+  # USFA + cumulants from FARM + Q-learning
+    default_config['contrast_module_pred'] = 'delta'
+    return usfa_farm(default_config, env_spec,
+      net='msf',
+      predict_cumulants=True,
+      learn_model=True)
+  elif agent == "msf_time_model":
+  # USFA + cumulants from FARM + Q-learning
+    return usfa_farm(default_config, env_spec,
+      net='msf',
+      predict_cumulants=True,
+      learn_model=True)
+  elif agent == "msf_state_model":
+  # USFA + cumulants from FARM + Q-learning
+    default_config['contrast_module_pred'] = 'state'
+    return usfa_farm(default_config, env_spec,
+      net='msf',
+      predict_cumulants=True,
+      learn_model=True)
+  else:
+    raise NotImplementedError(agent)

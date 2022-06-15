@@ -206,8 +206,8 @@ def q_aux_sf_loss(config):
 def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, learn_model=False):
   config = data_utils.merge_configs(
     dataclass_configs=[
-      configs.ModularUSFAConfig(),
       configs.QAuxConfig(),
+      configs.ModularUSFAConfig(),
       configs.RewardConfig(),
       configs.FarmModelConfig() if learn_model else configs.FarmConfig(),
     ],

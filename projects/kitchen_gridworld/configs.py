@@ -103,6 +103,7 @@ class USFAConfig(R2D1Config):
   sf_layernorm: str = 'none' # coefficient for L1 on phi
   task_gate: str='none'
   sf_mask_loss: bool=False
+  eval_task_support: str='train' # include eval task in support
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -153,7 +154,7 @@ class ModularUSFAConfig(USFAConfig):
   normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
-  struct_w: bool = False # break up task per module
+  struct_policy_input: bool = False # break up task per module
 
   cumulant_source: str = 'lstm' # whether to normalize cumulants
   phi_conv_size: int = 0 # size of conv for cumulants
@@ -183,6 +184,8 @@ class ModularUSFAConfig(USFAConfig):
 
   task_gate: str='none'
   module_task_dim: int=0 # task dim per module. if 0, use lang_task_dim and divide by nmodules
+  qaux_mask_loss: bool=True
+  sf_mask_loss: bool=True
 
 
 @dataclasses.dataclass

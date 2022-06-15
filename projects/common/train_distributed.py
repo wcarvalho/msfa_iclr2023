@@ -37,9 +37,10 @@ def build_common_program(
   loss_label=None,
   actor_label='actor',
   evaluator_label='evaluator',
+  build=True,
   **kwargs,
   ):
-
+  """<FRESHLY_INSERTED>"""
   # -----------------------
   # prepare networks
   # -----------------------
@@ -109,11 +110,11 @@ def build_common_program(
 
     if wandb_init_kwargs is not None:
       import wandb
-      start_service = wandb_init_kwargs.pop('start_service', True)
+      start_service = wandb_init_kwargs.pop('start_service', False)
       if start_service:
         wandb.require("service")
         wandb.setup()
-      wandb.init(**wandb_init_kwargs)
+      wandb_obj = wandb.init(**wandb_init_kwargs)
 
       logger_fn = wandb_wrap_logger(logger_fn)
       actor_logger_fn = wandb_wrap_logger(actor_logger_fn)
@@ -135,7 +136,7 @@ def build_common_program(
   # -----------------------
   # build program
   # -----------------------
-  return td_agent.DistributedTDAgent(
+  agent = td_agent.DistributedTDAgent(
       environment_factory=environment_factory,
       environment_spec=env_spec,
       network_factory=network_factory,
@@ -152,4 +153,9 @@ def build_common_program(
       log_every=log_every,
       observers=observers,
       multithreading_colocate_learner_and_reverb=colocate_learner_replay,
-      **kwargs).build()
+      wandb_obj=wandb_obj,
+      **kwargs)
+  if build:
+    return agent.build()
+  else:
+    return agent

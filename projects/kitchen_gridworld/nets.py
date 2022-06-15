@@ -592,10 +592,12 @@ def build_msf_head(config, sf_out_dim, num_actions):
           nsamples=config.npolicies,
           relational_net=relational_net,
           policy_layers=config.policy_layers,
+          struct_policy=config.struct_policy_input,
+          eval_task_support=config.eval_task_support,
           multihead=config.seperate_value_params, # seperate params per cumulants
-          vmap_multihead=config.farm_vmap,
-          layernorm=config.sf_layernorm,
-          position_embed=config.embed_position,
+          # vmap_multihead=config.farm_vmap,
+          # layernorm=config.sf_layernorm,
+          # position_embed=config.embed_position,
           )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""

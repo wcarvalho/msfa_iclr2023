@@ -12,6 +12,7 @@ notes?=''
 skip?=1
 spaces?='msf_search'
 ray?=0
+debug?=0
 
 
 export PYTHONPATH:=$(PYTHONPATH):.
@@ -20,6 +21,8 @@ export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export TF_FORCE_GPU_ALLOW_GROWTH=true
 
+killall:
+	kill -9 $(pgrep ray); kill -9 $(pgrep process_entry); kill -9 $(pgrep python); kill -9 $(pgrep wandb); kill -9 $(pgrep goto)
 test_sync:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
@@ -60,6 +63,7 @@ meta_search:
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
+	--debug_search $(debug) \
 	--agent $(agent)
 
 evaluate_sync:

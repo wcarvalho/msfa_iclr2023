@@ -301,8 +301,8 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
   # USFA + cumulants from FARM + Q-learning
     config = data_utils.merge_configs(
       dataclass_configs=[
-        configs.ModularUSFAConfig(),
         configs.QAuxConfig(),
+        configs.ModularUSFAConfig(),
         configs.RewardConfig(),
         configs.FarmModelConfig(),
         configs.LangConfig(),

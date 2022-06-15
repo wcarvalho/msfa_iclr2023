@@ -68,8 +68,8 @@ class USFAConfig(R2D1Config):
   npolicies: int = 10 # number of policies to sample
   variance: float = 0.5
   # Network hps
-  policy_size = 32
-  policy_layers = 0
+  policy_size: int = 32
+  policy_layers: int = 0
   batch_size: int = 32
   cumulant_hidden_size: int=256 # hidden size for cumulant pred
   cumulant_layers: int=2 # hidden size for cumulant pred
@@ -85,6 +85,7 @@ class USFAConfig(R2D1Config):
   lambda_: float = .9 # lambda for q-lambda
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
   sf_mask_loss: bool=False
+  eval_task_support: str='train' # include eval task in support
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -98,7 +99,7 @@ class QAuxConfig:
 @dataclasses.dataclass
 class RewardConfig:
   """Extra configuration options for USFA agent."""
-  reward_coeff: float = 100 # coefficient for reward loss
+  reward_coeff: float = 1 # coefficient for reward loss
   value_coeff: float = 0.5 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
@@ -135,6 +136,7 @@ class ModularUSFAConfig(USFAConfig):
 
   seperate_cumulant_params: bool=True # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
+  struct_policy_input: bool=False
 
   sf_net: str = 'independent'
   sf_net_heads: int = 2
@@ -153,7 +155,9 @@ class ModularUSFAConfig(USFAConfig):
   relate_residual: str="sigtanh"
   res_relu_gate: bool=True
   layernorm_rel: bool=False
-
+  argmax_mod: bool=False # argmax over modules
+  qaux_mask_loss: bool=True
+  sf_mask_loss: bool=True
 
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):
@@ -161,7 +165,7 @@ class FarmModelConfig(FarmConfig):
 
   # Network hps
   temperature: float = 0.01
-  reward_coeff: float = 10 # coefficient for reward loss
+  reward_coeff: float = 1 # coefficient for reward loss
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'

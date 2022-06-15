@@ -78,8 +78,7 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     print(f"RUNNING\n{log_dir}")
     print("="*50)
 
-  if debug:
-    return
+
   # -----------------------
   # wandb settings
   # -----------------------
@@ -95,7 +94,7 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
   # -----------------------
   # launch experiment
   # -----------------------
-  program = build_program_fn(
+  agent = build_program_fn(
     agent=agent,
     num_actors=num_actors,
     config_kwargs=config, 
@@ -103,26 +102,33 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     env_kwargs=env_kwargs,
     path=root_path,
     log_dir=log_dir,
+    build=False,
     )
+  program = agent.build()
 
   local_resources = {
       "actor": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
       "evaluator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      # "counter": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      # "replay": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      # "coordinator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      "counter": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      "replay": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      "coordinator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
   }
   if cuda:
     local_resources['learner'] = PythonProcess(
       env={"CUDA_VISIBLE_DEVICES": str(cuda)})
 
-  if program is None: return
+  if debug:
+    return
+
   controller = lp.launch(program,
     lp.LaunchType.LOCAL_MULTI_PROCESSING,
     terminal=terminal, 
     local_resources=local_resources
     )
   controller.wait()
+  print("Controller finished")
+  if agent.wandb_obj:
+    agent.wandb_obj.finish()
   time.sleep(120) # sleep for 60 seconds to avoid collisions
 
 
@@ -143,10 +149,15 @@ def manual_parallel(fn, space, debug=False):
     configs.extend(grid)
 
   pprint(configs)
+  print('nconfigs', len(configs))
+  print('gpus', len(gpus))
+
   idx = 1
   processes = []
+
   for config in configs:
     wait = idx % len(gpus) == 0
+
     p = mp.Process(
       target=fn,
       args=(config,))
@@ -155,12 +166,15 @@ def manual_parallel(fn, space, debug=False):
     if not debug:
       time.sleep(60) # sleep for 60 seconds to avoid collisions
     if wait:
+      print("="*100)
+      print("Waiting")
+      print("="*100)
       for p in processes:
         p.join() # this blocks until the process terminates
       processes = []
-      print("="*50)
+      print("="*100)
       print("Running new set")
-      print("="*50)
+      print("="*100)
     idx += 1
     if not debug:
       time.sleep(120) # sleep for 120 seconds to finish syncing++
@@ -191,6 +205,10 @@ def run_experiments(
   debug=False):
   
   space = listify_space(space)
+  if debug:
+    print("="*30)
+    print("DEBUGGING")
+    print("="*30)
 
   if use_ray:
     def train_function(config):

@@ -211,6 +211,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False, **ne
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       multihead=config.multihead,
       concat_w=config.concat_w,
+      eval_task_support=config.eval_task_support,
       normalize_task=config.normalize_task and config.embed_task,
       )
 
@@ -357,77 +358,6 @@ def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=Tr
   )
 
 
-def usfa_farm_model(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs):
-  num_actions = env_spec.actions.num_values
-  state_dim = env_spec.observations.observation.state_features.shape[0]
-
-  farm_memory = build_farm(config, return_attn=True)
-
-  cumulants_per_module = state_dim//farm_memory.nmodules
-  usfa_head = FarmUsfaHead(
-      num_actions=num_actions,
-      cumulants_per_module=cumulants_per_module,
-      hidden_size=config.out_hidden_size,
-      policy_size=config.policy_size,
-      variance=config.variance,
-      nsamples=config.npolicies,
-      policy_layers=config.policy_layers,
-      multihead=config.seperate_value_params, # seperate params per cumulants
-      vmap_multihead=config.farm_vmap,
-      )
-
-  assert state_dim == usfa_head.cumulants_per_module*farm_memory.nmodules
-
-  aux_tasks = []
-  if learn_model:
-    # takes structured farm input
-    aux_tasks.append(
-      FarmModel(
-        output_sizes=max(config.model_layers-1, 0)*[config.module_size],
-        num_actions=num_actions,
-        seperate_params=config.seperate_model_params,
-        # activation=getattr(jax.nn, config.activation)
-        ),
-      )
-  if predict_cumulants:
-    # takes structured farm input
-    aux_tasks.append(
-      FarmIndependentCumulants(
-        activation=config.cumulant_act,
-        module_cumulants=cumulants_per_module,
-        hidden_size=config.cumulant_hidden_size,
-        layers=config.cumulant_layers,
-        seperate_params=config.seperate_cumulant_params,
-        construction=config.cumulant_const,
-        normalize_delta=config.normalize_delta and getattr(config, "contrast_module_coeff", 0) > 0,
-        normalize_state=getattr(config, "contrast_time_coeff", 0) > 0,
-        normalize_cumulants=config.normalize_cumulants)
-    )
-
-  def prediction_prep_fn(inputs, memory_out, *args, **kwargs):
-    """Concat Farm module-states before passing them."""
-    return usfa_prep_fn(inputs=inputs, memory_out=memory_out)
-
-  def evaluation_prep_fn(inputs, memory_out, *args, **kwargs):
-    """Concat Farm module-states before passing them."""
-    return usfa_eval_prep_fn(inputs=inputs, memory_out=memory_out)
-
-  return BasicRecurrent(
-    inputs_prep_fn=convert_floats,
-    vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=False),
-    memory_prep_fn=make_farm_prep_fn(num_actions,
-      task_input=config.farm_task_input),
-    memory=farm_memory,
-    prediction_prep_fn=prediction_prep_fn,
-    prediction=usfa_head,
-    evaluation_prep_fn=evaluation_prep_fn,
-    evaluation=usfa_head.evaluation,
-    aux_tasks=aux_tasks,
-    **net_kwargs
-  )
-
-
 def build_msf_head(config, state_dim, num_actions):
   if config.sf_net == "flat":
 
@@ -488,6 +418,9 @@ def build_msf_head(config, state_dim, num_actions):
           nsamples=config.npolicies,
           relational_net=relational_net,
           policy_layers=config.policy_layers,
+          struct_policy=config.struct_policy_input,
+          eval_task_support=config.eval_task_support,
+          argmax_mod=config.argmax_mod,
           multihead=config.seperate_value_params, # seperate params per cumulants
           vmap_multihead=config.farm_vmap,
           )

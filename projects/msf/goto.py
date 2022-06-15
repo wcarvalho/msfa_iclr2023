@@ -35,7 +35,7 @@ flags.DEFINE_string('env_setting', 'small', 'which environment setting.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('test', True, 'whether testing.')
-flags.DEFINE_bool('evaluate', False, 'whether to use evaluation policy.')
+flags.DEFINE_bool('evaluate', True, 'whether to use evaluation policy.')
 
 # -----------------------
 # wandb
@@ -58,6 +58,9 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
+    config['struct_policy_input'] = False
+    config['eval_task_support'] = 'train_eval'
+    config['argmax_mod'] = True
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)
