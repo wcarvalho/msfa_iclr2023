@@ -1,0 +1,70 @@
+agent?=msf
+cuda?=2,3
+folder?='results/kitchen_combo/final'
+wandb?=True
+custom_loggers?=True
+date?=False
+num_gpus?=1
+project?='kitchen_combo'
+search?='baselines'
+group?=''
+notes?=''
+skip?=1
+spaces?='spaces'
+ray?=0
+debug?=0
+
+
+export PYTHONPATH:=$(PYTHONPATH):.
+export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
+
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export TF_FORCE_GPU_ALLOW_GROWTH=true
+
+killall:
+	kill -9 $(pgrep ray); kill -9 $(pgrep process_entry); kill -9 $(pgrep python); kill -9 $(pgrep wandb); kill -9 $(pgrep goto)
+
+
+test_sync:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python -m ipdb -c continue projects/kitchen_combo/train.py \
+	--agent $(agent) \
+	--test=True
+
+test_async:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python -m ipdb -c continue projects/kitchen_combo/train_distributed.py \
+	--agent $(agent)
+
+train_search:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/kitchen_combo/train_search.py \
+	--folder $(folder) \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project $(project) \
+	--group $(group) \
+	--search $(search) \
+	--notes $(notes)
+
+meta_search:
+	cd ../..; \
+	echo ${searches}; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--folder $(folder) \
+	--wandb=$(wandb) \
+	--python_file="../kitchen_combo/train_search" \
+	--date=$(date) \
+	--wandb_project $(project) \
+	--group $(group) \
+	--spaces $(spaces) \
+	--searches "${searches}" \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--debug_search $(debug) \
+	--agent $(agent)
