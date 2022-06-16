@@ -57,7 +57,7 @@ class KitchenComboLevel(KitchenLevel):
         )
     self.train_tasks = np.identity(len(self.mission_arr), dtype=np.int32,)
 
-    assert (self.mission_arr >= 0).all()
+    # assert (self.mission_arr >= 0).all()
     # self.object_names = list(task2reward.keys())
     # if objects:
     #   assert objects == self.object_names
@@ -120,7 +120,7 @@ class KitchenComboLevel(KitchenLevel):
 
     self.kitchen.reset(randomize_states=self.random_object_state)
 
-    self.task2checkers =[]
+    self.task2checkers = collections.defaultdict(list)
     # -----------------------
     # get task objects to spawn
     # -----------------------
@@ -130,7 +130,7 @@ class KitchenComboLevel(KitchenLevel):
       for task_idx in range(self.ntasks):
         # make task cheker
         checker = self.rand_task(task_kind, init=False)
-        self.task2checkers.append(checker)
+        self.task2checkers[task_kind].append(checker)
 
         # generate task
         checker.reset(exclude=task_object_types)
@@ -202,20 +202,23 @@ class KitchenComboLevel(KitchenLevel):
   def step(self, action):
     obs, total_reward, done, info = super().step(action)
 
-    for checker in self.task2checkers:
-      reward, task_done = checker.get_reward_done()
-      total_reward += float(reward)
+    for task_kind, checkers in self.task2checkers.items():
+      for checker in checkers:
+        _, task_done = checker.get_reward_done()
 
-      if task_done:
-        checker.terminate()
-      checker.increment_done()
+        if task_done:
+          reward = self.task2reward[task_kind]
+          total_reward += float(reward)
+          checker.terminate()
+        checker.increment_done()
 
-      # wait 1 time-step to observe eff
-      if checker.time_complete > 1:
-        self.reset_checker(checker)
+        # wait 1 time-step to observe eff
+        if checker.time_complete > 1:
+          self.reset_checker(checker)
     # print('action', self.idx2action[action])
     obs['mission'] = self.mission_arr
     obs['train_tasks'] = self.train_tasks
+    total_reward = float(total_reward)
     return obs, total_reward, done, info
 
 
