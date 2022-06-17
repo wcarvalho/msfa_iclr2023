@@ -113,6 +113,7 @@ class FarmConfig:
   """Extra configuration options for FARM module."""
 
   # Network hps
+  memory_size: int = None
   module_size: int = 128
   nmodules: int = 4
   out_layers: int = 0

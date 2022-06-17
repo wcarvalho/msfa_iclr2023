@@ -14,7 +14,7 @@ import functools
 from agents import td_agent
 from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
-from modules.embedding import BabyAIEmbedding, OAREmbedding, LanguageTaskEmbedder, Identity
+from modules.embedding import BabyAIEmbedding, OAREmbedding, LanguageTaskEmbedder, Identity, LinearTaskEmbedding
 from modules import farm
 from modules.relational import RelationalLayer, RelationalNet
 from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulants
@@ -138,7 +138,7 @@ def build_farm(config, **kwargs):
   # task related
   # -----------------------
   if getattr(config, 'module_task_dim', 0) > 0:
-    config.lang_task_dim=config.module_task_dim*config.nmodules
+    config.embed_task_dim=config.module_task_dim*config.nmodules
   
   return farm_memory
 
@@ -147,6 +147,15 @@ def build_task_embedder(task_embedding, config, task_dim=None):
   if task_embedding == 'none':
     embedder = embed_fn = Identity(task_dim)
     return embedder, embed_fn
+  elif task_embedding == 'embedding':
+    embedder = LinearTaskEmbedding(config.embed_task_dim)
+    def embed_fn(task):
+      """Convert task to ints, batchapply if necessary, and run through embedding function."""
+      has_time = len(task.shape) == 3
+      batchfn = hk.BatchApply if has_time else lambda x:x
+      return batchfn(embedder)(task)
+    return embedder, embed_fn
+
   elif task_embedding == 'language':
     lang_kwargs=dict()
     assert config.task_gate in ['none', 'round', 'sample', 'sigmoid']
@@ -160,7 +169,7 @@ def build_task_embedder(task_embedding, config, task_dim=None):
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         sentence_dim=config.word_dim,
-        task_dim=config.lang_task_dim,
+        task_dim=config.embed_task_dim,
         initializer=config.word_initializer,
         compress=config.word_compress,
         tanh=config.lang_tanh,
@@ -206,7 +215,7 @@ def r2d1(config, env_spec,
       TYPE: Description
   """
 
-  # config.lang_task_dim = 0 # use GRU output
+  # config.embed_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(
@@ -250,7 +259,7 @@ def r2d1_noise(config, env_spec,
   task_embedding: str='none',
   **net_kwargs):
 
-  # config.lang_task_dim = 0 # use GRU output
+  # config.embed_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
   task_embedder, embed_fn = build_task_embedder(task_embedding=task_embedding, config=config, task_dim=task_dim)
@@ -393,10 +402,10 @@ def usfa(config, env_spec,
   else:
     inputs_prep_fn = convert_floats
 
-  if task_embedding == "language":
-    sf_out_dim = task_embedder.out_dim
-  elif task_embedding == "none":
+  if task_embedding == "none":
     sf_out_dim = task_dim
+  else:
+    sf_out_dim = task_embedder.out_dim
 
 
   prediction_head=UsfaHead(
@@ -474,6 +483,7 @@ def msf(
     config.nmodules = task_dim
     config.memory_size = config.nmodules*module_size
 
+
   # -----------------------
   # memory
   # -----------------------
@@ -490,10 +500,10 @@ def msf(
   else:
     inputs_prep_fn = convert_floats
 
-  if task_embedding == "language":
-    sf_out_dim = task_embedder.out_dim
-  elif task_embedding == "none":
+  if task_embedding == "none":
     sf_out_dim = task_dim
+  else:
+    sf_out_dim = task_embedder.out_dim
 
   # -----------------------
   # USFA Head

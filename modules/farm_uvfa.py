@@ -10,7 +10,6 @@ import haiku as hk
 from utils import data as data_utils
 
 from modules.basic_archs import AuxilliaryTask
-from modules.embedding import OneHotTask
 from modules.embedding import embed_position
 from modules.duelling import DuellingSfQNet
 from modules.usfa import SfQNet

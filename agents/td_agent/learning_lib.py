@@ -53,7 +53,7 @@ class SGDLearner(learning_lib.SGDLearner):
                counter: Optional[counting.Counter] = None,
                logger: Optional[loggers.Logger] = None,
                num_sgd_steps_per_step: int = 1,
-               grad_period: int = 25,
+               grad_period: int = 0,
                clear_sgd_cache_period: int = 0):
     """Initialize the SGD learner."""
     self.network = network
@@ -155,7 +155,7 @@ class SGDLearner(learning_lib.SGDLearner):
         pprint(extra.metrics['mean_grad'])
         pass
 
-      if self._state.steps % self._grad_period == 0:
+      if self._grad_period and self._state.steps % self._grad_period == 0:
         for k, v in extra.metrics['mean_grad'].items():
           # first val
           extra.metrics['mean_grad'][k] = next(iter(v.values())) 

@@ -28,7 +28,7 @@ from envs.babyai_kitchen.kitchen_combo_level import KitchenComboLevel
 from projects.kitchen_gridworld import nets
 from projects.kitchen_gridworld import helpers as kitchen_helpers
 from projects.msf import helpers as msf_helpers
-from projects.msf import configs
+from projects.kitchen_combo import configs
 
 class ComboObsTuple(NamedTuple):
   """Container for (Observation, Action, Reward) tuples."""
@@ -40,7 +40,6 @@ def make_environment(evaluation: bool = False,
                      tile_size=8,
                      setting='medium',
                      path='.',
-                     image_wrapper=True,
                      task2rew=None,
                      ) -> dm_env.Environment:
   """Loads environments.
@@ -55,6 +54,7 @@ def make_environment(evaluation: bool = False,
       dm_env.Environment: Multitask GotoAvoid environment is returned.
   """
   settings = dict(
+    test=dict(room_size=5, ntasks=1),
     medium=dict(room_size=9, ntasks=2),
   )
   if task2rew is None:
@@ -98,10 +98,22 @@ def make_environment(evaluation: bool = False,
               "chill" : 1,
               "clean" : 1,
               },
-
+          "7.slice-neg-chill-clean":{
+              "slice" : 1,
+              "chill" : -1,
+              "clean" : 1,
+              },
+          "8.slice-neg-chill-neg-clean":{
+              "slice" : 1,
+              "chill" : -1,
+              "clean" : -1,
+              },
       }
     else:
       task2rew=train
+
+  if setting == 'test':
+    task2rew=dict(pickup={"pickup" : 1})
 
   all_level_kwargs=dict()
   for key, item in task2rew.items():
@@ -109,17 +121,12 @@ def make_environment(evaluation: bool = False,
         task2reward=item,
       )
 
-
-  env_wrappers = []
-  if image_wrapper:
-    env_wrappers.append(functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size))
-
   env = MultitaskGeneric(
     tile_size=tile_size,
     all_level_kwargs=all_level_kwargs,
     ObsTuple=ComboObsTuple,
     path=path,
-    wrappers=env_wrappers,
+    wrappers=[functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size)],
     LevelCls=KitchenComboLevel,
     **settings[setting],
     )
@@ -153,7 +160,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
     NetKwargs=dict(
       config=config,
       env_spec=env_spec,
-      task_embedding='none',
+      task_embedding=config.task_embedding,
       )
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
@@ -174,9 +181,9 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
     NetKwargs=dict(
       config=config,
       env_spec=env_spec,
-      task_embedding='none',
+      task_embedding=config.task_embedding,
       use_separate_eval=True,
-      predict_cumulants=True)
+      predict_cumulants=True,)
 
     LossFn = td_agent.USFALearning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
@@ -213,7 +220,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
       predict_cumulants=True,
       learn_model=False,
       use_separate_eval=True,
-      task_embedding='none')
+      task_embedding=config.task_embedding)
 
   else:
     raise NotImplementedError(agent)

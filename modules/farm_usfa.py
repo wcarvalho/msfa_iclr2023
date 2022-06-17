@@ -9,7 +9,6 @@ import haiku as hk
 from utils import data as data_utils
 
 from modules.basic_archs import AuxilliaryTask
-from modules.embedding import OneHotTask
 from modules.embedding import embed_position
 from modules.duelling import DuellingSfQNet
 from utils import vmap
@@ -80,7 +79,7 @@ class FarmUsfaHead(UsfaHead):
       state_policy = concat(state, policy_embed)
 
     else:
-      policy_embed = hk.BatchApply(self.policynet)(policy) # [B, N, D_z]
+      policy_embed = self.policynet(policy) # [B, D_z]
       vmap_concat = jax.vmap(concat, in_axes=(1, None), out_axes=1)
       # [B, M, D_z+D_h]
       state_policy = vmap_concat(state, policy_embed)

@@ -11,7 +11,7 @@ from projects.msf.goto_distributed import build_program
 from projects.msf.goto_search_lp import main
 
 flags.DEFINE_spaceseplist('searches', 'baselines', 'which search to use.')
-flags.DEFINE_spaceseplist('python_file', '', 'which python script to use.')
+flags.DEFINE_string('python_file', '', 'which python script to use.')
 
 
 def main(_):
@@ -21,13 +21,8 @@ def main(_):
       _ (TYPE): Description
   """
   FLAGS = flags.FLAGS
-
-  print(FLAGS.searches)
-  gpus = [int(i) for i in os.environ['CUDA_VISIBLE_DEVICES'].split(",")]
-
-  for idx, search in enumerate(FLAGS.searches):
-    cuda = gpus[idx%len(gpus)]
-    command = f"""python {python_file}
+  def build_command(search=None, idx=None):
+    command = f"""python {FLAGS.python_file}
       --folder={FLAGS.folder}
       --wandb={FLAGS.wandb}
       --date={FLAGS.date}
@@ -40,12 +35,35 @@ def main(_):
       --idx={idx}
       --ray={FLAGS.ray}
       --agent={FLAGS.agent} """
-    command = command.replace("\n", '')
+
+    if search is not None:
+      command += f" --search={search}"
+
+    if idx is not None:
+      command += f" --idx={idx}"
+
+    return command
+
+  def run(command, cuda):
     pprint(command)
+    command = command.replace("\n", '')
+
     cuda_env = os.environ.copy()
     cuda_env["CUDA_VISIBLE_DEVICES"] = str(cuda)
-    p = subprocess.Popen(command, env=cuda_env, shell=True)
+    return subprocess.Popen(command, env=cuda_env, shell=True)
 
+  gpus = [int(i) for i in os.environ['CUDA_VISIBLE_DEVICES'].split(",")]
+
+  if len(FLAGS.searches) > 1:
+    for idx, search in enumerate(FLAGS.searches):
+      cuda = gpus[idx%len(gpus)]
+      command = build_command(search=search)
+      p = run(command, cuda)
+  else:
+    for idx in range(len(gpus)):
+      cuda = gpus[idx%len(gpus)]
+      command = build_command(search=FLAGS.searches[0], idx=idx)
+      p = run(command, cuda)
 
 if __name__ == '__main__':
   app.run(main)

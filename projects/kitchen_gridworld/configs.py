@@ -53,13 +53,15 @@ class R2D1Config(configs.R2D1Config):
   max_priority_weight: float = 0.9
 
   # Network hps
-  memory_size = 512
-  out_hidden_size = 512
+  memory_size: int = 512
+  out_hidden_size: int = 512
   eval_network: bool = True
   lang_relu: bool = False
   vision_torso: str = 'atari'
   r2d1_loss: str = 'transformed_n_step_q_learning'
   task_gate: str='none'
+  task_embedding: str='gru'
+  embed_task_dim: int=16
 
 @dataclasses.dataclass
 class NoiseConfig(R2D1Config):
@@ -73,7 +75,7 @@ class ModR2d1Config(R2D1Config):
   policy_layers: int = 2 # number of layers to embed task for input to q-fn
   struct_w: bool = False # break up task per module
   dot_qheads: bool = False # break up q-heads and dot-product
-  module_task_dim: int=0 # task dim per module. if 0, use lang_task_dim and divide by nmodules
+  module_task_dim: int=0 # task dim per module. if 0, use embed_task_dim and divide by nmodules
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config):
@@ -111,14 +113,15 @@ class QAuxConfig:
   loss_coeff: float = 1.0
   q_aux_anneal: int = 0.0
   q_aux_end_val: float = 0.0
-  qaux_mask_loss: bool=False
+  qaux_mask_loss: bool=True
+  stop_w_grad: bool=True
 
 
 @dataclasses.dataclass
 class RewardConfig:
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 10.0 # coefficient for reward loss
-  value_coeff: float = 0.05 # coefficient for value loss
+  value_coeff: float = 0.5 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
   q_aux: str="single"
@@ -183,8 +186,8 @@ class ModularUSFAConfig(USFAConfig):
   layernorm_rel: bool=False
 
   task_gate: str='none'
-  module_task_dim: int=0 # task dim per module. if 0, use lang_task_dim and divide by nmodules
-  qaux_mask_loss: bool=True
+  module_task_dim: int=0 # task dim per module. if 0, use embed_task_dim and divide by nmodules
+  qaux_mask_loss: bool=False
   sf_mask_loss: bool=True
 
 
@@ -217,6 +220,6 @@ class LangConfig:
   word_dim: int = 128  # dimension of word and sentence embeddings
   word_initializer: str = 'RandomNormal'
   word_compress: str = 'last'
-  lang_task_dim: int = 16  # dimension of task
+  embed_task_dim: int = 16  # dimension of task
   lang_tanh: bool = False  # whether to apply tanh
 

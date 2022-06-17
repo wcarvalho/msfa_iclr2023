@@ -126,9 +126,9 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     local_resources=local_resources
     )
   controller.wait()
-  print("Controller finished")
   if agent.wandb_obj:
     agent.wandb_obj.finish()
+  print("Controller finished")
   time.sleep(120) # sleep for 60 seconds to avoid collisions
 
 
@@ -204,6 +204,9 @@ def run_experiments(
   use_ray=False,
   debug=False):
   
+  if not terminal:
+    terminal = 'current_terminal'
+
   space = listify_space(space)
   if debug:
     print("="*30)

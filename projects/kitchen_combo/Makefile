@@ -2,11 +2,13 @@ agent?=msf
 cuda?=2,3
 folder?='results/kitchen_combo/final'
 wandb?=True
+env?=medium
 custom_loggers?=True
 date?=False
 num_gpus?=1
 project?='kitchen_combo'
 search?='baselines'
+terminal?='output_to_files'
 group?=''
 notes?=''
 skip?=1
@@ -25,12 +27,19 @@ killall:
 	kill -9 $(pgrep ray); kill -9 $(pgrep process_entry); kill -9 $(pgrep python); kill -9 $(pgrep wandb); kill -9 $(pgrep goto)
 
 
+eval?=1
+wandb_test?=False
+env?='medium'
+init?=0
+
 test_sync:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python -m ipdb -c continue projects/kitchen_combo/train.py \
 	--agent $(agent) \
-	--test=True
+	--env_setting $(env) \
+	--test=True \
+	--wandb=$(wandb_test)
 
 test_async:
 	cd ../..; \
@@ -48,7 +57,11 @@ train_search:
 	--wandb_project $(project) \
 	--group $(group) \
 	--search $(search) \
-	--notes $(notes)
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--terminal $(terminal) \
+	--agent $(agent) \
 
 meta_search:
 	cd ../..; \
@@ -57,7 +70,7 @@ meta_search:
 	python projects/common/train_search_meta.py \
 	--folder $(folder) \
 	--wandb=$(wandb) \
-	--python_file="../kitchen_combo/train_search" \
+	--python_file="projects/kitchen_combo/train_search.py" \
 	--date=$(date) \
 	--wandb_project $(project) \
 	--group $(group) \

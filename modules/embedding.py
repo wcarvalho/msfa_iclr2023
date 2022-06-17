@@ -73,27 +73,27 @@ class BabyAIEmbedding(OAREmbedding):
 
 
 
-class OneHotTask(hk.Module):
-  """docstring for OneHotTask"""
-  def __init__(self, size, dim, **kwargs):
-    super(OneHotTask, self).__init__()
-    self.size = size
+class LinearTaskEmbedding(hk.Module):
+  """docstring for LinearTaskEmbedding"""
+  def __init__(self, dim, **kwargs):
+    super(LinearTaskEmbedding, self).__init__()
     self.dim = dim
-    self.embedder = hk.Embed(vocab_size=size, embed_dim=dim, **kwargs)
-  
-  def __call__(self, khot):
+    self.layer = hk.Linear(dim,
+      with_bias=False, 
+      w_init=hk.initializers.RandomNormal(
+          stddev=1., mean=0.))
 
-    each = self.embedder(jnp.arange(self.size))
-    weighted = each*jnp.expand_dims(khot, axis=1)
-    return weighted.sum(0)
+  def __call__(self, x):
+    return self.layer(x)
 
   @property
   def out_dim(self):
     return self.dim
 
 
+
+
 class Identity(hk.Module):
-  """docstring for OneHotTask"""
   def __init__(self, dim):
     super(Identity, self).__init__()
     self.dim = dim

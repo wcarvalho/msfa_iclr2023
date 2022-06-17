@@ -56,19 +56,28 @@ def get(search, agent=''):
       },
     ]
 
-  elif search == 'pickup6':
+  elif search == 'test6':
     """
     Next:
     """
     space = [
-      { # 6
-        "seed": tune.grid_search([1, 2]),
-        "agent": tune.grid_search([agent]),
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['pickup']),
-        "symbolic": tune.grid_search([False, True]),
-        "label": tune.grid_search(['ray_more_cpu']),
+        "stop_w_grad": tune.grid_search([s]),
         "max_number_of_steps": tune.grid_search([2_000_000]),
-      },
+      } for s in [True, False]
+    ] + [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['pickup']),
+        "stop_w_grad": tune.grid_search([True]),
+        "qaux_mask_loss": tune.grid_search([False]),
+        "sf_mask_loss": tune.grid_search([s]),
+        "max_number_of_steps": tune.grid_search([2_000_000]),
+      } for s in [True, False]
     ]
 
   elif search == 'modr2d1':

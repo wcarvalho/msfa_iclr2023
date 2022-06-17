@@ -14,6 +14,8 @@ Comand I run:
 
 # Do not preallocate GPU memory for JAX.
 import os
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 import launchpad as lp
 from launchpad.nodes.python.local_multi_processing import PythonProcess

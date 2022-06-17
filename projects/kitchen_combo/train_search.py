@@ -52,8 +52,11 @@ def main(_):
   space = importlib.import_module(f'projects.kitchen_combo.{FLAGS.spaces}').get(FLAGS.search)
 
   if FLAGS.idx is not None:
-    assert isinstance(space, list)
-    space = space[FLAGS.idx]
+    listify_space(space)
+    if FLAGS.idx < len(space):
+      space = space[FLAGS.idx]
+    else:
+      return
 
   # root_path is needed to tell program absolute path
   # this is used for BabyAI

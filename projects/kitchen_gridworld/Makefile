@@ -21,10 +21,12 @@ nojit?=0
 skip?=0
 ray?=0
 init?=0
+debug?=0
 or?=1
 eps?=5
 ckpts?=-1
 terminal?='output_to_files'
+spaces?='brain_search'
 
 export WANDB_START_METHOD=thread
 export PYTHONPATH:=$(PYTHONPATH):.
@@ -95,19 +97,19 @@ meta_search:
 	cd ../..; \
 	echo ${searches}; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/kitchen_gridworld/train_search_meta.py \
+	python projects/common/train_search_meta.py \
 	--folder $(folder) \
-	--num_gpus $(gpus) \
-	--num_cpus $(cpus) \
-	--actors $(actors) \
 	--wandb=$(wandb) \
+	--python_file="projects/kitchen_gridworld/train_hp_search_lp.py" \
 	--date=$(date) \
 	--wandb_project $(project) \
 	--group $(group) \
+	--spaces $(spaces) \
 	--searches "${searches}" \
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
+	--debug_search $(debug) \
 	--agent $(agent)
 
 # train_search_rldl:

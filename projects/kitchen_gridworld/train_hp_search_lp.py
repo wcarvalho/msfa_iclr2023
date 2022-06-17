@@ -35,6 +35,7 @@ flags.DEFINE_integer('num_cpus', 3, 'number of gpus per job. accepts fractions.'
 flags.DEFINE_integer('actors', 4, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('skip', 1, 'skip run jobs.')
 flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
+flags.DEFINE_integer('idx', None, 'number of gpus per job. accepts fractions.')
 
 DEFAULT_ENV_SETTING = 'multiv9'
 DEFAULT_TASK_REPS='pickup'
@@ -54,8 +55,11 @@ def main(_):
   assert FLAGS.search != '', 'set search!'
   space = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
   if FLAGS.idx is not None:
-    assert isinstance(space, list)
-    space = space[FLAGS.idx]
+    listify_space(space)
+    if FLAGS.idx < len(space):
+      space = space[FLAGS.idx]
+    else:
+      return
 
 
   # root_path is needed to tell program absolute path

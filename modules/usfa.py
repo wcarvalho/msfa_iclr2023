@@ -9,7 +9,6 @@ import haiku as hk
 from utils import data as data_utils
 
 from modules.basic_archs import AuxilliaryTask
-from modules.embedding import OneHotTask
 from modules.duelling import DuellingSfQNet
 from utils import vmap
 from utils import data as data_utils
@@ -179,8 +178,7 @@ class UsfaHead(hk.Module):
     # function to embed task and figure out dim of SF
     # -----------------------
     if task_embed > 0:
-      task_embed = OneHotTask(size=state_dim, dim=task_embed)
-      self.sf_out_dim = task_embed.dim
+      raise RuntimeError("embed outside of class")
     else:
       task_embed = lambda x:x
       self.sf_out_dim = state_dim
