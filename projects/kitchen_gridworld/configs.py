@@ -60,7 +60,7 @@ class R2D1Config(configs.R2D1Config):
   vision_torso: str = 'atari'
   r2d1_loss: str = 'transformed_n_step_q_learning'
   task_gate: str='none'
-  task_embedding: str='gru'
+  task_embedding: str='language'
   embed_task_dim: int=16
 
 @dataclasses.dataclass

@@ -8,15 +8,16 @@ class R2D1Config(configs.R2D1Config):
   embed_task_dim: int=6
 
 @dataclasses.dataclass
-class USFAConfig(configs.USFAConfig, R2D1Config):
+class USFAConfig(R2D1Config, configs.USFAConfig):
   reward_coeff: float = 10
 
 @dataclasses.dataclass
-class ModularUSFAConfig(configs.ModularUSFAConfig, USFAConfig):
+class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
   reward_coeff: float = 10
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):
   nmodules: int = 3
+  module_size: int = 128
   memory_size: int = None
   module_attn_heads: int = 1
