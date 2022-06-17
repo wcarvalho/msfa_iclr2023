@@ -113,7 +113,7 @@ class QAuxConfig:
   loss_coeff: float = 1.0
   q_aux_anneal: int = 0.0
   q_aux_end_val: float = 0.0
-  qaux_mask_loss: bool=True
+  qaux_mask_loss: bool=False
   stop_w_grad: bool=True
 
 
@@ -187,7 +187,7 @@ class ModularUSFAConfig(USFAConfig):
 
   task_gate: str='none'
   module_task_dim: int=0 # task dim per module. if 0, use embed_task_dim and divide by nmodules
-  qaux_mask_loss: bool=False
+  qaux_mask_loss: bool=True
   sf_mask_loss: bool=True
 
 
