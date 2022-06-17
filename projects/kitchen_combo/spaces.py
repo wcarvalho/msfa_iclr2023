@@ -95,6 +95,24 @@ def get(search):
         },
     ]
 
+  elif search == 'msf_no_mask':
+    space = [
+        {
+          "seed": tune.grid_search([1, 2, 3]),
+          "agent": tune.grid_search(['msf']),
+          "max_number_of_steps": tune.grid_search([20_000_000]),
+          'task_embedding': tune.grid_search(['none']),
+          'qaux_mask_loss': tune.grid_search([False]),
+        },
+        {
+          "seed": tune.grid_search([1, 2, 3]),
+          "agent": tune.grid_search(['msf',]),
+          "max_number_of_steps": tune.grid_search([20_000_000]),
+          'task_embedding': tune.grid_search(['embedding']),
+          'qaux_mask_loss': tune.grid_search([False]),
+        },
+    ]
+
   else:
     raise NotImplementedError(search)
 
