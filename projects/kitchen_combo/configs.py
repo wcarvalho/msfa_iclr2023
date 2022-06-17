@@ -1,5 +1,5 @@
-from projects.kitchen_gridworld import configs
 from projects.kitchen_gridworld.configs import *
+from projects.kitchen_gridworld import configs
 
 
 @dataclasses.dataclass
