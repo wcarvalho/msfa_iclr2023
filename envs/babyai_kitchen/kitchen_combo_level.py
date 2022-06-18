@@ -133,7 +133,11 @@ class KitchenComboLevel(KitchenLevel):
         self.task2checkers[task_kind].append(checker)
 
         # generate task
-        checker.reset(exclude=task_object_types)
+        if task_kind == 'slice':
+          checker.reset(exclude=task_object_types+['apple', 'orange'])
+          checker.object_to_slice.set_prop('cooked', True)
+        else:
+          checker.reset(exclude=task_object_types)
         task_object_types.extend(checker.task_types)
         task_objects.update(checker.task_objects)
 
@@ -198,7 +202,6 @@ class KitchenComboLevel(KitchenLevel):
     self.carrying = None
     self.kitchen.update_carrying(None)
 
-
   def step(self, action):
     obs, total_reward, done, info = super().step(action)
 
@@ -238,10 +241,10 @@ if __name__ == '__main__':
 
     tile_size=14
     optimal=False
-    size='test'
+    size='small'
     sizes = dict(
       test=dict(room_size=5, ntasks=1),
-      small=dict(room_size=6, ntasks=1),
+      small=dict(room_size=7, ntasks=1),
       medium=dict(room_size=9, ntasks=2),
       large=dict(room_size=12, ntasks=3),
       # xl=dict(room_size=10, ntasks=5),
@@ -252,9 +255,8 @@ if __name__ == '__main__':
           "clean" : 1,
           }
     if size == 'test':
-      task2reward={"slice" : 1}
-    elif size == 'small':
-      task2reward={"slice" : 1, "chill" : 0}
+      task2reward={"pickup" : -1, "slice" : 1}
+
     env = KitchenComboLevel(
         agent_view_size=5,
         task2reward=task2reward,
@@ -296,7 +298,9 @@ if __name__ == '__main__':
         for step in range(1000):
             obs, reward, done, info = env.step(env.action_space.sample())
             rewards.append(reward)
-            # print(reward, sum(rewards), done)
+            if reward != 0:
+              print(reward, sum(rewards), done)
+              import ipdb; ipdb.set_trace()
             # print('---------')
             show(obs)
             # if sum(rewards) > 0:
