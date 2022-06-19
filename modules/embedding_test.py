@@ -11,7 +11,7 @@ import numpy as np
 
 chex.set_n_cpu_devices(4)
 
-from modules.embedding import OneHotTask, OAREmbedding
+from modules.embedding import LinearTaskEmbedding, OAREmbedding
 
 class EmbeddingTest(absltest.TestCase):
 
@@ -22,7 +22,7 @@ class EmbeddingTest(absltest.TestCase):
     w_init = np.random.rand(raw_size, latent_size)
 
     def network(x):
-      embedder = OneHotTask(raw_size, latent_size, embedding_matrix=w_init)
+      embedder = LinearTaskEmbedding(latent_size, embedding_matrix=w_init)
       return jax.vmap(embedder)(x)
 
     khot = np.zeros(shape=(raw_size, raw_size))
@@ -43,7 +43,7 @@ class EmbeddingTest(absltest.TestCase):
     w_init = np.random.rand(raw_size, latent_size)
 
     def network(x):
-      embedder = OneHotTask(raw_size, latent_size, embedding_matrix=w_init)
+      embedder = LinearTaskEmbedding(latent_size, embedding_matrix=w_init)
       return jax.vmap(embedder)(x)
 
     khot = np.zeros(shape=(1, raw_size))
@@ -64,7 +64,7 @@ class EmbeddingTest(absltest.TestCase):
     w_init = np.random.rand(raw_size, latent_size)
     normalize = True
     def network(x):
-      embedder = OneHotTask(raw_size, latent_size, embedding_matrix=w_init)
+      embedder = LinearTaskEmbedding(latent_size, embedding_matrix=w_init)
       w_embed = jax.vmap(embedder)(x) # [B, D]
       if normalize:
         w_embed/(1e-5+jnp.linalg.norm(w_embed, axis=-1, keepdims=True))

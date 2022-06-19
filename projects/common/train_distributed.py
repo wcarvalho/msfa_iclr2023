@@ -28,14 +28,19 @@ def build_common_program(
   NetKwargs,
   LossFn,
   LossFnKwargs,
-  loss_label,
   wandb_init_kwargs=None,
   log_every=5.0, # how often to log
+  max_ckpts_to_keep=24,
   colocate_learner_replay=False,
   observers=None,
   custom_loggers=True,
+  loss_label='Loss',
+  actor_label='actor',
+  evaluator_label='evaluator',
+  build=True,
+  **kwargs,
   ):
-
+  """<FRESHLY_INSERTED>"""
   # -----------------------
   # prepare networks
   # -----------------------
@@ -73,14 +78,14 @@ def build_common_program(
           asynchronous=True)
 
     actor_logger_fn = lambda actor_id: make_logger(
-                    log_dir=log_dir, label='actor',
+                    log_dir=log_dir, label=actor_label,
                     time_delta=log_every,
                     wandb=use_wandb,
                     save_data=actor_id == 0,
                     steps_key="actor_steps",
                     )
     evaluator_logger_fn = lambda label, steps_key: make_logger(
-                    log_dir=log_dir, label='evaluator',
+                    log_dir=log_dir, label=evaluator_label,
                     time_delta=log_every,
                     wandb=use_wandb,
                     steps_key="evaluator_steps",
@@ -102,11 +107,14 @@ def build_common_program(
         return _logger_fn(*args, **kwargs)
       return make_logger
 
+    wandb_obj=None
     if wandb_init_kwargs is not None:
       import wandb
+
       wandb.require(experiment="service")
       wandb.setup()
-      wandb.init(**wandb_init_kwargs)
+      wandb_obj = wandb.init(**wandb_init_kwargs)
+
 
       logger_fn = wandb_wrap_logger(logger_fn)
       actor_logger_fn = wandb_wrap_logger(actor_logger_fn)
@@ -122,12 +130,13 @@ def build_common_program(
     dictionary=save_config_dict)
 
   ckpt_config= distributed_layout.CheckpointingConfig(
+    max_to_keep=max_ckpts_to_keep,
     directory=log_dir)
 
   # -----------------------
   # build program
   # -----------------------
-  return td_agent.DistributedTDAgent(
+  agent = td_agent.DistributedTDAgent(
       environment_factory=environment_factory,
       environment_spec=env_spec,
       network_factory=network_factory,
@@ -143,4 +152,10 @@ def build_common_program(
       max_number_of_steps=config.max_number_of_steps,
       log_every=log_every,
       observers=observers,
-      multithreading_colocate_learner_and_reverb=colocate_learner_replay).build()
+      multithreading_colocate_learner_and_reverb=colocate_learner_replay,
+      wandb_obj=wandb_obj,
+      **kwargs)
+  if build:
+    return agent.build()
+  else:
+    return agent

@@ -70,12 +70,14 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       observers=None,
       log_to_bigtable: bool = True,
       evaluator_factories = None,
+      wandb_obj = None,
       log_every: float = 10.0,
       num_evaluators: int = 2,
       multithreading_colocate_learner_and_reverb=False,
       **kwargs,
   ):
     observers = observers or ()
+    self.wandb_obj = wandb_obj
     # -----------------------
     # logger fns
     # -----------------------

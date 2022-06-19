@@ -1,7 +1,7 @@
 import numpy as np
 import collections
 from gym import spaces
-
+from pprint import pprint
 
 from gym_minigrid.minigrid import Grid, WorldObj
 from babyai.levels.levelgen import RoomGridLevel, RejectSampling
@@ -38,6 +38,7 @@ class KitchenLevel(RoomGridLevel):
     task_kinds=['slice', 'clean', 'cook'],
     valid_tasks=[],
     taskarg_options=None,
+    task_reps=None,
     instr_kinds=['action'], # IGNORE. not implemented
     use_subtasks=False, # IGNORE. not implemented
     use_time_limit=True,
@@ -61,6 +62,7 @@ class KitchenLevel(RoomGridLevel):
         self.task_kinds = [task_kinds]
     else:
         RuntimeError(f"Don't know how to read task kind(s): {str(task_kinds)}")
+    self.task_reps = task_reps or dict()
     self.instr_kinds = instr_kinds
     self.random_object_state = random_object_state
     self.use_subtasks = use_subtasks
@@ -107,9 +109,6 @@ class KitchenLevel(RoomGridLevel):
     # ======================================================
     # action space
     # ======================================================
-    if load_actions_from_tasks:
-        raise RuntimeError("Always use those set by __init__.")
-        actions = self.load_actions_from_tasks(task_kinds)
     self.actiondict = {action:idx for idx, action in enumerate(actions, start=0)}
 
     # -----------------------
@@ -119,7 +118,7 @@ class KitchenLevel(RoomGridLevel):
     pickup_idx = self.actiondict['pickup_contents']
     backwards = {
       'pickup': pickup_idx,
-      'done': -1
+      'done': len(self.actiondict)
       }
     candrop = 'place' in self.actiondict
     if candrop:
@@ -146,32 +145,15 @@ class KitchenLevel(RoomGridLevel):
     # ======================================================
     # potentially want to keep square and just put black for non-visible?
     shape=(self.agent_view_height, self.agent_view_width, 3)
+
+
     self.observation_space.spaces['image'] = spaces.Box(
         low=0,
-        high=255,
+        high=self.kitchen._max_states,
         shape=shape,
-        dtype='uint8'
+        dtype='int32'
     )
 
-  def load_actions_from_tasks(self, task_kinds):
-    actions = set()
-    for kind in task_kinds:
-        kind = kind.lower()
-
-        if kind == "none": 
-            continue
-
-        task_class = envs.babyai_kitchen.tasks.TASKS[kind]
-        task_actions = task_class.task_actions()
-
-        for task_action in task_actions:
-            if task_action in ["pickup", 'pickup_and']:
-                actions.add('pickup_contents')
-                actions.add('pickup_container')
-            else:
-                actions.add(task_action)
-
-    return ['left', 'right', 'forward'] + list(actions)
 
   # ======================================================
   # functions for generating grid + objeccts
@@ -190,7 +172,6 @@ class KitchenLevel(RoomGridLevel):
         num_distactors (int, optional): Description
     """
     placed_objects = set()
-    # import ipdb; ipdb.set_trace()
     # first place task objects
     if task is not None:
         for obj in task.task_objects:
@@ -228,16 +209,19 @@ class KitchenLevel(RoomGridLevel):
         placed_objects.add(random_object.type)
         if self.verbosity > 1:
             print(f"Added distractor: {random_object.type}")
-
+    # TODO: test ``active objects''
+    # self.kitchen.set_active_objects(placed_objects)
+  
   # ======================================================
   # functions for generating and validating tasks
   # ======================================================
   def rand_task(
     self,
     task_kinds,
-    instr_kinds,
-    use_subtasks,
-    depth=0
+    instr_kinds=['action'],
+    use_subtasks=False,
+    depth=0,
+    **kwargs
     ):
 
     if use_subtasks:
@@ -246,15 +230,23 @@ class KitchenLevel(RoomGridLevel):
     instruction_kind = np.random.choice(instr_kinds)
 
     if instruction_kind == 'action':
-        task_kind = np.random.choice(task_kinds)
-        task_kind = task_kind.lower()
+        if isinstance(task_kinds, list):
+          task_kind = np.random.choice(task_kinds).lower()
+        elif isinstance(task_kinds, str):
+          task_kind = task_kinds
+        else:
+          raise RuntimeError
         if task_kind == 'none':
             task = None
         else:
-            task_class = envs.babyai_kitchen.tasks.all_tasks()[task_kind]
+            available_tasks = envs.babyai_kitchen.tasks.all_tasks()
+            task_class = available_tasks[task_kind]
+
             task = task_class(
                 env=self.kitchen,
-                argument_options=self.taskarg_options)
+                argument_options=self.taskarg_options,
+                task_reps=self.task_reps,
+                **kwargs)
     else:
         raise RuntimeError(f"Instruction kind not supported: '{instruction_kind}'")
 
@@ -376,11 +368,13 @@ class KitchenLevel(RoomGridLevel):
     # - instruction
     # -----------------------
     # when call reset during initialization, don't load
+    self.kitchen.reset()
     self.task = self.reset_task()
     if self.task is not None:
         self.surface = self.task.surface(self)
         self.mission = self.surface
         self.instrs = self.task
+
 
         # make sure all task objects are on grid
         for obj in self.task.task_objects:
@@ -419,11 +413,6 @@ class KitchenLevel(RoomGridLevel):
         if done:
             raise RuntimeError(f"`{self.mission}` started off as done")
 
-    # # Recreate the verifier
-    # if self.task:
-    #     import ipdb; ipdb.set_trace()
-    #     self.task.reset_verifier(self)
-
     # Compute the time step limit based on the maze size and instructions
     nav_time_room = int(self.room_size ** 2)
     nav_time_maze = nav_time_room * self.num_rows * self.num_cols
@@ -431,8 +420,9 @@ class KitchenLevel(RoomGridLevel):
         num_navs = self.task.num_navs
     else:
         num_navs = 2
-    self.max_steps = max(num_navs, 2) * nav_time_maze
-    self.timesteps_complete=0
+    self.max_steps = max(2, num_navs) * nav_time_maze
+    self.timesteps_complete = 0
+    self.interaction_info = {}
 
     return obs
 
@@ -462,6 +452,7 @@ class KitchenLevel(RoomGridLevel):
 
     # Rotate left
     action_info = None
+    self.interaction_info = {}
     interaction = False
     if action == self.actiondict.get('left', -1):
         self.agent_dir -= 1
@@ -482,15 +473,25 @@ class KitchenLevel(RoomGridLevel):
         # if object_infront != None and object_infront.type == 'lava':
         #     done = True
     else:
-        action_info = self.kitchen.interact(
-            action=self.idx2action[int(action)],
-            object_infront=object_infront,
-            fwd_pos=fwd_pos,
-            grid=self.grid,
-            env=self, # only used for backwards compatibility with toggle
-        )
-        self.carrying = self.kitchen.carrying
-        interaction = True
+        try:
+          action_info = self.kitchen.interact(
+              action=self.idx2action[int(action)],
+              object_infront=object_infront,
+              fwd_pos=fwd_pos,
+              grid=self.grid,
+              env=self, # only used for backwards compatibility with toggle
+          )
+          if action_info['success']:
+            self.interaction_info = dict(
+              action=str(self.idx2action[int(action)]),
+              object=str(object_infront.type) if object_infront else None)
+          self.carrying = self.kitchen.carrying
+          interaction = True
+        except Exception as e:
+          print("Action:", int(action))
+          print("Actions available:", self.idx2action)
+          print("Object in front:", object_infront)
+          raise e
 
     step_info = self.kitchen.step()
 
@@ -517,17 +518,16 @@ class KitchenLevel(RoomGridLevel):
     info = {'success': False}
     done = False
     if self.task is not None:
-        reward, task_done = self.task.check_status()
+        reward, task_done = self.task.get_reward_done()
         reward = float(reward)
 
         if task_done:
           self.task.terminate()
 
-        if task_done:
+        if self.task.finished:
             info['success'] = True
             self.timesteps_complete += 1
 
-        import ipdb; ipdb.set_trace()
         # in order to complete final states in observation stream
         if self.timesteps_complete > self.extra_timesteps:
           done = True

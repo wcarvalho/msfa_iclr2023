@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--objects', type=str, default=[], nargs="+")
     parser.add_argument('--random-object-state', type=int, default=0)
     parser.add_argument('--num-rows', type=int, default=1)
-    parser.add_argument('--tile-size', type=int, default=16)
+    parser.add_argument('--tile-size', type=int, default=20)
     parser.add_argument('--partial-obs', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
     parser.add_argument('--check', type=int, default=0)
@@ -77,9 +77,9 @@ def main():
       if int(args.check):
         import ipdb; ipdb.set_trace()
       else:
-        time.sleep(.05)
+        time.sleep(.2)
 
-
+    all_rewards = []
     for mission_indx in range(int(args.missions)):
         env.seed(mission_indx)
         obs = env.reset()
@@ -96,7 +96,9 @@ def main():
 
         bot = KitchenBot(env)
         obss, actions, rewards, dones = bot.generate_traj(plot_fn=show)
-        if args.check_end:
+        print("Reward:", sum(rewards))
+        all_rewards.append(sum(rewards))
+        if args.check_end and ((mission_indx+1) % args.check_end == 0):
           import ipdb; ipdb.set_trace()
 
 

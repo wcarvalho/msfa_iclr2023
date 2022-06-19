@@ -1,14 +1,18 @@
 """Evaluation Observers."""
 
+import collections
 import abc
 import dataclasses
 import itertools
 from typing import Any, Dict, List, Optional, Sequence, Union
-
+from acme.utils import signals
+import os.path
 from acme.utils.loggers.base import Logger
 from acme.utils.observers import EnvLoopObserver
+from acme.utils import paths
 
 import dm_env
+import pandas as pd
 from dm_env import specs
 import jax.numpy as jnp
 import numpy as np
@@ -22,7 +26,7 @@ Number = Union[int, float, np.float32, jnp.float32]
 
 
 class LevelReturnObserver(EnvLoopObserver):
-  """docstring for LevelReturnObserver"""
+  """Metric: Return from Episode"""
   def __init__(self):
     super(LevelReturnObserver, self).__init__()
 
@@ -49,159 +53,136 @@ class LevelReturnObserver(EnvLoopObserver):
     }
     return result
 
+class LevelAvgReturnObserver(EnvLoopObserver):
+  """Metric: Average return over many episodes"""
+  def __init__(self, reset=200):
+    super(LevelAvgReturnObserver, self).__init__()
+    self.returns = collections.defaultdict(list)
+    self.level = None
+    self.reset = reset
+    self.idx = 0
 
 
-# @dataclasses.dataclass
-# class Trajectory:
-#   goal: Any
-#   # Uses the standard convention, [s0 a0 s1 a1 ... a{T-1} a{T}]
-#   actions: List[np.ndarray] = dataclasses.field(default_factory=list)
-#   observations: List[Any] = dataclasses.field(default_factory=list)
-#   rewards: List[Number] = dataclasses.field(default_factory=list)
+  def observe_first(self, env: dm_env.Environment, timestep: dm_env.TimeStep
+                    ) -> None:
+    """Observes the initial state."""
+    self.idx += 1
+    if self.level is not None:
+      self.returns[self.level].append(self._episode_return)
 
-#   def add(
-#       self, *,
-#       action: Optional[np.ndarray],
-#       observation: Any,
-#       reward: Number,
-#   ):  # yapf: disable
-#     if action is not None:
-#       self.actions.append(action)
-#     self.observations.append(observation)
-#     self.rewards.append(reward)
+    self._episode_return = tree.map_structure(
+      _generate_zeros_from_spec,
+      env.reward_spec())
+    self.level = str(env.env.current_levelname)
 
 
-# class Metric(abc.ABC):
+  def observe(self, env: dm_env.Environment, timestep: dm_env.TimeStep,
+              action: np.ndarray) -> None:
+    """Records one environment step."""
+    self._episode_return = tree.map_structure(
+      operator.iadd,
+      self._episode_return,
+      timestep.reward)
 
-#   def reset(self):
-#     """Reset and clear all the metrics stored (optionally).
-#     Called every once at the beginning of the evaluation loop."""
+  def get_metrics(self) -> Dict[str, Number]:
+    """Returns metrics collected for the current episode."""
+    result = {}
 
-#   @abc.abstractmethod
-#   def result(self) -> Dict[str, Any]:
-#     """Return the aggregated result over several episodes.
-#     The result can be either metrics (dict) or some artifacts to save
-#     (video, plot, etc.) where key represents their name or label.
-#     """
-#     # TODO: What if result() is called before compute_metric is called?
-#     raise NotImplementedError
+    if self.idx % self.reset == 0:
+      # add latest (otherwise deleted)
+      self.returns[self.level].append(self._episode_return)
 
-#   def __str__(self) -> str:
-#     return type(self).__name__
+      for key, returns in self.returns.items():
+        avg = np.array(returns).mean()
+        result[f'0.task/{key}/avg_return'] = float(avg)
+        self.returns[key] = []
 
-
-# class StepwiseMetric(Metric):
-
-#   @abc.abstractmethod
-#   def on_step(
-#       self,
-#       env,
-#       timestep: dm_env.TimeStep,
-#       action: Optional[np.ndarray] = None,
-#   ):
-#     # Note: timestep has GoalEnv spec.
-#     raise NotImplementedError
-
-#   # TODO: How to notify episode has finished?
+    return result
 
 
-# class EpisodeMetric(Metric):
-#   """A Metric that works on an episode-level."""
+class EvalCountObserver(EnvLoopObserver):
+  """Metric: Average return over many episodes"""
+  def __init__(self, path, agent, seed, reset=1000, exit=False):
+    super(EvalCountObserver, self).__init__()
+    self.returns = collections.defaultdict(list)
+    self.results = []
+    self.level = None
+    self.agent = agent
+    self.seed = seed
+    self.reset = reset
+    self.exit = exit
+    self.results_path = os.path.join(
+        path,
+        'evaluation',
+        )
+    if not os.path.exists(self.results_path):
+      paths.process_path(self.results_path, add_uid=False)
+    self.results_file = os.path.join(
+          self.results_path,'eval_return_counts.csv')
+    self.idx = 0
 
-#   @abc.abstractmethod
-#   def compute_episode_metric(
-#       self,
-#       trajectory: Trajectory,
-#   ) -> Dict[str, Number]:
-#     """Compute metric for a single episode/trajectory.
-#     Called when an episode is complete.
-#     """
-#     del trajectory  # unused
-#     raise NotImplementedError
+
+  def observe_first(self, env: dm_env.Environment, timestep: dm_env.TimeStep
+                    ) -> None:
+    """Observes the initial state."""
+    self.idx += 1
+
+    if self.level is not None:
+      self.add_prev_episode_to_results()
+    self.level = str(env.env.current_levelname)
+
+    # -----------------------
+    # initialize episode return
+    # -----------------------
+    self._episode_return = tree.map_structure(
+      _generate_zeros_from_spec,
+      env.reward_spec())
 
 
-# class LevelReturnObserver(EnvLoopObserver):
-#   """An environment loop observer for evaluation."""
+    # -----------------------
+    # initialize object counts
+    # -----------------------
+    self.pickup_counts = np.array(timestep.observation.observation.state_features)
 
-#   _current_episode: Trajectory
-#   _step_metrics: Sequence[StepwiseMetric]
-#   _episode_metrics: Sequence[EpisodeMetric]
 
-#   def __init__(
-#       self,
-#       *,  # yapf: disable
-#       step_metrics: Sequence[StepwiseMetric] = (),
-#       episode_metrics: Sequence[EpisodeMetric] = (),
-#       # logger: Logger,
-#       # artifacts_path: str,
-#   ):
-#     self._current_episode = None  # type: ignore
-#     self._step_metrics = tuple(step_metrics)
-#     self._episode_metrics = tuple(episode_metrics)
-#     self._logger = logger
-#     self._artifacts_path = artifacts_path
+  def observe(self, env: dm_env.Environment, timestep: dm_env.TimeStep,
+              action: np.ndarray) -> None:
+    """Records one environment step."""
+    self._episode_return = tree.map_structure(
+      operator.iadd,
+      self._episode_return,
+      timestep.reward)
 
-#   def observe_first(self, env, timestep: dm_env.TimeStep):
-#     import ipdb; ipdb.set_trace()
-#     # TODO: We assumed timestep came from GoalEnv, but this may not be true.
-#     self._current_episode = Trajectory(goal=timestep.observation.desired_goal)
-#     self._current_episode.add(
-#         action=None,
-#         observation=timestep.observation.observation,
-#         reward=timestep.reward,
-#     )
+    self.pickup_counts = self.pickup_counts + np.array(timestep.observation.observation.state_features)
 
-#     for m in self._step_metrics:
-#       m.on_step(env, timestep, action=None)
+  def add_prev_episode_to_results(self):
+    result=dict(
+      episode_return=self._episode_return,
+      agent=self.agent,
+      seed=self.seed,
+      level=self.level,
+      episode_idx=self.idx,
+      )
+    for idx in range(len(self.pickup_counts)):
+      result[f"object{idx}"] = self.pickup_counts[idx]
 
-#   def observe(self, env, timestep: dm_env.TimeStep, action: np.ndarray):
-#     import ipdb; ipdb.set_trace()
-#     # TODO: We assumed timestep came from GoalEnv, but this may not be true.
-#     self._current_episode.add(
-#         action=action,
-#         observation=timestep.observation.observation,
-#         reward=timestep.reward)
+    self.results.append(result)
 
-#     for m in self._step_metrics:
-#       m.on_step(env, timestep, action=action)
+  def get_metrics(self) -> Dict[str, Number]:
+    """Returns metrics collected for the current episode."""
 
-#   def get_metrics(self) -> Dict[str, Number]:
-#     # Called at the end of the episode, in the EnvironmentLoop
-#     result = {}
-#     for m in self._episode_metrics:
-#       import ipdb; ipdb.set_trace()
-#       result.update(m.compute_episode_metric(self._current_episode))
-#     return result
+    with signals.runtime_terminator():
+      if self.idx % self.reset == 0:
+        df = pd.DataFrame(self.results)
+        
+        df.to_csv(self.results_file)
 
-#   def reset(self):
-#     import ipdb; ipdb.set_trace()
-#     for m in self._episode_metrics:
-#       m.reset()
-#     for m in self._step_metrics:
-#       m.reset()
+        if self.exit:
+          import launchpad as lp  # pylint: disable=g-import-not-at-top
+          lp.stop()
+        self.results = []
 
-#   def write_results(self, metrics: Dict[str, Number], *, steps: int):
-#     """Report, and save all the evaluation results.
-#     This is called after a several number of evaluation episodes are all
-#     finished, so usually used for saving aggregated results."""
-
-#     # Write the (aggregated) metrics from EnvironmentLoop and etc
-#     # for this evaluation iteration.
-#     self._logger.write(metrics)
-
-#     # Report, write, or save other metrics
-#     log_data = {}
-#     import ipdb; ipdb.set_trace()
-#     for m in itertools.chain(self._episode_metrics, self._step_metrics):
-#       ret = m.result()
-#       # TODO this hardcoded name may not work. evalu
-#       # This is needed for what?
-#       # This must match steps_key in eval_logger(...)
-#       ret['steps'] = steps  # global_step
-#       ret['evaluator_steps'] = steps  # global_step
-#       assert isinstance(ret, dict), str(type(ret))
-
-#       log_data.update(ret)
-#       print("-", m, ":", ret)  # TODO pretty print, etc.
-
-#     self._logger.write(log_data)
+    if self.results:
+      return self.results[-1]
+    else:
+      return {}

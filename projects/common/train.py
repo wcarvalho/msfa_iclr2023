@@ -56,7 +56,15 @@ def create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs, data_le
     dummy_key)
 
   keys = dummy_output._asdict().keys()
-  return collections.namedtuple('Predictions', keys, defaults=(None,) * len(keys))
+  CustomPreds = collections.namedtuple('CustomPreds', keys, defaults=(None,) * len(keys))
+
+  # adds compatibility with pickling ++
+  globals()['CustomPreds'] = CustomPreds
+  import __main__
+  setattr(__main__, CustomPreds.__name__, CustomPreds)
+  CustomPreds.__module__ = "__main__"
+  return CustomPreds
+
 
 def run(env,
     env_spec,
@@ -65,14 +73,17 @@ def run(env,
     NetKwargs,
     LossFn,
     LossFnKwargs,
-    loss_label,
     log_dir: str,
+    loss_label: str="Loss",
     evaluate: bool=False,
     seed: int=1,
     num_episodes: int=1_000,
     log_every=5.0,
     observers=None,
-    wandb_init_kwargs=None):
+    actor_label='actor',
+    wandb_init_kwargs=None,
+    init_only=False,
+    **kwargs):
 
   # -----------------------
   # loggers + observers
@@ -87,7 +98,7 @@ def run(env,
 
   env_logger = make_logger(
     log_dir=log_dir,
-    label='actor',
+    label=actor_label,
     wandb=use_wandb,
     time_delta=log_every,
     steps_key="steps")
@@ -107,7 +118,7 @@ def run(env,
       learner_kwargs=dict(clear_sgd_cache_period=config.clear_sgd_cache_period)
       )
 
-  kwargs={}
+  kwargs=kwargs or {}
   if evaluate:
     kwargs['behavior_policy_constructor'] = functools.partial(td_agent.make_behavior_policy, evaluation=True)
 
@@ -115,7 +126,10 @@ def run(env,
   # prepare networks
   # -----------------------
   PredCls = create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs)
+  # insert into global namespace for pickling, etc.
   NetKwargs.update(PredCls=PredCls)
+  if init_only:
+    return
 
   agent = td_agent.TDAgent(
       env_spec,

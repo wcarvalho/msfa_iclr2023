@@ -9,7 +9,6 @@ import haiku as hk
 from utils import data as data_utils
 
 from modules.basic_archs import AuxilliaryTask
-from modules.embedding import OneHotTask
 from modules.duelling import DuellingSfQNet
 from utils import vmap
 from utils import data as data_utils
@@ -141,13 +140,15 @@ class UsfaHead(hk.Module):
         policy_layers (int, optional): layers for policy embedding net
         variance (float, optional): variances of sampling
         nsamples (int, optional): number of policies
-        sf_input_fn (None, optional): module that combines lstm-state h with policy embedding z
+        sf_input_fn (hk.Module, optional): module that combines lstm-state h with policy embedding z
         task_embed (int, optional): whether to embed task vector
+        eval_task_support (bool, optional): include eval task in support
         duelling (bool, optional): whether to use a duelling head
         normalize_task (bool, optional): whether to normalize task vector
         z_as_train_task (bool, optional): whether to dot-product with z-vector (True) or w-vector (False)
         multihead (bool, optional): whether to use seperate parameters for each cumulant
         concat_w (bool, optional): whether to have task w as input to SF (not just policy z)
+        layernorm (str, optional): Description
 
     Raises:
         NotImplementedError: Description
@@ -158,6 +159,10 @@ class UsfaHead(hk.Module):
     self.hidden_size = hidden_size
     self.var = variance
     self.nsamples = nsamples
+    self.layernorm = layernorm
+    self.policy_size = policy_size
+    self.eval_task_support = eval_task_support
+    self.policy_layers = policy_layers
     self.z_as_train_task = z_as_train_task
     self.multihead = multihead
     self.concat_w = concat_w
@@ -182,6 +187,7 @@ class UsfaHead(hk.Module):
       else:
         task_embed = lambda x: x
         self.sf_out_dim = state_dim
+
     else:
       self.sf_out_dim = state_dim
 
@@ -231,12 +237,15 @@ class UsfaHead(hk.Module):
       # sample N times: [B, D_w] --> [B, N, D_w]
       z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples * inputs.w.shape[0], axis=-2)
 
-      # combine samples with original task vector
-      z_base = jnp.expand_dims(w, axis=1)  # [B, 1, D_w]
-      z = jnp.concatenate((z_base, z_samples), axis=1)  # [B, N+1, D_w]
+    # combine samples with original task vector
+    z_base = jnp.expand_dims(w, axis=1) # [B, 1, D_w]
+    z = jnp.concatenate((z_base, z_samples), axis=1)  # [B, N+1, D_w]
+
     return self.sfgpi(inputs=inputs, z=z, w=w,
-                      key=key,
-                      z_as_task=self.z_as_train_task)
+      key=key,
+      z_as_task=self.z_as_train_task,
+      setting='train')
+
 
   def evaluation(self,
                  inputs: USFAInputs,
@@ -259,19 +268,43 @@ class UsfaHead(hk.Module):
     # -----------------------
     # policies + embeddings
     # -----------------------
-    z = data_utils.expand_tile_dim(w_train, axis=0, size=B)
-    # z = [B, N, D]
-    # w = [B, D]
-    preds = self.sfgpi(inputs=inputs, z=z, w=w, key=key)
+    if len(w_train.shape)==2:
+      # z = [B, N, D]
+      # w = [B, D]
+      z = data_utils.expand_tile_dim(w_train, axis=0, size=B)
+    else:
+      # [B, N, D]
+      z = w_train
+
+
+    if self.eval_task_support == 'train':
+      pass # z = w_train
+      # [B, N, D]
+    elif self.eval_task_support == 'eval':
+      # [B, 1, D]
+      z = jnp.expand_dims(w, axis=1)
+    elif self.eval_task_support == 'train_eval':
+      w_expand = jnp.expand_dims(w, axis=1)
+      # [B, N+1, D]
+      z = jnp.concatenate((z, w_expand), axis=1)
+    else:
+      raise RuntimeError(self.eval_task_support)
+
+
+    preds = self.sfgpi(
+      inputs=inputs, z=z, w=w, key=key,
+      setting='eval')
 
     return preds
 
   def sfgpi(self,
-            inputs: USFAInputs,
-            z: jnp.ndarray,
-            w: jnp.ndarray,
-            key: networks_lib.PRNGKey,
-            z_as_task: bool = False) -> USFAPreds:
+    inputs: USFAInputs,
+    z: jnp.ndarray,
+    w: jnp.ndarray,
+    key: networks_lib.PRNGKey,
+    z_as_task: bool = False,
+    **kwargs) -> USFAPreds:
+
     """Summary
 
     Args:
@@ -326,11 +359,16 @@ class UsfaHead(hk.Module):
       sf=sf,  # [B, N, A, D_w]
       z=z,  # [B, N, A, D_w]
       q=q_values,  # [B, N, A]
-      w=w)  # [B, D_w]
+      w=w)         # [B, D_w]
 
   @property
   def out_dim(self):
     return self.sf_out_dim
+  @property
+  def cumulants_per_module(self):
+    return self.sf_out_dim
+
+
   @property
   def cumulants_per_module(self):
     return self.sf_out_dim

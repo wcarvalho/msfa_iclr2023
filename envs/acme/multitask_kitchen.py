@@ -35,9 +35,19 @@ class Observation(NamedTuple):
   image: types.Nest
   mission: types.Nest
 
-def convert_rawobs(obs):
+class SymbolicObservation(NamedTuple):
+  """Container for (Observation, Action, Reward) tuples."""
+  image: types.Nest
+  mission: types.Nest
+  direction: types.Nest
+
+def convert_rawobs(obs, symbolic=False):
     obs.pop('mission_idx', None)
-    return Observation(**obs)
+    if symbolic:
+      obs['image'] = obs['image'].astype(np.int32)
+      return SymbolicObservation(**obs)
+    else:
+      return Observation(**obs)
 
 
 class MultitaskKitchen(dm_env.Environment):
@@ -57,6 +67,7 @@ class MultitaskKitchen(dm_env.Environment):
     step_penalty=0.0,
     wrappers=None,
     num_dists=0,
+    symbolic=False,
     **kwargs):
     """Initializes a new Kitchen environment.
     Args:
@@ -74,6 +85,7 @@ class MultitaskKitchen(dm_env.Environment):
       task_reps=task_reps,
     )
 
+    self.symbolic = symbolic
     self.step_penalty = step_penalty
     # -----------------------
     # load level kwargs
@@ -123,7 +135,7 @@ class MultitaskKitchen(dm_env.Environment):
   def reset(self) -> dm_env.TimeStep:
     """Returns the first `TimeStep` of a new episode."""
     obs = self.env.reset()
-    obs = convert_rawobs(obs)
+    obs = convert_rawobs(obs, symbolic=self.symbolic)
 
     timestep = dm_env.restart(obs)
 
@@ -132,7 +144,7 @@ class MultitaskKitchen(dm_env.Environment):
   def step(self, action: int) -> dm_env.TimeStep:
     """Updates the environment according to the action."""
     obs, reward, done, info = self.env.step(action)
-    obs = convert_rawobs(obs)
+    obs = convert_rawobs(obs, symbolic=self.symbolic)
     if self.step_penalty:
       reward = reward - self.step_penalty
     if done:
@@ -147,4 +159,13 @@ class MultitaskKitchen(dm_env.Environment):
 
   def observation_spec(self):
     default = self.default_env.observation_spec()
-    return Observation(**default)
+    if self.symbolic:
+      spec = SymbolicObservation(
+        direction=dm_env.specs.DiscreteArray(
+          num_values=5),
+        **default,
+        )
+    else:
+      spec = Observation(**default)
+
+    return spec

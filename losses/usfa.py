@@ -21,6 +21,7 @@ class QLearningAuxLoss(nstep.QLearning):
     sched_start_val=1.,
     sched_end_val=1e-4,
     add_bias=False,
+    stop_w_grad=False,
     mask_loss=False,
     **kwargs):
     super().__init__(*args, **kwargs)
@@ -29,6 +30,7 @@ class QLearningAuxLoss(nstep.QLearning):
     self.sched_start_val = sched_start_val
     self.sched_end_val = sched_end_val
     self.add_bias = add_bias
+    self.stop_w_grad = stop_w_grad
     self.mask_loss = mask_loss
     if sched_end:
       self.schedule = optax.linear_schedule(
@@ -38,15 +40,24 @@ class QLearningAuxLoss(nstep.QLearning):
 
   def __call__(self, data, online_preds, target_preds, steps, **kwargs):
 
-    w = online_preds.w  # [T, B, C]
+    online_w = online_preds.w  # [T, B, C]
+    target_w = target_preds.w  # [T, B, C]
     online_sf = online_preds.sf[:,:,0]  # [T, B, A, C]
     target_sf = target_preds.sf[:,:,0]  # [T, B, A, C]
     compute_q_jax = jax.vmap(compute_q, in_axes=(2, None), out_axes=2)  # over A
 
+    if self.stop_w_grad:
+      online_w = jax.lax.stop_gradient(online_w)
+      target_w = jax.lax.stop_gradient(target_w)
 
     # output is [T, B, A]
-    online_q = compute_q_jax(online_sf, w)
-    target_q = compute_q_jax(target_sf, w)
+    online_q = compute_q_jax(online_sf, online_w)
+    target_q = compute_q_jax(target_sf, target_w)
+
+    if self.add_bias:
+      online_q = online_q + online_preds.qbias
+      target_q = target_q + target_preds.qbias
+
 
     if self.add_bias:
       online_q = online_q + online_preds.qbias
@@ -93,15 +104,20 @@ class QLearningEnsembleAuxLoss(QLearningAuxLoss):
   def __call__(self, data, online_preds, target_preds, steps, **kwargs):
 
     # [T, B, C]
-    w = online_preds.w
+    online_w = online_preds.w  # [T, B, C]
+    target_w = target_preds.w  # [T, B, C]
+    if self.stop_w_grad:
+      online_w = jax.lax.stop_gradient(online_w)
+      target_w = jax.lax.stop_gradient(target_w)
+
 
     # all data is [T, B, N, A, C]
     compute_q_jax = jax.vmap(compute_q, in_axes=(2, None), out_axes=2)  # over N
     compute_q_jax = jax.vmap(compute_q_jax, in_axes=(3, None), out_axes=3)  # over A
 
     # output will be [T, B, N, A]
-    online_q = compute_q_jax(online_preds.sf, w)
-    target_q = compute_q_jax(target_preds.sf, w)
+    online_q = compute_q_jax(online_preds.sf, online_w)
+    target_q = compute_q_jax(target_preds.sf, target_w)
 
     # VMAP over dimension = N
     q_learning = jax.vmap(

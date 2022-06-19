@@ -1,0 +1,80 @@
+train:
+
+  # -----------------------
+  # clean
+  # -----------------------
+  - name: toggle
+    task_kinds: toggle
+    num_dists: 0
+
+  - name: clean
+    task_kinds: clean
+    num_dists: 0
+
+  - name: pickup_cleaned
+    task_kinds: pickup_cleaned
+    num_dists: 0
+
+  # -----------------------
+  # slice
+  # -----------------------
+  - name: slice
+    task_kinds: slice
+    num_dists: 0
+
+  - name: pickup_sliced
+    task_kinds: pickup_sliced
+    num_dists: 0
+
+  # -----------------------
+  # 2 objects
+  # -----------------------
+  - name: toggle2
+    task_kinds: toggle2
+    num_dists: 0
+
+  - name: slice2
+    task_kinds: slice2
+    num_dists: 0
+
+  # -----------------------
+  # cook
+  # -----------------------
+  - name: cook
+    task_kinds: cook
+    taskarg_options:
+      y: [pot]
+    num_dists: 0
+
+
+test:
+
+  - name: clean_and_slice
+    task_kinds: clean_and_slice
+    num_dists: 0
+
+  - name: clean_and_toggle
+    task_kinds: clean_and_toggle
+    num_dists: 0
+
+  - name: toggle_and_slice
+    task_kinds: toggle_and_slice
+    num_dists: 0
+
+  - name: clean_and_slice_and_toggle
+    task_kinds: clean_and_slice_and_toggle
+    num_dists: 0
+
+
+task_reps:
+
+  toggle: turnon x
+  clean: clean x
+  slice: slice x
+  cook: cook x
+
+  pickup_cleaned: clean x then pickup x
+  pickup_sliced: slice x then pickup x
+
+  toggle2: turnon x and turnon y
+  slice2: slice x and slice y

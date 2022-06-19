@@ -45,6 +45,8 @@ class CumulantRewardLoss:
     elif self.loss == 'binary':
       error = -distrax.Bernoulli(logits=reward_pred).log_prob(rewards)
 
+    phi_l1 = None
+    w_l1 = None
     if self.balance > 0:
       # flatten
       raw_final_error = error.mean()
@@ -70,6 +72,7 @@ class CumulantRewardLoss:
       # [T, B, D] --> [T, B]
       phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
       phi_l1_rewarding = (phi_l1.reshape(-1)*nonzero).sum()/(1e-5+positive_keep)
+      w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
       metrics = {
         f'loss_reward_{self.loss}': final_error,
         f'z.raw_loss_{self.loss}': raw_final_error,
@@ -83,6 +86,7 @@ class CumulantRewardLoss:
         f'z.phi': cumulants.mean(),
         f'z.phi_l1_rewarding': phi_l1_rewarding,
         f'z.phi_l1_all': phi_l1.mean(),
+        f'z.w_l1_all': w_l1.mean(),
         f'z.phi_std': cumulants.std(),
       }
     else:
@@ -93,18 +97,11 @@ class CumulantRewardLoss:
 
     final_error = final_error*self.coeff
     if self.l1_coeff is not None and self.l1_coeff != 0:
-
-      if self.nmodules > 1:
-        # cumulants = [T, B, D] --> [T, B, M, D/M]
-        cumulants = jnp.stack(jnp.split(cumulants, self.nmodules, axis=-1), axis=2)
-        # [T, B, M]
-        phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
-        # sum over M, mean over [T, B]
-        phi_l1 = phi_l1.sum(-1).mean()
-      else:
+      if phi_l1 is None:
         # cumulants = [T, B, D]
         phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
-        phi_l1 = phi_l1.mean()
+
+      phi_l1 = phi_l1.mean()
 
       metrics['loss_phi_l1'] = phi_l1
       phi_l1 = phi_l1*self.l1_coeff
@@ -113,16 +110,9 @@ class CumulantRewardLoss:
 
     if self.wl1_coeff is not None and self.wl1_coeff != 0:
 
-      if self.nmodules > 1:
-        # cumulants = [T, B, D] --> [T, B, M, D/M]
-        task = jnp.stack(jnp.split(task, self.nmodules, axis=-1), axis=2)
-        # [T, B, M]
+      if w_l1 is None:
         w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
-        # sum over M, mean over [T, B]
-        w_l1 = w_l1.sum(-1).mean()
-      else:
-        w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
-        w_l1 = w_l1.mean()
+      w_l1 = w_l1.mean()
 
       metrics['loss_w_l1'] = w_l1
       w_l1 = w_l1*self.wl1_coeff

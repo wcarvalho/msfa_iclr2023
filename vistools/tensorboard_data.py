@@ -10,6 +10,8 @@ from tqdm import tqdm
 import copy
 import collections
 import re
+from IPython.display import display
+
 from sklearn import metrics
 
 def flatten_dict(d, parent_key='', sep='_'):
@@ -147,7 +149,7 @@ class TensorboardData(object):
         self.settings_df = pd.concat((self.settings_df, df))
 
 
-    def load_settings(self, skip=[], config_search='config.json'):
+    def load_settings(self, skip=[], config_search='config.json', show_varied=True):
         """For each experiment, load the settings (e.g. configs). 
         
         Args:
@@ -195,6 +197,9 @@ class TensorboardData(object):
         for k in possible_keys:
             self.settings_df[k] = fetched_settings[k]
 
+        if show_varied:
+          self.varied(show=True)
+
     def load_tensorboard(self, njobs=4, load_paths=False, key_filter=None, val_fn=None):
         """Summary
         
@@ -205,7 +210,7 @@ class TensorboardData(object):
         """
         if load_paths:
             self.load_paths()
-            self.load_settings()
+            self.load_settings(show_varied=False)
         # -----------------------
         # clear data statistics dataframe
         # clear previous data arrays being stored
@@ -287,6 +292,22 @@ class TensorboardData(object):
     def subset(self, key, value):
         return self.settings[self.settings[key] == value]
 
+    def varied(self, settings=None, show=True):
+      settings = settings or []
+      columns = self.settings_df.columns
+      columns = [c for c in columns if not c in ['path', 'fullpath', 'experiment_settings', 'experiment_settings_seed']]
+      vals = {c: set([u for u in self.settings_df[c].unique() if u==u and u is not None]) - set([None, np.nan]) for c in columns}
+      unique = {c:v for c,v in vals.items() if len(v) > 1}
+      unique_none = {c:None for c,v in vals.items() if len(v) > 1}
+
+      settings = list(set(settings).union(set(unique.keys())))
+      df = self.settings_df[settings]
+      if show:
+        pprint(unique)
+        display(df)
+
+      return unique_none, unique, df
+    
     def filter(self, filters):
         outputs = []
         for filter_dict in filters:
@@ -542,6 +563,7 @@ def reload_event_accumulator(log_event, key_filter=None, val_fn=None):
 
     keys = log_event.Tags()['tensors']
 
+
     if key_filter:
         keys = filter(key_filter, keys)
 
@@ -556,6 +578,7 @@ def reload_event_accumulator(log_event, key_filter=None, val_fn=None):
         # store {setting: [values]}
         # ======================================================
         key2val[key] = np.array([val_fn(v) for v in vals])
+        key2val[f"{key}_steps"] = np.array(step_nums)
 
     return key2val
 

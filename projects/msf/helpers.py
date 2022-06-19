@@ -3,6 +3,7 @@ import functools
 
 from acme import wrappers
 import dm_env
+import rlax
 
 from envs.acme.goto_avoid import GoToAvoid
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper
@@ -15,7 +16,7 @@ from agents.td_agent import losses
 
 from losses import usfa as usfa_losses
 from losses.vae import VaeAuxLoss
-from losses.contrastive_model import DeltaContrastLoss, ModuleContrastLoss
+from losses.contrastive_model import ModuleContrastLoss, TimeContrastLoss
 from losses import cumulants
 from modules.ensembles import QLearningEnsembleLoss
 
@@ -28,6 +29,7 @@ def make_environment(evaluation: bool = False,
                      setting='small',
                      path='.',
                      image_wrapper=True,
+                     obj2rew=None,
                      ) -> dm_env.Environment:
   """Loads environments.
   
@@ -57,84 +59,98 @@ def make_environment(evaluation: bool = False,
       room_size=9, nobjects=3,
       respawn=True),
     )
-  if evaluation:
-    obj2rew={
-        '1,1,0,0':{
-            "pan" : 1,
-            "plates" :1,
-            "tomato" : 0,
-            "knife" : 0,
-            },
-        '1,1,1,1':{
-            "pan" : 1,
-            "plates" : 1,
-            "tomato" : 1,
-            "knife" : 1,
-            },
-        '-1,1,-1,1':{
-            "pan" : -1,
-            "plates" : 1,
-            "tomato" : -1,
-            "knife" : 1,
-            },
-        '-1,1,0,1':{
-            "pan" : -1,
-            "plates" : 1,
-            "tomato" : 0,
-            "knife" : 1,
-            },
-        "1,0,0,0":{
-            "pan" : 1,
-            "plates" : 0,
-            "tomato" : 0,
-            "knife" : 0,
-            },
-        "0,1,0,0":{
-            "pan" : 0,
-            "plates" : 1,
-            "tomato" : 0,
-            "knife" : 0,
-            },
-        "0,0,1,0":{
-            "pan" : 0,
-            "plates" : 0,
-            "tomato" : 1,
-            "knife" : 0,
-            },
-        "0,0,0,1":{
-            "pan" : 0,
-            "plates" : 0,
-            "tomato" : 0,
-            "knife" : 1,
-            },
-    }
-  else:
-    obj2rew={
-        "1,0,0,0":{
-            "pan" : 1,
-            "plates" : 0,
-            "tomato" : 0,
-            "knife" : 0,
-            },
-        "0,1,0,0":{
-            "pan" : 0,
-            "plates" : 1,
-            "tomato" : 0,
-            "knife" : 0,
-            },
-        "0,0,1,0":{
-            "pan" : 0,
-            "plates" : 0,
-            "tomato" : 1,
-            "knife" : 0,
-            },
-        "0,0,0,1":{
-            "pan" : 0,
-            "plates" : 0,
-            "tomato" : 0,
-            "knife" : 1,
-            },
-    }
+  if obj2rew is None:
+    if evaluation:
+      obj2rew={
+          "1,0,0,0":{
+              "pan" : 1,
+              "plates" : 0,
+              "tomato" : 0,
+              "knife" : 0,
+              },
+          "0,1,0,0":{
+              "pan" : 0,
+              "plates" : 1,
+              "tomato" : 0,
+              "knife" : 0,
+              },
+          "0,0,1,0":{
+              "pan" : 0,
+              "plates" : 0,
+              "tomato" : 1,
+              "knife" : 0,
+              },
+          "0,0,0,1":{
+              "pan" : 0,
+              "plates" : 0,
+              "tomato" : 0,
+              "knife" : 1,
+              },
+          '1,1,0,0':{
+              "pan" : 1,
+              "plates" :1,
+              "tomato" : 0,
+              "knife" : 0,
+              },
+          '1,1,1,1':{
+              "pan" : 1,
+              "plates" : 1,
+              "tomato" : 1,
+              "knife" : 1,
+              },
+          '-1,1,0,1':{
+              "pan" : -1,
+              "plates" : 1,
+              "tomato" : 0,
+              "knife" : 1,
+              },
+          '-1,1,-1,1':{
+              "pan" : -1,
+              "plates" : 1,
+              "tomato" : -1,
+              "knife" : 1,
+              },
+          '-1,1,-1,-1':{
+              "pan" : -1,
+              "plates" : 1,
+              "tomato" : -1,
+              "knife" : -1,
+              },
+          '-1,-1,-1,-1':{
+              "pan" : -1,
+              "plates" : -1,
+              "tomato" : -1,
+              "knife" : -1,
+              },
+
+      }
+    else:
+      obj2rew={
+          "1,0,0,0":{
+              "pan" : 1,
+              "plates" : 0,
+              "tomato" : 0,
+              "knife" : 0,
+              },
+          "0,1,0,0":{
+              "pan" : 0,
+              "plates" : 1,
+              "tomato" : 0,
+              "knife" : 0,
+              },
+          "0,0,1,0":{
+              "pan" : 0,
+              "plates" : 0,
+              "tomato" : 1,
+              "knife" : 0,
+              },
+          "0,0,0,1":{
+              "pan" : 0,
+              "plates" : 0,
+              "tomato" : 0,
+              "knife" : 1,
+              },
+      }
 
   env_wrappers = []
   if image_wrapper:
@@ -160,7 +176,7 @@ def make_environment(evaluation: bool = False,
 
   return wrappers.wrap_all(env, wrapper_list)
 
-def q_aux_loss(config):
+def q_aux_sf_loss(config):
   """Create auxilliary Q-learning loss for SF
   """
   if config.q_aux == "single":
@@ -170,27 +186,42 @@ def q_aux_loss(config):
   else:
     raise RuntimeError(config.q_aux)
 
+  if config.sf_loss == 'n_step_q_learning':
+    tx_pair = rlax.IDENTITY_PAIR
+  elif config.sf_loss == 'transformed_n_step_q_learning':
+    tx_pair = rlax.SIGNED_HYPERBOLIC_PAIR
+  else:
+    raise NotImplementedError(config.sf_loss)
+
+  add_bias = getattr(config, "step_penalty", 0) > 0
   return loss(
           coeff=config.value_coeff,
           discount=config.discount,
           sched_end=config.q_aux_anneal,
           sched_end_val=config.q_aux_end_val,
-          tx_pair=config.tx_pair)
+          tx_pair=tx_pair,
+          add_bias=add_bias,
+          mask_loss=config.qaux_mask_loss,
+          stop_w_grad=getattr(config, 'stop_w_grad', False))
 
-def usfa_farm(default_config, env_spec, flat=True, predict_cumulants=True, learn_model=False):
+def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, learn_model=False):
   config = data_utils.merge_configs(
     dataclass_configs=[
-      configs.ModularUSFAConfig(),
       configs.QAuxConfig(),
+      configs.ModularUSFAConfig(),
       configs.RewardConfig(),
       configs.FarmModelConfig() if learn_model else configs.FarmConfig(),
     ],
     dict_configs=default_config)
 
-  if flat:
+  if net == "flat":
     NetworkCls =  nets.usfa_farmflat_model
-  else:
+  elif net == "independent":
     NetworkCls =  nets.usfa_farm_model
+  elif net == "msf":
+    NetworkCls =  nets.msf
+  else:
+    raise NotImplementedError
 
   NetKwargs=dict(
     config=config,
@@ -200,7 +231,7 @@ def usfa_farm(default_config, env_spec, flat=True, predict_cumulants=True, learn
 
   LossFn = td_agent.USFALearning
 
-  aux_tasks=[q_aux_loss(config)]
+  aux_tasks=[q_aux_sf_loss(config)]
 
   if predict_cumulants:
     aux_tasks.append(
@@ -211,24 +242,26 @@ def usfa_farm(default_config, env_spec, flat=True, predict_cumulants=True, learn
         balance=config.balance_reward))
 
   if learn_model:
-    aux_tasks.append(
-        DeltaContrastLoss(
-          coeff=config.model_coeff,
-          extra_negatives=config.extra_negatives,
-          temperature=config.temperature)
-        )
-    if config.module_model_loss:
+    if config.contrast_module_coeff > 0:
       aux_tasks.append(
           ModuleContrastLoss(
-            coeff=config.module_model_coeff,
-            extra_negatives=config.time_negatives,
+            coeff=config.contrast_module_coeff,
+            extra_negatives=config.extra_module_negatives,
+            temperature=config.temperature,
+            prediction=config.contrast_module_pred)
+          )
+    if config.contrast_time_coeff > 0:
+      aux_tasks.append(
+          TimeContrastLoss(
+            coeff=config.contrast_time_coeff,
+            extra_negatives=config.extra_time_negatives,
             temperature=config.temperature,
             normalize_step=config.normalize_step)
           )
-
   LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
   LossFnKwargs.update(
     loss=config.sf_loss,
+    mask_loss=config.sf_mask_loss,
     shorten_data_for_cumulant=True, # needed since using delta for cumulant
     extract_cumulants=losses.cumulants_from_preds,
     aux_tasks=aux_tasks)
@@ -243,6 +276,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
   default_config = dict()
   default_config.update(config_kwargs or {})
   agent = agent.lower()
+
   if agent == "r2d1":
   # Recurrent DQN/UVFA
     config = data_utils.merge_configs(
@@ -254,6 +288,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     NetKwargs=dict(config=config, env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
@@ -268,6 +303,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     NetKwargs=dict(config=config, env_spec=env_spec, task_input=False)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
@@ -282,6 +318,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     NetKwargs=dict(config=config, env_spec=env_spec, eval_noise=True)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
@@ -296,6 +333,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     NetKwargs=dict(config=config,env_spec=env_spec)
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
 
     loss_label = 'r2d1'
     eval_network = config.eval_network
@@ -318,6 +356,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
       loss=config.sf_loss,
+      mask_loss=config.sf_mask_loss,
       lambda_=config.lambda_,
       )
 
@@ -346,13 +385,14 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
     LossFnKwargs.update(
       loss=config.sf_loss,
+      mask_loss=config.sf_mask_loss,
       shorten_data_for_cumulant=True,
       extract_cumulants=functools.partial(
         losses.cumulants_from_preds,
         stop_grad=True,
       ),
       aux_tasks=[
-        q_aux_loss(config),
+        q_aux_sf_loss(config),
         cumulants.CumulantRewardLoss(
           shorten_data_for_cumulant=True,
           coeff=config.reward_coeff,
@@ -364,34 +404,32 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     loss_label = 'usfa'
     eval_network = config.eval_network
 
-  elif agent == "usfa_farmflat":
+  elif agent == "msf":
   # USFA + cumulants from FARM + Q-learning
     return usfa_farm(default_config, env_spec,
-      flat=True,
-      predict_cumulants=True,
-      learn_model=False)
-
-  elif agent == "usfa_farmflat_model":
-  # USFA + cumulants from FARM + Q-learning + structured model
-    return usfa_farm(default_config, env_spec,
-      flat=True,
+      net='msf',
       predict_cumulants=True,
       learn_model=True)
-
-  elif agent == "usfa_farm":
-  # same as above except each module produces independent cumulants, SFs
+  elif agent == "msf_delta_model":
+  # USFA + cumulants from FARM + Q-learning
+    default_config['contrast_module_pred'] = 'delta'
     return usfa_farm(default_config, env_spec,
-      flat=False,
-      predict_cumulants=True,
-      learn_model=False)
-
-  elif agent == "usfa_farm_model":
-  # same as above except each module produces independent cumulants, SFs
-    return usfa_farm(default_config, env_spec,
-      flat=False,
+      net='msf',
       predict_cumulants=True,
       learn_model=True)
-
+  elif agent == "msf_time_model":
+  # USFA + cumulants from FARM + Q-learning
+    return usfa_farm(default_config, env_spec,
+      net='msf',
+      predict_cumulants=True,
+      learn_model=True)
+  elif agent == "msf_state_model":
+  # USFA + cumulants from FARM + Q-learning
+    default_config['contrast_module_pred'] = 'state'
+    return usfa_farm(default_config, env_spec,
+      net='msf',
+      predict_cumulants=True,
+      learn_model=True)
   else:
     raise NotImplementedError(agent)
 

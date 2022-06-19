@@ -96,7 +96,7 @@ def build_task_embedder(config):
   return LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
-        task_dim=config.word_dim,
+        sentence_dim=config.word_dim,
         initializer=config.word_initializer,
         compress=config.word_compress)
 
@@ -200,7 +200,7 @@ def r2d1_noise_ensemble(config, env_spec):
       task_embedder=LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
-        task_dim=config.word_dim,
+        sentence_dim=config.word_dim,
         initializer=config.word_initializer,
         compress=config.word_compress),
     )
@@ -231,7 +231,7 @@ def r2d1_gated(config, env_spec):
   task_embedder = LanguageTaskEmbedder(
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
-        task_dim=config.word_dim,
+        sentence_dim=config.word_dim,
         initializer=config.word_initializer,
         compress=config.word_compress)
 

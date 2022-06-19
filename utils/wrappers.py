@@ -17,7 +17,8 @@ class ObservationRemapWrapper(base.EnvironmentWrapper):
     self.original_obs_dict = original_obs_spec._asdict()
 
     # create full mapping
-    self.original_fields = set(self.original_obs_dict.keys())
+    okeys = self.original_obs_dict.keys()
+    self.original_fields = set(okeys)
     self.replace_fields = set(remap.keys())
     self.keep_fields = self.original_fields - self.replace_fields
 
@@ -27,6 +28,7 @@ class ObservationRemapWrapper(base.EnvironmentWrapper):
 
     # new obs spec
     self.Obs = namedtuple('Observation', sorted(self.remap.values()))
+
 
 
   def reset(self) -> dm_env.TimeStep:

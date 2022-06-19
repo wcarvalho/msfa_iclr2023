@@ -37,9 +37,12 @@ def save__init__args(values, underscore=False, overwrite=False, subclass_only=Fa
       if arg in values and (not hasattr(self, attr) or overwrite):
           setattr(self, attr, values[arg])
 
-def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
+def expt_plot(ax, all_x, all_y, all_steps, label, xmax=None, **kwargs):
   runs = []
-  for x, y in zip(all_x, all_y):
+  for x, y, steps in zip(all_x, all_y, all_steps):
+
+    # import ipdb; ipdb.set_trace()
+    # x_ = x[steps]
     if len(x) > len(y):
       x = x[:len(y)]
     elif len(y) > len(x):
@@ -49,6 +52,8 @@ def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
       keep = x < xmax
       y = y[keep]
       x = x[keep]
+
+
     # import ipdb; ipdb.set_trace()
     df = pd.DataFrame.from_dict(dict(x=x,y=y))
     runs.append(expt.Run(path='', df=df))
@@ -104,6 +109,7 @@ class VisDataObject:
 
     def plot_mean_stderr(self, ax, key, datapoint=0, xlabel_key=None, err_style='fill', settings_idx=-1, label_settings=[],**kwargs):
         df, all_data = self.tensorboard_data[key]
+        _, xdata_steps = self.tensorboard_data[f"{key}_steps"]
         settings = df['experiment_settings'].tolist()
 
         if settings_idx > -1:
@@ -114,14 +120,15 @@ class VisDataObject:
         for idx, setting in enumerate(settings):
             # this is a list of all the lines
             y = all_data[setting]
+            steps = xdata_steps[setting]
             if xlabel_key is None:
                 x = [np.arange(len(_y)) for _y in y]
             else:
                 # use key as x-axis
                 _, xdata = self.tensorboard_data[xlabel_key]
+                
                 # all same, so pick 1st
                 x = xdata[setting]
-
 
             # -----------------------
             # compute plot/fill kwargs
@@ -136,7 +143,7 @@ class VisDataObject:
                 idx=settings_idx,
                 )
 
-            ax = expt_plot(ax=ax, all_x=x, all_y=y, err_style=err_style, **kwargs, **plot_kwargs)
+            ax = expt_plot(ax=ax, all_x=x, all_y=y, all_steps=steps, err_style=err_style, **kwargs, **plot_kwargs)
 
     def plot_individual_lines(self, ax, key, datapoint=0, xlabel_key=None, settings_idx=-1, label_settings=[], **kwargs):
         df, all_data = self.tensorboard_data[key]
@@ -745,14 +752,17 @@ def display_metadata(vis_objects, settings=[], stats=[], data_key=None):
 
     settings_df = pd.concat([o.settings_df for o in vis_objects])
     columns = settings_df.columns
-    columns = [c for c in columns if not c in ['agent', 'path', 'fullpath', 'experiment_settings', 'experiment_settings_seed']]
+    columns = [c for c in columns if not c in ['path', 'fullpath', 'experiment_settings', 'experiment_settings_seed']]
     vals = {c: set([u for u in settings_df[c].unique() if u==u and u is not None]) - set([None, np.nan]) for c in columns}
+    # vals = {c: set([u for u in settings_df[c].unique()]) for c in columns}
     unique = {c:v for c,v in vals.items() if len(v) > 1}
 
-    settings = list(set(settings).union(set(unique.keys())))
+    settings = set(settings).union(set(unique.keys()))
 
     try:
-      settings_df = settings_df[settings]
+      # remaining = set(settings_df.columns) - settings
+      # new_order = list(settings) + list(remaining)
+      settings_df = settings_df[list(settings)]
     except Exception as e:
       pass
 

@@ -14,6 +14,8 @@ Comand I run:
 
 # Do not preallocate GPU memory for JAX.
 import os
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 import launchpad as lp
 from launchpad.nodes.python.local_multi_processing import PythonProcess
@@ -55,7 +57,7 @@ def build_program(
   num_actors : int,
   wandb_init_kwargs=None,
   update_wandb_name=True, # use path from logdir to populate wandb name
-  setting='small',
+  env_kwargs=None,
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
   log_every=5.0, # how often to log
@@ -65,6 +67,8 @@ def build_program(
   debug: bool=False,
   **kwargs,
   ):
+  env_kwargs = env_kwargs or dict()
+  setting = env_kwargs.get('setting', 'large_respawn')
   # -----------------------
   # load env stuff
   # -----------------------
@@ -133,7 +137,7 @@ def build_program(
     NetKwargs=NetKwargs,
     LossFn=LossFn,
     LossFnKwargs=LossFnKwargs,
-    loss_label=loss_label,
+    loss_label='Loss',
     num_actors=num_actors,
     save_config_dict=save_config_dict,
     log_every=log_every,
