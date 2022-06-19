@@ -75,7 +75,7 @@ class BabyAIEmbedding(OAREmbedding):
 
 class LinearTaskEmbedding(hk.Module):
   """docstring for LinearTaskEmbedding"""
-  def __init__(self, hidden_dim, out_dim, num_tasks=None, structured=False, **kwargs):
+  def __init__(self, hidden_dim=128, out_dim=6, num_tasks=None, structured=False, **kwargs):
     super(LinearTaskEmbedding, self).__init__()
     self.hidden_dim = hidden_dim
     self.structured = structured
@@ -86,12 +86,19 @@ class LinearTaskEmbedding(hk.Module):
     else:
       self.layer2_dim = out_dim
 
-    self.layer1 = hk.Linear(hidden_dim,
-      with_bias=False, 
-      w_init=hk.initializers.RandomNormal(
-          stddev=1., mean=0.))
+    if hidden_dim > 0:
+      self.layer1 = hk.Linear(hidden_dim,
+        with_bias=False, 
+        w_init=hk.initializers.RandomNormal(
+            stddev=1., mean=0.))
 
-    self.layer2 = hk.Linear(self.layer2_dim)
+      self.layer2 = hk.Linear(self.layer2_dim)
+    else:
+      self.layer1 = lambda x:x
+      self.layer2 = hk.Linear(out_dim,
+        with_bias=False, 
+        w_init=hk.initializers.RandomNormal(
+            stddev=1., mean=0.))
 
   def __call__(self, x):
     """Summary
@@ -100,7 +107,9 @@ class LinearTaskEmbedding(hk.Module):
         x (TYPE): B x D
     """
     def apply_net(x_):
-      y = jax.nn.relu(self.layer1(x_))
+      y = self.layer1(x_)
+      if self.hidden_dim > 0:
+        y = jax.nn.relu(y)
       return self.layer2(y)
 
     if self.structured:
@@ -118,7 +127,7 @@ class LinearTaskEmbedding(hk.Module):
     else:
       z = apply_net(x)
 
-    return z
+    return z 
 
   @property
   def out_dim(self):

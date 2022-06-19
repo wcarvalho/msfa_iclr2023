@@ -26,14 +26,14 @@ def get(search, agent=''):
       }
     ]
 
-  elif search == 'gen5':
+  elif search == 'gen6':
     space = [
       { # 6
         "seed": tune.grid_search([1]),
-        "setting": tune.grid_search(['genv5']),
+        "setting": tune.grid_search(['genv4']),
         "agent": tune.grid_search(['r2d1', 'msf']),
-        "task_reps": tune.grid_search(['no_object']),
-        "max_number_of_steps": tune.grid_search([10_000_000]),
+        "task_reps": tune.grid_search(['object_noand']),
+        "max_number_of_steps": tune.grid_search([40_000_000]),
       }
     ]
 

@@ -232,7 +232,7 @@ class KitchenComboLevel(KitchenLevel):
     # -----------------------
     if not self.infinite:
       _done = self.completed[self.rewarding_tasks].sum(-1) == self.ntasks
-      done = _done.all()
+      done = done or _done.all()
 
 
     obs['mission'] = self.mission_arr

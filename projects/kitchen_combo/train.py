@@ -51,7 +51,7 @@ def main(_):
     config['min_replay_size'] = 10
     config['trace_length'] = 4
     config['batch_size'] = 8
-    config['reward_coeff'] = 100
+    config['word_dim'] = 0
     config['task_embedding'] = 'embedding'
 
     # config['argmax_mod'] = True
