@@ -16,7 +16,7 @@ class LinearTaskEmbed(base.Module):
 
   def __init__(self, out_dim):
     super().__init__(name='linear_task_embed')
-    self.layer = hk.Linear(out_dim,with_bias=False,w_init=hk.initializers.RandomNormal(stddev=1., mean=0.))
+    self.layer = hk.Linear(out_dim,with_bias=False,w_init=hk.initializers.TruncatedNormal(stddev=1., mean=0.)) #NOTE: could be truncated normal?
 
   def __call__(self, inputs) -> jnp.ndarray:
     output = self.layer(inputs)

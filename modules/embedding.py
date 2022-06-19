@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as np
 Images = jnp.ndarray
 
-
+import distrax
 
 class OAREmbedding(hk.Module):
   """Module for embedding (observation, action, reward, task) inputs together."""
@@ -63,11 +63,65 @@ class OneHotTask(hk.Module):
     weighted = each*jnp.expand_dims(khot, axis=1)
     return weighted.sum(0)
 
+  @property
+  def out_dim(self):
+    return self.dim
+
+
+class Identity(hk.Module):
+  """docstring for OneHotTask"""
+  def __init__(self, dim):
+    super(Identity, self).__init__()
+    self.dim = dim
+  
+  def __call__(self, x):
+    return x
+
+  @property
+  def out_dim(self):
+    return self.dim
+
+class VectorEmbed(hk.Module):
+  def __init__(self, out_dim):
+    super(VectorEmbed, self).__init__()
+    self.dim = out_dim
+    self.embedder = hk.Linear(output_size=out_dim,with_bias=False,w_init=hk.initializers.TruncatedNormal()) #default is mean 0, std 1
+
+  def __call__(self, x):
+    return self.embedder(x)
+
+  @property
+  def out_dim(self):
+    return self.dim
+
+
+def st_bernoulli(x, key):
+  """Straight-through bernoulli sample"""
+  zero = x - jax.lax.stop_gradient(x)
+  x = distrax.Bernoulli(probs=x).sample(seed=key)
+
+  return zero + jax.lax.stop_gradient(x)
+
+def st_round(x):
+  """Straight-through bernoulli sample"""
+  zero = x - jax.lax.stop_gradient(x)
+  x = jnp.round(x)
+  return zero + jax.lax.stop_gradient(x)
 
 class LanguageTaskEmbedder(hk.Module):
-  """Module that embed words and then runs them through GRU."""
-  def __init__(self, vocab_size, word_dim, task_dim,
-    initializer='TruncatedNormal', compress='last', **kwargs):
+  """Module that embed words and then runs them through GRU. The Token`0` is treated as padding and masked out."""
+  def __init__(self,
+      vocab_size: int,
+      word_dim: int,
+      sentence_dim: int,
+      task_dim: int=None,
+      initializer: str='TruncatedNormal',
+      compress: str ='last',
+      gates: int=None,
+      gate_type: str='sample',
+      tanh: bool=False,
+      relu: bool=False,
+      **kwargs):
     super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
     self.word_dim = word_dim
@@ -78,7 +132,23 @@ class LanguageTaskEmbedder(hk.Module):
       embed_dim=word_dim,
       w_init=initializer,
       **kwargs)
-    self.language_model = hk.GRU(task_dim)
+    self.sentence_dim = sentence_dim
+    self.language_model = hk.GRU(sentence_dim)
+
+    if task_dim is None or task_dim == 0:
+      self.task_dim = sentence_dim
+      self.task_projection = lambda x:x
+    else:
+      self.task_dim = task_dim
+      self.task_projection = hk.Linear(task_dim)
+
+    self.gates = gates
+    self.tanh = tanh
+    self.relu = relu
+    self.gate_type = gate_type.lower()
+    assert self.gate_type in ['round', 'sample', 'sigmoid']
+    if self.gates is not None and self.gates > 0:
+      self.gate = hk.Linear(gates)
   
   def __call__(self, x : jnp.ndarray):
     """Embed words, then run through GRU.
@@ -90,15 +160,74 @@ class LanguageTaskEmbedder(hk.Module):
         TYPE: Description
     """
     B, N = x.shape
-    initial = self.language_model.initial_state(B)
+
+    # -----------------------
+    # embed words + mask
+    # -----------------------
     words = self.embedder(x) # B x N x D
+    mask = (x > 0).astype(words.dtype)
+    words = words*jnp.expand_dims(mask, axis=-1)
+
+    # -----------------------
+    # pass through GRU
+    # -----------------------
+    initial = self.language_model.initial_state(B)
     words = jnp.transpose(words, (1,0,2))  # N x B x D
     sentence, _ = hk.static_unroll(self.language_model, words, initial)
+
     if self.compress == "last":
-      return sentence[-1] # embedding at end
+      task = sentence[-1] # embedding at end
     elif self.compress == "sum":
-      return sentence.sum(0)
+      task = sentence.sum(0)
     else:
       raise NotImplementedError(self.compress)
 
+    # [B, D]
+    task_proj = self.task_projection(task)
 
+    if self.tanh:
+      task_proj = jax.nn.tanh(task_proj)
+    if self.relu:
+      task_proj = jax.nn.relu(task_proj)
+
+    if self.gates is not None and self.gates > 0:
+      # [B, G]
+      gate = jax.nn.sigmoid(self.gate(task))
+      if self.gate_type == 'sample':
+        gate = st_bernoulli(gate, key=hk.next_rng_key())
+      elif self.gate_type == 'round':
+        gate = st_round(gate)
+
+      # [B, D] --> [B, G, D/G]
+      task_proj = jnp.stack(jnp.split(task_proj, self.gates, axis=-1), axis=1) 
+      # [B, G, D/G] * [B, G, 1]
+      task_proj = task_proj*jnp.expand_dims(gate, 2)
+      task_proj = task_proj.reshape(B, -1)
+
+    return task_proj
+
+
+  @property
+  def out_dim(self):
+    return self.task_dim
+
+
+def embed_position(factors: jnp.ndarray, size: int):
+  """Summary
+  
+  Args:
+      factors (jnp.ndarray): B x N x ...
+      size (int): size of embedding
+  
+  Returns:
+      TYPE: Description
+  """
+  N = factors.shape[1]
+  embedder = hk.Embed(
+    vocab_size=N,
+    embed_dim=size)
+  embeddings = embedder(jnp.arange(N)) # N x D
+  concat = lambda a,b: jnp.concatenate((a, b), axis=-1)
+  factors = jax.vmap(concat, in_axes=(0, None), out_axes=0)(
+    factors, embeddings)
+  return factors

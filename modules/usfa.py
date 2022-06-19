@@ -29,9 +29,12 @@ class USFAInputs(NamedTuple):
 def sample_gauss(mean, var, key, nsamples, axis):
   # gaussian (mean=mean, var=.1I)
   # mean = [B, D]
-  samples = data_utils.expand_tile_dim(mean, axis=axis, size=nsamples)
-  dims = samples.shape # [B, N, D]
-  samples =  samples + jnp.sqrt(var) * jax.random.normal(key, dims)
+  if nsamples > 1:
+    samples = data_utils.expand_tile_dim(mean, axis=axis, size=nsamples)
+    dims = samples.shape # [B, N, D]
+    samples =  samples + jnp.sqrt(var) * jax.random.normal(key, dims)
+  else:
+    samples = jnp.expand_dims(mean, axis=1) # [B, N, D]
   return samples.astype(mean.dtype)
 
 
@@ -44,11 +47,13 @@ class SfQNet(hk.Module):
       num_cumulants: int,
       hidden_sizes: Sequence[int],
       multihead: bool=False,
+      layernorm: str='none',
   ):
     super().__init__(name='sf_network')
     self.num_actions = num_actions
     self.num_cumulants = num_cumulants
     self.multihead = multihead
+    self.layernorm = layernorm.lower()
     if multihead:
       self.mlp_factory = lambda: hk.nets.MLP([
           *hidden_sizes, num_actions])
@@ -66,6 +71,14 @@ class SfQNet(hk.Module):
     Returns:
         jnp.ndarray: 2-D tensor of action values of shape [batch_size, num_actions]
     """
+
+    if self.layernorm == 'sf_input':
+      inputs = hk.LayerNorm(
+          axis=-1,
+          param_axis=-1,
+          create_scale=False,
+          create_offset=False)(inputs)
+
     if self.multihead:
       # [B, z] --> [B, C, z]
       inputs = data_utils.expand_tile_dim(inputs, size=self.num_cumulants, axis=1)
@@ -81,6 +94,14 @@ class SfQNet(hk.Module):
       # [B, A, C]
       sf = jnp.reshape(sf, [sf.shape[0], self.num_actions, self.num_cumulants])
 
+    if self.layernorm == 'sf':
+      sf = sf - sf.reshape(sf.shape[0], -1).mean(-1)
+      # sf = hk.LayerNorm(
+      #     axis=-1,
+      #     param_axis=-1,
+      #     create_scale=False,
+      #     create_offset=False)(sf)
+
     q_values = jnp.sum(sf*w, axis=-1) # [B, A]
 
     return sf, q_values
@@ -91,25 +112,27 @@ class SfQNet(hk.Module):
 # ======================================================
 class UsfaHead(hk.Module):
   """Page 17."""
+
   def __init__(self,
-    num_actions: int,
-    state_dim: int,
-    hidden_size : int=128,
-    policy_size : int=32,
-    policy_layers : int=2,
-    variance: float=0.1,
-    nsamples: int=30,
-    sf_input_fn: hk.Module = None,
-    task_embed: int = 0,
-    duelling: bool = False,
-    normalize_task: bool = False,
-    z_as_train_task: bool = False,
-    train_task_as_z: bool = False, #sets C = M in the paper
-    multihead: bool = False,
-    concat_w: bool = False,
-    ):
+               num_actions: int,
+               state_dim: int,
+               hidden_size: int = 128,
+               policy_size: int = 32,
+               policy_layers: int = 2,
+               variance: float = 0.1,
+               nsamples: int = 30,
+               sf_input_fn: hk.Module = None,
+               task_embed: int = 0,
+               duelling: bool = False,
+               normalize_task: bool = False,
+               z_as_train_task: bool = False,
+               train_task_as_z: bool = False,  # sets C = M in the paper
+               multihead: bool = False,
+               concat_w: bool = False,
+               layernorm: str = 'none',
+               ):
     """Summary
-    
+
     Args:
         num_actions (int): Description
         state_dim (int): Description
@@ -125,7 +148,7 @@ class UsfaHead(hk.Module):
         z_as_train_task (bool, optional): whether to dot-product with z-vector (True) or w-vector (False)
         multihead (bool, optional): whether to use seperate parameters for each cumulant
         concat_w (bool, optional): whether to have task w as input to SF (not just policy z)
-    
+
     Raises:
         NotImplementedError: Description
     """
@@ -139,7 +162,8 @@ class UsfaHead(hk.Module):
     self.multihead = multihead
     self.concat_w = concat_w
     self.train_task_as_z = train_task_as_z
-
+    self.layernorm = layernorm
+    assert layernorm in ['none', 'sf_input', 'sf']
 
     # -----------------------
     # function to combine state + policy
@@ -151,12 +175,12 @@ class UsfaHead(hk.Module):
     # -----------------------
     # function to embed task and figure out dim of SF
     # -----------------------
-    if isinstance(task_embed,int):
+    if isinstance(task_embed, int):
       if task_embed > 0:
         task_embed = OneHotTask(size=state_dim, dim=task_embed)
         self.sf_out_dim = task_embed.dim
       else:
-        task_embed = lambda x:x
+        task_embed = lambda x: x
         self.sf_out_dim = state_dim
     else:
       self.sf_out_dim = state_dim
@@ -177,70 +201,60 @@ class UsfaHead(hk.Module):
       if multihead:
         raise NotImplementedError
       else:
-        self.sf_q_net = DuellingSfQNet(num_actions=num_actions, 
+        self.sf_q_net = DuellingSfQNet(num_actions=num_actions,
           num_cumulants=self.sf_out_dim,
           hidden_sizes=[hidden_size])
     else:
       self.sf_q_net = SfQNet(num_actions=num_actions,
         num_cumulants=self.sf_out_dim,
         hidden_sizes=[hidden_size],
-        multihead=multihead)
+        multihead=multihead,
+        layernorm=layernorm)
 
   def __call__(self,
-    inputs : USFAInputs,
-    key: networks_lib.PRNGKey) -> USFAPreds:
+               inputs: USFAInputs,
+               key: networks_lib.PRNGKey) -> USFAPreds:
 
     # -----------------------
     # [potentially] embed task
     # -----------------------
-    w = jax.vmap(self.task_embed)(inputs.w) # [B, D_w]
+    w = jax.vmap(self.task_embed)(inputs.w)  # [B, D_w]
     if self.normalize_task:
-      w = w/(1e-5+jnp.linalg.norm(w, axis=-1, keepdims=True))
+      w = w / (1e-5 + jnp.linalg.norm(w, axis=-1, keepdims=True))
 
     # -----------------------
     # policies + embeddings
     # -----------------------
     if self.train_task_as_z:
-      D_w = w.shape[-1]
-      B = w.shape[0]
-      original_D_w = inputs.w.shape[-1]
-
-      all_tasks = jax.vmap(self.task_embed)(jnp.identity(original_D_w)) #shape original_D_w, D_w. We want to tile to get B, D_w, D_w
-      all_tasks = data_utils.expand_tile_dim(all_tasks, B, axis=0) # shape: B, original_D_w, D_w
-
-      z_samples = sample_gauss(mean=all_tasks, var=self.var, key=key, nsamples=self.nsamples-1,
-                               axis=-2)  # shape B, original_D_w, N-1, D_w
-      z_samples = jnp.reshape(z_samples, [B, (self.nsamples-1) * original_D_w, D_w])
-
-      z_samples = jnp.concatenate([z_samples, all_tasks],axis=1) #now concatenate all the tasks, getting desired shape B, N*original_D_w, D_w
+      z = inputs.w_train
     else:
       # sample N times: [B, D_w] --> [B, N, D_w]
-      z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples*inputs.w.shape[0], axis=-2)
+      z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples * inputs.w.shape[0], axis=-2)
 
-    # combine samples with original task vector
-    z_base = jnp.expand_dims(w, axis=1) # [B, 1, D_w]
-    z = jnp.concatenate((z_base, z_samples), axis=1)  # [B, N+1, D_w]
+      # combine samples with original task vector
+      z_base = jnp.expand_dims(w, axis=1)  # [B, 1, D_w]
+      z = jnp.concatenate((z_base, z_samples), axis=1)  # [B, N+1, D_w]
     return self.sfgpi(inputs=inputs, z=z, w=w,
-      key=key,
-      z_as_task=self.z_as_train_task)
+                      key=key,
+                      z_as_task=self.z_as_train_task)
 
   def evaluation(self,
-    inputs : USFAInputs,
-    key: networks_lib.PRNGKey) -> USFAPreds:
+                 inputs: USFAInputs,
+                 key: networks_lib.PRNGKey) -> USFAPreds:
 
     # -----------------------
     # embed task
     # -----------------------
-    w = jax.vmap(self.task_embed)(inputs.w) # [B, D]
+    w = jax.vmap(self.task_embed)(inputs.w)  # [B, D]
     B = w.shape[0]
     if self.normalize_task:
-      w = w/(1e-5+jnp.linalg.norm(w, axis=-1, keepdims=True))
+      w = w / (1e-5 + jnp.linalg.norm(w, axis=-1, keepdims=True))
 
     # train basis (z)
-    w_train = jax.vmap(self.task_embed)(inputs.w_train) # [N, D]
+    w_train = jax.vmap(self.task_embed)(inputs.w_train)  # [N, D]
     N = w_train.shape[0]
     if self.normalize_task:
-      w_train = w_train/(1e-5+jnp.linalg.norm(w_train, axis=-1, keepdims=True))
+      w_train = w_train / (1e-5 + jnp.linalg.norm(w_train, axis=-1, keepdims=True))
 
     # -----------------------
     # policies + embeddings
@@ -253,25 +267,25 @@ class UsfaHead(hk.Module):
     return preds
 
   def sfgpi(self,
-    inputs: USFAInputs,
-    z: jnp.ndarray,
-    w: jnp.ndarray,
-    key: networks_lib.PRNGKey,
-    z_as_task: bool = False) -> USFAPreds:
+            inputs: USFAInputs,
+            z: jnp.ndarray,
+            w: jnp.ndarray,
+            key: networks_lib.PRNGKey,
+            z_as_task: bool = False) -> USFAPreds:
     """Summary
-    
+
     Args:
         inputs (USFAInputs): Description
         z (jnp.ndarray): B x N x D
         w (jnp.ndarray): B x D
         key (networks_lib.PRNGKey): Description
-    
+
     Returns:
         USFAPreds: Description
     """
 
-    z_embedding = hk.BatchApply(self.policynet)(z) # [B, N, D_z]
-    sf_input = self.sf_input_fn(inputs.memory_out, z_embedding) # [B, N, D_s]
+    z_embedding = hk.BatchApply(self.policynet)(z)  # [B, N, D_z]
+    sf_input = self.sf_input_fn(inputs.memory_out, z_embedding)  # [B, N, D_s]
     # -----------------------
     # prepare task vectors
     # -----------------------
@@ -309,15 +323,18 @@ class UsfaHead(hk.Module):
     q_values = jnp.max(q_values, axis=1)
 
     return USFAPreds(
-      sf=sf,       # [B, N, A, D_w]
-      z=z,         # [B, N, A, D_w]
+      sf=sf,  # [B, N, A, D_w]
+      z=z,  # [B, N, A, D_w]
       q=q_values,  # [B, N, A]
-      w=w)         # [B, D_w]
-
+      w=w)  # [B, D_w]
 
   @property
   def out_dim(self):
     return self.sf_out_dim
+  @property
+  def cumulants_per_module(self):
+    return self.sf_out_dim
+
 
 class StatePolicyCombination(hk.Module):
   def __call__(self, memory_out, z_embedding):
@@ -364,7 +381,7 @@ class UniqueStatePolicyPairs(ConcatFlatStatePolicy):
 
 class CumulantsFromMemoryAuxTask(AuxilliaryTask):
   """docstring for Cumulants"""
-  def __init__(self, *args, construction='timestep', normalize=False, activation='none', **kwargs):
+  def __init__(self, *args, construction='timestep', normalize=False, activation='identity', **kwargs):
     super(CumulantsFromMemoryAuxTask, self).__init__(
       unroll_only=True, timeseries=True)
     self.cumulant_fn = hk.nets.MLP(*args, **kwargs)
@@ -398,3 +415,12 @@ class CumulantsFromMemoryAuxTask(AuxilliaryTask):
     if self.normalize:
       cumulants = cumulants/(1e-5+jnp.linalg.norm(cumulants, axis=-1, keepdims=True))
     return {'cumulants' : cumulants}
+
+
+
+class QBias(AuxilliaryTask):
+  def __call__(self, predictions, **kwargs):
+    q_ = predictions["q"]
+    b = hk.Bias(bias_dims=[-1])(q_)
+
+    return {'qbias' : b}

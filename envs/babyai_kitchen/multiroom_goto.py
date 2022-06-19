@@ -38,6 +38,7 @@ class MultiroomGotoEnv(KitchenLevel):
                  mission_object = None,
                  deterministic_rooms = False,
                  room_reward = 0.0,
+                 room_reward_task_vector = True,
                  **kwargs):
         """Summary
 
@@ -80,6 +81,7 @@ class MultiroomGotoEnv(KitchenLevel):
         self.got_room_reward = False
         self.carrying = None
 
+
         self.random_mission = True
         if mission_object:
             self.random_mission = False
@@ -97,9 +99,24 @@ class MultiroomGotoEnv(KitchenLevel):
         self._task_objects = [o.name for o in self.default_objects]
         self.type2idx = {o: i for i, o in enumerate(self._task_objects)}
 
-        #the mission array will just be one-hot over all the objects
-        #stored in self.mission_arr
-        self.select_mission()
+
+        #2 options: include room reward in task vector or not
+        self.room_reward_task_vector = room_reward_task_vector
+        if room_reward_task_vector:
+            self.task_vector_dims = self.num_objects + 4
+            train_tasks = []
+            for room_idx, roomdict in enumerate(self.objectlist):
+                for obj, _ in roomdict.items():
+                    task_vector = np.zeros(self.num_objects + 4)
+                    obj_idx = self.type2idx[obj]
+                    task_vector[obj_idx] = 1
+                    task_vector[self.num_objects + room_idx + 1] = self.room_reward
+                    train_tasks.append(task_vector)
+            self.train_tasks = np.stack(train_tasks)
+        else:
+            self.task_vector_dims = self.num_objects
+            self.train_tasks = np.eye(self.num_objects)
+
 
         kwargs["task_kinds"] = ['goto','pickup']
         kwargs['actions'] = ['left', 'right', 'forward','pickup_contents', 'place_down']
@@ -120,8 +137,8 @@ class MultiroomGotoEnv(KitchenLevel):
         self.observation_space.spaces['mission'] = spaces.Box(
             low=0,
             high=255,
-            shape=(self.num_objects + 4,),
-            dtype='uint8'
+            shape=(self.task_vector_dims,),
+            dtype='float32'
         )
         self.observation_space.spaces['pickup'] = spaces.Box(
             low=0,
@@ -130,9 +147,16 @@ class MultiroomGotoEnv(KitchenLevel):
             dtype='uint8'
         )
 
+        self.observation_space.spaces['train_tasks'] = spaces.Box(
+            low=0,
+            high=255,
+            shape=(self.num_objects,self.task_vector_dims,),
+            dtype='float32'
+        )
+
     #resets self.mission_arr to a random mission (i.e. random object)
     def select_mission(self):
-        self.mission_arr = np.zeros([self.num_objects],dtype=np.uint8)
+        self.mission_arr = np.zeros([self.num_objects],dtype=np.float32)
         if self.random_mission:
             goal_idx = np.random.choice(range(self.num_objects))
         else:
@@ -225,8 +249,10 @@ class MultiroomGotoEnv(KitchenLevel):
                     door3.is_open = True
 
         #now we gotta update the mission arr based on the room reward
-        room_embed_task = np.zeros(4,dtype=np.uint8)
-        self.mission_arr = np.concatenate([self.mission_arr,room_embed_task],dtype=np.uint8)
+        if self.room_reward_task_vector:
+            room_embed_task = np.zeros(4,dtype=np.float32)
+            room_embed_task[self.room] = self.room_reward
+            self.mission_arr = np.concatenate([self.mission_arr,room_embed_task],dtype=np.float32)
 
 
     def reset(self):
@@ -236,6 +262,7 @@ class MultiroomGotoEnv(KitchenLevel):
         obs['pickup'] = np.zeros(self.num_objects + 4, dtype=np.uint8) #plus 4 is for room we are in
         obs['pickup'][self.num_objects] = 1 #because we are in 0'th room
         obs['mission'] = self.mission_arr
+        obs['train_tasks'] = self.train_tasks
         return obs
 
     def remove_object(self, fwd_pos, pickup_vector):
@@ -432,6 +459,7 @@ class MultiroomGotoEnv(KitchenLevel):
 
         obs['mission'] = self.mission_arr
         obs['pickup'] = pickup
+        obs['train_tasks'] = self.train_tasks
 
         if self.verbosity==1:
             print("Pickup: " + str(pickup))
@@ -467,7 +495,8 @@ if __name__ == '__main__':
         verbosity=1,
         one_room=False,
         deterministic_rooms=False,
-        room_reward=.25
+        room_reward=.25,
+        room_reward_task_vector=False
     )
 
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)

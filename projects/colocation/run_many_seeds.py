@@ -83,7 +83,7 @@ def main(_):
                              )
       time.sleep(60)
       controller.wait()
-      time.sleep(30)
+      time.sleep(60)
 
 if __name__ == '__main__':
   app.run(main)

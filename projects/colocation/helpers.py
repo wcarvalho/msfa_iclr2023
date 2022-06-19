@@ -10,6 +10,9 @@ from utils import data as data_utils
 from agents.td_agent import losses
 from losses import usfa as usfa_losses
 from losses import cumulants
+import rlax
+from losses import msfa_stats
+from losses.contrastive_model import ModuleContrastLoss, TimeContrastLoss
 
 
 # -----------------------
@@ -18,11 +21,17 @@ from losses import cumulants
 from projects.colocation import nets
 from projects.colocation import configs
 
-def make_environment_sanity_check(evaluation: bool = False, simple: bool = True, agent='r2d1', nowalls: bool = False, one_room:bool=False, deterministic_rooms:bool=False, room_reward: float = 0.0):
+def make_environment_sanity_check(evaluation: bool = False,
+                                  simple: bool = True,
+                                  agent='r2d1', nowalls: bool = False,
+                                  one_room:bool=False,
+                                  deterministic_rooms:bool=False,
+                                  room_reward: float = 0.0,
+                                  room_reward_task_vector: bool = True):
     if simple:
         objs = [{'pan': 1}, {'tomato': 1}, {'knife':1}]
     else:
-        objs = [{'pan': 1,'pot':1,'stove':1}, {'tomato': 1,'lettuce':1, 'onion':1}, {'knife':1,'apple':1, 'orange':1}]
+        objs = [{'pan': 1,'pot':1,'bowl':1}, {'tomato': 1,'lettuce':1, 'onion':1}, {'knife':1,'apple':1, 'orange':1}]
 
     unique_objs = list(set(functools.reduce(lambda x,y: x + list(y.keys()),objs,[])))
 
@@ -40,6 +49,7 @@ def make_environment_sanity_check(evaluation: bool = False, simple: bool = True,
         one_room=one_room,
         deterministic_rooms=deterministic_rooms,
         room_reward = room_reward,
+        room_reward_task_vector=room_reward_task_vector,
         wrappers=[ # wrapper for babyAI gym env
       functools.partial(RGBImgPartialObsWrapper, tile_size=8)]
     )
@@ -68,6 +78,105 @@ def q_aux_loss(config):
           sched_end=config.q_aux_anneal,
           sched_end_val=config.q_aux_end_val,
           tx_pair=config.tx_pair)
+
+def q_aux_sf_loss(config):
+  """Create auxilliary Q-learning loss for SF
+  """
+  if config.q_aux == "single":
+    loss = usfa_losses.QLearningAuxLoss
+  elif config.q_aux == "ensemble":
+    loss = usfa_losses.QLearningEnsembleAuxLoss
+  else:
+    raise RuntimeError(config.q_aux)
+
+  if config.sf_loss == 'n_step_q_learning':
+    tx_pair = rlax.IDENTITY_PAIR
+  elif config.sf_loss == 'transformed_n_step_q_learning':
+    tx_pair = rlax.SIGNED_HYPERBOLIC_PAIR
+  else:
+    raise NotImplementedError(config.sf_loss)
+
+  add_bias = getattr(config, "step_penalty", 0) > 0
+  return loss(
+          coeff=config.value_coeff,
+          discount=config.discount,
+          sched_end=config.q_aux_anneal,
+          sched_end_val=config.q_aux_end_val,
+          tx_pair=tx_pair,
+          add_bias=add_bias,
+          mask_loss=config.qaux_mask_loss)
+
+
+def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=True, learn_model=False, task_embedding='none'):
+
+
+  NetKwargs=dict(
+    config=config,
+    env_spec=env_spec,
+    predict_cumulants=predict_cumulants,
+    learn_model=learn_model,
+    task_embedding=task_embedding,
+    use_separate_eval=use_separate_eval)
+
+  LossFn = td_agent.USFALearning
+
+  aux_tasks=[
+    q_aux_sf_loss(config),
+    msfa_stats.MsfaStats()
+  ]
+
+  if predict_cumulants:
+    nmodules = config.nmodules if config.module_l1 else 1
+    aux_tasks.append(
+      cumulants.CumulantRewardLoss(
+        shorten_data_for_cumulant=True,
+        coeff=config.reward_coeff,
+        loss=config.reward_loss,
+        l1_coeff=config.phi_l1_coeff,
+        wl1_coeff=config.w_l1_coeff,
+        balance=config.balance_reward,
+        reward_bias=config.step_penalty,
+        nmodules=nmodules))
+
+  cov_coeff = getattr(config, 'cov_coeff', None)
+
+  if cov_coeff is not None:
+    aux_tasks.append(
+      cumulants.CumulantCovLoss(
+        coeff=cov_coeff,
+        blocks=config.nmodules,
+        loss=config.cov_loss))
+
+  if learn_model:
+    if config.contrast_module_coeff > 0:
+      aux_tasks.append(
+          ModuleContrastLoss(
+            coeff=config.contrast_module_coeff,
+            extra_negatives=config.extra_module_negatives,
+            temperature=config.temperature)
+          )
+    if config.contrast_time_coeff > 0:
+      aux_tasks.append(
+          TimeContrastLoss(
+            coeff=config.contrast_time_coeff,
+            extra_negatives=config.extra_time_negatives,
+            temperature=config.temperature,
+            normalize_step=config.normalize_step)
+          )
+
+  LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+  LossFnKwargs.update(
+    loss=config.sf_loss,
+    mask_loss=config.sf_mask_loss,
+    shorten_data_for_cumulant=True, # needed since using delta for cumulant
+    extract_cumulants=losses.cumulants_from_preds,
+    aux_tasks=aux_tasks)
+
+  loss_label = 'usfa'
+  eval_network = config.eval_network
+
+  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
+
 
 def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1", train_task_as_z = None):
     default_config = dict()
@@ -188,12 +297,50 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
             ])
         loss_label = 'usfa'
         eval_network = config.eval_network
+    elif agent == "msf":
+        # USFA + cumulants from FARM + Q-learning
+        config = data_utils.merge_configs(
+            dataclass_configs=[
+                configs.ModularUSFAConfig(),
+                configs.QAuxConfig(),
+                configs.RewardConfig(),
+                configs.FarmModelConfig(),
+                configs.LangConfig(),
+            ],
+            dict_configs=default_config)
+
+        return msf(
+            config,
+            env_spec,
+            NetworkCls=nets.msf,
+            predict_cumulants=True,
+            learn_model=True,
+            use_separate_eval=True,
+            task_embedding='vector')
+
+    elif agent == "conv_msf":
+        # USFA + cumulants from FARM + Q-learning
+        config = data_utils.merge_configs(
+            dataclass_configs=[
+                configs.ModularUSFAConfig(),
+                configs.QAuxConfig(),
+                configs.RewardConfig(),
+                configs.FarmModelConfig(),
+                configs.LangConfig(),
+            ],
+            dict_configs=default_config)
+        config.cumulant_source = 'conv'
+
+        return msf(
+            config,
+            env_spec,
+            NetworkCls=nets.msf,
+            predict_cumulants=True,
+            learn_model=True,
+            use_separate_eval=True,
+            task_embedding='vector')
     else:
         raise ValueError("Please specify a valid agent type")
 
-
-
     return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
-
-
 

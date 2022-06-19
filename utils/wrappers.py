@@ -2,7 +2,7 @@ from acme.wrappers import base
 import dm_env
 import tree
 from acme import types
-
+import numpy as np
 from collections import namedtuple
 
 class ObservationRemapWrapper(base.EnvironmentWrapper):
@@ -26,7 +26,7 @@ class ObservationRemapWrapper(base.EnvironmentWrapper):
     self.remap.update(remap)
 
     # new obs spec
-    self.Obs = namedtuple('Observation', self.remap.values())
+    self.Obs = namedtuple('Observation', sorted(self.remap.values()))
 
 
   def reset(self) -> dm_env.TimeStep:

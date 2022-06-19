@@ -20,8 +20,9 @@ from envs.babyai_kitchen.multiroom_goto import MultiroomGotoEnv
 class GotoObs(NamedTuple):
   """Container for (Observation, Action, Reward) tuples."""
   image: types.Nest
-  pickup: types.Nest
   mission: types.Nest
+  pickup: types.Nest
+  train_tasks: types.Nest
 
 
 class MultiroomGoto(dm_env.Environment):
@@ -41,6 +42,7 @@ class MultiroomGoto(dm_env.Environment):
                walls_gone=False,
                one_room = False,
                deterministic_rooms = False,
+               room_reward_task_vector = True,
                room_reward = 0.0,
     **kwargs):
     """Initializes a new MultiroomGotoEnv
@@ -78,7 +80,8 @@ class MultiroomGoto(dm_env.Environment):
                 walls_gone=walls_gone,
                 one_room=one_room,
                 deterministic_rooms = deterministic_rooms,
-                room_reward=room_reward
+                room_reward=room_reward,
+                room_reward_task_vector = room_reward_task_vector
             )
     else:
         all_level_kwargs['ONLY_LEVEL']  = dict(
@@ -94,7 +97,8 @@ class MultiroomGoto(dm_env.Environment):
                 walls_gone=walls_gone,
                 one_room=one_room,
                 deterministic_rooms = deterministic_rooms,
-                room_reward=room_reward
+                room_reward=room_reward,
+                room_reward_task_vector=room_reward_task_vector
             )
 
 
@@ -110,7 +114,7 @@ class MultiroomGoto(dm_env.Environment):
     else:
       self.default_env = GymWrapper(self.env)
 
-    self.keys = ['image', 'pickup' , 'mission']
+    self.keys = sorted(['image', 'pickup' , 'mission', 'train_tasks'])
 
 
   def reset(self) -> dm_env.TimeStep:

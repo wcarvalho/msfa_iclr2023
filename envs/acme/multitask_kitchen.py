@@ -36,8 +36,9 @@ class Observation(NamedTuple):
   mission: types.Nest
 
 def convert_rawobs(obs):
-    obs.pop('mission_idx')
+    obs.pop('mission_idx', None)
     return Observation(**obs)
+
 
 class MultitaskKitchen(dm_env.Environment):
   """
@@ -46,11 +47,14 @@ class MultitaskKitchen(dm_env.Environment):
   def __init__(self,
     task_dicts: dict=None,
     task_kinds: list=None,
+    separate_eval: bool=False,
     room_size=10,
+    task_reps=None,
     sets: str=None,
     agent_view_size=5,
     path='.',
     tile_size=12,
+    step_penalty=0.0,
     wrappers=None,
     num_dists=0,
     **kwargs):
@@ -60,13 +64,17 @@ class MultitaskKitchen(dm_env.Environment):
       columns: number of columns.
       seed: random seed for the RNG.
     """
+
+    self.separate_eval = separate_eval
     level_kwargs = dict(
       room_size=room_size,
       agent_view_size=agent_view_size,
       tile_size=tile_size,
       num_dists=num_dists,
+      task_reps=task_reps,
     )
 
+    self.step_penalty = step_penalty
     # -----------------------
     # load level kwargs
     # -----------------------
@@ -98,14 +106,17 @@ class MultitaskKitchen(dm_env.Environment):
     self.env = MultiLevel(
         all_level_kwargs=all_level_kwargs,
         LevelCls=KitchenLevel,
-        # wrappers=wrappers,
+        wrappers=wrappers,
         path=path,
         **kwargs)
 
-    for wrapper in wrappers:
-      self.env = wrapper(self.env)
+    if wrappers:
+      self.default_gym = self.env.env
+      self.default_env = GymWrapper(self.env.env)
+    else:
+      self.default_gym = self.env
+      self.default_env = GymWrapper(self.env)
 
-    self.default_env = GymWrapper(self.env.env)
 
 
 
@@ -113,6 +124,7 @@ class MultitaskKitchen(dm_env.Environment):
     """Returns the first `TimeStep` of a new episode."""
     obs = self.env.reset()
     obs = convert_rawobs(obs)
+
     timestep = dm_env.restart(obs)
 
     return timestep
@@ -121,7 +133,8 @@ class MultitaskKitchen(dm_env.Environment):
     """Updates the environment according to the action."""
     obs, reward, done, info = self.env.step(action)
     obs = convert_rawobs(obs)
-
+    if self.step_penalty:
+      reward = reward - self.step_penalty
     if done:
       return dm_env.termination(reward=reward, observation=obs)
     else:

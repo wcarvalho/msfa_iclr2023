@@ -20,12 +20,16 @@ class QLearningAuxLoss(nstep.QLearning):
     sched_end=None,
     sched_start_val=1.,
     sched_end_val=1e-4,
+    add_bias=False,
+    mask_loss=False,
     **kwargs):
     super().__init__(*args, **kwargs)
     self.coeff = coeff
     self.sched_end = sched_end
     self.sched_start_val = sched_start_val
     self.sched_end_val = sched_end_val
+    self.add_bias = add_bias
+    self.mask_loss = mask_loss
     if sched_end:
       self.schedule = optax.linear_schedule(
                   init_value=sched_start_val,
@@ -39,9 +43,15 @@ class QLearningAuxLoss(nstep.QLearning):
     target_sf = target_preds.sf[:,:,0]  # [T, B, A, C]
     compute_q_jax = jax.vmap(compute_q, in_axes=(2, None), out_axes=2)  # over A
 
+
     # output is [T, B, A]
     online_q = compute_q_jax(online_sf, w)
     target_q = compute_q_jax(target_sf, w)
+
+    if self.add_bias:
+      online_q = online_q + online_preds.qbias
+      target_q = target_q + target_preds.qbias
+
 
     batch_td_error = super().__call__(
       online_q=online_q,  # [T, B, A]
@@ -52,10 +62,13 @@ class QLearningAuxLoss(nstep.QLearning):
 
     # output is [B]
     batch_loss = 0.5 * jnp.square(batch_td_error)
-    batch_loss = episode_mean(
-      x=batch_loss,
-      done=data.discount[:-1])
-    batch_loss = batch_loss.mean()
+    if self.mask_loss:
+      batch_loss = episode_mean(
+        x=batch_loss,
+        done=data.discount[:-1])
+      batch_loss = batch_loss.mean()
+    else:
+      batch_loss = batch_loss.mean()
 
     coeff = self.coeff
     if self.sched_end is not None and self.sched_end > 0:
@@ -71,7 +84,6 @@ class QLearningAuxLoss(nstep.QLearning):
       'z.q_sf_var': online_q.var(),
       'z.q_sf_max': online_q.max(),
       'z.q_sf_min': online_q.min()}
-
 
     return loss, metrics
 
@@ -105,10 +117,13 @@ class QLearningEnsembleAuxLoss(QLearningAuxLoss):
 
     # output is [B]
     batch_loss = 0.5 * jnp.square(batch_td_error).mean(2)
-    batch_loss = episode_mean(
-      x=batch_loss,
-      done=data.discount[:-1])
-    batch_loss = batch_loss.mean()
+    if self.mask_loss:
+      batch_loss = episode_mean(
+        x=batch_loss,
+        done=data.discount[:-1])
+      batch_loss = batch_loss.mean()
+    else:
+      batch_loss = batch_loss.mean()
 
     metrics = {
       'loss_qlearning_sf': batch_loss,

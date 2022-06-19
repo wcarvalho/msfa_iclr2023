@@ -5,12 +5,12 @@ Run Successor Feature based agents and baselines on
 Command I run to train:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=3 \
+    CUDA_VISIBLE_DEVICES=0 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     WANDB_START_METHOD="thread" \
     python projects/colocation/train_distributed.py \
-    --agent usfa_conv --room_reward .25 --wandb_name 6-1 --train_task_as_z 1 --seed 1
+    --agent msf --room_reward .25 --wandb_name 6-13 --seed 1
 
 
 Command for tensorboard
@@ -59,7 +59,7 @@ flags.DEFINE_float('room_reward',0,'reward for entering the correct room')
 flags.DEFINE_integer('train_task_as_z', 0, '0 for None, -1 for no, 1 for yes')
 
 
-flags.DEFINE_string('agent', 'r2d1', 'which agent.')
+flags.DEFINE_string('agent', 'msf', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
@@ -99,10 +99,16 @@ def build_program(
       train_task_as_z=True
   else:
       raise NotImplementedError("Invalid value for train_task_as_z: {0}".format(train_task_as_z))
+
+  room_reward_task_vector = True #in oracle case we want task vector to have room reward
+  if agent in ['usfa_conv','usfa_lstm','msf','conv_msf']:
+      room_reward_task_vector = False
   # -----------------------
   # load env stuff
   # -----------------------
-  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=simple, agent=agent, nowalls=nowalls, one_room=one_room, deterministic_rooms=deterministic_rooms, room_reward=room_reward)
+  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=simple, agent=agent,
+                                      nowalls=nowalls, one_room=one_room, deterministic_rooms=deterministic_rooms,
+                                              room_reward=room_reward, room_reward_task_vector=room_reward_task_vector)
   env = environment_factory(False)
   env_spec = acme.make_environment_spec(env)
   del env
@@ -150,6 +156,8 @@ def build_program(
         wandb_name+='-deterministic_rooms'
     if room_reward!=0:
         wandb_name+='-room_reward'
+    if room_reward_task_vector:
+        wandb_name+='-oracle'
     if randomize_name:
         letters = string.ascii_lowercase
         hashcode = ''.join(random.choice(letters) for _ in range(10))
