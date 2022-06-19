@@ -112,6 +112,21 @@ def st_bernoulli(x, key):
 
   return zero + jax.lax.stop_gradient(x)
 
+
+class VectorEmbed(hk.Module):
+  def __init__(self, out_dim):
+    super(VectorEmbed, self).__init__()
+    self.dim = out_dim
+    self.embedder = hk.Linear(output_size=out_dim,with_bias=False,w_init=hk.initializers.TruncatedNormal()) #default is mean 0, std 1
+
+  def __call__(self, x):
+    return self.embedder(x)
+
+  @property
+  def out_dim(self):
+    return self.dim
+
+
 def st_round(x):
   """Straight-through bernoulli sample"""
   zero = x - jax.lax.stop_gradient(x)
@@ -207,6 +222,7 @@ class LanguageTaskEmbedder(hk.Module):
         gate = st_bernoulli(gate, key=hk.next_rng_key())
       elif self.gate_type == 'round':
         gate = st_round(gate)
+
 
       # [B, D] --> [B, G, D/G]
       task_proj = jnp.stack(jnp.split(task_proj, self.gates, axis=-1), axis=1) 
