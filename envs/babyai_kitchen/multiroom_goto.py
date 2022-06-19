@@ -37,14 +37,6 @@ class MultiroomGoto(KitchenLevel):
                  room_size = 8,
                  doors_start_open = False,
                  stop_when_gone = False,
-<<<<<<< HEAD
-=======
-                 walls_gone = False,
-                 one_room = False,
-                 mission_object = None,
-                 deterministic_rooms = False,
-                 room_reward = 0.0,
->>>>>>> parent of d34fcbe (maybe we can merge this?)
                  **kwargs):
         """Summary
 
@@ -74,24 +66,10 @@ class MultiroomGoto(KitchenLevel):
         self.num_objects = len(self._task_objects)
         self.pickup_required = pickup_required
         self.epsilon = epsilon
-<<<<<<< HEAD
 
         #the mission array will just be one-hot over all the objects
         #stored in self.mission_arr
         self.select_mission()
-=======
-        self.verbosity = verbosity
-        self.room = None #variable to keep track of what the primary room of the target object is
-        self.room_location = None #same purpose, just instead of a number, it's 2 coords
-        self.room_reward = room_reward
-        self.got_room_reward = False
-        self.carrying = None
-
-        self.random_mission = True
-        if mission_object:
-            self.random_mission = False
-            self.mission_object = mission_object
->>>>>>> parent of d34fcbe (maybe we can merge this?)
 
         #initialize the big objects we need
         kitchen = Kitchen(
@@ -105,13 +83,6 @@ class MultiroomGoto(KitchenLevel):
         self._task_objects = [o.name for o in self.default_objects]
         self.type2idx = {o: i for i, o in enumerate(self._task_objects)}
 
-<<<<<<< HEAD
-=======
-        #the mission array will just be one-hot over all the objects
-        #stored in self.mission_arr
-        self.select_mission()
-
->>>>>>> parent of d34fcbe (maybe we can merge this?)
         kwargs["task_kinds"] = ['goto','pickup']
         kwargs['actions'] = ['left', 'right', 'forward', 'open','pickup_contents']
         kwargs['kitchen'] = kitchen
@@ -129,7 +100,6 @@ class MultiroomGoto(KitchenLevel):
         self.observation_space.spaces['mission'] = spaces.Box(
             low=0,
             high=255,
-<<<<<<< HEAD
             shape=(self.num_objects,),
             dtype='uint8'
         )
@@ -139,29 +109,11 @@ class MultiroomGoto(KitchenLevel):
             shape=(self.num_objects,),
             dtype='uint8'
         )
-=======
-            shape=(self.num_objects + 4,),
-            dtype='uint8'
-        )
-        self.observation_space.spaces['pickup'] = spaces.Box(
-            low=0,
-            high=255,
-            shape=(self.num_objects + 4,),
-            dtype='uint8'
-        )
->>>>>>> parent of d34fcbe (maybe we can merge this?)
 
     #resets self.mission_arr to a random mission (i.e. random object)
     def select_mission(self):
         self.mission_arr = np.zeros([self.num_objects],dtype=np.uint8)
-<<<<<<< HEAD
         goal_idx = np.random.choice(range(self.num_objects))
-=======
-        if self.random_mission:
-            goal_idx = np.random.choice(range(self.num_objects))
-        else:
-            goal_idx = self.type2idx[self.mission_object]
->>>>>>> parent of d34fcbe (maybe we can merge this?)
         self.mission_arr[goal_idx] = 1
         print("Goal is to " + ("pickup " if self.pickup_required else "goto ") + self._task_objects[goal_idx])
 
@@ -221,34 +173,11 @@ class MultiroomGoto(KitchenLevel):
         door2, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[1])],DOOR_COLORS[1],locked=False)
         door3, _ =self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[2])],DOOR_COLORS[2],locked=False)
 
-<<<<<<< HEAD
         #potentially start with the doors open
         if self.doors_start_open:
             door1.is_open = True
             door2.is_open = True
             door3.is_open = True
-=======
-
-        if self.walls_gone: #walls are never gone if one room
-            self.remove_wall(1,1,0)
-            self.remove_wall(1, 1, 2)
-            self.remove_wall(1, 1, 3)
-        else:
-            if not self.one_room: #if one room, no doors
-                door1, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[0])], DOOR_COLORS[0], locked=False)
-                door2, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[1])], DOOR_COLORS[1], locked=False)
-                door3, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[2])], DOOR_COLORS[2], locked=False)
-
-                #potentially start with the doors open
-                if self.doors_start_open:
-                    door1.is_open = True
-                    door2.is_open = True
-                    door3.is_open = True
-
-        #now we gotta update the mission arr based on the room reward
-        room_embed_task = np.zeros(4,dtype=np.uint8)
-        self.mission_arr = np.concatenate([self.mission_arr,room_embed_task],dtype=np.uint8)
->>>>>>> parent of d34fcbe (maybe we can merge this?)
 
 
     def reset(self):
@@ -257,10 +186,7 @@ class MultiroomGoto(KitchenLevel):
         assert self.carrying is None
         obs['pickup'] = np.zeros(self.num_objects, dtype=np.uint8)
         obs['mission'] = self.mission_arr
-<<<<<<< HEAD
 
-=======
->>>>>>> parent of d34fcbe (maybe we can merge this?)
         return obs
 
     def remove_object(self, fwd_pos, pickup_vector):
@@ -407,12 +333,6 @@ class MultiroomGoto(KitchenLevel):
 
         obs['mission'] = self.mission_arr
         obs['pickup'] = pickup
-<<<<<<< HEAD
-=======
-
-        if self.verbosity==1:
-            print("Pickup: " + str(pickup))
->>>>>>> parent of d34fcbe (maybe we can merge this?)
 
         return obs, reward, done, info
 
@@ -434,22 +354,10 @@ if __name__ == '__main__':
         objectlist=[{'pan':4,'pot':4,'stove':1}, {'tomato':1,'potato':10}, {'orange':5,'apple':2}],
         pickup_required=False,
         tile_size=tile_size,
-<<<<<<< HEAD
         epsilon = .1,
         room_size=10,
         doors_start_open=False,
         stop_when_gone=True
-=======
-        epsilon=0.0,
-        room_size=5,
-        doors_start_open=True,
-        stop_when_gone=True,
-        walls_gone=False,
-        verbosity=1,
-        one_room=False,
-        deterministic_rooms=False,
-        room_reward=.25
->>>>>>> parent of d34fcbe (maybe we can merge this?)
     )
 
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)

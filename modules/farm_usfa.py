@@ -9,11 +9,7 @@ import haiku as hk
 from utils import data as data_utils
 
 from modules.basic_archs import AuxilliaryTask
-<<<<<<< HEAD
 from modules.embedding import embed_position
-=======
-from modules.embedding import OneHotTask
->>>>>>> parent of d34fcbe (maybe we can merge this?)
 from modules.duelling import DuellingSfQNet
 from utils import vmap
 from utils import data as data_utils
@@ -25,15 +21,11 @@ class FarmUsfaHead(UsfaHead):
 
   def __init__(self,
     cumulants_per_module: int,
-<<<<<<< HEAD
     vmap_multihead: str = 'lift',
     relational_net = lambda x:x,
     position_embed: int=0,
     struct_policy: bool=False,
     argmax_mod: bool=False,
-=======
-    vmap_multihead: str = 'switch',
->>>>>>> parent of d34fcbe (maybe we can merge this?)
     **kwargs,
     ):
     super(FarmUsfaHead, self).__init__(
@@ -41,16 +33,14 @@ class FarmUsfaHead(UsfaHead):
       **kwargs)
 
     self.vmap_multihead = vmap_multihead
-    self.cumulants_per_module = cumulants_per_module
+    self.relational_net = relational_net
+    self._cumulants_per_module = cumulants_per_module
     self.sf_factory = lambda: hk.nets.MLP([self.hidden_size, self.num_actions*cumulants_per_module])
-<<<<<<< HEAD
     self.policy_net_factory = lambda: hk.nets.MLP(
           [self.policy_size]*self.policy_layers)
     self.position_embed = position_embed
     self.struct_policy = struct_policy
     self.argmax_mod = argmax_mod
-=======
->>>>>>> parent of d34fcbe (maybe we can merge this?)
 
   def compute_sf(self,
     state : jnp.ndarray,
@@ -64,7 +54,7 @@ class FarmUsfaHead(UsfaHead):
         task (jnp.ndarray): B x D_w
     """
     B, M, _ = state.shape
-    A, C = self.num_actions, self.cumulants_per_module
+    A, C = self.num_actions, self._cumulants_per_module
 
 
     # -----------------------
@@ -95,6 +85,13 @@ class FarmUsfaHead(UsfaHead):
       state_policy = vmap_concat(state, policy_embed)
 
 
+    if self.layernorm == 'sf_input':
+      state_policy = hk.LayerNorm(
+          axis=-1,
+          param_axis=-1,
+          create_scale=False,
+          create_offset=False)(state_policy)
+
     if self.multihead:
       # [B, M, A*C]
       sf = vmap.batch_multihead(
@@ -103,13 +100,15 @@ class FarmUsfaHead(UsfaHead):
         vmap=self.vmap_multihead)
     else:
       # [B, M, A*C]
+      if self.position_embed:
+        state_policy = embed_position(
+          factors=state_policy, size=self.position_embed)
       sf = hk.BatchApply(self.sf_factory())(state_policy)
 
     sf = jnp.reshape(sf, [B, M, A, C])
     # [B, A, C*M=D_w]
     sf = sf.transpose(0, 2, 1, 3).reshape(B, A, -1)
 
-<<<<<<< HEAD
     if self.layernorm == 'sf':
       sf = hk.LayerNorm(
           axis=-1,
@@ -120,10 +119,6 @@ class FarmUsfaHead(UsfaHead):
     # vmap loop over A for SF
     q_prod = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)(sf, task)
     
-=======
-    q = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)(sf, task)
-    q = q.sum(-1)
->>>>>>> parent of d34fcbe (maybe we can merge this?)
 
     return sf, q_prod
 
@@ -149,7 +144,6 @@ class FarmUsfaHead(UsfaHead):
     compute_sf = jax.vmap(self.compute_sf,
       in_axes=(None, 1, None), out_axes=1)
 
-<<<<<<< HEAD
     memory_out = self.relational_net(inputs.memory_out)
     # [B, N, A, D_w]
     sf, q_values_prod = compute_sf(memory_out, z, w)
@@ -167,10 +161,6 @@ class FarmUsfaHead(UsfaHead):
       q_values = jnp.max(q_values, axis=-1)
     else:
       q_values = q_values_prod.sum(-1)
-=======
-    # [B, N, A, D_w], [B, N, A]
-    sf, q_values = compute_sf(inputs.memory_out, z_embedding, w)
->>>>>>> parent of d34fcbe (maybe we can merge this?)
 
     # -----------------------
     # GPI
@@ -194,3 +184,7 @@ class FarmUsfaHead(UsfaHead):
   @property
   def out_dim(self):
     return self.sf_out_dim
+
+  @property
+  def cumulants_per_module(self):
+    return self._cumulants_per_module

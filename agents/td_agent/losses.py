@@ -40,10 +40,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
   clip_rewards : bool = False
   max_abs_reward: float = 1.
   loss_coeff: float = 1.
-<<<<<<< HEAD
   mask_loss: bool = False
-=======
->>>>>>> parent of d34fcbe (maybe we can merge this?)
 
   # auxilliary tasks
   aux_tasks: Union[Callable, Sequence[Callable]]=None
@@ -133,11 +130,15 @@ class RecurrentTDLearning(learning_lib.LossFn):
     importance_weights **= self.importance_sampling_exponent
     importance_weights /= jnp.max(importance_weights)
     mean_loss = jnp.mean(importance_weights * batch_loss)
+
+    Cls = lambda x: x.__class__.__name__
     metrics={
-      **metrics,
-      'loss_main':mean_loss,
-      'z.importance': importance_weights.mean(),
-      'z.reward' :data.reward.mean()
+      Cls(self) : {
+        **metrics,
+        'loss_main':mean_loss,
+        'z.importance': importance_weights.mean(),
+        'z.reward' :data.reward.mean()
+        }
       }
     mean_loss = self.loss_coeff*mean_loss
 
@@ -171,13 +172,12 @@ class RecurrentTDLearning(learning_lib.LossFn):
           steps=steps,
           **kwargs)
 
-        metrics={**metrics,**aux_metrics}
+        
+        # metrics={**metrics,**aux_metrics}
+        metrics[Cls(aux_task)] = aux_metrics
         mean_loss = mean_loss + aux_loss
 
-      metrics={
-        **metrics,
-        'loss_w_aux':mean_loss,
-        }
+      metrics[Cls(self)]['loss_w_aux'] = mean_loss
 
     reverb_update = learning_lib.ReverbUpdate(
         keys=batch.info.key,
@@ -204,6 +204,9 @@ def r2d2_loss_kwargs(config):
 
 @dataclasses.dataclass
 class R2D2Learning(RecurrentTDLearning):
+
+  loss: str = 'transformed_n_step_q_learning'
+
   def error(self, data, online_preds, online_state, target_preds, target_state, **kwargs):
     """R2D2 learning
     """
@@ -217,11 +220,18 @@ class R2D2Learning(RecurrentTDLearning):
     rewards = rewards.astype(online_preds.q.dtype)
 
     # Get N-step transformed TD error and loss.
+    if self.loss == "transformed_n_step_q_learning":
+      tx_pair = rlax.SIGNED_HYPERBOLIC_PAIR
+    elif self.loss == "n_step_q_learning":
+      tx_pair = rlax.IDENTITY_PAIR
+    else:
+      raise NotImplementedError(self.loss)
+
     batch_td_error_fn = jax.vmap(
         functools.partial(
             rlax.transformed_n_step_q_learning,
             n=self.bootstrap_n,
-            tx_pair=self.tx_pair),
+            tx_pair=tx_pair),
         in_axes=1,
         out_axes=1)
     # TODO(b/183945808): when this bug is fixed, truncations of actions,
@@ -234,11 +244,16 @@ class R2D2Learning(RecurrentTDLearning):
         rewards[:-1],
         discounts[:-1])
 
-    mask=(discounts > 0).astype(jnp.float32)[:-1]
+
     # average over {T} --> # [B]
-    batch_loss = masked_mean(
-      x=(0.5 * jnp.square(batch_td_error)),
-      mask=mask)
+    if self.mask_loss:
+      # [T, B]
+      mask=(discounts > 0).astype(jnp.float32)[:-1]
+      batch_loss = masked_mean(
+        x=(0.5 * jnp.square(batch_td_error)),
+        mask=mask)
+    else:
+      batch_loss = 0.5 * jnp.square(batch_td_error).mean(axis=0)
 
     metrics = {
       'z.q_mean': online_preds.q.mean(),
@@ -278,7 +293,7 @@ class USFALearning(RecurrentTDLearning):
   lambda_: float  = .9
 
   def error(self, data, online_preds, online_state, target_preds, target_state, **kwargs):
-    assert self.loss in ['n_step_q_learning', 'q_lambda', 'q_lambda_regular', 'n_step_q_learning_regular'], "loss not recognized"
+    assert self.loss in ['transformed_n_step_q_learning', 'transformed_q_lambda', 'q_lambda', 'n_step_q_learning'], "loss not recognized"
     # ======================================================
     # Loss for SF
     # ======================================================
@@ -299,7 +314,7 @@ class USFALearning(RecurrentTDLearning):
       # copies selector_actions, online_actions, vmaps over cumulant dim
 
       # go over cumulant axis
-      if self.loss == "n_step_q_learning":
+      if self.loss == "transformed_n_step_q_learning":
         td_error_fn = jax.vmap(
           functools.partial(
               rlax.transformed_n_step_q_learning,
@@ -315,7 +330,7 @@ class USFALearning(RecurrentTDLearning):
           cumulants[:-1],       # [T, C]    (vmap 1) 
           discounts[:-1])       # [T]       (vmap None)
 
-      elif self.loss == "n_step_q_learning_regular":
+      elif self.loss == "n_step_q_learning":
         td_error_fn = jax.vmap(
           functools.partial(
               rlax.transformed_n_step_q_learning,
@@ -330,7 +345,7 @@ class USFALearning(RecurrentTDLearning):
           cumulants[:-1],       # [T, C]    (vmap 1) 
           discounts[:-1])       # [T]       (vmap None)
 
-      elif self.loss == "q_lambda":
+      elif self.loss == "transformed_q_lambda":
         td_error_fn = jax.vmap(
           functools.partial(
               rlax.transformed_q_lambda,
@@ -345,7 +360,7 @@ class USFALearning(RecurrentTDLearning):
           discounts[:-1],       # [T]       (vmap None)
           target_sf[1:],        # [T, A, C] (vmap 2)
         )
-      elif self.loss == "q_lambda_regular":
+      elif self.loss == "q_lambda":
         td_error_fn = jax.vmap(
           functools.partial(
               rlax.q_lambda,
@@ -409,7 +424,6 @@ class USFALearning(RecurrentTDLearning):
       cumulants,        # [T, B, C]       (vmap None,1)
       discounts)        # [T, B]          (vmap None,1)
 
-<<<<<<< HEAD
 
 
     if self.mask_loss:
@@ -421,18 +435,11 @@ class USFALearning(RecurrentTDLearning):
         mask=mask)
     else:
       batch_loss = (0.5 * jnp.square(batch_td_error)).mean(axis=(0,2,3))
-=======
-    mask=(discounts > 0).astype(jnp.float32)[:-1]
-    # average over {T, N, C} --> # [B]
-    batch_loss = masked_mean(
-      x=(0.5 * jnp.square(batch_td_error)).mean(axis=(2,3)),
-      mask=mask)
->>>>>>> parent of d34fcbe (maybe we can merge this?)
 
     batch_td_error = batch_td_error.mean(axis=(2, 3)) # [T, B]
 
     metrics = {
-      f'z.loss_{self.loss}_raw': batch_loss.mean(),
+      f'z.loss_SfMain_{self.loss}': batch_loss.mean(),
       'z.sf_mean': online_sf.mean(),
       'z.sf_var': online_sf.var(),
       'z.sf_max': online_sf.max(),
