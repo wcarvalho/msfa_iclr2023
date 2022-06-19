@@ -5,7 +5,6 @@ import jax.numpy as jnp
 
 from utils import vmap
 from utils import data as data_utils
-from modules.relational import RelationalLayer
 
 def add_batch(nest, batch_size: Optional[int]):
   """Adds a batch dimension at axis 0 to the leaves of a nested structure."""
@@ -22,16 +21,6 @@ class LSTMState(NamedTuple):
   hidden: jnp.ndarray
   cell: jnp.ndarray
 
-class FarmState(NamedTuple):
-  """An LSTM core state consists of hidden and cell vectors.
-  Attributes:
-    hidden: Hidden state.
-    cell: Cell state.
-  """
-  hidden: jnp.ndarray
-  cell: jnp.ndarray
-  conv_state: LSTMState=None
-
 class FarmInputs(NamedTuple):
   """An LSTM core state consists of hidden and cell vectors.
   Attributes:
@@ -40,15 +29,6 @@ class FarmInputs(NamedTuple):
   """
   image: jnp.ndarray
   vector: jnp.ndarray
-
-class FarmOutputs(NamedTuple):
-  """An LSTM core state consists of hidden and cell vectors.
-  Attributes:
-    hidden: Hidden state.
-    cell: Cell state.
-  """
-  hidden: jnp.ndarray
-  attn: jnp.ndarray
 
 class StructuredLSTM(hk.RNNCore):
   """ Structured long short-term memory (LSTM) RNN core.
@@ -105,11 +85,10 @@ class FeatureAttention(hk.Module):
   """FeatureAttention from Feature-Attending Recurrent Modules. f_att from paper.
   Each module has its own attention parameters.
   """
-  def __init__(self, dim=16, normalize=False, vmap: str="switch"):
+  def __init__(self, dim=16, vmap: str="switch"):
     super(FeatureAttention, self).__init__()
     self.dim = dim
     self.vmap = vmap
-    self.normalize = normalize
 
   def __call__(
       self,
@@ -128,14 +107,8 @@ class FeatureAttention(hk.Module):
       vmap=self.vmap)
     # [B, N, D]
     coefficients = jax.nn.sigmoid(coefficients)
-
-    if self.normalize:
-      # encourages competition
-      coefficients = coefficients/(1e-5 + jnp.sum(coefficients, axis=1, keepdims=1))
-
     # [B, N, H, W, D]
     coefficients = jnp.expand_dims(coefficients, (2,3)) 
-
 
     # ======================================================
     # attend + projections
@@ -147,38 +120,154 @@ class FeatureAttention(hk.Module):
     multiply = jax.vmap(jnp.multiply, in_axes=(None, 1), out_axes=1)
     image = multiply(image, coefficients)
 
+    # second projection
+    image = hk.BatchApply(hk.Conv2D(self.dim, [1, 1], 1))(image)
+
     return image
 
-def get_farm_sizes(module_size, nmodules, memory_size):
-  isnone = [x is None for x in [module_size, nmodules, memory_size]]
-  assert sum(isnone) <=1, "underspecified"
+class ModuleAttention(hk.Module):
+  """Attention over modules using transformer-style attention. 
+  Each module has its own parameters. f_share from paper."""
+  def __init__(self, module_size, num_heads=4, w_init_scale=2.,
+    shared_parameters=True):
+    super(ModuleAttention, self).__init__()
+    self.attn_factory = lambda: hk.MultiHeadAttention(
+      num_heads=num_heads,
+      key_size=module_size,
+      model_size=module_size,
+      w_init_scale=w_init_scale,
+      )
+    self.shared_parameters = shared_parameters
 
-  if module_size is None:
-    module_size = memory_size / nmodules
-  elif nmodules is None:
-    nmodules = memory_size/module_size
-  elif memory_size is None:
-    memory_size = nmodules*module_size
+  def prepare_data(
+      self,
+      queries: jnp.ndarray,
+      hidden_states: jnp.ndarray,
+      ) -> jnp.ndarray:
+    """ Multihead attention expects [N, B, D]. Fix. """
+    # -----------------------
+    # prepare data
+    # -----------------------
+    # convert things to dims expected by multihead attention
+    hidden_states = hidden_states.transpose((1,0,2))  # [N, B, D]
+    queries = queries.transpose((1,0,2))  # [N, B, D]
 
-  assert memory_size == nmodules *module_size
+    N, B = queries.shape[:2]
+    D = hidden_states.shape[2]
 
-  return int(module_size), int(nmodules), int(memory_size)
+    # add zeros for no attention
+    zeros = jnp.zeros((1, B, D))
+    hidden_states = jnp.concatenate((hidden_states, zeros)) # [N+1, B, D]
 
+    return queries, hidden_states
+
+  def __call__(
+      self,
+      queries: jnp.ndarray,
+      hidden_states: jnp.ndarray,
+      ) -> jnp.ndarray:
+    """
+    Args:
+        queries (jnp.ndarray): B x N x D
+        hidden_states (jnp.ndarray): B x N x D
+    
+    Returns:
+        jnp.ndarray: Description
+    """
+    if self.shared_parameters:
+      return self.shared_attn(queries, hidden_states)
+    else:
+      return self.independent_attn(queries, hidden_states)
+
+  def shared_attn(
+      self,
+      queries: jnp.ndarray,
+      hidden_states: jnp.ndarray,
+      ) -> jnp.ndarray:
+    """Share parameters across queries.
+    
+    Args:
+        queries (jnp.ndarray): [B, N, D]
+        hidden_states (jnp.ndarray): [B, N, D]
+    
+    Returns:
+        jnp.ndarray: Description
+    """
+    queries, hidden_states = self.prepare_data(queries, hidden_states)
+
+    attn = self.attn_factory()
+    attn = jax.vmap(attn, in_axes=(0, None, None))
+
+    out = attn(queries, hidden_states, hidden_states)
+    out = out.transpose((1,0,2))  # [B, N, D]
+    return out
+
+  def independent_attn(
+      self,
+      queries: jnp.ndarray,
+      hidden_states: jnp.ndarray,
+      ) -> jnp.ndarray:
+    """Each query gets indepedent set of parameters
+    
+    Args:
+        queries (jnp.ndarray): [B, N, D]
+        hidden_states (jnp.ndarray): [B, N, D]
+    
+    Returns:
+        jnp.ndarray: Description
+    """
+    # swap B, N and add zeros to hidden states
+    queries, hidden_states = self.prepare_data(queries, hidden_states)
+    N, B, D = queries.shape
+    # -----------------------
+    # make functions
+    # -----------------------
+    index = jnp.arange(N)
+    def apply_attn(x):
+      return self.attn_factory()(x[0], x[1], x[2])
+    functions = [apply_attn for i in index]
+
+    # -----------------------
+    # initialization:
+    #  just make N copies of function
+    # -----------------------
+    if hk.running_init():
+      # during initialization, just create functions
+      q = queries[0]  # [1, B, D]
+      # reuse same example for all functions
+      x = [f((q, hidden_states, hidden_states)) for f in functions]
+
+      # combine all outputs at leaf jnp.ndarray level
+      out = jax.tree_map(lambda *arrays: jnp.stack(arrays), *x)
+    # -----------------------
+    # apply:
+    #  vmap magic
+    # -----------------------
+    else:
+      # during apply, apply functions in parallel
+      vmap_functions = hk.vmap(
+        # switch can only take 1 input so make tuple
+        lambda i, q, k, v: hk.switch(i, functions, (q, k, v)),
+        # select by {0th, 1st} for {index, queries}, and make copies
+        #   for hidden_states
+        # doing this will mimic sizes used during initialization
+        in_axes=(0, 0, None, None),
+        split_rng=True)
+      out = vmap_functions(index, queries, hidden_states, hidden_states)
+
+    # return to batch-first
+    out = out.transpose((1,0,2))  # [B, N, D]
+    return out
 
 class FARM(hk.RNNCore):
   def __init__(self,
     module_size: int,
     nmodules: int,
-    memory_size: int=None,
     module_attn_size: int = None,
     module_attn_heads: int=4,
     shared_module_attn: bool=True,
     projection_dim: int=16,
     image_attn: bool=True,
-    return_attn: bool=False,
-    normalize_attn: bool=False,
-    recurrent_features: bool=False,
-    input_shape: Tuple = (5, 5),
     vmap: str = 'switch',
     name: Optional[str] = None):
     """
@@ -193,43 +282,20 @@ class FARM(hk.RNNCore):
         name (Optional[str], optional): Description
     """
     super().__init__(name=name)
-
-    module_size, nmodules, memory_size = get_farm_sizes(module_size, nmodules, memory_size)
-
-    if module_attn_heads > 0 and module_attn_heads < 1:
-      module_attn_heads = int(nmodules*float(module_attn_heads))
     self.module_attn_heads = module_attn_heads
-
     self.memory = StructuredLSTM(module_size, nmodules, vmap=vmap)
-
-    self.recurrent_features = recurrent_features
-    self.input_shape = input_shape
-    self.conv_memory = hk.Conv2DLSTM(self.input_shape, 16, [3,3])
-
-
-
-    self._feature_attention = FeatureAttention(
-      projection_dim, 
-      normalize=normalize_attn,
-      vmap=vmap)
+    self._feature_attention = FeatureAttention(projection_dim, vmap=vmap)
     self.image_attn = image_attn
 
     if module_attn_heads > 0:
-      if module_attn_size:
-        attn_size=module_attn_size*module_attn_heads
-      else:
-        attn_size=module_size*module_attn_heads
-      self._module_attention = RelationalLayer(
-        num_heads=module_attn_heads, 
-        shared_parameters=shared_module_attn,
-        attn_size=attn_size
-        )
+      self._module_attention = ModuleAttention(
+        module_size=module_attn_size or module_size,
+        num_heads=module_attn_heads,
+        shared_parameters=shared_module_attn)
 
     self.module_size = module_size
     self.nmodules = nmodules
-    self.memory_size = memory_size
     self.projection_dim = projection_dim
-    self.return_attn = return_attn
 
   def __call__(
       self,
@@ -245,80 +311,38 @@ class FARM(hk.RNNCore):
         # [B, N, D]        [B, D]
         prev_state.hidden, inputs.vector)
 
-    # -----------------------
-    # conv-lstm
-    # -----------------------
-    image = inputs.image
-    conv_state = prev_state.conv_state
-    if self.recurrent_features:
-      assert self.input_shape == inputs.image.shape[1:3]
-      image, conv_state = self.conv_memory(image, prev_state.conv_state)
-      image = jax.nn.relu(image)
+    # [B, N , D]
+    image_attn = self.image_attention(query, inputs.image)
 
-
-    # -----------------------
-    # feature attention
-    # -----------------------
-    # [B, N, H, W, D]
-    image_attn = self.image_attention(query, image)
-    D = image_attn.shape[-1]
-
-    # second projection
-    image_attn_proj = hk.BatchApply(hk.Conv2D(D, [1, 1], 1))(image_attn)
-
-    B, N = image_attn_proj.shape[:2]
-    image_attn_flat = image_attn_proj.reshape(B, N, -1)
-
-    # -----------------------
-    # module attention
-    # -----------------------
+    memory_input = [query, image_attn]
     if self.module_attn_heads > 0:
       # [B, N , D]
-      query = self.module_attention(query, prev_state.hidden)
+      module_attn = self.module_attention(query, prev_state.hidden)
+      memory_input.append(module_attn)
 
-    # -----------------------
-    # lstm update
-    # -----------------------
-    memory_input = [query, image_attn_flat]
     memory_input = jnp.concatenate(memory_input, axis=-1)
-    hidden, lstm_state = self.memory(memory_input, prev_state)
+    hidden, state = self.memory(memory_input, prev_state)
 
-    if self.return_attn:
-      output = FarmOutputs(hidden=hidden, attn=image_attn)
-    else:
-      output = hidden
-
-    state = FarmState(
-        hidden=lstm_state.hidden,
-        cell=lstm_state.cell,
-        conv_state=conv_state,
-        )
-
-    return output, state
+    return hidden, state
 
   def initial_state(self, batch_size: Optional[int]) -> LSTMState:
-    lstm_state = self.memory.initial_state(batch_size)
-    conv_state = self.conv_memory.initial_state(batch_size)
-    state = FarmState(
-      hidden=lstm_state.hidden,
-      cell=lstm_state.cell,
-      conv_state=conv_state,
-      )
-    return state
+    return self.memory.initial_state(batch_size)
 
 
   def image_attention(self, query, image):
     """Apply attention and flatten output"""
     if self.image_attn:
-      return self._feature_attention(query, image)
+      attn_out = self._feature_attention(query, image)
+      B, N = attn_out.shape[:2]
+      return attn_out.reshape(B, N, -1)
     else:
       B, N = query.shape[:2]
-      # [B, H, W, C]
+      image = image.reshape(B, -1)
       attn_out = data_utils.expand_tile_dim(image, axis=1, size=N)
       return attn_out
 
   def module_attention(self, query, hidden_states):
-    return self._module_attention(queries=query, factors=hidden_states)
+    return self._module_attention(query, hidden_states)
 
 
   @property

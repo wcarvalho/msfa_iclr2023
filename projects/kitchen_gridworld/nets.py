@@ -14,6 +14,7 @@ import functools
 from agents import td_agent
 from agents.td_agent.types import Predictions
 from modules.basic_archs import BasicRecurrent
+<<<<<<< HEAD:projects/kitchen_gridworld/nets.py
 from modules.embedding import BabyAIEmbedding, OAREmbedding, LanguageTaskEmbedder, Identity, LinearTaskEmbedding
 from modules import farm
 from modules.relational import RelationalLayer, RelationalNet
@@ -26,6 +27,14 @@ from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, Conca
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules import usfa as usfa_modules
 from modules import vae as vae_modules
+=======
+from modules.embedding import OAREmbedding, LanguageTaskEmbedder
+from modules.ensembles import QEnsembleInputs, QEnsembleHead
+from modules.vision import AtariVisionTorso
+from modules.usfa import UsfaHead, USFAInputs, ConcatFlatStatePolicy
+from projects.colocation.cumulants import CumulantsFromConvTask, LinearTaskEmbed, CumulantsFromMemoryAuxTask
+from acme.adders import reverb as adders_reverb
+>>>>>>> parent of d34fcbe (maybe we can merge this?):projects/colocation/nets.py
 
 from utils import data as data_utils
 
@@ -52,11 +61,122 @@ def make_farm_prep_fn(num_actions, task_input=False, embed_task=None, symbolic=F
   """
   Return farm inputs, (1) obs features (2) [action, reward] vector
   """
+<<<<<<< HEAD:projects/kitchen_gridworld/nets.py
   embedder = BabyAIEmbedding(
     num_actions=num_actions,
     observation=False,
     concat=False,
     symbolic=symbolic)
+=======
+  task = inputs.observation.task
+  return jnp.concatenate((memory_out, task), axis=-1)
+
+# ======================================================
+# Networks
+# ======================================================
+
+def r2d1(config, env_spec, **kwargs):
+  num_actions = env_spec.actions.num_values
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=True),
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=r2d1_prediction_prep_fn,
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+  )
+
+def usfa_prep_fn(inputs, memory_out, *args, **kwargs):
+  return USFAInputs(
+    w=inputs.observation.task,
+    memory_out=memory_out,
+    )
+
+def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
+  dim = inputs.observation.task.shape[-1]
+  w_train = jnp.identity(dim)
+  return USFAInputs(
+    w=inputs.observation.task,
+    w_train=w_train,
+    memory_out=memory_out,
+    )
+
+def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False, cumulant_type = 'conv',train_task_as_z = None,**kwargs):
+  if train_task_as_z is None:
+    train_task_as_z = predict_cumulants
+  num_actions = env_spec.actions.num_values
+  state_dim = env_spec.observations.observation.state_features.shape[0]
+  task_embed = 0
+  if predict_cumulants:
+    #task_embed = LinearTaskEmbed(config.cumulant_dimension)
+    #state_dim = config.cumulant_dimension
+    pass
+  prediction_head=UsfaHead(
+      num_actions=num_actions,
+      state_dim=state_dim,
+      hidden_size=config.out_hidden_size,
+      policy_size=config.policy_size,
+      variance=config.variance,
+      nsamples=config.npolicies,
+      duelling=config.duelling,
+      policy_layers=config.policy_layers,
+      z_as_train_task=config.z_as_train_task,
+      sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
+      task_embed=task_embed,
+    ##SPECIAL TIME
+      train_task_as_z=train_task_as_z
+      )
+  aux_tasks = []
+  if predict_cumulants:
+    if cumulant_type=='lstm':
+      aux_tasks.append(
+        CumulantsFromMemoryAuxTask(
+          [config.cumulant_hidden_size, state_dim],
+          normalize=config.normalize_cumulants,
+          activation=config.cumulant_act,
+          construction=config.cumulant_const))
+    elif cumulant_type=='conv':
+      aux_tasks.append(
+        CumulantsFromConvTask(
+          [config.cumulant_hidden_size, state_dim],
+          normalize=config.normalize_cumulants,
+          activation=config.cumulant_act))
+    else:
+      raise NotImplementedError("Cumulant type {0} not implemented".format(cumulant_type))
+  if use_seperate_eval:
+    evaluation_prep_fn=usfa_eval_prep_fn
+    evaluation=prediction_head.evaluation
+  else:
+    evaluation_prep_fn=None
+    evaluation=None
+
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=True),
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=usfa_prep_fn,
+    prediction=prediction_head,
+    evaluation_prep_fn=evaluation_prep_fn,
+    evaluation=evaluation,
+    aux_tasks=aux_tasks
+  )
+
+def r2d1_noise(config, env_spec, **kwargs):
+  num_actions = env_spec.actions.num_values
+
+  def add_noise_concat(inputs, memory_out, **kwargs):
+    """
+    Concat [task + noise] with memory output.
+    """
+    task = inputs.observation.task
+    noise = jax.random.normal(hk.next_rng_key(), task.shape)
+    task =  task + jnp.sqrt(config.variance) * noise
+    return jnp.concatenate((memory_out, task), axis=-1)
+>>>>>>> parent of d34fcbe (maybe we can merge this?):projects/colocation/nets.py
 
   def prep(inputs, obs):
     vector = embedder(inputs)
@@ -71,6 +191,7 @@ def make_farm_prep_fn(num_actions, task_input=False, embed_task=None, symbolic=F
     return farm.FarmInputs(
       image=obs, vector=vector)
 
+<<<<<<< HEAD:projects/kitchen_gridworld/nets.py
   return prep
 
 def flatten_structured_memory(memory_out, **kwargs):
@@ -691,3 +812,15 @@ def build_msf_phi_net(config, sf_out_dim):
         normalize_state=normalize_state,
         normalize_cumulants=config.normalize_cumulants)
   raise RuntimeError
+=======
+  return BasicRecurrent(
+    inputs_prep_fn=convert_floats,
+    vision_prep_fn=get_image_from_inputs,
+    vision=AtariVisionTorso(flatten=True),
+    memory_prep_fn=OAREmbedding(num_actions=num_actions),
+    memory=hk.LSTM(config.memory_size),
+    prediction_prep_fn=add_noise_concat, # add noise
+    evaluation_prep_fn=evaluation_prep_fn, # (maybe) don't add noise
+    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
+  )
+>>>>>>> parent of d34fcbe (maybe we can merge this?):projects/colocation/nets.py

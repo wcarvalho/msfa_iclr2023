@@ -27,7 +27,11 @@ class ObservationRemapWrapper(base.EnvironmentWrapper):
     self.remap.update(remap)
 
     # new obs spec
+<<<<<<< HEAD
     self.Obs = namedtuple('Observation', [self.remap[o] for o in okeys])
+=======
+    self.Obs = namedtuple('Observation', self.remap.values())
+>>>>>>> parent of d34fcbe (maybe we can merge this?)
 
 
   def reset(self) -> dm_env.TimeStep:

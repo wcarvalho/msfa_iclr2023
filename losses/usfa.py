@@ -20,18 +20,24 @@ class QLearningAuxLoss(nstep.QLearning):
     sched_end=None,
     sched_start_val=1.,
     sched_end_val=1e-4,
+<<<<<<< HEAD
     add_bias=False,
     stop_w_grad=False,
     mask_loss=False,
+=======
+>>>>>>> parent of d34fcbe (maybe we can merge this?)
     **kwargs):
     super().__init__(*args, **kwargs)
     self.coeff = coeff
     self.sched_end = sched_end
     self.sched_start_val = sched_start_val
     self.sched_end_val = sched_end_val
+<<<<<<< HEAD
     self.add_bias = add_bias
     self.stop_w_grad = stop_w_grad
     self.mask_loss = mask_loss
+=======
+>>>>>>> parent of d34fcbe (maybe we can merge this?)
     if sched_end:
       self.schedule = optax.linear_schedule(
                   init_value=sched_start_val,
@@ -46,18 +52,16 @@ class QLearningAuxLoss(nstep.QLearning):
     target_sf = target_preds.sf[:,:,0]  # [T, B, A, C]
     compute_q_jax = jax.vmap(compute_q, in_axes=(2, None), out_axes=2)  # over A
 
+<<<<<<< HEAD
     if self.stop_w_grad:
       online_w = jax.lax.stop_gradient(online_w)
       target_w = jax.lax.stop_gradient(target_w)
 
+=======
+>>>>>>> parent of d34fcbe (maybe we can merge this?)
     # output is [T, B, A]
     online_q = compute_q_jax(online_sf, online_w)
     target_q = compute_q_jax(target_sf, target_w)
-
-    if self.add_bias:
-      online_q = online_q + online_preds.qbias
-      target_q = target_q + target_preds.qbias
-
 
     batch_td_error = super().__call__(
       online_q=online_q,  # [T, B, A]
@@ -68,13 +72,10 @@ class QLearningAuxLoss(nstep.QLearning):
 
     # output is [B]
     batch_loss = 0.5 * jnp.square(batch_td_error)
-    if self.mask_loss:
-      batch_loss = episode_mean(
-        x=batch_loss,
-        done=data.discount[:-1])
-      batch_loss = batch_loss.mean()
-    else:
-      batch_loss = batch_loss.mean()
+    batch_loss = episode_mean(
+      x=batch_loss,
+      done=data.discount[:-1])
+    batch_loss = batch_loss.mean()
 
     coeff = self.coeff
     if self.sched_end is not None and self.sched_end > 0:
@@ -90,6 +91,7 @@ class QLearningAuxLoss(nstep.QLearning):
       'z.q_sf_var': online_q.var(),
       'z.q_sf_max': online_q.max(),
       'z.q_sf_min': online_q.min()}
+
 
     return loss, metrics
 
@@ -128,13 +130,10 @@ class QLearningEnsembleAuxLoss(QLearningAuxLoss):
 
     # output is [B]
     batch_loss = 0.5 * jnp.square(batch_td_error).mean(2)
-    if self.mask_loss:
-      batch_loss = episode_mean(
-        x=batch_loss,
-        done=data.discount[:-1])
-      batch_loss = batch_loss.mean()
-    else:
-      batch_loss = batch_loss.mean()
+    batch_loss = episode_mean(
+      x=batch_loss,
+      done=data.discount[:-1])
+    batch_loss = batch_loss.mean()
 
     metrics = {
       'loss_qlearning_sf': batch_loss,
