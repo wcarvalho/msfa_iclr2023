@@ -32,6 +32,8 @@ def get(search, agent=''):
         "seed": tune.grid_search([1]),
         "setting": tune.grid_search(['genv4']),
         "agent": tune.grid_search(['r2d1', 'msf']),
+        "nmodules": tune.grid_search([8]),
+        "module_task_dim": tune.grid_search([1]),
         "task_reps": tune.grid_search(['object_noand']),
         "max_number_of_steps": tune.grid_search([40_000_000]),
       }
