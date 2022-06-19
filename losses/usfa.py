@@ -59,11 +59,6 @@ class QLearningAuxLoss(nstep.QLearning):
       target_q = target_q + target_preds.qbias
 
 
-    if self.add_bias:
-      online_q = online_q + online_preds.qbias
-      target_q = target_q + target_preds.qbias
-
-
     batch_td_error = super().__call__(
       online_q=online_q,  # [T, B, A]
       target_q=target_q,  # [T, B, A]
