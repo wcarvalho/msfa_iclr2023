@@ -205,7 +205,7 @@ class TDAgent(local_layout.LocalLayout):
     # by the following two lines.
     config.samples_per_insert_tolerance_rate = float('inf')
     config.min_replay_size = 1
-
+    min_replay_size=32 * config.sequence_period if not debug else 200
     super().__init__(
         seed=seed,
         environment_spec=spec,
@@ -213,7 +213,7 @@ class TDAgent(local_layout.LocalLayout):
         networks=networks,
         policy_network=behavior_policy_constructor(networks, config),
         workdir=workdir,
-        min_replay_size=32 * config.sequence_period if not debug else 200,
+        min_replay_size=min_replay_size,
         samples_per_insert=1.,
         batch_size=config.batch_size,
         num_sgd_steps_per_step=config.sequence_period,

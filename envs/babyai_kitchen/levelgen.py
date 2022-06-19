@@ -28,6 +28,7 @@ class KitchenLevel(RoomGridLevel):
     num_rows=1,
     num_cols=1,
     num_dists=8,
+    debug=False,
     # locked_room_prob=0,
     unblocking=False,
     kitchen=None,
@@ -52,6 +53,7 @@ class KitchenLevel(RoomGridLevel):
     **kwargs,
       ):
     self.num_dists = num_dists
+    self.debug = debug
     # self.locked_room_prob = locked_room_prob
     self.use_time_limit = use_time_limit
     self.unblocking = unblocking
@@ -424,6 +426,9 @@ class KitchenLevel(RoomGridLevel):
     self.timesteps_complete = 0
     self.interaction_info = {}
 
+    if self.debug:
+      self.max_steps = max(np.random.randint(5), 1)
+
     return obs
 
   def straction(self, action : str):
@@ -537,6 +542,8 @@ class KitchenLevel(RoomGridLevel):
         done = True
 
     obs = self.gen_obs()
+    if self.debug:
+      reward = 1.0
     return obs, reward, done, info
 
 

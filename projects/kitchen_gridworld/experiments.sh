@@ -1,7 +1,7 @@
 make lp_search search=gen5 cuda=0,1 terminal='current_terminal'
 
 
-make lp_search search=gen5_modr2d1 cuda=0,1,2,3 terminal='current_terminal'
+make lp_search search=test7 cuda=0,1,2,3,4,5,6,7
 
 
 

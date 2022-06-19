@@ -325,13 +325,15 @@ class UsfaHead(hk.Module):
     # compute successor features
     # -----------------------
     if self.concat_w:
-      data_utils.expand_tile_dim(w, axis=2, size=self.num_actions)
-      sf_input = jnp.concatenate((sf_input, w_expand), axis=-1)
+      # data_utils.expand_tile_dim(w, axis=2, size=self.num_actions)
+      # sf_input = jnp.concatenate((sf_input, w_expand), axis=-1)
+      raise RuntimeError("remove")
 
     # inputs = [B, N, D_s], [B, N, A, D_w]
     # ouputs = [B, N, A, D_w], [B, N, A]
     if z_as_task:
-      sf, q_values = hk.BatchApply(self.sf_q_net)(sf_input, z)
+      # sf, q_values = hk.BatchApply(self.sf_q_net)(sf_input, z)
+      raise RuntimeError("remove")
     else:
       w_expand = add_actions_dimension(w_expand)
       sf, q_values = hk.BatchApply(self.sf_q_net)(sf_input, w_expand)

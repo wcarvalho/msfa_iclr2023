@@ -75,20 +75,54 @@ class BabyAIEmbedding(OAREmbedding):
 
 class LinearTaskEmbedding(hk.Module):
   """docstring for LinearTaskEmbedding"""
-  def __init__(self, dim, **kwargs):
+  def __init__(self, hidden_dim, out_dim, num_tasks=None, structured=False, **kwargs):
     super(LinearTaskEmbedding, self).__init__()
-    self.dim = dim
-    self.layer = hk.Linear(dim,
+    self.hidden_dim = hidden_dim
+    self.structured = structured
+    self._out_dim = out_dim
+    if structured:
+      assert num_tasks is not None
+      self.layer2_dim = out_dim//num_tasks
+    else:
+      self.layer2_dim = out_dim
+
+    self.layer1 = hk.Linear(hidden_dim,
       with_bias=False, 
       w_init=hk.initializers.RandomNormal(
           stddev=1., mean=0.))
 
+    self.layer2 = hk.Linear(self.layer2_dim)
+
   def __call__(self, x):
-    return self.layer(x)
+    """Summary
+    
+    Args:
+        x (TYPE): B x D
+    """
+    def apply_net(x_):
+      y = jax.nn.relu(self.layer1(x_))
+      return self.layer2(y)
+
+    if self.structured:
+      # [D, D]
+      block_id = jnp.identity(x.shape[-1])
+      mul = jax.vmap(jnp.multiply, in_axes=(None, 0), out_axes=1)
+      # [B, D, D]
+      struct_x = mul(x, block_id)
+
+      z = hk.BatchApply(apply_net)(struct_x)
+
+      # [B, D_out]
+      # combine all tasks into one embedding
+      z = z.reshape(x.shape[0], -1)
+    else:
+      z = apply_net(x)
+
+    return z
 
   @property
   def out_dim(self):
-    return self.dim
+    return self._out_dim
 
 
 

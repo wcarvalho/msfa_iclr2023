@@ -174,20 +174,21 @@ class FarmIndependentCumulants(FarmCumulants):
   def __call__(self, memory_out, predictions, **kwargs):
     if self.input_source == 'conv':
       # [T, B, N, H, W, D]
-      inputs = memory_out.attn
-      T, B, N = inputs.shape[:3]
-      D = inputs.shape[-1]
-      # compress so not so many params
-      if self.conv_size > 0:
-        if self.seperate_params:
-          inputs = batch_multihead(
-            x=inputs,
-            fn=lambda: hk.Conv2D(self.conv_size, [1, 1], 1),
-            wrap_vmap=lambda fn: hk.BatchApply(fn),
-            )
-        else:
-          inputs = hk.BatchApply(hk.Conv2D(self.conv_size, [1, 1], 1), num_dims=3)(inputs)
-      inputs = inputs.reshape(T, B, N, -1)
+      # inputs = memory_out.attn
+      # T, B, N = inputs.shape[:3]
+      # D = inputs.shape[-1]
+      # # compress so not so many params
+      # if self.conv_size > 0:
+      #   if self.seperate_params:
+      #     inputs = batch_multihead(
+      #       x=inputs,
+      #       fn=lambda: hk.Conv2D(self.conv_size, [1, 1], 1),
+      #       wrap_vmap=lambda fn: hk.BatchApply(fn),
+      #       )
+      #   else:
+      #     inputs = hk.BatchApply(hk.Conv2D(self.conv_size, [1, 1], 1), num_dims=3)(inputs)
+      # inputs = inputs.reshape(T, B, N, -1)
+      raise RuntimeError("remove")
 
     else:
       inputs = memory_out.hidden
@@ -198,7 +199,7 @@ class FarmIndependentCumulants(FarmCumulants):
 
     if self.construction == 'delta':
       states = inputs[:-1]  # [T, B, M, D]
-      next_states = inputs[1:]  # [T, B, M, 2D]
+      next_states = inputs[1:]  # [T, B, M, D]
 
       cumulants = next_states - states
       if self.normalize_delta:
@@ -206,7 +207,7 @@ class FarmIndependentCumulants(FarmCumulants):
 
     elif self.construction == 'delta_concat':
       states = inputs[:-1]  # [T, B, M, D]
-      next_states = inputs[1:]  # [T, B, M, 2D]
+      next_states = inputs[1:]  # [T, B, M, D]
 
       cumulants = next_states - states
 
@@ -218,7 +219,7 @@ class FarmIndependentCumulants(FarmCumulants):
 
     elif self.construction == 'concat':
       states = inputs[:-1]  # [T, B, M, D]
-      next_states = inputs[1:]  # [T, B, M, 2D]
+      next_states = inputs[1:]  # [T, B, M, D]
       cumulants = jnp.concatenate((next_states, states), axis=-1)
 
     elif self.construction == 'timestep':

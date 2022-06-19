@@ -25,6 +25,7 @@ def get(search, agent=''):
         "max_number_of_steps": tune.grid_search([10_000_000]),
       }
     ]
+
   elif search == 'gen5':
     space = [
       { # 6
@@ -56,28 +57,27 @@ def get(search, agent=''):
       },
     ]
 
-  elif search == 'test6':
+  elif search == 'test7':
     """
     Next:
     """
     space = [
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['pickup']),
+      #   "phi_mask_loss": tune.grid_search([True, False]),
+      #   "sf_mask_loss": tune.grid_search([True, False]),
+      #   "qaux_mask_loss": tune.grid_search([True, False]),
+      #   "max_number_of_steps": tune.grid_search([1_000_000]),
+      # } 
       {
         "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['msf']),
+        "agent": tune.grid_search(['r2d1']),
         "setting": tune.grid_search(['pickup']),
-        "stop_w_grad": tune.grid_search([s]),
-        "max_number_of_steps": tune.grid_search([2_000_000]),
-      } for s in [True, False]
-    ] + [
-      {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['pickup']),
-        "stop_w_grad": tune.grid_search([True]),
-        "qaux_mask_loss": tune.grid_search([False]),
-        "sf_mask_loss": tune.grid_search([s]),
-        "max_number_of_steps": tune.grid_search([2_000_000]),
-      } for s in [True, False]
+        "q_mask_loss": tune.grid_search([True, False]),
+        "max_number_of_steps": tune.grid_search([1_000_000]),
+      } 
     ]
 
   elif search == 'modr2d1':

@@ -118,6 +118,7 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
       env={"CUDA_VISIBLE_DEVICES": str(cuda)})
 
   if debug:
+    print(local_resources)
     return
 
   controller = lp.launch(program,
@@ -164,7 +165,7 @@ def manual_parallel(fn, space, debug=False):
     p.start()
     processes.append(p)
     if not debug:
-      time.sleep(60) # sleep for 60 seconds to avoid collisions
+      time.sleep(30) # sleep for 60 seconds to avoid collisions
     if wait:
       print("="*100)
       print("Waiting")

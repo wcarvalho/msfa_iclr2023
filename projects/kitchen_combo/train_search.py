@@ -70,7 +70,6 @@ def main(_):
     entity=FLAGS.wandb_entity,
     group=group, # overall group
     notes=FLAGS.notes,
-    config=dict(space=space),
     save_code=True,
   )
 

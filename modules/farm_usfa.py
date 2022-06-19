@@ -133,8 +133,8 @@ class FarmUsfaHead(UsfaHead):
 
     Args:
         inputs (USFAInputs): Description
-        z (jnp.ndarray): B x N x D_z
-        w (jnp.ndarray): B x D_w
+        z (jnp.ndarray): N policies: B x N x D_z
+        w (jnp.ndarray): 1 task: B x D_w
         key (networks_lib.PRNGKey): Description
     
     Returns:

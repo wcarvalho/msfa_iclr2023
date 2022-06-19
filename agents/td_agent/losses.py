@@ -17,11 +17,7 @@ import tree
 
 
 from agents.td_agent.types import TDNetworkFns, Predictions
-
-def masked_mean(x, mask):
-  batch_loss = x*mask
-  return batch_loss.sum(0)/(mask.sum(0)+1e-5)
-
+from losses.utils import episode_mean, make_episode_mask
 
 @dataclasses.dataclass
 class RecurrentTDLearning(learning_lib.LossFn):
@@ -211,7 +207,7 @@ class R2D2Learning(RecurrentTDLearning):
     """R2D2 learning
     """
     # Get value-selector actions from online Q-values for double Q-learning.
-    selector_actions = jnp.argmax(online_preds.q, axis=-1) # [T, B]
+    selector_actions = jnp.argmax(online_preds.q, axis=-1) # [T+1, B]
     # Preprocess discounts & rewards.
     discounts = (data.discount * self.discount).astype(online_preds.q.dtype)
     rewards = data.reward
@@ -237,21 +233,20 @@ class R2D2Learning(RecurrentTDLearning):
     # TODO(b/183945808): when this bug is fixed, truncations of actions,
     # rewards, and discounts will no longer be necessary.
     batch_td_error = batch_td_error_fn(
-        online_preds.q[:-1],
-        data.action[:-1],
-        target_preds.q[1:],
-        selector_actions[1:],
-        rewards[:-1],
-        discounts[:-1])
-
+        online_preds.q[:-1], # [T+1] --> [T]
+        data.action[:-1],    # [T+1] --> [T]
+        target_preds.q[1:],  # [T+1] --> [T]
+        selector_actions[1:],# [T+1] --> [T]
+        rewards[:-1],        # [T+1] --> [T]
+        discounts[:-1])      # [T+1] --> [T]
 
     # average over {T} --> # [B]
     if self.mask_loss:
       # [T, B]
-      mask=(discounts > 0).astype(jnp.float32)[:-1]
-      batch_loss = masked_mean(
+      episode_mask = make_episode_mask(data, include_final=False)
+      batch_loss = episode_mean(
         x=(0.5 * jnp.square(batch_td_error)),
-        mask=mask)
+        mask=episode_mask[:-1])
     else:
       batch_loss = 0.5 * jnp.square(batch_td_error).mean(axis=0)
 
@@ -294,6 +289,46 @@ class USFALearning(RecurrentTDLearning):
 
   def error(self, data, online_preds, online_state, target_preds, target_state, **kwargs):
     assert self.loss in ['transformed_n_step_q_learning', 'transformed_q_lambda', 'q_lambda', 'n_step_q_learning'], "loss not recognized"
+
+    # ======================================================
+    # Prepare Data
+    # ======================================================
+    # all are [T+1, B, N, A, C]
+    # N = num policies, A = actions, C = cumulant dim
+    online_sf = online_preds.sf
+    online_z = online_preds.z
+    target_sf = target_preds.sf
+
+    # pseudo rewards, [T/T+1, B, C]
+    cumulants = self.extract_cumulants(
+      data=data, online_preds=online_preds, online_state=online_state,
+      target_preds=target_preds, target_state=target_state)
+    cumulants = cumulants.astype(online_sf.dtype)
+
+    # Get selector actions from online Q-values for double Q-learning.
+    online_q =  (online_sf*online_z).sum(axis=-1) # [T+1, B, N, A]
+    selector_actions = jnp.argmax(online_q, axis=-1) # [T+1, B, N]
+    online_actions = data.action # [T, B]
+
+    # Preprocess discounts & rewards.
+    discounts = (data.discount * self.discount).astype(online_q.dtype) # [T, B]
+
+    cumulants_T = cumulants.shape[0]
+    data_T = online_sf.shape[0]
+
+    if cumulants_T == data_T:
+      # shorten cumulants
+      cum_idx = data_T - 1
+    elif cumulants_T == data_T - 1:
+      # no need to shorten cumulants
+      cum_idx = cumulants_T
+    elif cumulants_T > data_T:
+      raise RuntimeError("This should never happen?")
+    else:
+      raise NotImplementedError
+
+
+
     # ======================================================
     # Loss for SF
     # ======================================================
@@ -327,7 +362,7 @@ class USFALearning(RecurrentTDLearning):
           online_actions[:-1],  # [T]       (vmap None) 
           target_sf[1:],        # [T, A, C] (vmap 2) 
           selector_actions[1:], # [T]       (vmap None) 
-          cumulants[:-1],       # [T, C]    (vmap 1) 
+          cumulants[:cum_idx],       # [T, C]    (vmap 1) 
           discounts[:-1])       # [T]       (vmap None)
 
       elif self.loss == "n_step_q_learning":
@@ -342,7 +377,7 @@ class USFALearning(RecurrentTDLearning):
           online_actions[:-1],  # [T]       (vmap None) 
           target_sf[1:],        # [T, A, C] (vmap 2) 
           selector_actions[1:], # [T]       (vmap None) 
-          cumulants[:-1],       # [T, C]    (vmap 1) 
+          cumulants[:cum_idx],       # [T, C]    (vmap 1) 
           discounts[:-1])       # [T]       (vmap None)
 
       elif self.loss == "transformed_q_lambda":
@@ -356,7 +391,7 @@ class USFALearning(RecurrentTDLearning):
         td_error = td_error_fn(
           online_sf[:-1],       # [T, A, C] (vmap 2)
           online_actions[:-1],  # [T]       (vmap None)
-          cumulants[:-1],       # [T, C]    (vmap 1)
+          cumulants[:cum_idx],       # [T, C]    (vmap 1)
           discounts[:-1],       # [T]       (vmap None)
           target_sf[1:],        # [T, A, C] (vmap 2)
         )
@@ -370,43 +405,13 @@ class USFALearning(RecurrentTDLearning):
         td_error = td_error_fn(
           online_sf[:-1],       # [T, A, C] (vmap 2)
           online_actions[:-1],  # [T]       (vmap None)
-          cumulants[:-1],       # [T, C]    (vmap 1)
+          cumulants[:cum_idx],       # [T, C]    (vmap 1)
           discounts[:-1],       # [T]       (vmap None)
           target_sf[1:],        # [T, A, C] (vmap 2)
         )
 
       return td_error # [T, C]
 
-    # ======================================================
-    # Prepare Data
-    # ======================================================
-    # all are [T, B, N, A, C]
-    # N = num policies, A = actions, C = cumulant dim
-    online_sf = online_preds.sf
-    online_z = online_preds.z
-    target_sf = target_preds.sf
-
-    # pseudo rewards, [T, B, C]
-    cumulants = self.extract_cumulants(
-      data=data, online_preds=online_preds, online_state=online_state,
-      target_preds=target_preds, target_state=target_state)
-    cumulants = cumulants.astype(online_sf.dtype)
-
-    # Get selector actions from online Q-values for double Q-learning.
-    online_q =  (online_sf*online_z).sum(axis=-1) # [T, B, N, A]
-    selector_actions = jnp.argmax(online_q, axis=-1) # [T, B, N]
-    online_actions = data.action # [T, B]
-
-    # Preprocess discounts & rewards.
-    discounts = (data.discount * self.discount).astype(online_q.dtype)
-
-    cumulants_T = cumulants.shape[0]
-    data_T = online_sf.shape[0]
-
-    if cumulants_T < data_T and self.shorten_data_for_cumulant:
-      online_sf, online_actions, target_sf, selector_actions, cumulants, discounts = jax.tree_map(
-        lambda x: x[:cumulants_T],
-        (online_sf, online_actions, target_sf, selector_actions, cumulants, discounts))
 
     # ======================================================
     # Prepare loss (via vmaps)
@@ -425,14 +430,13 @@ class USFALearning(RecurrentTDLearning):
       discounts)        # [T, B]          (vmap None,1)
 
 
-
     if self.mask_loss:
       # [T, B]
-      mask=(discounts > 0).astype(jnp.float32)[:-1]
+      episode_mask = make_episode_mask(data, include_final=False)
       # average over {T, N, C} --> # [B]
-      batch_loss = masked_mean(
+      batch_loss = episode_mean(
         x=(0.5 * jnp.square(batch_td_error)).mean(axis=(2,3)),
-        mask=mask)
+        mask=episode_mask[:-1])
     else:
       batch_loss = (0.5 * jnp.square(batch_td_error)).mean(axis=(0,2,3))
 
