@@ -38,6 +38,23 @@ train:
 
 test:
 
+  - name: "slice2" # length 3
+    task_kinds: slice2
+    num_dists: 0
+
+  - name: "toggle2" # length 3
+    task_kinds: toggle2
+    num_dists: 0
+
+  - name: "slice3" # length 3
+    task_kinds: slice3
+    num_dists: 0
+
+  - name: "toggle3" # length 3
+    task_kinds: toggle3
+    num_dists: 0
+
+
   - name: "combo0_toggle_and_pickup" # length 3
     task_kinds: toggle_and_pickup
     num_dists: 0

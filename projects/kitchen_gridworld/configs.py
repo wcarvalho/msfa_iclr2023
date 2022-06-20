@@ -82,7 +82,7 @@ class ModularUSFAConfig(USFAConfig):
   layernorm_rel: bool=False
 
   task_gate: str='none'
-  module_task_dim: int=0 # task dim per module. if 0, use embed_task_dim and divide by nmodules
+  module_task_dim: int=1 # task dim per module. if 0, use embed_task_dim and divide by nmodules
   qaux_mask_loss: bool=True
   sf_mask_loss: bool=True
   phi_mask_loss: bool=True
