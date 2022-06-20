@@ -41,8 +41,8 @@ class FarmConfig(configs.FarmConfig):
   """Extra configuration options for FARM module."""
 
   # Network hps
-  memory_size: int = None
-  module_size: int = 128
+  memory_size: int = 512
+  module_size: int = None
   nmodules: int = 4
   module_attn_heads: float = .5  # how many attention heads between modules
 
