@@ -6,17 +6,14 @@ from projects.kitchen_gridworld import configs
 class R2D1Config(configs.R2D1Config):
   task_embedding: str='none'
   embed_task_dim: int=6
-  word_dim: int=128
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config, configs.USFAConfig):
   reward_coeff: float = 10
-  value_coeff: float = 0.05
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
   reward_coeff: float = 10
-  value_coeff: float = 0.05
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):

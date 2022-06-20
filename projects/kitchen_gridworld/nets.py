@@ -147,13 +147,8 @@ def build_task_embedder(task_embedding, config, task_dim=None):
   if task_embedding == 'none':
     embedder = embed_fn = Identity(task_dim)
     return embedder, embed_fn
-  elif task_embedding in ['embedding', 'struct_embed']:
-    structured = task_embedding == 'struct_embed'
-    embedder = LinearTaskEmbedding(
-      num_tasks=task_dim,
-      hidden_dim=config.word_dim,
-      out_dim=config.embed_task_dim,
-      structured=structured)
+  elif task_embedding == 'embedding':
+    embedder = LinearTaskEmbedding(config.embed_task_dim)
     def embed_fn(task):
       """Convert task to ints, batchapply if necessary, and run through embedding function."""
       has_time = len(task.shape) == 3
@@ -480,11 +475,6 @@ def msf(
   num_actions = env_spec.actions.num_values
   task_dim = env_spec.observations.observation.task.shape[0]
 
-
-  # -----------------------
-  # memory
-  # -----------------------
-  # ensure sizes are correct
   if task_embedding == 'none' and task_dim < config.nmodules:
     # if not embedding and don't have enough modules, reduce
     module_size = config.module_size
@@ -494,6 +484,9 @@ def msf(
     config.memory_size = config.nmodules*module_size
 
 
+  # -----------------------
+  # memory
+  # -----------------------
   farm_memory = build_farm(config, return_attn=True)
 
   task_embedder, embed_fn = build_task_embedder(

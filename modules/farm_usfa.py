@@ -9,6 +9,7 @@ import haiku as hk
 from utils import data as data_utils
 
 from modules.basic_archs import AuxilliaryTask
+from modules.embedding import OneHotTask
 from modules.embedding import embed_position
 from modules.duelling import DuellingSfQNet
 from utils import vmap
@@ -26,6 +27,7 @@ class FarmUsfaHead(UsfaHead):
     position_embed: int=0,
     struct_policy: bool=False,
     argmax_mod: bool=False,
+
     **kwargs,
     ):
     super(FarmUsfaHead, self).__init__(
@@ -41,6 +43,7 @@ class FarmUsfaHead(UsfaHead):
     self.position_embed = position_embed
     self.struct_policy = struct_policy
     self.argmax_mod = argmax_mod
+
 
   def compute_sf(self,
     state : jnp.ndarray,
@@ -92,6 +95,13 @@ class FarmUsfaHead(UsfaHead):
           create_scale=False,
           create_offset=False)(state_policy)
 
+    if self.layernorm == 'sf_input':
+      state_policy = hk.LayerNorm(
+          axis=-1,
+          param_axis=-1,
+          create_scale=False,
+          create_offset=False)(state_policy)
+
     if self.multihead:
       # [B, M, A*C]
       sf = vmap.batch_multihead(
@@ -133,8 +143,8 @@ class FarmUsfaHead(UsfaHead):
 
     Args:
         inputs (USFAInputs): Description
-        z (jnp.ndarray): N policies: B x N x D_z
-        w (jnp.ndarray): 1 task: B x D_w
+        z (jnp.ndarray): B x N x D_z
+        w (jnp.ndarray): B x D_w
         key (networks_lib.PRNGKey): Description
     
     Returns:
@@ -161,6 +171,7 @@ class FarmUsfaHead(UsfaHead):
       q_values = jnp.max(q_values, axis=-1)
     else:
       q_values = q_values_prod.sum(-1)
+
 
     # -----------------------
     # GPI

@@ -1,9 +1,6 @@
 """
 Param search.
 """
-import os
-os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
-os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
 import functools
 from absl import app
@@ -20,6 +17,7 @@ import jax
 import time
 from pprint import pprint
 from utils import gen_log_dir
+import os
 import importlib
 
 from projects.common.train_search import run_experiments, listify_space
@@ -76,6 +74,7 @@ def main(_):
     entity=FLAGS.wandb_entity,
     group=group, # overall group
     notes=FLAGS.notes,
+    config=dict(space=space),
     save_code=True,
   )
 

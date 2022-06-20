@@ -21,14 +21,12 @@ class R2D1Config(configs.R2D1Config):
   sequence_period: int = 40  # how often to add
   learning_rate: float = 1e-3
   bootstrap_n: int = 5
-  step_penalty: float = 0.0
   seed: int = 3
   max_number_of_steps: int = 3_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
   loss_coeff: float = 1.0
-  q_mask_loss: bool = True # whether to mask outside of episode boundary
   schedule_end: int = None
   final_lr_scale: float = 1e-5
 
@@ -51,11 +49,9 @@ class R2D1Config(configs.R2D1Config):
   priority_exponent: float = 0.9
   max_priority_weight: float = 0.9
 
-
   # Network hps
   memory_size: int = 512
   out_hidden_size: int = 128
-  task_embedding: str='none'
   eval_network: bool = True
   vision_torso: str = 'atari'
   r2d1_loss: str = 'n_step_q_learning'
@@ -88,15 +84,7 @@ class USFAConfig(R2D1Config):
   sf_loss: str = 'n_step_q_learning' # whether to use q_lambda or n-step q-learning for objective
   lambda_: float = .9 # lambda for q-lambda
   tx_pair: rlax.TxPair = rlax.IDENTITY_PAIR
-
-
-  phi_l1_coeff: float = 0.0 # coefficient for L1 on phi
-  w_l1_coeff: float = 0.0 # coefficient for L1 on w
-  cov_coeff: float = None # coeff for covariance loss on phi
-  sf_layernorm: str = 'none' # coefficient for L1 on phi
-  task_gate: str='none'
-  sf_mask_loss: bool=True
-  phi_mask_loss: bool=True
+  sf_mask_loss: bool=False
   eval_task_support: str='train' # include eval task in support
 
 @dataclasses.dataclass
@@ -105,8 +93,7 @@ class QAuxConfig:
   loss_coeff: float = 1.0
   q_aux_anneal: int = 0.0
   q_aux_end_val: float = 0.0
-  qaux_mask_loss: bool=True
-  stop_w_grad: bool=False
+  qaux_mask_loss: bool=False
 
 
 @dataclasses.dataclass
@@ -138,9 +125,6 @@ class FarmConfig:
   image_attn: bool = True # whether to use feature attention on image
   farm_task_input: bool = False # give task as input to FARM
   farm_policy_task_input: bool = False # give task as input to FARM policy
-
-  recurrent_conv: bool = False # whether to use feature attention on image
-  normalize_attn: bool = False # whether to use feature attention on image
 
 
 @dataclasses.dataclass

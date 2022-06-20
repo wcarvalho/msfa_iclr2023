@@ -3,7 +3,6 @@ import jax
 import jax.numpy as jnp
 import haiku as hk
 import rlax
-from losses.utils import make_episode_mask
 
 class CumulantRewardLoss:
   """"""
@@ -11,7 +10,6 @@ class CumulantRewardLoss:
     balance: float = 0,
     reward_bias: float = 0,
     nmodules: int = 1,
-    mask_loss: bool = False,
     l1_coeff=None,
     wl1_coeff=None):
     self.coeff = coeff
@@ -25,16 +23,13 @@ class CumulantRewardLoss:
     self.reward_bias = reward_bias
     self.nmodules = nmodules
     self.wl1_coeff = wl1_coeff
-    self.mask_loss = mask_loss
 
 
   def __call__(self, data, online_preds, key, **kwargs):
     cumulants = online_preds.cumulants  # predicted  [T, B, D]
     task = online_preds.w  # ground-truth  [T, B, D]
-    rewards = data.reward  # ground-truth  [T, B]
-    if self.mask_loss:
-      mask = make_episode_mask(data)
 
+    rewards = data.reward  # ground-truth  [T, B]
     if self.reward_bias:
       rewards = rewards + self.reward_bias # offset time-step penality
       raise NotImplementedError("check balancing")
@@ -43,8 +38,6 @@ class CumulantRewardLoss:
       shape = cumulants.shape[0]
       task = task[:shape]
       rewards = rewards[:shape]
-      if self.mask_loss:
-        mask = mask[:shape]
 
     reward_pred = jnp.sum(cumulants*task, -1)  # dot product  [T, B]
     if self.loss == 'l2':
@@ -71,16 +64,10 @@ class CumulantRewardLoss:
       keep_zero = keep_zero.astype(jnp.float32)
 
       all_keep = (nonzero + keep_zero)
-      positive_keep = nonzero.sum()
-      positive_error = (error*nonzero).sum()/(1e-5+positive_keep)
-
-      if self.mask_loss:
-        mask = mask.reshape(-1)
-        error = error*mask
-        all_keep = all_keep*mask
-
       total_keep = all_keep.sum()
+      positive_keep = nonzero.sum()
       final_error = (error*all_keep).sum()/(1e-5+total_keep)
+      positive_error = (error*nonzero).sum()/(1e-5+positive_keep)
 
       # [T, B, D] --> [T, B]
       phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)

@@ -63,7 +63,6 @@ def main(_):
     setting=setting,
     task_reps=FLAGS.task_reps,
     evaluation=FLAGS.evaluate, # test set (harder)
-    debug=FLAGS.test,
     **env_kwargs
     )
   max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
@@ -76,20 +75,18 @@ def main(_):
   config=dict()
   config['symbolic'] = symbolic
   if FLAGS.test:
-    config['trace_length'] = 4
-    config['batch_size'] = 8
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['nmodules'] = 8
-    config['module_task_dim'] = 1
-    # config['struct_w'] = False
+    config['dot_qheads'] = False
+    config['struct_w'] = False
+
     print("="*50)
     print("="*20, "testing", "="*20)
     from pprint import pprint
     pprint(config)
     print("="*50)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = helpers.load_agent_settings(
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(
     agent=FLAGS.agent,
     env_spec=env_spec,
     max_vocab_size=max_vocab_size,
@@ -120,7 +117,7 @@ def main(_):
     NetKwargs=NetKwargs,
     LossFn=LossFn,
     LossFnKwargs=LossFnKwargs,
-    loss_label='Loss',
+    loss_label=loss_label,
     log_dir=log_dir,
     evaluate=FLAGS.evaluate,
     seed=FLAGS.seed,

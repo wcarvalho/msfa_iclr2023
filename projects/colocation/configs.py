@@ -53,29 +53,19 @@ class R2D1Config(configs.R2D1Config):
   max_priority_weight: float = 0.9
 
   # Network hps
-  memory_size: int = 512
-  out_hidden_size: int = 512
+  memory_size = 512
+  out_hidden_size = 512
   eval_network: bool = True
   lang_relu: bool = False
   vision_torso: str = 'atari'
   r2d1_loss: str = 'transformed_n_step_q_learning'
   task_gate: str='none'
-  task_embedding: str='language'
-  embed_task_dim: int=16
 
 @dataclasses.dataclass
 class NoiseConfig(R2D1Config):
   """Extra configuration options for R2D1 + noise agent."""
   variance: float = 0.5
 
-@dataclasses.dataclass
-class ModR2d1Config(R2D1Config):
-  """Extra configuration options for USFA agent."""
-  policy_size: int = 32 # embed dim for task input to q-fn
-  policy_layers: int = 2 # number of layers to embed task for input to q-fn
-  struct_w: bool = False # break up task per module
-  dot_qheads: bool = False # break up q-heads and dot-product
-  module_task_dim: int=0 # task dim per module. if 0, use embed_task_dim and divide by nmodules
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config):
@@ -83,8 +73,8 @@ class USFAConfig(R2D1Config):
   npolicies: int = 10 # number of policies to sample
   variance: float = 0.5
   # Network hps
-  policy_size: int = 32
-  policy_layers: int = 2 # [DIFF FROM MSF]
+  policy_size = 32
+  policy_layers = 2 # [DIFF FROM MSF]
   batch_size: int = 32
   cumulant_hidden_size: int=256 # hidden size for cumulant pred
   cumulant_layers: int=2 # hidden size for cumulant pred
@@ -105,7 +95,6 @@ class USFAConfig(R2D1Config):
   sf_layernorm: str = 'none' # coefficient for L1 on phi
   task_gate: str='none'
   sf_mask_loss: bool=False
-  eval_task_support: str='train' # include eval task in support
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -114,14 +103,13 @@ class QAuxConfig:
   q_aux_anneal: int = 0.0
   q_aux_end_val: float = 0.0
   qaux_mask_loss: bool=False
-  stop_w_grad: bool=True
 
 
 @dataclasses.dataclass
 class RewardConfig:
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 10.0 # coefficient for reward loss
-  value_coeff: float = 0.5 # coefficient for value loss
+  value_coeff: float = 0.05 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
   q_aux: str="single"
@@ -134,15 +122,15 @@ class FarmConfig:
   """Extra configuration options for FARM module."""
 
   # Network hps
-  memory_size: int = 512
+  memory_size = 512
   module_size: int = None
-  nmodules: int = 4
+  nmodules: int = 8
   out_layers: int = 0
   module_attn_size: int = None
   module_attn_heads: float = .5  # how many attention heads between modules
   shared_module_attn: bool = True # share params for module attention
   projection_dim: int = 16
-  farm_vmap: str = "lift"  # vmap over different parameter sets 
+  farm_vmap: str = "lift"  # vmap over different parameter sets
   image_attn: bool = True # whether to use feature attention on image
   recurrent_conv: bool = False # whether to use feature attention on image
   normalize_attn: bool = False # whether to use feature attention on image
@@ -157,7 +145,6 @@ class ModularUSFAConfig(USFAConfig):
   normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
-  struct_policy_input: bool = False # break up task per module
 
   cumulant_source: str = 'lstm' # whether to normalize cumulants
   phi_conv_size: int = 0 # size of conv for cumulants
@@ -186,9 +173,7 @@ class ModularUSFAConfig(USFAConfig):
   layernorm_rel: bool=False
 
   task_gate: str='none'
-  module_task_dim: int=0 # task dim per module. if 0, use embed_task_dim and divide by nmodules
-  qaux_mask_loss: bool=True
-  sf_mask_loss: bool=True
+  module_task_dim: int=1 # task dim per module. if 0, use lang_task_dim and divide by nmodules
 
 
 @dataclasses.dataclass
@@ -220,6 +205,5 @@ class LangConfig:
   word_dim: int = 128  # dimension of word and sentence embeddings
   word_initializer: str = 'RandomNormal'
   word_compress: str = 'last'
-  embed_task_dim: int = 16  # dimension of task
+  lang_task_dim: int = 16  # dimension of task
   lang_tanh: bool = False  # whether to apply tanh
-

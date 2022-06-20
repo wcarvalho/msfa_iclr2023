@@ -75,63 +75,20 @@ class BabyAIEmbedding(OAREmbedding):
 
 class LinearTaskEmbedding(hk.Module):
   """docstring for LinearTaskEmbedding"""
-  def __init__(self, hidden_dim=128, out_dim=6, num_tasks=None, structured=False, **kwargs):
+  def __init__(self, dim, **kwargs):
     super(LinearTaskEmbedding, self).__init__()
-    self.hidden_dim = hidden_dim
-    self.structured = structured
-    self._out_dim = out_dim
-    if structured:
-      assert num_tasks is not None
-      self.layer2_dim = out_dim//num_tasks
-    else:
-      self.layer2_dim = out_dim
-
-    if hidden_dim > 0:
-      self.layer1 = hk.Linear(hidden_dim,
-        with_bias=False, 
-        w_init=hk.initializers.RandomNormal(
-            stddev=1., mean=0.))
-
-      self.layer2 = hk.Linear(self.layer2_dim)
-    else:
-      self.layer1 = lambda x:x
-      self.layer2 = hk.Linear(out_dim,
-        with_bias=False, 
-        w_init=hk.initializers.RandomNormal(
-            stddev=1., mean=0.))
+    self.dim = dim
+    self.layer = hk.Linear(dim,
+      with_bias=False, 
+      w_init=hk.initializers.RandomNormal(
+          stddev=1., mean=0.))
 
   def __call__(self, x):
-    """Summary
-    
-    Args:
-        x (TYPE): B x D
-    """
-    def apply_net(x_):
-      y = self.layer1(x_)
-      if self.hidden_dim > 0:
-        y = jax.nn.relu(y)
-      return self.layer2(y)
-
-    if self.structured:
-      # [D, D]
-      block_id = jnp.identity(x.shape[-1])
-      mul = jax.vmap(jnp.multiply, in_axes=(None, 0), out_axes=1)
-      # [B, D, D]
-      struct_x = mul(x, block_id)
-
-      z = hk.BatchApply(apply_net)(struct_x)
-
-      # [B, D_out]
-      # combine all tasks into one embedding
-      z = z.reshape(x.shape[0], -1)
-    else:
-      z = apply_net(x)
-
-    return z 
+    return self.layer(x)
 
   @property
   def out_dim(self):
-    return self._out_dim
+    return self.dim
 
 
 
@@ -154,6 +111,21 @@ def st_bernoulli(x, key):
   x = distrax.Bernoulli(probs=x).sample(seed=key)
 
   return zero + jax.lax.stop_gradient(x)
+
+
+class VectorEmbed(hk.Module):
+  def __init__(self, out_dim):
+    super(VectorEmbed, self).__init__()
+    self.dim = out_dim
+    self.embedder = hk.Linear(output_size=out_dim,with_bias=False,w_init=hk.initializers.TruncatedNormal()) #default is mean 0, std 1
+
+  def __call__(self, x):
+    return self.embedder(x)
+
+  @property
+  def out_dim(self):
+    return self.dim
+
 
 def st_round(x):
   """Straight-through bernoulli sample"""
@@ -250,6 +222,7 @@ class LanguageTaskEmbedder(hk.Module):
         gate = st_bernoulli(gate, key=hk.next_rng_key())
       elif self.gate_type == 'round':
         gate = st_round(gate)
+
 
       # [B, D] --> [B, G, D/G]
       task_proj = jnp.stack(jnp.split(task_proj, self.gates, axis=-1), axis=1) 
