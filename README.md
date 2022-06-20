@@ -17,11 +17,7 @@ bash setup.sh cpu # cpu based machine
 # GPU Usage
 gpustat -i
 
-# killing processed by tune
-kill -9 $(pgrep process_entry)
-```
-
-
+# killing asdfhj;kafsdjk;asdfjkl;adfsjk'lasdg
 
 ## Servers
 
