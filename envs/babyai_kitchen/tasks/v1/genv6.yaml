@@ -38,19 +38,19 @@ train:
 
 test:
 
-  - name: "slice2" # length 3
+  - name: "and_slice2" # length 2
     task_kinds: slice2
     num_dists: 0
 
-  - name: "toggle2" # length 3
+  - name: "and_toggle2" # length 2
     task_kinds: toggle2
     num_dists: 0
 
-  - name: "slice3" # length 3
+  - name: "and_slice3" # length 3
     task_kinds: slice3
     num_dists: 0
 
-  - name: "toggle3" # length 3
+  - name: "and_toggle3" # length 3
     task_kinds: toggle3
     num_dists: 0
 

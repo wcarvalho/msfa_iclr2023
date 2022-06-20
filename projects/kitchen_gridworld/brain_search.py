@@ -12,7 +12,7 @@ def get(search, agent=''):
       },
     ]
 
-  elif search == 'gen5_modr2d1':
+  elif search == 'gen6_modr2d1':
     space = [
       { # 6
         "seed": tune.grid_search([1]),
@@ -26,54 +26,13 @@ def get(search, agent=''):
       }
     ]
 
-  elif search == 'gen6_verbose':
-    space = [
-      { # 6
-        "seed": tune.grid_search([1, 2]),
-        "setting": tune.grid_search(['genv6']),
-        "agent": tune.grid_search(['msf']),
-        "nmodules": tune.grid_search([8]),
-        "module_task_dim": tune.grid_search([1]),
-        "task_reps": tune.grid_search(['object_noand_verbose']),
-        "value_coeff": tune.grid_search([.5]),
-        "max_number_of_steps": tune.grid_search([40_000_000]),
-      },
-      { # 6
-        "seed": tune.grid_search([1, 2]),
-        "setting": tune.grid_search(['genv6']),
-        "agent": tune.grid_search(['msf']),
-        "nmodules": tune.grid_search([8]),
-        "module_task_dim": tune.grid_search([1]),
-        "task_reps": tune.grid_search(['object_noand_verbose']),
-        "value_coeff": tune.grid_search([.05]),
-        "max_number_of_steps": tune.grid_search([40_000_000]),
-      },
-      { # 6
-        "seed": tune.grid_search([1, 2]),
-        "setting": tune.grid_search(['genv6']),
-        "agent": tune.grid_search(['usfa_lstm']),
-        "embed_task_dim": tune.grid_search([16]),
-        "value_coeff": tune.grid_search([.5]),
-        "task_reps": tune.grid_search(['object_noand_verbose']),
-        "max_number_of_steps": tune.grid_search([40_000_000]),
-      },
-      { # 6
-        "seed": tune.grid_search([1, 2]),
-        "setting": tune.grid_search(['genv6']),
-        "agent": tune.grid_search(['usfa_lstm']),
-        "embed_task_dim": tune.grid_search([16]),
-        "value_coeff": tune.grid_search([.05]),
-        "task_reps": tune.grid_search(['object_noand_verbose']),
-        "max_number_of_steps": tune.grid_search([40_000_000]),
-      }
-    ]
 
   elif search == 'gen6_r2d1':
     space = [
       { # 6
-        "seed": tune.grid_search([s]),
+        "seed": tune.grid_search([1]),
         "setting": tune.grid_search(['genv6']),
-        "agent": tune.grid_search(['r2d1']),
+        "agent": tune.grid_search([agent]),
         "task_reps": tune.grid_search(['object_noand_verbose']),
         "max_number_of_steps": tune.grid_search([40_000_000]),
       } for s in [1,2]
