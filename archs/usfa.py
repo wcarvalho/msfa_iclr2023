@@ -1,4 +1,5 @@
 from acme.wrappers import observation_action_reward
+from acme.jax.networks import base
 
 
 from typing import NamedTuple, Optional, Tuple

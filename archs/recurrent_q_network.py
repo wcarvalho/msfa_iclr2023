@@ -1,4 +1,5 @@
 from acme.wrappers import observation_action_reward
+from acme.jax.networks import base
 
 
 from typing import NamedTuple, Optional, Tuple
@@ -18,7 +19,7 @@ def get_image_from_inputs(inputs : observation_action_reward.OAR):
 class Predictions(NamedTuple):
   """
   """
-  q: jnp.ndarray
+  q: base.QValues
 
 
 class RecurrentQNetwork(hk.RNNCore):
@@ -35,8 +36,10 @@ class RecurrentQNetwork(hk.RNNCore):
   def __call__(
       self,
       inputs: observation_action_reward,  # [B, ...]
-      state: hk.LSTMState  # [B, ...]
-  ) -> Tuple[base.QValues, hk.LSTMState]:
+      state: hk.LSTMState,  # [B, ...]
+      key,
+  ) -> Tuple[Predictions, hk.LSTMState]:
+    del key
     inputs = convert_floats(inputs)
     image = get_image_from_inputs(inputs)
 
@@ -51,9 +54,11 @@ class RecurrentQNetwork(hk.RNNCore):
   def unroll(
       self,
       inputs: observation_action_reward,  # [T, B, ...]
-      state: hk.LSTMState  # [T, ...]
-  ) -> Tuple[base.QValues, hk.LSTMState]:
+      state: hk.LSTMState,  # [T, ...]
+      key,
+  ) -> Tuple[Predictions, hk.LSTMState]:
     """Efficient unroll that applies torso, core, and duelling mlp in one pass."""
+    del key
     inputs = convert_floats(inputs)
     image = get_image_from_inputs(inputs)
 

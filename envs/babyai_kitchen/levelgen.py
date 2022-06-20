@@ -27,7 +27,7 @@ class KitchenLevel(RoomGridLevel):
     room_size=8,
     num_rows=1,
     num_cols=1,
-    num_dists=8,
+    num_dists=0,
     debug=False,
     # locked_room_prob=0,
     unblocking=False,
@@ -47,6 +47,7 @@ class KitchenLevel(RoomGridLevel):
     rootdir='.',
     distant_vision=False,
     agent_view_size=7,
+    reward_coeff=1.0,
     extra_timesteps=1,
     seed=None,
     verbosity=0,
@@ -69,7 +70,7 @@ class KitchenLevel(RoomGridLevel):
     self.random_object_state = random_object_state
     self.use_subtasks = use_subtasks
     self.taskarg_options = taskarg_options
-
+    self.reward_coeff = reward_coeff
     self.verbosity = verbosity
     self.locked_room = None
     self.extra_timesteps = extra_timesteps
@@ -544,6 +545,8 @@ class KitchenLevel(RoomGridLevel):
     obs = self.gen_obs()
     if self.debug:
       reward = 1.0
+
+    reward = reward*self.reward_coeff
     return obs, reward, done, info
 
 

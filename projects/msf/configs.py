@@ -28,9 +28,6 @@ class R2D1Config(configs.R2D1Config):
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
   loss_coeff: float = 1.0
-  q_mask_loss: bool = True # whether to mask outside of episode boundary
-  schedule_end: int = None
-  final_lr_scale: float = 1e-5
 
   # How many gradient updates to perform per learner step.
   num_sgd_steps_per_step: int = 4
