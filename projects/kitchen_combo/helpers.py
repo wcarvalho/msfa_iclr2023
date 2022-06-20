@@ -55,6 +55,8 @@ def make_environment(evaluation: bool = False,
   """
   settings = dict(
     test=dict(room_size=5, ntasks=1),
+    small=dict(room_size=7, ntasks=1),
+    small_noreset=dict(room_size=7, ntasks=1, infinite=False),
     medium=dict(room_size=9, ntasks=2),
   )
   if task2rew is None:

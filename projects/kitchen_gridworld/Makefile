@@ -75,7 +75,7 @@ test_async:
 lp_search:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/kitchen_gridworld/train_hp_search_lp.py \
+	python projects/kitchen_gridworld/train_search.py \
 	--folder $(folder) \
 	--num_gpus $(gpus) \
 	--num_cpus $(cpus) \
@@ -100,7 +100,7 @@ meta_search:
 	python projects/common/train_search_meta.py \
 	--folder $(folder) \
 	--wandb=$(wandb) \
-	--python_file="projects/kitchen_gridworld/train_hp_search_lp.py" \
+	--python_file="projects/kitchen_gridworld/train_search.py" \
 	--date=$(date) \
 	--wandb_project $(project) \
 	--group $(group) \
@@ -112,20 +112,6 @@ meta_search:
 	--debug_search $(debug) \
 	--agent $(agent)
 
-# train_search_rldl:
-# 	cd ../..; \
-# 	CUDA_VISIBLE_DEVICES=$(cuda) \
-# 	python projects/kitchen_gridworld/train_hp_search.py \
-# 	--spaces rldl_search \
-# 	--folder $(folder) \
-# 	--num_gpus $(gpus) \
-# 	--wandb=$(wandb) \
-# 	--date=$(date) \
-# 	--wandb_project $(project) \
-# 	--group $(group) \
-# 	--search $(search) \
-# 	--notes $(notes)
-
 
 
 generate_analysis_data:
@@ -135,15 +121,3 @@ generate_analysis_data:
 	--overwrite=$(or) \
 	--ckpts=$(ckpts) \
 	--num_episodes=$(eps)
-
-mprof_train_search:
-	cd ../..; \
-	CUDA_VISIBLE_DEVICES=$(cuda) \
-	mprof run -M projects/kitchen_gridworld/train_hp_search.py \
-	--folder $(folder) \
-	--group $(group) \
-	--wandb=$(wandb) \
-	--date=$(date) \
-	--num_gpus $(gpus) \
-	--search $(search) \
-	--notes $(notes)

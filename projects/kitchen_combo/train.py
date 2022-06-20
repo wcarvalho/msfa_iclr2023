@@ -49,8 +49,10 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['reward_coeff'] = 100
-    config['stop_w_grad'] = True
+    config['trace_length'] = 4
+    config['batch_size'] = 8
+    config['word_dim'] = 0
+    config['task_embedding'] = 'embedding'
 
     # config['argmax_mod'] = True
     print("="*50)

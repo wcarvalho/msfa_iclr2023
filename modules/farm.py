@@ -272,14 +272,15 @@ class FARM(hk.RNNCore):
     # -----------------------
     # module attention
     # -----------------------
+    mod_attn = query
     if self.module_attn_heads > 0:
       # [B, N , D]
-      query = self.module_attention(query, prev_state.hidden)
+      mod_attn = self.module_attention(query, prev_state.hidden)
 
     # -----------------------
     # lstm update
     # -----------------------
-    memory_input = [query, image_attn_flat]
+    memory_input = [mod_attn, image_attn_flat]
     memory_input = jnp.concatenate(memory_input, axis=-1)
     hidden, lstm_state = self.memory(memory_input, prev_state)
 

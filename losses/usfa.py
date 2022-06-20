@@ -8,7 +8,7 @@ from agents.td_agent import losses
 from utils import data as data_utils
 import optax
 from losses import nstep
-from losses.utils import episode_mean
+from losses.utils import episode_mean, make_episode_mask
 
 def compute_q(sf, w):
   return jnp.sum(sf*w, axis=-1)
@@ -59,11 +59,6 @@ class QLearningAuxLoss(nstep.QLearning):
       target_q = target_q + target_preds.qbias
 
 
-    if self.add_bias:
-      online_q = online_q + online_preds.qbias
-      target_q = target_q + target_preds.qbias
-
-
     batch_td_error = super().__call__(
       online_q=online_q,  # [T, B, A]
       target_q=target_q,  # [T, B, A]
@@ -76,7 +71,7 @@ class QLearningAuxLoss(nstep.QLearning):
     if self.mask_loss:
       batch_loss = episode_mean(
         x=batch_loss,
-        done=data.discount[:-1])
+        mask=make_episode_mask(data)[:-1])
       batch_loss = batch_loss.mean()
     else:
       batch_loss = batch_loss.mean()
@@ -136,7 +131,7 @@ class QLearningEnsembleAuxLoss(QLearningAuxLoss):
     if self.mask_loss:
       batch_loss = episode_mean(
         x=batch_loss,
-        done=data.discount[:-1])
+        mask=make_episode_mask(data)[:-1])
       batch_loss = batch_loss.mean()
     else:
       batch_loss = batch_loss.mean()

@@ -33,6 +33,7 @@ class KitchenComboLevel(KitchenLevel):
     ntasks=1,
     kitchen=None,
     objects=None,
+    infinite=True,
     # pickup_required=True,
     **kwargs):
     """Summary
@@ -48,6 +49,9 @@ class KitchenComboLevel(KitchenLevel):
         **kwargs: Description
     """
     self.task2reward = task2reward
+    self.infinite = infinite
+    if not self.infinite:
+      assert ntasks==1, "only know how to do non-infinite tasks if 1 task per type. otherwise share objects (e.g. knife in slice apple, slice orange)"
     # self._task_objects = [k for k,v in task2reward.items() if v > 0]
     # self.pickup_required = pickup_required
 
@@ -56,6 +60,7 @@ class KitchenComboLevel(KitchenLevel):
         dtype=np.int32,
         )
     self.train_tasks = np.identity(len(self.mission_arr), dtype=np.int32,)
+    self.rewarding_tasks = self.mission_arr > 0
 
     # assert (self.mission_arr >= 0).all()
     # self.object_names = list(task2reward.keys())
@@ -126,6 +131,7 @@ class KitchenComboLevel(KitchenLevel):
     # -----------------------
     task_object_types = []
     task_objects = set()
+    self.completed = np.zeros((len(self.task2reward), self.ntasks))
     for task_kind, reward in self.task2reward.items():
       for task_idx in range(self.ntasks):
         # make task cheker
@@ -173,7 +179,7 @@ class KitchenComboLevel(KitchenLevel):
 
     return obs
 
-  def reset_checker(self, checker):
+  def on_task_complete(self, checker):
     # get reward
     # object = self.grid.get(*fwd_pos)
 
@@ -185,28 +191,29 @@ class KitchenComboLevel(KitchenLevel):
       pos = object.cur_pos
       if (pos >= 0).all():
         self.grid.set(*pos, None)
-      object.reset()
 
-      # move object
-      room = self.get_room(0, 0)
-      pos = self.place_obj(
-          object,
-          room.top,
-          room.size,
-          reject_fn=reject_next_to,
-          max_tries=1000
-        )
+      if self.infinite:
+        object.reset()
+        # move object
+        room = self.get_room(0, 0)
+        pos = self.place_obj(
+            object,
+            room.top,
+            room.size,
+            reject_fn=reject_next_to,
+            max_tries=1000
+          )
 
-    # print('resetting', checker)
-    checker.reset_task()
+    if self.infinite:
+      checker.reset_task()
     self.carrying = None
     self.kitchen.update_carrying(None)
 
   def step(self, action):
     obs, total_reward, done, info = super().step(action)
 
-    for task_kind, checkers in self.task2checkers.items():
-      for checker in checkers:
+    for idx, (task_kind, checkers) in enumerate(self.task2checkers.items()):
+      for ck_idx, checker in enumerate(checkers):
         _, task_done = checker.get_reward_done()
 
         if task_done:
@@ -217,8 +224,17 @@ class KitchenComboLevel(KitchenLevel):
 
         # wait 1 time-step to observe eff
         if checker.time_complete > 1:
-          self.reset_checker(checker)
-    # print('action', self.idx2action[action])
+          self.on_task_complete(checker)
+          self.completed[idx, ck_idx] = 1
+
+    # -----------------------
+    # if finished each, done
+    # -----------------------
+    if not self.infinite:
+      _done = self.completed[self.rewarding_tasks].sum(-1) == self.ntasks
+      done = done or _done.all()
+
+
     obs['mission'] = self.mission_arr
     obs['train_tasks'] = self.train_tasks
     total_reward = float(total_reward)
@@ -241,10 +257,12 @@ if __name__ == '__main__':
 
     tile_size=14
     optimal=False
-    size='small'
+    size='test_noreset'
     sizes = dict(
       test=dict(room_size=5, ntasks=1),
+      test_noreset=dict(room_size=5, ntasks=1, infinite=False),
       small=dict(room_size=7, ntasks=1),
+      small_noreset=dict(room_size=7, ntasks=1, infinite=False),
       medium=dict(room_size=9, ntasks=2),
       large=dict(room_size=12, ntasks=3),
       # xl=dict(room_size=10, ntasks=5),
@@ -254,8 +272,8 @@ if __name__ == '__main__':
           "chill" : 0,
           "clean" : 1,
           }
-    if size == 'test':
-      task2reward={"pickup" : -1, "slice" : 1}
+    if 'test' in size:
+      task2reward={"pickup" : 1}
 
     env = KitchenComboLevel(
         agent_view_size=5,
@@ -300,7 +318,6 @@ if __name__ == '__main__':
             rewards.append(reward)
             if reward != 0:
               print(reward, sum(rewards), done)
-              import ipdb; ipdb.set_trace()
             # print('---------')
             show(obs)
             # if sum(rewards) > 0:

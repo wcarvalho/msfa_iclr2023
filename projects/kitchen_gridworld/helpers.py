@@ -44,6 +44,7 @@ def make_environment(evaluation: bool = False,
                      symbolic=False,
                      path='.',
                      setting=None,
+                     debug=False,
                      ) -> dm_env.Environment:
   setting = setting or 'SmallL2NoDist'
   """Loads environments."""
@@ -94,6 +95,7 @@ def make_environment(evaluation: bool = False,
     room_size=room_size,
     wrappers=env_wrappers,
     symbolic=symbolic,
+    debug=debug,
     )
 
   # wrappers for dm_env: used by agent/replay buffer
@@ -147,6 +149,7 @@ def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=
       cumulants.CumulantRewardLoss(
         shorten_data_for_cumulant=True,
         coeff=config.reward_coeff,
+        mask_loss=config.phi_mask_loss,
         loss=config.reward_loss,
         l1_coeff=getattr(config, "phi_l1_coeff", 0.0),
         wl1_coeff=getattr(config, "w_l1_coeff", 0.0),
@@ -268,6 +271,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
         cumulants.CumulantRewardLoss(
           shorten_data_for_cumulant=True,
           coeff=config.reward_coeff,
+          mask_loss=config.phi_mask_loss,
           loss=config.reward_loss,
           l1_coeff=config.phi_l1_coeff,
           wl1_coeff=config.w_l1_coeff,

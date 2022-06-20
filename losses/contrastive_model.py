@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import distrax
 import haiku as hk
 import jax
-from losses.utils import episode_mean 
+from losses.utils import episode_mean, make_episode_mask
 
 def normalize(x):
   return  x / (1e-5+jnp.linalg.norm(x, axis=-1, keepdims=True))
@@ -82,7 +82,7 @@ class OldModuleContrastLoss:
     # output is [B]
     batch_loss = episode_mean(
       x=(-likelihood).mean(-1),
-      done=data.discount[:-1]).mean()
+      mask=make_episode_mask(data)[:-1]).mean()
 
     T, B, N = label.shape[:3]
     metrics = {
@@ -182,7 +182,7 @@ class ModuleContrastLoss:
     # output is [B]
     batch_loss = episode_mean(
       x=(-likelihood).mean(-1),
-      done=data.discount[:-1]).mean()
+      mask=make_episode_mask(data)[:-1]).mean()
 
     T, B, N = label.shape[:3]
     metrics = {
@@ -268,13 +268,11 @@ class TimeContrastLoss:
     # output is [B, N]
     batch_loss = episode_mean(
       x=(-log_prob).mean(-1),
-      done=data.discount[:-1]).mean()
+      mask=make_episode_mask(data)[:-1]).mean()
 
-    any_done_zero = (data.discount[:-1].sum(0) == 0.0).any()
     metrics = {
       'loss_time_contrast': batch_loss,
       # 'z.time_contrast_prob': jnp.log(log_prob).mean(),
-      'z.any_nodata' : any_done_zero.mean(),
       'z.time.positive_logits' : positive_logits.mean(),
       'z.time.negative_logits' : negative_logits.mean(),
       'z.time.model_preds_mean' : model_preds.mean(),

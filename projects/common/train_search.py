@@ -118,6 +118,7 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
       env={"CUDA_VISIBLE_DEVICES": str(cuda)})
 
   if debug:
+    print(local_resources)
     return
 
   controller = lp.launch(program,
@@ -154,6 +155,7 @@ def manual_parallel(fn, space, debug=False):
 
   idx = 1
   processes = []
+  if debug: return
 
   for config in configs:
     wait = idx % len(gpus) == 0
@@ -163,8 +165,7 @@ def manual_parallel(fn, space, debug=False):
       args=(config,))
     p.start()
     processes.append(p)
-    if not debug:
-      time.sleep(60) # sleep for 60 seconds to avoid collisions
+    time.sleep(30) # sleep for 60 seconds to avoid collisions
     if wait:
       print("="*100)
       print("Waiting")
@@ -176,8 +177,7 @@ def manual_parallel(fn, space, debug=False):
       print("Running new set")
       print("="*100)
     idx += 1
-    if not debug:
-      time.sleep(120) # sleep for 120 seconds to finish syncing++
+    time.sleep(120) # sleep for 120 seconds to finish syncing++
 
 def listify_space(space):
   if isinstance(space, dict):

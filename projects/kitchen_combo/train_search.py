@@ -49,7 +49,7 @@ def main(_):
   mp.set_start_method('spawn')
 
   assert FLAGS.search != '', 'set search!'
-  space = importlib.import_module(f'projects.kitchen_combo.{FLAGS.spaces}').get(FLAGS.search)
+  space = importlib.import_module(f'projects.kitchen_combo.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
 
   if FLAGS.idx is not None:
     listify_space(space)
@@ -70,7 +70,6 @@ def main(_):
     entity=FLAGS.wandb_entity,
     group=group, # overall group
     notes=FLAGS.notes,
-    config=dict(space=space),
     save_code=True,
   )
 
