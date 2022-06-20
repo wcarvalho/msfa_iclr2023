@@ -80,7 +80,8 @@ def main(_):
     config['batch_size'] = 8
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['q_mask_loss'] = True
+    config['nmodules'] = 8
+    config['module_task_dim'] = 1
     # config['struct_w'] = False
     print("="*50)
     print("="*20, "testing", "="*20)
