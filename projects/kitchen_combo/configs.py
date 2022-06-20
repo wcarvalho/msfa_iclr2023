@@ -11,12 +11,12 @@ class R2D1Config(configs.R2D1Config):
 @dataclasses.dataclass
 class USFAConfig(R2D1Config, configs.USFAConfig):
   reward_coeff: float = 10
-  value_coeff: float = 0.05
+  value_coeff: float = 0.5
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
   reward_coeff: float = 10
-  value_coeff: float = 0.05
+  value_coeff: float = 0.5
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):

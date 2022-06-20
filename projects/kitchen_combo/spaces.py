@@ -58,6 +58,17 @@ def get(search, agent):
         },
     ]
 
+  elif search == 'test_noreset':
+    space = [
+        {
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search([agent]),
+          "max_number_of_steps": tune.grid_search([1_000_000]),
+          'task_embedding': tune.grid_search(['none', 'embedding', 'struct_embed']),
+          'setting': tune.grid_search(['test_noreset']),
+        },
+
+    ]
 
 
   else:

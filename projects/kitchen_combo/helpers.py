@@ -55,6 +55,7 @@ def make_environment(evaluation: bool = False,
   """
   settings = dict(
     test=dict(room_size=5, ntasks=1),
+    test_noreset=dict(room_size=5, ntasks=1, infinite=False),
     small=dict(room_size=7, ntasks=1),
     small_noreset=dict(room_size=7, ntasks=1, infinite=False),
     medium=dict(room_size=9, ntasks=2),
@@ -114,8 +115,18 @@ def make_environment(evaluation: bool = False,
     else:
       task2rew=train
 
-  if setting == 'test':
-    task2rew=dict(pickup={"pickup" : 1})
+  if 'test' in setting:
+    task2rew={
+      '0.pickup': {"pickup" : 1, "toggle" : 0},
+      '0.toggle': {"pickup" : 0, "toggle" : 1},
+    }
+    if evaluation:
+      task2rew = {
+        **task2rew,
+        '1.combo':{"pickup" : 1, "toggle" : 1},
+        '2.1,-1':{"pickup" : 1, "toggle" : -1},
+        '2.-1,1':{"pickup" : -1, "toggle" : 1}
+      }
 
   all_level_kwargs=dict()
   for key, item in task2rew.items():
