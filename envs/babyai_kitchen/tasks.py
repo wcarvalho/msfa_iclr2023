@@ -1040,8 +1040,10 @@ class SliceAndCleanKnifeTask(KitchenTask):
       argops=self.argument_options.get('y', None))
     clean_instr = self.clean_task.generate(argops=['knife'])
 
-    self._task_objects = self.clean_task.task_objects + \
-      self.slice_task.task_objects
+    self._task_objects = self.slice_task.task_objects + [self.clean_task.sink]
+
+    self.slice_task.knife.set_prop('dirty', False)
+
     instr =  self.task_rep.replace(
       'x', self.clean_task.task_objects[0].name).replace(
       'y', self.slice_task.task_objects[0].name)
@@ -1060,7 +1062,7 @@ class SliceAndCleanKnifeTask(KitchenTask):
     return reward, done
 
   def subgoals(self):
-    subgoals = self.clean_task.subgoals()+self.slice_task.subgoals()
+    subgoals = self.slice_task.subgoals() + self.clean_task.subgoals()
     return subgoals
 
 # ======================================================
