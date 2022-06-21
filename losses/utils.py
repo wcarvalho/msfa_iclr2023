@@ -17,7 +17,7 @@ def make_episode_mask(data, include_final=False, dtype=jnp.float32):
   if include_final:
     return task_mask
 
-  T, B = task_mask.shape
+  T, B = task.shape[:2]
   zeros = jnp.zeros((1, B), dtype=dtype)
   episode_mask = jnp.concatenate((task_mask[1:], zeros), axis=0)
   return episode_mask

@@ -42,7 +42,7 @@ flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
 flags.DEFINE_string('env_setting', 'EasyPickup', 'which environment setting.')
-flags.DEFINE_string('task_reps', 'pickup', 'which task reps to use.')
+flags.DEFINE_string('task_reps', 'object_verbose', 'which task reps to use.')
 
 
 # -----------------------
@@ -104,7 +104,7 @@ def build_program(
     # config['cov_loss'] = 'l1_corr'
     print("="*50)
     print("="*20, "testing", "="*20)
-    import ipdb; ipdb.set_trace()
+
     from pprint import pprint
     pprint(config)
     print("="*50)
@@ -199,7 +199,7 @@ def main(_):
     env_kwargs=dict(
       setting=FLAGS.env_setting,
       task_reps=FLAGS.task_reps,
-      symbolic=True,
+      symbolic=False,
     )
     )
 

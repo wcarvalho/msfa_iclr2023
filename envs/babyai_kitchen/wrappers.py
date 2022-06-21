@@ -6,24 +6,40 @@ class MissionIntegerWrapper(gym.core.ObservationWrapper):
   Wrapper to convert mission to integers.
   """
 
-  def __init__(self, env, instr_preproc, max_length=30):
+  def __init__(self, env, instr_preproc, struct_and=False, max_length=30):
     super().__init__(env)
 
     self.instr_preproc = instr_preproc
     self.max_length = max_length
+    self.struct_and = struct_and
+
+    if self.struct_and:
+      shape = (self.max_length, self.max_length)
+    else:
+      shape = (self.max_length,)
 
     self.observation_space.spaces['mission'] = gym.spaces.Box(
         low=0,
         high=1,
-        shape=(self.max_length,),
+        shape=shape,
         dtype='uint8'
     )
 
   def observation(self, obs):
     mission = self.instr_preproc(obs['mission'])
     assert len(mission) <= self.max_length
-    obs['mission'] = np.zeros(self.max_length, dtype=np.uint8)
-    obs['mission'][:len(mission)] = mission
+
+    if self.struct_and:
+      and_token = self.instr_preproc.vocab['and']
+      idx = np.where(mission != and_token)[0]
+      split = np.split(mission[idx],np.where(np.diff(idx)!=1)[0]+1)
+      obs['mission'] = np.zeros((self.max_length, self.max_length), dtype=np.uint8)
+      for idx, s in enumerate(split):
+        obs['mission'][idx, :len(s)] = s
+    else:
+
+      obs['mission'] = np.zeros(self.max_length, dtype=np.uint8)
+      obs['mission'][:len(mission)] = mission
     return obs
 
 class RGBImgFullyObsWrapper(gym.core.ObservationWrapper):

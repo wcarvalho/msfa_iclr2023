@@ -204,6 +204,19 @@ class LanguageTaskEmbedder(hk.Module):
       self.gate = hk.Linear(gates)
   
   def __call__(self, x : jnp.ndarray):
+    if len(x.shape) == 2:
+      out = self.embed(x)
+    elif len(x.shape) == 3:
+      z = hk.BatchApply(self.embed)(x)
+      # sum over structure
+      out = z.sum(1)
+    else:
+      raise NotImplementedError
+
+    return out
+
+
+  def embed(self, x : jnp.ndarray):
     """Embed words, then run through GRU.
     
     Args:

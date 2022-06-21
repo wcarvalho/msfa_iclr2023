@@ -143,17 +143,20 @@ def build_farm(config, **kwargs):
   return farm_memory
 
 
-def build_task_embedder(task_embedding, config, task_dim=None):
+def build_task_embedder(task_embedding, config, task_shape=None):
+  num_tasks = task_shape[-1]
   if task_embedding == 'none':
-    embedder = embed_fn = Identity(task_dim)
+    assert len(task_shape) == 1, "don't know how to handle"
+    embedder = embed_fn = Identity(num_tasks)
     return embedder, embed_fn
   elif task_embedding in ['embedding', 'struct_embed']:
     structured = task_embedding == 'struct_embed'
     embedder = LinearTaskEmbedding(
-      num_tasks=task_dim,
+      num_tasks=num_tasks,
       hidden_dim=config.word_dim,
       out_dim=config.embed_task_dim,
       structured=structured)
+    assert len(task_shape) == 1, "don't know how to handle"
     def embed_fn(task):
       """Convert task to ints, batchapply if necessary, and run through embedding function."""
       has_time = len(task.shape) == 3
@@ -182,7 +185,14 @@ def build_task_embedder(task_embedding, config, task_dim=None):
         **lang_kwargs)
     def embed_fn(task):
       """Convert task to ints, batchapply if necessary, and run through embedding function."""
-      has_time = len(task.shape) == 3
+      if len(task.shape) == (len(task_shape) + 2):
+        # has (T, B) 
+        has_time = True
+      elif len(task.shape) == (len(task_shape) + 1):
+        # has (B)
+        has_time = False
+      else:
+        raise RuntimeError(str(len(task.shape)))
       batchfn = hk.BatchApply if has_time else lambda x:x
       return batchfn(embedder)(task.astype(jnp.int32))
 
@@ -222,11 +232,12 @@ def r2d1(config, env_spec,
 
   # config.embed_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
-  task_dim = env_spec.observations.observation.task.shape[0]
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
   task_embedder, embed_fn = build_task_embedder(
     task_embedding=task_embedding,
     config=config,
-    task_dim=task_dim)
+    task_shape=task_shape)
   if task_embedding != 'none':
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
   else:
@@ -266,8 +277,9 @@ def r2d1_noise(config, env_spec,
 
   # config.embed_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
-  task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding=task_embedding, config=config, task_dim=task_dim)
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
+  task_embedder, embed_fn = build_task_embedder(task_embedding=task_embedding, config=config, task_shape=task_shape)
   if task_embedding != 'none':
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
   else:
@@ -323,11 +335,12 @@ def modr2d1(config, env_spec,
 
 
   num_actions = env_spec.actions.num_values
-  task_dim = env_spec.observations.observation.task.shape[0]
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
   task_embedder, embed_fn = build_task_embedder(
     task_embedding=task_embedding,
     config=config,
-    task_dim=task_dim)
+    task_shape=task_shape)
   if task_embedding != 'none':
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
   else:
@@ -397,11 +410,12 @@ def usfa(config, env_spec,
   # -----------------------
   # task embedder + prep functions (will embed task)
   # -----------------------
-  task_dim = env_spec.observations.observation.task.shape[0]
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
   task_embedder, embed_fn = build_task_embedder(
     task_embedding=task_embedding,
     config=config,
-    task_dim=task_dim)
+    task_shape=task_shape)
   if task_embedding != 'none':
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn, replace_fn=replace_all_tasks_with_embedding)
   else:
@@ -478,7 +492,8 @@ def msf(
   assert config.sf_net in ['flat', 'independent', 'relational']
   assert config.phi_net in ['flat', 'independent', 'relational']
   num_actions = env_spec.actions.num_values
-  task_dim = env_spec.observations.observation.task.shape[0]
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
 
 
   # -----------------------
@@ -499,7 +514,7 @@ def msf(
   task_embedder, embed_fn = build_task_embedder(
     task_embedding=task_embedding,
     config=config,
-    task_dim=task_dim)
+    task_shape=task_shape)
 
   if task_embedding != 'none':
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn,
