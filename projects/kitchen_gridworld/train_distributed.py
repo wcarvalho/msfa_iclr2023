@@ -84,7 +84,7 @@ def build_program(
     path=path,
     **env_kwargs,
     )
-  env = environment_factory(True)
+  env = environment_factory(False)
   max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
   separate_eval = env.separate_eval # HACK
   config['symbolic'] = env_kwargs.get('symbolic', False)
