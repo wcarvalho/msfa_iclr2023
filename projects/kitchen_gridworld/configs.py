@@ -34,7 +34,7 @@ class USFAConfig(R2D1Config, configs.USFAConfig):
 class RewardConfig(configs.RewardConfig):
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 10.0 # coefficient for reward loss
-  value_coeff: float = 0.05 # coefficient for value loss
+  value_coeff: float = 0.5 # coefficient for value loss
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):
