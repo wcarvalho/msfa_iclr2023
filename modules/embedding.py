@@ -95,7 +95,7 @@ class LinearTaskEmbedding(hk.Module):
       self.layer2 = hk.Linear(self.layer2_dim)
     else:
       self.layer1 = lambda x:x
-      self.layer2 = hk.Linear(out_dim,
+      self.layer2 = hk.Linear(self.layer2_dim,
         with_bias=False, 
         w_init=hk.initializers.RandomNormal(
             stddev=1., mean=0.))

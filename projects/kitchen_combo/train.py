@@ -52,7 +52,9 @@ def main(_):
     config['trace_length'] = 4
     config['batch_size'] = 8
     config['word_dim'] = 0
-    config['task_embedding'] = 'embedding'
+    # config['task_embedding'] = 'embedding'
+    config['task_embedding'] = 'struct_embed' 
+    
 
     # config['argmax_mod'] = True
     print("="*50)
