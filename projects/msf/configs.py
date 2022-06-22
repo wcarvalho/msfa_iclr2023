@@ -11,7 +11,7 @@ class R2D1Config(configs.R2D1Config):
   """Configuration options for R2D2 agent."""
   discount: float = 0.99
   target_update_period: int = 2500
-  evaluation_epsilon: float = 0.0
+  evaluation_epsilon: float = 0.1
   num_epsilons: int = 256
   variable_update_period: int = 400 # how often to update actor
 

@@ -172,8 +172,7 @@ class LanguageTaskEmbedder(hk.Module):
       compress: str ='last',
       gates: int=None,
       gate_type: str='sample',
-      tanh: bool=False,
-      relu: bool=False,
+      activation: str='none',
       **kwargs):
     super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
@@ -196,14 +195,31 @@ class LanguageTaskEmbedder(hk.Module):
       self.task_projection = hk.Linear(task_dim)
 
     self.gates = gates
-    self.tanh = tanh
-    self.relu = relu
+    activation = activation.lower()
+    if activation == 'none':
+      self.activation = lambda x:x
+    else:
+      self.activation = getattr(jax.nn, activation)
+
     self.gate_type = gate_type.lower()
     assert self.gate_type in ['round', 'sample', 'sigmoid']
     if self.gates is not None and self.gates > 0:
       self.gate = hk.Linear(gates)
   
   def __call__(self, x : jnp.ndarray):
+    if len(x.shape) == 2:
+      out = self.embed(x)
+    elif len(x.shape) == 3:
+      z = hk.BatchApply(self.embed)(x)
+      # sum over structure
+      out = z.sum(1)
+    else:
+      raise NotImplementedError
+
+    return out
+
+
+  def embed(self, x : jnp.ndarray):
     """Embed words, then run through GRU.
     
     Args:
@@ -237,11 +253,8 @@ class LanguageTaskEmbedder(hk.Module):
 
     # [B, D]
     task_proj = self.task_projection(task)
+    task_proj = self.activation(task_proj)
 
-    if self.tanh:
-      task_proj = jax.nn.tanh(task_proj)
-    if self.relu:
-      task_proj = jax.nn.relu(task_proj)
 
     if self.gates is not None and self.gates > 0:
       # [B, G]

@@ -32,7 +32,7 @@ from utils import data as data_utils
 
 from projects.kitchen_gridworld import helpers
 from projects.common.train_distributed import build_common_program
-from projects.common.observers import LevelAvgReturnObserver
+from projects.common.observers import LevelAvgReturnObserver, LevelReturnObserver
 
 # -----------------------
 # flags
@@ -42,7 +42,7 @@ flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
 flags.DEFINE_string('env_setting', 'EasyPickup', 'which environment setting.')
-flags.DEFINE_string('task_reps', 'pickup', 'which task reps to use.')
+flags.DEFINE_string('task_reps', 'object_verbose', 'which task reps to use.')
 
 
 # -----------------------
@@ -84,9 +84,8 @@ def build_program(
     path=path,
     **env_kwargs,
     )
-  env = environment_factory(True)
+  env = environment_factory(False)
   max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
-  separate_eval = env.separate_eval # HACK
   config['symbolic'] = env_kwargs.get('symbolic', False)
   # config_kwargs['step_penalty'] = env.step_penalty
   env_spec = acme.make_environment_spec(env)
@@ -104,7 +103,7 @@ def build_program(
     # config['cov_loss'] = 'l1_corr'
     print("="*50)
     print("="*20, "testing", "="*20)
-    import ipdb; ipdb.set_trace()
+
     from pprint import pprint
     pprint(config)
     print("="*50)
@@ -142,16 +141,13 @@ def build_program(
     if wandb_init_kwargs and update_wandb_name:
       wandb_init_kwargs['name'] = config_path_str
 
-  observers = [LevelAvgReturnObserver()]
+  # observers = [LevelAvgReturnObserver()]
+  observers = [LevelReturnObserver()]
   # -----------------------
   # wandb settup
   # -----------------------
   os.chdir(path)
   setting = env_kwargs.get('setting', 'default')
-  if separate_eval:
-    evaluator_factories=None # will create
-  else:
-    evaluator_factories=[]
 
   return build_common_program(
     environment_factory=environment_factory,
@@ -170,7 +166,6 @@ def build_program(
     loss_label='Loss',
     actor_label=f"actor_{setting}",
     evaluator_label=f"evaluator_{setting}",
-    evaluator_factories=evaluator_factories, # no effect to not have evaluators
     **kwargs,
     )
 
@@ -199,7 +194,7 @@ def main(_):
     env_kwargs=dict(
       setting=FLAGS.env_setting,
       task_reps=FLAGS.task_reps,
-      symbolic=True,
+      symbolic=False,
     )
     )
 

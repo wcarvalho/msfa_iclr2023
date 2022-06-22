@@ -44,6 +44,7 @@ def make_environment(evaluation: bool = False,
                      symbolic=False,
                      path='.',
                      setting=None,
+                     struct_and=False,
                      debug=False,
                      ) -> dm_env.Environment:
   setting = setting or 'SmallL2NoDist'
@@ -77,8 +78,10 @@ def make_environment(evaluation: bool = False,
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
 
-  env_wrappers = [functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc,
-        max_length=max_text_length)]
+  env_wrappers = [functools.partial(MissionIntegerWrapper,
+        instr_preproc=instr_preproc,
+        max_length=max_text_length,
+        struct_and=struct_and and evaluation)]
 
   if not symbolic:
     env_wrappers.append(

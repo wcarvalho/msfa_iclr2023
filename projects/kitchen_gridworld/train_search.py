@@ -39,14 +39,6 @@ flags.DEFINE_integer('skip', 1, 'skip run jobs.')
 flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
 flags.DEFINE_integer('idx', None, 'number of gpus per job. accepts fractions.')
 
-DEFAULT_ENV_SETTING = 'multiv9'
-DEFAULT_TASK_REPS='pickup'
-DEFAULT_LABEL=''
-DEFAULT_ROOM_SIZE = 7
-DEFAULT_SYMBOLIC = False
-DEFAULT_NUM_ACTORS = 4
-DEFAULT_NUM_DISTS = 0
-
 def main(_):
   FLAGS = flags.FLAGS
   terminal = FLAGS.terminal
@@ -80,11 +72,12 @@ def main(_):
   )
 
   default_env_kwargs = {
-    'setting' : DEFAULT_ENV_SETTING,
-    'task_reps' : DEFAULT_TASK_REPS,
-    'room_size' : DEFAULT_ROOM_SIZE,
-    'num_dists' : DEFAULT_NUM_DISTS,
-    'symbolic' : DEFAULT_SYMBOLIC,
+    'setting' : 'multiv9',
+    'task_reps' : 'pickup',
+    'room_size' : 7,
+    'num_dists' : 0,
+    'symbolic' : False,
+    'struct_and': False
   }
   run_experiments(
     build_program_fn=build_program,

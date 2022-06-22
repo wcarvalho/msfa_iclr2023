@@ -140,6 +140,8 @@ class FarmUsfaHead(UsfaHead):
     Returns:
         USFAPreds: Description
     """
+    assert len(z.shape) == 3
+    assert len(w.shape) == 2
 
     compute_sf = jax.vmap(self.compute_sf,
       in_axes=(None, 1, None), out_axes=1)

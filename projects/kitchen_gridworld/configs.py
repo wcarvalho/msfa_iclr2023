@@ -15,6 +15,7 @@ class R2D1Config(configs.R2D1Config):
   task_gate: str='none'
   task_embedding: str='language'
   embed_task_dim: int=16
+  samples_per_insert: float = 0.0 # 0.0=infinite
 
 @dataclasses.dataclass
 class ModR2d1Config(R2D1Config):
@@ -34,7 +35,7 @@ class USFAConfig(R2D1Config, configs.USFAConfig):
 class RewardConfig(configs.RewardConfig):
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 10.0 # coefficient for reward loss
-  value_coeff: float = 0.05 # coefficient for value loss
+  value_coeff: float = 0.5 # coefficient for value loss
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):
@@ -94,7 +95,7 @@ class FarmModelConfig(FarmConfig):
 
   # Network hps
   temperature: float = 0.01
-  reward_coeff: float = 50.0 # coefficient for reward loss
+  reward_coeff: float = 10.0 # coefficient for reward loss
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
   out_layers: int = 0
   model_layers: int = 2
@@ -118,5 +119,4 @@ class LangConfig:
   word_initializer: str = 'RandomNormal'
   word_compress: str = 'last'
   embed_task_dim: int = 16  # dimension of task
-  lang_tanh: bool = False  # whether to apply tanh
-  lang_relu: bool = False # whether to apply relu
+  lang_activation: str = 'none'  # whether to apply tanh

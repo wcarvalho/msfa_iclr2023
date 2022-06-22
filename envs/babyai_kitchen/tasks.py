@@ -1017,6 +1017,54 @@ class CleanAndToggleTask(KitchenTask):
     subgoals = self.toggle_task.subgoals()+self.clean_task.subgoals()
     return subgoals
 
+class SliceAndCleanKnifeTask(KitchenTask):
+  """docstring for SliceTask"""
+  def __init__(self, *args, **kwargs):
+
+    self.clean_task = CleanTask(*args, init=False, **kwargs)
+    self.slice_task = SliceTask(*args, init=False, **kwargs)
+    super(SliceAndCleanKnifeTask, self).__init__(*args, **kwargs)
+
+  @property
+  def task_name(self): return 'slice_and_clean_knife'
+  @property
+  def default_task_rep(self):
+    part1 = self.slice_task.default_task_rep.replace("x", "y")
+    part2 = self.clean_task.default_task_rep
+    return f"{part1} and {part2}"
+
+  def generate(self, exclude=[], argops=None):
+    if argops:
+      raise NotImplementedError
+    slice_instr = self.slice_task.generate(
+      argops=self.argument_options.get('y', None))
+    clean_instr = self.clean_task.generate(argops=['knife'])
+
+    self._task_objects = self.slice_task.task_objects + [self.clean_task.sink]
+
+    self.slice_task.knife.set_prop('dirty', False)
+
+    instr =  self.task_rep.replace(
+      'x', self.clean_task.task_objects[0].name).replace(
+      'y', self.slice_task.task_objects[0].name)
+
+    return instr
+
+  @property
+  def num_navs(self): return 2
+
+  def check_status(self):
+    _, clean = self.clean_task.check_status()
+    _, sliced = self.slice_task.check_status()
+    
+    reward = done = clean and sliced
+
+    return reward, done
+
+  def subgoals(self):
+    subgoals = self.slice_task.subgoals() + self.clean_task.subgoals()
+    return subgoals
+
 # ======================================================
 # length = 3
 # ======================================================
@@ -1390,6 +1438,7 @@ def all_tasks():
     toggle3=Toggle3Task,
     # clean2=Clean2Task,
     clean_and_slice=CleanAndSliceTask,
+    slice_and_clean_knife=SliceAndCleanKnifeTask,
     clean_and_toggle=CleanAndToggleTask,
     toggle_and_slice=ToggleAndSliceTask,
     toggle_and_pickup=ToggleAndPickupTask,
