@@ -82,7 +82,7 @@ def main(_):
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
     config['nmodules'] = 4
-    config['module_task_dim'] = 1
+    config['lang_activation'] = 'sigmoid'
     # config['struct_w'] = False
     print("="*50)
     print("="*20, "testing", "="*20)

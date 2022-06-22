@@ -109,6 +109,7 @@ meta_search:
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
+	--terminal $(terminal) \
 	--debug_search $(debug) \
 	--agent $(agent)
 

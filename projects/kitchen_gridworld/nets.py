@@ -180,8 +180,7 @@ def build_task_embedder(task_embedding, config, task_shape=None):
         task_dim=config.embed_task_dim,
         initializer=config.word_initializer,
         compress=config.word_compress,
-        tanh=config.lang_tanh,
-        relu=config.lang_relu,
+        activation=config.lang_activation,
         **lang_kwargs)
     def embed_fn(task):
       """Convert task to ints, batchapply if necessary, and run through embedding function."""
@@ -191,8 +190,11 @@ def build_task_embedder(task_embedding, config, task_shape=None):
       elif len(task.shape) == (len(task_shape) + 1):
         # has (B)
         has_time = False
+      elif len(task.shape) == (len(task_shape)):
+        # has (B)
+        has_time = False
       else:
-        raise RuntimeError(str(len(task.shape)))
+        raise RuntimeError
       batchfn = hk.BatchApply if has_time else lambda x:x
       return batchfn(embedder)(task.astype(jnp.int32))
 

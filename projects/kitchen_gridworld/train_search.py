@@ -77,7 +77,7 @@ def main(_):
     'room_size' : 7,
     'num_dists' : 0,
     'symbolic' : False,
-    'struct_and': True
+    'struct_and': False
   }
   run_experiments(
     build_program_fn=build_program,

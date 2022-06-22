@@ -30,6 +30,7 @@ def main(_):
       --wandb_project={FLAGS.wandb_project}
       --group={FLAGS.group}
       --search={search}
+      --terminal={FLAGS.terminal}
       --notes={FLAGS.notes}
       --skip={FLAGS.skip}
       --idx={idx}

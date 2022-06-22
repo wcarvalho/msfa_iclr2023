@@ -15,6 +15,7 @@ class R2D1Config(configs.R2D1Config):
   task_gate: str='none'
   task_embedding: str='language'
   embed_task_dim: int=16
+  samples_per_insert: float = 0.0 # 0.0=infinite
 
 @dataclasses.dataclass
 class ModR2d1Config(R2D1Config):
@@ -118,5 +119,4 @@ class LangConfig:
   word_initializer: str = 'RandomNormal'
   word_compress: str = 'last'
   embed_task_dim: int = 16  # dimension of task
-  lang_tanh: bool = False  # whether to apply tanh
-  lang_relu: bool = False # whether to apply relu
+  lang_activation: str = 'none'  # whether to apply tanh

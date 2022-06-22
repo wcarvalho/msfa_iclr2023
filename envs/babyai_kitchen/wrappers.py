@@ -16,7 +16,7 @@ class MissionIntegerWrapper(gym.core.ObservationWrapper):
     if self.struct_and:
       shape = (self.max_length, self.max_length)
     else:
-      shape = (self.max_length,)
+      shape = (1, self.max_length,)
 
     self.observation_space.spaces['mission'] = gym.spaces.Box(
         low=0,
@@ -38,8 +38,8 @@ class MissionIntegerWrapper(gym.core.ObservationWrapper):
         obs['mission'][idx, :len(s)] = s
     else:
 
-      obs['mission'] = np.zeros(self.max_length, dtype=np.uint8)
-      obs['mission'][:len(mission)] = mission
+      obs['mission'] = np.zeros((1, self.max_length), dtype=np.uint8)
+      obs['mission'][0, :len(mission)] = mission
     return obs
 
 class RGBImgFullyObsWrapper(gym.core.ObservationWrapper):

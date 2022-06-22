@@ -3,25 +3,23 @@ import jax.numpy as jnp
 
 
 def make_episode_mask(data, include_final=False, dtype=jnp.float32):
-  """Look at where have valid task data. Everything until 1 before final valid data counts towards task
+  """Look at where have valid task data. Everything until 1 before final valid data counts towards task. Data.discount always ends two before final data. 
+  e.g. if valid data is [x1, x2, x3, 0, 0], data.discount is [1,0,0,0,0]. So can use that to obtain masks.
   
   Args:
       data (TYPE): Description
-      include_final (bool, optional): if False, mask out losses based on 
+      include_final (bool, optional): if True, include all data. if False, include until 1 time-step before final data
   
   Returns:
       TYPE: Description
   """
-  task = data.observation.observation.task
-  task_mask = (task.sum((2)) > 0).astype(dtype)
+  T, B = data.discount.shape
   if include_final:
-    return task_mask
-
-  T, B = task.shape[:2]
-  zeros = jnp.zeros((1, B), dtype=dtype)
-  episode_mask = jnp.concatenate((task_mask[1:], zeros), axis=0)
-  return episode_mask
-
+    # return [1,1,1,0,0]
+    return jnp.concatenate((jnp.ones((2, B)), data.discount[:-2]), axis=0)
+  else:
+    # return [1,1,0,0,0]
+    return jnp.concatenate((jnp.ones((1, B)), data.discount[:-1]), axis=0)
 
 def episode_mean(x, mask):
   if len(mask.shape) < len(x.shape):
