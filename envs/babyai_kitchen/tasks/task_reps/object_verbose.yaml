@@ -6,7 +6,7 @@ clean: clean x
 slice: slice x
 chill: chill x
 slice2: slice x and slice y
-toggle2: turnon x and slice y
+toggle2: turnon x and turnon y
 slice3: slice x and slice y and slice z
 toggle3: turnon x and turnon y and turnon z
 clean_and_slice: clean x and slice y

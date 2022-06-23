@@ -1,0 +1,12 @@
+train:
+
+  - name: "0.slice"
+    task_kinds: slice
+    num_dists: 0
+
+
+test:
+
+  - name: "slice2" # length 2
+    task_kinds: slice2
+    num_dists: 0

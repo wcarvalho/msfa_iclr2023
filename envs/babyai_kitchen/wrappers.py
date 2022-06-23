@@ -13,10 +13,7 @@ class MissionIntegerWrapper(gym.core.ObservationWrapper):
     self.max_length = max_length
     self.struct_and = struct_and
 
-    if self.struct_and:
-      shape = (self.max_length, self.max_length)
-    else:
-      shape = (1, self.max_length,)
+    shape = (self.max_length, self.max_length)
 
     self.observation_space.spaces['mission'] = gym.spaces.Box(
         low=0,
@@ -29,16 +26,14 @@ class MissionIntegerWrapper(gym.core.ObservationWrapper):
     mission = self.instr_preproc(obs['mission'])
     assert len(mission) <= self.max_length
 
+    obs['mission'] = np.zeros((self.max_length, self.max_length), dtype=np.uint8)
     if self.struct_and:
       and_token = self.instr_preproc.vocab['and']
       idx = np.where(mission != and_token)[0]
       split = np.split(mission[idx],np.where(np.diff(idx)!=1)[0]+1)
-      obs['mission'] = np.zeros((self.max_length, self.max_length), dtype=np.uint8)
       for idx, s in enumerate(split):
         obs['mission'][idx, :len(s)] = s
     else:
-
-      obs['mission'] = np.zeros((1, self.max_length), dtype=np.uint8)
       obs['mission'][0, :len(mission)] = mission
     return obs
 

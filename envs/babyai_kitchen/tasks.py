@@ -36,11 +36,12 @@ def remove_excluded(objects, exclude):
 
 class KitchenTask(Instr):
   """docstring for KitchenTasks"""
-  def __init__(self, env, argument_options=None, task_reps=None, init=True):
+  def __init__(self, env, argument_options=None, task_reps=None, subrewards=False, init=True):
     super(KitchenTask, self).__init__()
     self.argument_options = argument_options or dict(x=[])
     self._task_objects = []
     self.env = env
+    self.subrewards = subrewards
     self.finished = False
     self._task_reps = task_reps
     self._time_complete = 0
@@ -705,7 +706,11 @@ class Slice2Task(SliceTask):
     sliced1  = self.object_to_slice.state['sliced'] == True
     sliced2 = self.object_to_slice2.state['sliced'] == True
 
-    reward = done = sliced1 and sliced2
+    if self.subrewards:
+      reward = float(sliced1) + float(sliced2)
+      done = sliced1 and sliced2
+    else:
+      reward = done = sliced1 and sliced2
 
     return reward, done
 
@@ -768,7 +773,12 @@ class Toggle2Task(KitchenTask):
   def check_status(self):
     toggle1 = self.toggle1.state['on'] == True
     toggle2 = self.toggle2.state['on'] == True
-    reward = done = toggle1 and toggle2
+    if self.subrewards:
+      reward = float(toggle1) + float(toggle2)
+      done = toggle1 and toggle2
+    else:
+      reward = done = toggle1 and toggle2
+
     return reward, done
 
   def subgoals(self):
@@ -914,7 +924,12 @@ class ToggleAndSliceTask(KitchenTask):
     _, toggled = self.toggle_task.check_status()
     _, sliced = self.slice_task.check_status()
     
-    reward = done = toggled and sliced
+    if self.subrewards:
+      reward = float(toggled) + float(sliced)
+      done = toggled and sliced
+    else:
+      reward = done = toggled and sliced
+      
 
     return reward, done
 
@@ -962,7 +977,12 @@ class ToggleAndPickupTask(KitchenTask):
     _, toggled = self.toggle_task.check_status()
     _, pickupd = self.pickup_task.check_status()
     
-    reward = done = toggled and pickupd
+    if self.subrewards:
+      reward = float(toggled) + float(pickupd)
+      done = toggled and pickupd
+    else:
+      reward = done = toggled and pickupd
+
 
     return reward, done
 
@@ -1008,8 +1028,12 @@ class CleanAndToggleTask(KitchenTask):
   def check_status(self):
     _, toggled = self.toggle_task.check_status()
     _, cleand = self.clean_task.check_status()
-    
-    reward = done = toggled and cleand
+
+    if self.subrewards:
+      reward = float(toggled) + float(cleand)
+      done = toggled and cleand
+    else:
+      reward = done = toggled and cleand
 
     return reward, done
 
@@ -1056,8 +1080,12 @@ class SliceAndCleanKnifeTask(KitchenTask):
   def check_status(self):
     _, clean = self.clean_task.check_status()
     _, sliced = self.slice_task.check_status()
-    
-    reward = done = clean and sliced
+
+    if self.subrewards:
+      reward = float(clean) + float(sliced)
+      done = clean and sliced
+    else:
+      reward = done = clean and sliced
 
     return reward, done
 
@@ -1113,7 +1141,13 @@ class Slice3Task(SliceTask):
     sliced2 = self.object_to_slice2.state['sliced'] == True
     sliced3 = self.object_to_slice3.state['sliced'] == True
 
-    reward = done = sliced1 and sliced2 and sliced3
+
+    if self.subrewards:
+      reward = float(sliced1) + float(sliced2) + float(sliced3)
+      done = sliced1 and sliced2 and sliced3
+    else:
+      reward = done = sliced1 and sliced2 and sliced3
+
 
     return reward, done
 
@@ -1183,7 +1217,14 @@ class Toggle3Task(KitchenTask):
     toggle1 = self.toggle1.state['on'] == True
     toggle2 = self.toggle2.state['on'] == True
     toggle3 = self.toggle3.state['on'] == True
-    reward = done = toggle1 and toggle2 and toggle3
+
+    if self.subrewards:
+      reward = float(toggle1) + float(toggle2) + float(toggle3)
+      done = toggle1 and toggle2 and toggle3
+    else:
+      reward = done = toggle1 and toggle2 and toggle3
+
+
     return reward, done
 
   def subgoals(self):
@@ -1413,8 +1454,12 @@ class CleanAndSliceAndToggleTask(KitchenTask):
     _, clean = self.clean_task.check_status()
     _, sliced = self.slice_task.check_status()
     _, toggled = self.toggle_task.check_status()
-    
-    reward = done = clean and sliced and toggled
+
+    if self.subrewards:
+      reward = float(clean) + float(sliced) + float(toggled)
+      done = clean and sliced and toggled
+    else:
+      reward = done = clean and sliced and toggled
 
     return reward, done
 
