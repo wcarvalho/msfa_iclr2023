@@ -202,6 +202,7 @@ def q_aux_sf_loss(config):
           tx_pair=tx_pair,
           add_bias=add_bias,
           mask_loss=config.qaux_mask_loss,
+          target_w=config.target_phi,
           stop_w_grad=getattr(config, 'stop_w_grad', False))
 
 def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, learn_model=False):
@@ -263,7 +264,11 @@ def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, lear
     loss=config.sf_loss,
     mask_loss=config.sf_mask_loss,
     shorten_data_for_cumulant=True, # needed since using delta for cumulant
-    extract_cumulants=losses.cumulants_from_preds,
+    extract_cumulants=functools.partial(
+        losses.cumulants_from_preds,
+        use_target=config.target_phi,
+        stop_grad=True,
+      ),
     aux_tasks=aux_tasks)
 
   loss_label = 'usfa'
@@ -389,6 +394,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
       shorten_data_for_cumulant=True,
       extract_cumulants=functools.partial(
         losses.cumulants_from_preds,
+        use_target=config.target_phi,
         stop_grad=True,
       ),
       aux_tasks=[

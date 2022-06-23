@@ -95,6 +95,8 @@ class USFAConfig(R2D1Config):
   sf_mask_loss: bool=True
   phi_mask_loss: bool=True
   eval_task_support: str='train' # include eval task in support
+  stop_w_grad: bool=False
+  target_phi: bool=False
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -103,7 +105,7 @@ class QAuxConfig:
   q_aux_anneal: int = 0.0
   q_aux_end_val: float = 0.0
   qaux_mask_loss: bool=True
-  stop_w_grad: bool=False
+
 
 
 @dataclasses.dataclass

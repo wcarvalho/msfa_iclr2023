@@ -54,7 +54,9 @@ def main(_):
     config['word_dim'] = 0
     # config['task_embedding'] = 'embedding'
     config['task_embedding'] = 'struct_embed' 
-    
+    # config['stop_w_grad'] = True
+    config['sf_net'] = 'relational_action'
+    config['relate_residual'] = 'concat'
 
     # config['argmax_mod'] = True
     print("="*50)

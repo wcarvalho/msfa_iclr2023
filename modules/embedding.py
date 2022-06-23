@@ -210,6 +210,7 @@ class LanguageTaskEmbedder(hk.Module):
     if len(x.shape) == 2:
       out = self.embed(x)
     elif len(x.shape) == 3:
+      # [B, M, D]
       z = hk.BatchApply(self.embed)(x)
       # sum over structure
       out = z.sum(1)

@@ -177,7 +177,7 @@ def manual_parallel(fn, space, debug=False):
       print("Running new set")
       print("="*100)
     idx += 1
-    time.sleep(120) # sleep for 120 seconds to finish syncing++
+    time.sleep(60*5) # sleep for 5 minutes to finish syncing++
 
 def listify_space(space):
   if isinstance(space, dict):

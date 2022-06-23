@@ -23,7 +23,8 @@ class ModR2d1Config(R2D1Config):
   policy_size: int = 32 # embed dim for task input to q-fn
   policy_layers: int = 2 # number of layers to embed task for input to q-fn
   struct_w: bool = False # break up task per module
-  dot_qheads: bool = False # break up q-heads and dot-product
+  dot_qheads: bool = True # break up q-heads and dot-product
+  nmodules: int = 4 # break up q-heads and dot-product
   module_task_dim: int=0 # task dim per module. if 0, use embed_task_dim and divide by nmodules
 
 @dataclasses.dataclass
@@ -76,7 +77,8 @@ class ModularUSFAConfig(USFAConfig):
 
   relate_w_init: float=2.
   resid_w_init: float=2.
-  relate_b_init: float=2.
+  relate_b_init: float=0.
+  relation_position_embed: int = 16 # whether to add position embeddings to modules
   resid_mlp: bool=False
   relate_residual: str="sigtanh"
   res_relu_gate: bool=True
