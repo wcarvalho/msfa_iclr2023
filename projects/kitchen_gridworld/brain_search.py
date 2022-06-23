@@ -372,7 +372,7 @@ def get(search, agent=''):
         "setting": tune.grid_search(['genv5']),
         "task_reps": tune.grid_search(['object_verbose']),
         "struct_and": tune.grid_search([False]),
-        "phi_l1_coeff": tune.grid_search([1e-3]),
+        "phi_l1_coeff": tune.grid_search([1e-4]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
     ]
@@ -418,55 +418,150 @@ def get(search, agent=''):
         "setting": tune.grid_search(['genv5']),
         "task_reps": tune.grid_search(['object_verbose']),
         "struct_and": tune.grid_search([True]),
-        "phi_l1_coeff": tune.grid_search([1e-3]),
+        "phi_l1_coeff": tune.grid_search([1e-4]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
     ]
-  elif search == 'test9_simple_gru':
+  elif search == 'test9_simple_sum':
     """
     Next:
     """
     space = [
       {
-        "seed": tune.grid_search([1, 2]),
+        "seed": tune.grid_search([1]),
         "group": tune.grid_search(['test9']),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['gen_simple']),
         "task_reps": tune.grid_search(['object_verbose']),
-        "struct_and": tune.grid_search([False]),
-        "activation": tune.grid_search(['none']),
+        "struct_and": tune.grid_search([True]),
+        "memory_size": tune.grid_search([512]),
+        "nmodules": tune.grid_search([8]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
       {
-        "seed": tune.grid_search([1, 2]),
+        "seed": tune.grid_search([1]),
         "group": tune.grid_search(['test9']),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['gen_simple']),
         "task_reps": tune.grid_search(['object_verbose']),
-        "struct_and": tune.grid_search([False]),
-        "activation": tune.grid_search(['sigmoid']),
-        "w_l1_coeff": tune.grid_search([1e-3]),
+        "module_task_dim": tune.grid_search([4]),
+        "struct_and": tune.grid_search([True]),
+        "memory_size": tune.grid_search([512]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
       {
-        "seed": tune.grid_search([1, 2]),
-        "group": tune.grid_search(['test9']),
-        "agent": tune.grid_search(['usfa_lstm']),
-        "setting": tune.grid_search(['gen_simple']),
-        "task_reps": tune.grid_search(['object_verbose']),
-        "struct_and": tune.grid_search([False]),
-        "max_number_of_steps": tune.grid_search([30_000_000]),
-      },
-      {
-        "seed": tune.grid_search([1, 2]),
+        "seed": tune.grid_search([1]),
         "group": tune.grid_search(['test9']),
         "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['gen_simple']),
         "task_reps": tune.grid_search(['object_verbose']),
-        "struct_and": tune.grid_search([False]),
-        "phi_l1_coeff": tune.grid_search([1e-3]),
+        "module_task_dim": tune.grid_search([4]),
+        "struct_and": tune.grid_search([True]),
+        "stop_w_grad": tune.grid_search([True]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
       },
+      {
+        "seed": tune.grid_search([1]),
+        "group": tune.grid_search(['test9']),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['gen_simple']),
+        "task_reps": tune.grid_search(['object_verbose']),
+        "module_task_dim": tune.grid_search([4]),
+        "struct_and": tune.grid_search([True]),
+        "stop_w_grad": tune.grid_search([True]),
+        "seperate_value_params": tune.grid_search([True]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      },
+
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "group": tune.grid_search(['test9']),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['gen_simple']),
+      #   "task_reps": tune.grid_search(['object_verbose']),
+      #   "struct_and": tune.grid_search([True]),
+      #   "memory_size": tune.grid_search([1024]),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "group": tune.grid_search(['test9']),
+      #   "agent": tune.grid_search(['usfa_lstm']),
+      #   "setting": tune.grid_search(['gen_simple']),
+      #   "task_reps": tune.grid_search(['object_verbose']),
+      #   "struct_and": tune.grid_search([True]),
+      #   "memory_size": tune.grid_search([512]),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "group": tune.grid_search(['test9']),
+      #   "agent": tune.grid_search(['usfa_lstm']),
+      #   "setting": tune.grid_search(['gen_simple']),
+      #   "task_reps": tune.grid_search(['object_verbose']),
+      #   "struct_and": tune.grid_search([True]),
+      #   "memory_size": tune.grid_search([1024]),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
+    ]
+  elif search == 'test9_targets':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['gen_simple']),
+        "task_reps": tune.grid_search(['object_verbose']),
+        "struct_and": tune.grid_search([True]),
+        "target_phi": tune.grid_search([True]),
+        "phi_l1_coeff": tune.grid_search([t]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      } for t in [1e-3, 1e-4] + 
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['gen_simple']),
+        "task_reps": tune.grid_search(['object_verbose']),
+        "struct_and": tune.grid_search([True]),
+        "target_phi": tune.grid_search([True]),
+        "seperate_value_params": tune.grid_search([True]),
+        # "out_hidden_size": tune.grid_search([128]),
+        "phi_l1_coeff": tune.grid_search([t]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      } for t in [1e-3, 1e-4] + 
+
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "group": tune.grid_search(['test9']),
+      #   "agent": tune.grid_search(['msf']),
+      #   "setting": tune.grid_search(['gen_simple']),
+      #   "task_reps": tune.grid_search(['object_verbose']),
+      #   "struct_and": tune.grid_search([True]),
+      #   "memory_size": tune.grid_search([1024]),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "group": tune.grid_search(['test9']),
+      #   "agent": tune.grid_search(['usfa_lstm']),
+      #   "setting": tune.grid_search(['gen_simple']),
+      #   "task_reps": tune.grid_search(['object_verbose']),
+      #   "struct_and": tune.grid_search([True]),
+      #   "memory_size": tune.grid_search([512]),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "group": tune.grid_search(['test9']),
+      #   "agent": tune.grid_search(['usfa_lstm']),
+      #   "setting": tune.grid_search(['gen_simple']),
+      #   "task_reps": tune.grid_search(['object_verbose']),
+      #   "struct_and": tune.grid_search([True]),
+      #   "memory_size": tune.grid_search([1024]),
+      #   "max_number_of_steps": tune.grid_search([30_000_000]),
+      # },
     ]
 
   else:

@@ -66,7 +66,7 @@ def build_program(
   update_wandb_name=True, # use path from logdir to populate wandb name
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
-  log_every=5.0, # how often to log
+  log_every=30.0, # how often to log
   config_kwargs=None, # config
   path='.', # path that's being run from
   log_dir=None, # where to save everything

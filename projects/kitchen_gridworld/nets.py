@@ -18,7 +18,7 @@ from modules.embedding import BabyAIEmbedding, OAREmbedding, LanguageTaskEmbedde
 from modules import farm
 from modules.relational import RelationalLayer, RelationalNet
 from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulants
-from modules.farm_usfa import FarmUsfaHead
+from modules.farm_usfa import FarmUsfaHead, RelationalFarmUsfaHead
 from modules.farm_uvfa import FarmUvfaHead, FarmUvfaInputs
 
 from modules.vision import AtariVisionTorso, BabyAIVisionTorso, BabyAIymbolicVisionTorso
@@ -438,6 +438,7 @@ def usfa(config, env_spec,
       nsamples=config.npolicies,
       duelling=config.duelling,
       policy_layers=config.policy_layers,
+      stop_w_grad=config.stop_w_grad,
       z_as_train_task=config.z_as_train_task,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       multihead=config.multihead,
@@ -491,7 +492,7 @@ def msf(
   use_separate_eval=True,
   **net_kwargs):
 
-  assert config.sf_net in ['flat', 'independent', 'relational']
+  assert config.sf_net in ['flat', 'independent', 'relational', 'relational_action']
   assert config.phi_net in ['flat', 'independent', 'relational']
   num_actions = env_spec.actions.num_values
   task_shape = env_spec.observations.observation.task.shape
@@ -598,6 +599,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
         nsamples=config.npolicies,
         duelling=config.duelling,
         policy_layers=config.policy_layers,
+        stop_w_grad=config.stop_w_grad,
         z_as_train_task=config.z_as_train_task,
         sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
         multihead=False,
@@ -616,41 +618,76 @@ def build_msf_head(config, sf_out_dim, num_actions):
         memory_out=flatten_structured_memory(memory_out.hidden))
 
   else:
-    if config.sf_net == "independent":
-      relational_net = lambda x: x
-    elif config.sf_net == "relational":
-      relational_net = RelationalNet(
-        layers=config.sf_net_layers,
-        num_heads=config.sf_net_heads,
-        attn_size=config.sf_net_attn_size,
-        layernorm=config.layernorm_rel,
-        pos_mlp=config.resid_mlp,
-        residual=config.relate_residual,
-        position_embed=True,
-        w_init_scale=config.relate_w_init,
-        res_w_init_scale=config.resid_w_init,
-        init_bias=config.relate_b_init,
-        relu_gate=config.res_relu_gate,
-        shared_parameters=not config.seperate_value_params)
-    else:
-      raise NotImplementedError(config.sf_net)
+    if config.sf_net == "relational_action":
+      hidden_size = config.out_hidden_size if config.out_hidden_size else config.module_size
+      config.sf_net_heads = config.nmodules//2
+      config.sf_net_attn_size = config.module_size*config.sf_net_heads
 
-    hidden_size = config.out_hidden_size if config.out_hidden_size else config.module_size
-    head = FarmUsfaHead(
-          num_actions=num_actions,
-          cumulants_per_module=sf_out_dim//config.nmodules,
-          hidden_size=hidden_size,
-          policy_size=config.policy_size,
-          variance=config.variance,
-          nsamples=config.npolicies,
-          relational_net=relational_net,
-          policy_layers=config.policy_layers,
-          struct_policy=config.struct_policy_input,
-          eval_task_support=config.eval_task_support,
-          multihead=config.seperate_value_params, # seperate params per cumulants
-          # vmap_multihead=config.farm_vmap,
-          # position_embed=config.embed_position,
-          )
+      relational_net = RelationalLayer(
+          num_heads=config.sf_net_heads,
+          attn_size=config.sf_net_attn_size,
+          layernorm=config.layernorm_rel,
+          pos_mlp=config.resid_mlp,
+          residual=config.relate_residual,
+          position_embed=config.relation_position_embed,
+          w_init_scale=config.relate_w_init,
+          res_w_init_scale=config.resid_w_init,
+          init_bias=config.relate_b_init,
+          relu_gate=config.res_relu_gate,
+          shared_parameters=True)
+      head = RelationalFarmUsfaHead(
+            num_actions=num_actions,
+            cumulants_per_module=sf_out_dim//config.nmodules,
+            hidden_size=hidden_size,
+            policy_size=config.policy_size,
+            variance=config.variance,
+            nsamples=config.npolicies,
+            relational_net=relational_net,
+            policy_layers=config.policy_layers,
+            stop_w_grad=config.stop_w_grad,
+            struct_policy=config.struct_policy_input,
+            eval_task_support=config.eval_task_support,
+            multihead=config.seperate_value_params, # seperate params per cumulants
+            # vmap_multihead=config.farm_vmap,
+            # position_embed=config.embed_position,
+            )
+    else:
+      if config.sf_net == "independent":
+        relational_net = lambda x: x
+      elif config.sf_net == "relational":
+        relational_net = RelationalNet(
+          layers=config.sf_net_layers,
+          num_heads=config.sf_net_heads,
+          attn_size=config.sf_net_attn_size,
+          layernorm=config.layernorm_rel,
+          pos_mlp=config.resid_mlp,
+          residual=config.relate_residual,
+          position_embed=config.relation_position_embed,
+          w_init_scale=config.relate_w_init,
+          res_w_init_scale=config.resid_w_init,
+          init_bias=config.relate_b_init,
+          relu_gate=config.res_relu_gate,
+          shared_parameters=True)
+      else:
+        raise NotImplementedError(config.sf_net)
+
+      hidden_size = config.out_hidden_size if config.out_hidden_size else config.module_size
+      head = FarmUsfaHead(
+            num_actions=num_actions,
+            cumulants_per_module=sf_out_dim//config.nmodules,
+            hidden_size=hidden_size,
+            policy_size=config.policy_size,
+            variance=config.variance,
+            nsamples=config.npolicies,
+            relational_net=relational_net,
+            policy_layers=config.policy_layers,
+            stop_w_grad=config.stop_w_grad,
+            struct_policy=config.struct_policy_input,
+            eval_task_support=config.eval_task_support,
+            multihead=config.seperate_value_params, # seperate params per cumulants
+            # vmap_multihead=config.farm_vmap,
+            # position_embed=config.embed_position,
+            )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
       return usfa_prep_fn(
@@ -699,7 +736,7 @@ def build_msf_phi_net(config, sf_out_dim):
         res_w_init_scale=config.resid_w_init,
         init_bias=config.relate_b_init,
         relu_gate=config.res_relu_gate,
-        shared_parameters=not config.seperate_cumulant_params)
+        shared_parameters=True)
     else:
       raise NotImplementedError(config.phi_net)
 

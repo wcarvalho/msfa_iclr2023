@@ -3,6 +3,7 @@ make train_search search=msf_reward2 cuda=0,1,2,3 terminal=current_terminal, ray
 
 
 make meta_search searches='r2d1_norest' cuda=0,1 # RLDL2
-make meta_search searches='small_noreset' agent='usfa_lstm' cuda=0,1,2,3
+make meta_search searches='test_noreset_msf' cuda=0,1,2,3 group=test11
+make meta_search searches='test_noreset_baselines' cuda=0,1,2,3 group=test10
 make meta_search searches='small_noreset' agent='msf' cuda=0,1,2,3
 

@@ -52,7 +52,9 @@ def main(_):
     config['trace_length'] = 4
     config['batch_size'] = 8
     config['word_dim'] = 0
-    config['task_embedding'] = 'embedding'
+    # config['stop_w_grad'] = True
+    config['sf_net'] = 'relational_action'
+    config['relate_residual'] = 'concat'
 
     # config['argmax_mod'] = True
     print("="*50)

@@ -11,11 +11,14 @@ from utils import data as data_utils
 from modules.basic_archs import AuxilliaryTask
 from modules.embedding import embed_position
 from modules.duelling import DuellingSfQNet
+from modules.relational import RelationalLayer
 from utils import vmap
 from utils import data as data_utils
 
 
 from modules.usfa import UsfaHead, USFAPreds, USFAInputs, SfQNet
+
+def concat(x,y): return jnp.concatenate((x,y), axis=-1)
 
 class FarmUsfaHead(UsfaHead):
 
@@ -56,11 +59,11 @@ class FarmUsfaHead(UsfaHead):
     B, M, _ = state.shape
     A, C = self.num_actions, self._cumulants_per_module
 
-
+    state = self.relational_net(state)
     # -----------------------
     # get input
     # -----------------------
-    def concat(x,y): return jnp.concatenate((x,y), axis=-1)
+    
     if self.struct_policy:
       # create 1-hot like vectors for each module with only its subset of task dimensions
       # e.g. [w1, w2, ...] --> [w1, 0, 0, 0]
@@ -85,13 +88,6 @@ class FarmUsfaHead(UsfaHead):
       state_policy = vmap_concat(state, policy_embed)
 
 
-    if self.layernorm == 'sf_input':
-      state_policy = hk.LayerNorm(
-          axis=-1,
-          param_axis=-1,
-          create_scale=False,
-          create_offset=False)(state_policy)
-
     if self.multihead:
       # [B, M, A*C]
       sf = vmap.batch_multihead(
@@ -108,13 +104,6 @@ class FarmUsfaHead(UsfaHead):
     sf = jnp.reshape(sf, [B, M, A, C])
     # [B, A, C*M=D_w]
     sf = sf.transpose(0, 2, 1, 3).reshape(B, A, -1)
-
-    if self.layernorm == 'sf':
-      sf = hk.LayerNorm(
-          axis=-1,
-          param_axis=-1,
-          create_scale=False,
-          create_offset=False)(sf)
 
     # vmap loop over A for SF
     q_prod = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)(sf, task)
@@ -146,9 +135,8 @@ class FarmUsfaHead(UsfaHead):
     compute_sf = jax.vmap(self.compute_sf,
       in_axes=(None, 1, None), out_axes=1)
 
-    memory_out = self.relational_net(inputs.memory_out)
     # [B, N, A, D_w]
-    sf, q_values_prod = compute_sf(memory_out, z, w)
+    sf, q_values_prod = compute_sf(inputs.memory_out, z, w)
 
     if self.argmax_mod and setting=='eval':
       M = memory_out.shape[1]
@@ -190,3 +178,143 @@ class FarmUsfaHead(UsfaHead):
   @property
   def cumulants_per_module(self):
     return self._cumulants_per_module
+
+
+def merge_factors_actions(factors : jnp.ndarray, actions: jnp.ndarray):
+  """Concat to get all pairs
+  
+  Args:
+      factors (jnp.ndarray): B x M x D
+      actions (jnp.ndarray): A x A
+  
+  Returns:
+      TYPE: B x MA x D+A
+  """
+  B, M , D = factors.shape
+  # [M, A, A]
+  A = actions.shape[-1]
+  actions = data_utils.expand_tile_dim(actions, axis=0, size=M)
+  def merge(f : jnp.ndarray, a: jnp.ndarray):
+    """Summary
+    
+    Args:
+        f (jnp.ndarray): D
+        a (jnp.ndarray): A x A
+    """
+    vmap_concat = jax.vmap(concat, in_axes=(None, 0), out_axes=0)
+    return vmap_concat(f, a) # [A, D+A]
+
+  # vmap will make changes:
+  #   [B, M, D], [M, A, A]
+  #   [M, D],    [M, A, A]
+  #   [D],       [A, A]
+  vmap_merge = jax.vmap(merge, in_axes=(0, 0), out_axes=0)
+  vmap_merge = jax.vmap(vmap_merge, in_axes=(0, None), out_axes=0)
+
+  merge = vmap_merge(factors, actions) # [B, M, A, D+A]
+  merge = merge.reshape(B, M*A, -1)
+  return merge
+
+class RelationalFarmUsfaHead(FarmUsfaHead):
+  """docstring for RelationalFarmUsfaHead"""
+
+  def compute_sf(self,
+    factors : jnp.ndarray,
+    policy : jnp.ndarray,
+    task : jnp.ndarray):
+    """Summary
+    
+    Args:
+        factors (jnp.ndarray): B x M x D
+        policy (jnp.ndarray): B x D_z
+        task (jnp.ndarray): B x D_w
+    """
+    B, M, D = factors.shape
+    A, C = self.num_actions, self._cumulants_per_module
+
+    # -----------------------
+    # combine policy and factors
+    # -----------------------
+    policy_embed = self.policynet(policy) # [B, D_z]
+    vmap_concat = jax.vmap(concat, in_axes=(1, None), out_axes=1)
+    # [B, M, D_z+D_h]
+    factors_policy = vmap_concat(factors, policy_embed)
+
+    # -----------------------
+    # combine with actions now to get all pairs
+    # -----------------------
+    actions = jnp.identity(self.num_actions)# [A, A]
+    # [B, M*A, D_z+D_h+A]
+    factors_policy_action = merge_factors_actions(factors_policy, actions)
+
+    # [B, M*A, D]
+    attn_out = self.relational_net(
+      queries=factors_policy_action,
+      factors=factors)
+    attn_out = attn_out.reshape(B, M, self.num_actions, -1)
+
+    assert self.struct_policy is False
+    assert self.multihead is False
+    assert self.position_embed == 0
+
+    sf_net = hk.nets.MLP([self.hidden_size, self.cumulants_per_module])
+
+    # [B, M, A, C]
+    sf = hk.BatchApply(sf_net, num_dims=3)(attn_out)
+
+    # [B, M, A, C] --> [B, A, M, C] --> [B, A, M*C=W]
+    sf = sf.transpose(0, 2, 1, 3).reshape(B, A, -1)
+
+    # vmap loop over A for SF
+    q_prod = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)(sf, task)
+
+    return sf, q_prod
+
+  # def sfgpi(self,
+  #   inputs: USFAInputs,
+  #   z: jnp.ndarray,
+  #   w: jnp.ndarray,
+  #   key: networks_lib.PRNGKey,
+  #   setting='train',
+  #   **kwargs) -> USFAPreds:
+  #   """M = number of modules. N = number of policies.
+
+  #   Args:
+  #       inputs (USFAInputs): Description
+  #       z (jnp.ndarray): N policies: B x N x D_z
+  #       w (jnp.ndarray): 1 task: B x D_w
+  #       key (networks_lib.PRNGKey): Description
+    
+  #   Returns:
+  #       USFAPreds: Description
+  #   """
+  #   assert len(z.shape) == 3
+  #   assert len(w.shape) == 2
+  #   assert self.argmax_mod is False, "removed ability "
+
+
+  #   compute_sf = jax.vmap(self.compute_sf,
+  #     in_axes=(None, 1, None), out_axes=1)
+
+  #   # [B, N, A, D_w]
+  #   sf, q_values_prod = compute_sf(inputs.memory_out, z, w)
+  #   q_values = q_values_prod.sum(-1)
+
+  #   # -----------------------
+  #   # GPI
+  #   # -----------------------
+  #   # [B, N, A] --> [B, A]
+  #   q_values = jnp.max(q_values, axis=1)
+
+  #   # -----------------------
+  #   # prepare other vectors
+  #   # -----------------------
+  #   # [B, N, D_z] --> # [B, N, A, D_z]
+  #   z = data_utils.expand_tile_dim(z, axis=2, size=self.num_actions)
+
+  #   return USFAPreds(
+  #     sf=sf,       # [B, N, A, D_w]
+  #     z=z,         # [B, N, A, D_w]
+  #     q=q_values,  # [B, N, A]
+  #     w=w)         # [B, D_w]
+

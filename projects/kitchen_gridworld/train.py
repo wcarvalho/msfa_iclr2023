@@ -82,7 +82,8 @@ def main(_):
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
     config['nmodules'] = 4
-    config['lang_activation'] = 'sigmoid'
+    config['target_phi'] = True
+    config['sf_net'] = 'relational_action'
     # config['struct_w'] = False
     print("="*50)
     print("="*20, "testing", "="*20)
