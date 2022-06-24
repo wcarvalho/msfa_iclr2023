@@ -96,6 +96,7 @@ class USFAConfig(R2D1Config):
   phi_mask_loss: bool=True
   eval_task_support: str='train' # include eval task in support
   stop_w_grad: bool=False
+  stop_z_grad: bool=False
   target_phi: bool=False
 
 @dataclasses.dataclass

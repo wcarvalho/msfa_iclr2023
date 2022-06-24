@@ -172,11 +172,28 @@ class LanguageTaskEmbedder(hk.Module):
       compress: str ='last',
       gates: int=None,
       gate_type: str='sample',
+      bow: bool=False,
       activation: str='none',
       **kwargs):
+    """Summary
+    
+    Args:
+        vocab_size (int): Description
+        word_dim (int): Description
+        sentence_dim (int): Description
+        task_dim (int, optional): Description
+        initializer (str, optional): Description
+        compress (str, optional): Description
+        gates (int, optional): Description
+        gate_type (str, optional): Description
+        bow (bool, optional): if True, embed words and sum
+        activation (str, optional): Description
+        **kwargs: Description
+    """
     super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
     self.word_dim = word_dim
+    self.bow = bow
     self.compress = compress
     initializer = getattr(hk.initializers, initializer)()
     self.embedder = hk.Embed(
@@ -238,19 +255,22 @@ class LanguageTaskEmbedder(hk.Module):
     mask = (x > 0).astype(words.dtype)
     words = words*jnp.expand_dims(mask, axis=-1)
 
-    # -----------------------
-    # pass through GRU
-    # -----------------------
-    initial = self.language_model.initial_state(B)
-    words = jnp.transpose(words, (1,0,2))  # N x B x D
-    sentence, _ = hk.static_unroll(self.language_model, words, initial)
-
-    if self.compress == "last":
-      task = sentence[-1] # embedding at end
-    elif self.compress == "sum":
-      task = sentence.sum(0)
+    if self.bow:
+      task = words.sum(1)
     else:
-      raise NotImplementedError(self.compress)
+      # -----------------------
+      # pass through GRU
+      # -----------------------
+      initial = self.language_model.initial_state(B)
+      words = jnp.transpose(words, (1,0,2))  # N x B x D
+      sentence, _ = hk.static_unroll(self.language_model, words, initial)
+
+      if self.compress == "last":
+        task = sentence[-1] # embedding at end
+      elif self.compress == "sum":
+        task = sentence.sum(0)
+      else:
+        raise NotImplementedError(self.compress)
 
     # [B, D]
     task_proj = self.task_projection(task)

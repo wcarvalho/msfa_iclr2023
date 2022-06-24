@@ -72,10 +72,16 @@ def build_program(
   log_dir=None, # where to save everything
   debug: bool=False,
   env_kwargs=None,
+  actor_label=None,
+  evaluator_label=None,
+  save_config_dict=None,
   **kwargs,
   ):
   config = config_kwargs or dict()
-  env_kwargs = env_kwargs or dict()
+  env_kwargs = env_kwargs or dict(
+    struct_and=True,
+    task_reset_behavior='remove'
+    )
   # -----------------------
   # load env stuff
   # -----------------------
@@ -117,7 +123,8 @@ def build_program(
   # -----------------------
   # define dict to save. add some extra stuff here
   # -----------------------
-  save_config_dict = config.__dict__
+  save_config_dict = save_config_dict or dict()
+  save_config_dict.update(config.__dict__)
   save_config_dict.update(
     agent=agent,
     # setting=setting,
@@ -148,7 +155,8 @@ def build_program(
   # -----------------------
   os.chdir(path)
   setting = env_kwargs.get('setting', 'default')
-
+  actor_label = actor_label or f"actor_{setting}"
+  evaluator_label = evaluator_label or f"evaluator_{setting}"
   return build_common_program(
     environment_factory=environment_factory,
     env_spec=env_spec,
@@ -164,8 +172,8 @@ def build_program(
     log_every=log_every,
     observers=observers,
     loss_label='Loss',
-    actor_label=f"actor_{setting}",
-    evaluator_label=f"evaluator_{setting}",
+    actor_label=actor_label,
+    evaluator_label=evaluator_label,
     **kwargs,
     )
 

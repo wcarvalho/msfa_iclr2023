@@ -122,3 +122,4 @@ class LangConfig:
   word_compress: str = 'last'
   embed_task_dim: int = 16  # dimension of task
   lang_activation: str = 'none'  # whether to apply tanh
+  bag_of_words: bool=False

@@ -26,7 +26,8 @@ class TrainTasksWrapper(base.EnvironmentWrapper):
 
     all_tasks = kitchen_tasks.all_tasks()
     kitchen_copy = copy.deepcopy(self._environment.default_gym.kitchen)
-    self.train_tasks = {t:all_tasks[t](env=kitchen_copy, task_reps=task_reps) for t in train_tasks}
+    # env only needed on resets
+    self.train_tasks = {t:all_tasks[t](env=None, kitchen=kitchen_copy, task_reps=task_reps) for t in train_tasks}
 
     # -----------------------
     # obs stuff

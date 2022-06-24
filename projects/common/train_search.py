@@ -35,6 +35,8 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
 
   if cuda:
     os.environ['CUDA_VISIBLE_DEVICES']=str(cuda)
+
+  save_config_dict=dict()
   # -----------------------
   # add env kwargs to path desc
   # -----------------------
@@ -51,6 +53,7 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
       env_path[k]=v
   if label:
     env_path['L']=label
+    save_config_dict['label'] = label
   # -----------------------
   # get log dir for experiment
   # -----------------------
@@ -102,6 +105,7 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     env_kwargs=env_kwargs,
     path=root_path,
     log_dir=log_dir,
+    save_config_dict=save_config_dict,
     build=False,
     )
   program = agent.build()
@@ -109,9 +113,9 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
   local_resources = {
       "actor": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
       "evaluator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      "counter": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      "replay": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      "coordinator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      # "counter": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      # "replay": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      # "coordinator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
   }
   if cuda:
     local_resources['learner'] = PythonProcess(
@@ -127,13 +131,13 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     local_resources=local_resources
     )
   controller.wait()
-  if agent.wandb_obj:
-    agent.wandb_obj.finish()
+  # if agent.wandb_obj:
+  #   agent.wandb_obj.finish()
   print("Controller finished")
   time.sleep(120) # sleep for 60 seconds to avoid collisions
 
 
-def manual_parallel(fn, space, debug=False):
+def manual_parallel(fn, space, debug=False, wait_time=30):
   """Run in parallel manually."""
   
   configs = []
@@ -159,13 +163,13 @@ def manual_parallel(fn, space, debug=False):
 
   for config in configs:
     wait = idx % len(gpus) == 0
-
+    os.environ['CUDA_VISIBLE_DEVICES']=str(config['cuda'])
     p = mp.Process(
       target=fn,
       args=(config,))
     p.start()
     processes.append(p)
-    time.sleep(30) # sleep for 60 seconds to avoid collisions
+    time.sleep(wait_time) # sleep for 60 seconds to avoid collisions
     if wait:
       print("="*100)
       print("Waiting")
@@ -176,8 +180,8 @@ def manual_parallel(fn, space, debug=False):
       print("="*100)
       print("Running new set")
       print("="*100)
+      time.sleep(60*5) # sleep for 5 minutes to finish syncing++
     idx += 1
-    time.sleep(60*5) # sleep for 5 minutes to finish syncing++
 
 def listify_space(space):
   if isinstance(space, dict):
@@ -201,6 +205,7 @@ def run_experiments(
   num_cpus=4,
   num_gpus=1,
   skip=True,
+  wait_time=30,
   use_ray=False,
   debug=False):
   
@@ -213,8 +218,8 @@ def run_experiments(
     print("DEBUGGING")
     print("="*30)
 
-  wandb.require("service")
-  wandb.setup()
+  # wandb.require("service")
+  # wandb.setup()
   if use_ray:
     from ray import tune
     def train_function(config):
@@ -236,7 +241,7 @@ def run_experiments(
         )
       p.start()
       if not debug:
-        time.sleep(60)
+        time.sleep(wait_time)
       p.join() # this blocks until the process terminates
       # this will call right away and end.
 
@@ -264,4 +269,5 @@ def run_experiments(
         debug=debug,
         skip=skip),
       space=space,
+      wait_time=wait_time,
       debug=debug)

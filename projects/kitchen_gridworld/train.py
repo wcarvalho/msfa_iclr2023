@@ -83,7 +83,8 @@ def main(_):
     config['min_replay_size'] = 10
     config['nmodules'] = 4
     config['target_phi'] = True
-    config['sf_net'] = 'relational_action'
+    config['stop_w_grad'] = True
+    config['bag_of_words'] = True
     # config['struct_w'] = False
     print("="*50)
     print("="*20, "testing", "="*20)

@@ -71,8 +71,6 @@ class KitchenLevel(RoomGridLevel):
     self.random_object_state = random_object_state
     self.use_subtasks = use_subtasks
     self.task_reset_behavior = task_reset_behavior.lower()
-    if self.task_reset_behavior != 'none':
-      assert use_subtasks
     self.taskarg_options = taskarg_options
     self.reward_coeff = reward_coeff
     self.verbosity = verbosity

@@ -75,35 +75,15 @@ def get(search, agent):
           'relation_position_embed': tune.grid_search([16]),
         },
     ]
-  elif search == 'test12_skil':
+  elif search == 'test12_relate':
     space = [
-        # {
-        #   "seed": tune.grid_search([1]),
-        #   "agent": tune.grid_search(['msf']),
-        #   "max_number_of_steps": tune.grid_search([2_000_000]),
-        #   'task_embedding': tune.grid_search(['none']),
-        #   'setting': tune.grid_search(['test_noreset']),
-        #   'module_size': tune.grid_search([256]),
-        # },
         {
           "seed": tune.grid_search([1]),
           "agent": tune.grid_search(['msf']),
           "max_number_of_steps": tune.grid_search([5_000_000]),
           'task_embedding': tune.grid_search(['none']),
           'setting': tune.grid_search(['test_noreset']),
-          'module_size': tune.grid_search([64]),
-          'sf_net': tune.grid_search(['relational_action']),
-          'npolicies': tune.grid_search([3]),
-          'relate_residual': tune.grid_search(['skip']),
-          'relation_position_embed': tune.grid_search([16]),
-        },
-        {
-          "seed": tune.grid_search([1]),
-          "agent": tune.grid_search(['msf']),
-          "max_number_of_steps": tune.grid_search([5_000_000]),
-          'task_embedding': tune.grid_search(['none']),
-          'setting': tune.grid_search(['test_noreset']),
-          'module_size': tune.grid_search([64]),
+          'module_size': tune.grid_search([128]),
           'sf_net': tune.grid_search(['relational_action']),
           'npolicies': tune.grid_search([3]),
           'relate_residual': tune.grid_search(['concat']),
@@ -115,23 +95,7 @@ def get(search, agent):
           "max_number_of_steps": tune.grid_search([5_000_000]),
           'task_embedding': tune.grid_search(['none']),
           'setting': tune.grid_search(['test_noreset']),
-          'module_size': tune.grid_search([32]),
-          'sf_net': tune.grid_search(['relational_action']),
-          'npolicies': tune.grid_search([3]),
-          'relate_residual': tune.grid_search(['skip']),
-          'relation_position_embed': tune.grid_search([16]),
-        },
-        {
-          "seed": tune.grid_search([1]),
-          "agent": tune.grid_search(['msf']),
-          "max_number_of_steps": tune.grid_search([5_000_000]),
-          'task_embedding': tune.grid_search(['none']),
-          'setting': tune.grid_search(['test_noreset']),
-          'module_size': tune.grid_search([32]),
-          'sf_net': tune.grid_search(['relational_action']),
-          'npolicies': tune.grid_search([3]),
-          'relate_residual': tune.grid_search(['concat']),
-          'relation_position_embed': tune.grid_search([16]),
+          'module_size': tune.grid_search([128]),
         },
     ]
 
@@ -175,5 +139,6 @@ def get(search, agent):
 
   else:
     raise NotImplementedError(search)
+
 
   return space

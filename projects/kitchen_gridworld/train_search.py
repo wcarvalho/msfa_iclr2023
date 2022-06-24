@@ -32,6 +32,8 @@ flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_string('search', '', 'which search to use.')
 flags.DEFINE_string('spaces', 'brain_search', 'which search to use.')
 flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
+flags.DEFINE_string('actor_label', None, '.')
+flags.DEFINE_string('evaluator_label', None, '.')
 flags.DEFINE_float('num_gpus', 1, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('num_cpus', 3, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('actors', 4, 'number of gpus per job. accepts fractions.')
@@ -47,7 +49,7 @@ def main(_):
   num_gpus = float(FLAGS.num_gpus)
 
   assert FLAGS.search != '', 'set search!'
-  space = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
+  space, actor_label, evaluator_label = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
   if FLAGS.idx is not None:
     listify_space(space)
     if FLAGS.idx < len(space):
@@ -73,11 +75,12 @@ def main(_):
 
   default_env_kwargs = {
     'setting' : 'multiv9',
-    'task_reps' : 'pickup',
+    'task_reps' : 'object_verbose',
     'room_size' : 7,
     'num_dists' : 0,
     'symbolic' : False,
-    'struct_and': False
+    'struct_and': False,
+    'task_reset_behavior': 'none',
   }
   run_experiments(
     build_program_fn=build_program,
@@ -88,6 +91,8 @@ def main(_):
     wandb_init_kwargs=wandb_init_kwargs,
     default_env_kwargs=default_env_kwargs,
     use_wandb=use_wandb,
+    # actor_label=actor_label,
+    # evaluator_label=evaluator_label,
     terminal=FLAGS.terminal,
     skip=FLAGS.skip,
     use_ray=FLAGS.ray)
