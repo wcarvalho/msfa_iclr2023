@@ -7,11 +7,11 @@ train:
 
 test:
 
-  - name: "0.toggle"
-    task_kinds: toggle
-    num_dists: 0
+  # - name: "0.toggle"
+  #   task_kinds: toggle
+  #   num_dists: 0
 
   - name: "toggle2" # length 2
     task_kinds: toggle2
-    subrewards: True
+    use_subtasks: True
     num_dists: 0

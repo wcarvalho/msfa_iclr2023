@@ -239,7 +239,7 @@ class KitchenObject(WorldObj):
 
     if carrying.type == 'knife':
         self.set_prop("sliced", True)
-        carrying.set_prop("dirty", True)
+        # carrying.set_prop("dirty", True)
         return self.action_info(
             name='slice',
             )

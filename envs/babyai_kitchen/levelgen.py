@@ -41,7 +41,8 @@ class KitchenLevel(RoomGridLevel):
     taskarg_options=None,
     task_reps=None,
     instr_kinds=['action'], # IGNORE. not implemented
-    use_subtasks=False, # IGNORE. not implemented
+    use_subtasks=False,
+    task_reset_behavior: str='none',
     use_time_limit=True,
     tile_size=8,
     rootdir='.',
@@ -69,6 +70,9 @@ class KitchenLevel(RoomGridLevel):
     self.instr_kinds = instr_kinds
     self.random_object_state = random_object_state
     self.use_subtasks = use_subtasks
+    self.task_reset_behavior = task_reset_behavior.lower()
+    if self.task_reset_behavior != 'none':
+      assert use_subtasks
     self.taskarg_options = taskarg_options
     self.reward_coeff = reward_coeff
     self.verbosity = verbosity
@@ -223,12 +227,10 @@ class KitchenLevel(RoomGridLevel):
     task_kinds,
     instr_kinds=['action'],
     use_subtasks=False,
-    depth=0,
+    # depth=0,
     **kwargs
     ):
 
-    if use_subtasks:
-        raise RuntimeError("Don't know how to have subtask rewards")
 
     instruction_kind = np.random.choice(instr_kinds)
 
@@ -246,9 +248,13 @@ class KitchenLevel(RoomGridLevel):
             task_class = available_tasks[task_kind]
 
             task = task_class(
-                env=self.kitchen,
+                env=self,
+                kitchen=self.kitchen,
                 argument_options=self.taskarg_options,
                 task_reps=self.task_reps,
+                done_delay=self.extra_timesteps,
+                reset_behavior=self.task_reset_behavior,
+                use_subtasks=use_subtasks,
                 **kwargs)
     else:
         raise RuntimeError(f"Instruction kind not supported: '{instruction_kind}'")
@@ -501,20 +507,22 @@ class KitchenLevel(RoomGridLevel):
 
     step_info = self.kitchen.step()
 
-    if self.verbosity > 1:
+    if self.verbosity > 0:
         from pprint import pprint
         print('='*50)
         obj_type = object_infront.type if object_infront else None
-        print(self.idx2action[int(action)], obj_type)
-        pprint(action_info)
-        print('-'*10, 'Env Info', '-'*10)
-        print("Carrying:", self.carrying)
-        if self.task is not None:
-            print(f"task objects:")
-            pprint(self.task.task_objects)
-        else:
-            print(f"env objects:")
-            pprint(self.kitchen.objects)
+        action_str = self.idx2action[int(action)]
+        print(f"ACTION: ({action_str}, {obj_type})", obj_type)
+        if self.verbosity > 1:
+          pprint(action_info)
+          print('-'*10, 'Env Info', '-'*10)
+          print("Carrying:", self.carrying)
+          if self.task is not None:
+              print(f"task objects:")
+              pprint(self.task.task_objects)
+          else:
+              print(f"env objects:")
+              pprint(self.kitchen.objects)
 
     # ======================================================
     # copied from RoomGridLevel
@@ -524,19 +532,9 @@ class KitchenLevel(RoomGridLevel):
     info = {'success': False}
     done = False
     if self.task is not None:
-        reward, task_done = self.task.get_reward_done()
+        # reward, done = self.task.get_reward_done()
+        reward, done = self.task.check_and_update_status()
         reward = float(reward)
-
-        if task_done:
-          self.task.terminate()
-
-        if self.task.finished:
-            info['success'] = True
-            self.timesteps_complete += 1
-
-        # in order to complete final states in observation stream
-        if self.timesteps_complete > self.extra_timesteps:
-          done = True
 
     # if past step count, done
     if self.step_count >= self.max_steps and self.use_time_limit:

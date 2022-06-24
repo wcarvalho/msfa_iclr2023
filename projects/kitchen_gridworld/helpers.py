@@ -45,6 +45,7 @@ def make_environment(evaluation: bool = False,
                      path='.',
                      setting=None,
                      struct_and=False,
+                     task_reset_behavior='none',
                      debug=False,
                      ) -> dm_env.Environment:
   setting = setting or 'SmallL2NoDist'
@@ -98,6 +99,7 @@ def make_environment(evaluation: bool = False,
     room_size=room_size,
     wrappers=env_wrappers,
     symbolic=symbolic,
+    task_reset_behavior=task_reset_behavior,
     debug=debug,
     )
 
