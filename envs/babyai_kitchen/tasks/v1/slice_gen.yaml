@@ -2,8 +2,11 @@ train:
 
   - name: "0.slice"
     task_kinds: slice
-    num_dists: 2
+    num_dists: 0
 
+  - name: "0.slice_dists"
+    task_kinds: slice
+    num_dists: 2
 
 test:
 
