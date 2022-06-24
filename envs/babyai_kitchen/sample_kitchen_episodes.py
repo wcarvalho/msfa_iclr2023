@@ -89,6 +89,7 @@ def main():
         print("Reset")
         print("="*50)
         print("Task:", obs['mission'])
+        print("Distractors:", [d.type for d in env.distractors_added])
         print("Image Shape:", obs['image'].shape)
 
 

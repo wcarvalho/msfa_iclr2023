@@ -19,6 +19,16 @@ class AttrDict(dict):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
+def reject_next_to(env, pos):
+  """
+  Function to filter out object positions that are right next to
+  the agent's starting point
+  """
+
+  sx, sy = env.agent_pos
+  x, y = pos
+  d = abs(sx - x) + abs(sy - y)
+  return d < 2
 
 class KitchenLevel(RoomGridLevel):
   """
@@ -174,6 +184,25 @@ class KitchenLevel(RoomGridLevel):
     """
     super(RoomGridLevel, self)._gen_grid(*args, **kwargs)
 
+  def place_in_room(self, i, j, obj):
+      """
+      Add an existing object to room (i, j)
+      """
+
+      room = self.get_room(i, j)
+
+      pos = self.place_obj(
+          obj,
+          room.top,
+          room.size,
+          reject_fn=reject_next_to,
+          max_tries=1000
+      )
+
+      room.objs.append(obj)
+
+      return obj, pos
+
   def add_objects(self, task=None, num_distractors=10):
     """
     - if have task, place task objects
@@ -187,9 +216,9 @@ class KitchenLevel(RoomGridLevel):
     if task is not None:
         for obj in task.task_objects:
             self.place_in_room(0, 0, obj)
-            placed_objects.add(obj.type)
+            placed_objects.add(obj)
             if self.verbosity > 1:
-                print(f"Added task object: {obj.type}")
+                print(f"Added task object: {obj}")
 
     # if number of left over objects is less than num_distractors, set as that
     # possible_space = (self.grid.width - 2)*(self.grid.height - 2)
@@ -199,10 +228,10 @@ class KitchenLevel(RoomGridLevel):
     if len(placed_objects) == 0:
         num_distractors = max(num_distractors, 1)
 
-    distractors_added = []
+    self.distractors_added = []
     num_tries = 0
 
-    while len(distractors_added) < num_distractors:
+    while len(self.distractors_added) < num_distractors:
         # infinite loop catch
         num_tries += 1
         if num_tries > 1000:
@@ -212,14 +241,25 @@ class KitchenLevel(RoomGridLevel):
         random_object = np.random.choice(self.kitchen.objects)
 
         # if already added, try again
-        if random_object.type in placed_objects:
+        if random_object in placed_objects:
             continue
 
+        self.distractors_added.append(random_object)
+        placed_objects.add(random_object)
+
+    if self.verbosity > 0:
+      print('-'*10)
+      print("Distractors:", [d.type for d in self.distractors_added])
+
+    for random_object in self.distractors_added:
+        random_object.reset()
         self.place_in_room(0, 0, random_object)
-        distractors_added.append(random_object.type)
-        placed_objects.add(random_object.type)
-        if self.verbosity > 1:
-            print(f"Added distractor: {random_object.type}")
+        if self.verbosity > 0:
+          print('-'*10)
+          print(f"Added distractor: {random_object.type}")
+          room = self.get_room(0, 0)
+          pprint([o.type for o in room.objs])
+
     # TODO: test ``active objects''
     # self.kitchen.set_active_objects(placed_objects)
   
@@ -331,10 +371,12 @@ class KitchenLevel(RoomGridLevel):
     # rejection sampling gets stuck in an infinite loop
     tries = 0
     while True:
-        tries += 1
         if tries > 1000:
             raise RuntimeError("can't sample task???")
         try:
+            tries += 1
+            if self.verbosity > 0:
+              print(f"RESET ATTEMPT {tries}")
             # generate grid of observation
             self._gen_grid(width=self.width, height=self.height)
 
@@ -539,7 +581,9 @@ class KitchenLevel(RoomGridLevel):
         # reward, done = self.task.get_reward_done()
         reward, done = self.task.check_and_update_status()
         reward = float(reward)
-
+        if self.verbosity > 0:
+          if reward !=0:
+            print("REWARD:", reward)
     # if past step count, done
     if self.step_count >= self.max_steps and self.use_time_limit:
         done = True

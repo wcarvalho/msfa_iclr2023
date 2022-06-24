@@ -773,6 +773,8 @@ class CookTask(KitchenTask):
     else:
         objects_to_cook_with = self.kitchen.objects_by_type(['pot', 'pan']) # y
 
+    objects_to_cook_with = remove_excluded(objects_to_cook_with, exclude)
+    objects_to_cook = remove_excluded(objects_to_cook, exclude)
     self.object_to_cook_on = self.kitchen.objects_by_type(['stove'])[0]
     self.object_to_cook = np.random.choice(objects_to_cook)
     self.object_to_cook_with = np.random.choice(objects_to_cook_with)
@@ -866,6 +868,7 @@ class PlaceSlicedTask(SliceTask):
         objects_to_slice = self.kitchen.objects_by_type(x_options)
     else:
         objects_to_slice = self.kitchen.objects_with_property(['sliced'])
+    objects_to_slice = remove_excluded(objects_to_slice, exclude)
     self.object_to_slice = np.random.choice(objects_to_slice)
     self.object_to_slice.set_prop('sliced', False)
 
@@ -882,11 +885,11 @@ class PlaceSlicedTask(SliceTask):
     # restrict to wich can accept to_place
     container_type_objs = [o for o in self.kitchen.objects 
                             if o.accepts(self.object_to_slice)]
+    container_type_objs = remove_excluded(container_type_objs, exclude)
     assert len(container_type_objs) > 0, "no match found"
 
     # pick 1 at random
     self.container = np.random.choice(container_type_objs)
-
 
     self._task_objects = [self.object_to_slice, self.knife, self.container]
     return self.task_rep.replace(
@@ -925,7 +928,8 @@ class CompositionClass(KitchenTask):
   """docstring for CompositionClass"""
   def __init__(self, *args, classes, **kwargs):
     self.classes = []
-    self.variables = ['x', 'y', 'z', 'a', 'b', 'c']
+    self.variables = ['x', 'y', 'z', 'a', 'b', 'c', 'u', 'w', 'v']
+    self.variables += [v.upper() for v in self.variables]
     for c in classes:
       Cls = c(*args, init=False, **kwargs)
       self.classes.append(Cls)
@@ -942,9 +946,13 @@ class CompositionClass(KitchenTask):
   def default_task_rep(self):
     names = [c.default_task_rep for c in self.classes]
     new_names = []
-    for idx, name in enumerate(names):
-      new_name = name.replace('x', self.variables[idx])
-      new_names.append(new_name)
+    idx = 0
+    for name in names:
+      variables = [x for x in name.split(" ") if x in self.variables]
+      for v in variables:
+        name = name.replace(v, self.variables[idx])
+        idx += 1
+      new_names.append(name)
 
     name = " and ".join(new_names)
 
@@ -956,16 +964,16 @@ class CompositionClass(KitchenTask):
 
     task_types = []
     self._task_objects = set()
-    instr = self.task_rep
+    instrs = []
     for idx, c in enumerate(self.classes):
-      c.generate(
+      instr = c.generate(
         exclude=task_types,
         argops=self.argument_options.get('y', None))
       task_types.extend(c.task_types)
       self._task_objects.update(c.task_objects)
-      instr = instr.replace(self.variables[idx], c.task_objects[0].name)
-
-    return instr
+      instrs.append(instr)
+    overall_instr = " and ".join(instrs)
+    return overall_instr
 
   @property
   def num_navs(self): return len(self.classes)
@@ -1140,6 +1148,7 @@ def all_tasks():
     chill=ChillTask,
     slice2=Slice2Task,
     cook2=Cook2Task,
+    cook3=Cook3Task,
     toggle2=Toggle2Task,
     slice3=Slice3Task,
     toggle3=Toggle3Task,
