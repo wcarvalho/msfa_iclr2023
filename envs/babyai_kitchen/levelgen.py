@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import collections
 from gym import spaces
@@ -69,8 +70,13 @@ class KitchenLevel(RoomGridLevel):
     self.task_reps = task_reps or dict()
     self.instr_kinds = instr_kinds
     self.random_object_state = random_object_state
-    self.use_subtasks = use_subtasks
     self.task_reset_behavior = task_reset_behavior.lower()
+    if self.task_reset_behavior == 'respawn':
+      if not use_subtasks:
+        logging.info("Turning subtasks on for object respawning behavior")
+      use_subtasks = True
+    self.use_subtasks = use_subtasks
+
     self.taskarg_options = taskarg_options
     self.reward_coeff = reward_coeff
     self.verbosity = verbosity

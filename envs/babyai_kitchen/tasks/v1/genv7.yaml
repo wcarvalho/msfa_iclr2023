@@ -30,9 +30,6 @@ train:
     task_kinds: pickup_cleaned
     num_dists: 0
 
-  - name: "6.pickup_placed"
-    task_kinds: pickup_placed
-    num_dists: 0
 
   - name: "7.pickup_sliced"
     task_kinds: pickup_sliced
@@ -43,14 +40,6 @@ train:
     taskarg_options:
       y: [pot]
     num_dists: 0
-
-  - name: "8.pickup_cooked"
-    task_kinds: pickup_cooked
-    taskarg_options:
-      y: [pot]
-    num_dists: 0
-
-
 
   - name: "9.place_sliced"
     task_kinds: place_sliced
@@ -75,6 +64,14 @@ test:
     task_kinds: toggle3
     num_dists: 0
 
+  - name: "and_cook2" # length 3
+    task_kinds: cook2
+    task_reset_behavior: remove
+    num_dists: 0
+
+  - name: "and_place_sliced2" # length 3
+    task_kinds: place_sliced2
+    num_dists: 0
 
   - name: "combo0_toggle_and_pickup" # length 3
     task_kinds: toggle_and_pickup

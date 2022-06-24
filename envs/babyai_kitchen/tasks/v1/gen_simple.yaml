@@ -54,10 +54,6 @@ test:
     task_kinds: clean_and_slice
     num_dists: 0
 
-  - name: "combo2_slice_and_clean_knife" # length 5
-    task_kinds: slice_and_clean_knife
-    num_dists: 0
-
   - name: "combo3_clean_and_slice_and_toggle" # length 6
     task_kinds: clean_and_slice_and_toggle
     num_dists: 0

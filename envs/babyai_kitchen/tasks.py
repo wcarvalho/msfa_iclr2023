@@ -1063,6 +1063,9 @@ Toggle2Task = functools.partial(CompositionClass, classes=[ToggleTask, ToggleTas
 Toggle3Task = functools.partial(CompositionClass, classes=[ToggleTask, ToggleTask, ToggleTask])
 Clean2Task = functools.partial(CompositionClass, classes=[CleanTask, CleanTask])
 Clean3Task = functools.partial(CompositionClass, classes=[CleanTask, CleanTask, CleanTask])
+Cook2Task = functools.partial(CompositionClass, classes=[CookTask, CookTask])
+Cook3Task = functools.partial(CompositionClass, classes=[CookTask, CookTask, CookTask])
+
 
 CleanAndSliceTask = functools.partial(CompositionClass, classes=[SliceTask, CleanTask])
 ToggleAndSliceTask = functools.partial(CompositionClass, classes=[ToggleTask, SliceTask])
@@ -1071,6 +1074,7 @@ CleanAndToggleTask  = functools.partial(CompositionClass, classes=[CleanTask, To
 CleanAndSliceAndToggleTask = functools.partial(CompositionClass, classes=[SliceTask, CleanTask, ToggleTask])
 
 CookAndSliceTask = functools.partial(CompositionClass, classes=[CookTask, SliceTask])
+
 
 class SliceAndCleanKnifeTask(KitchenTask):
   """docstring for SliceTask"""
@@ -1135,6 +1139,7 @@ def all_tasks():
     slice=SliceTask,
     chill=ChillTask,
     slice2=Slice2Task,
+    cook2=Cook2Task,
     toggle2=Toggle2Task,
     slice3=Slice3Task,
     toggle3=Toggle3Task,

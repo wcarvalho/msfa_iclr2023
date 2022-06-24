@@ -10,6 +10,12 @@ train:
 
 test:
 
-  - name: "slice2" # length 2
+  - name: "0.slice2" # length 2
     task_kinds: slice2
+    use_subtasks: True
+    num_dists: 0
+
+  - name: "0.slice3" # length 2
+    task_kinds: slice3
+    use_subtasks: True
     num_dists: 0
