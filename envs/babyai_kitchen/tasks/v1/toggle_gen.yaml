@@ -2,7 +2,7 @@ train:
 
   - name: "0.toggle"
     task_kinds: toggle
-    num_dists: 0
+    num_dists: 2
 
 
 test:
