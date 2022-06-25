@@ -1,6 +1,6 @@
 """
-A bunch of classes/functions to pass as aux_tasks that yield different types of cumulants
-We'll also put the task_embed functions here
+A few classes/functions to pass as aux_tasks that yield different types of cumulants
+We also put the task_embed functions in this file
 """
 
 from acme.jax.networks import base
@@ -9,19 +9,18 @@ import jax
 import jax.numpy as jnp
 from modules.basic_archs import AuxilliaryTask
 
-
-#Linear task embedding
-class LinearTaskEmbed(base.Module):
-  """Simple convolutional stack commonly used for Atari."""
-
+class LinearTaskEmbed(hk.Module):
   def __init__(self, out_dim):
-    super().__init__(name='linear_task_embed')
-    self.layer = hk.Linear(out_dim,with_bias=False,w_init=hk.initializers.TruncatedNormal(stddev=1., mean=0.)) #NOTE: could be truncated normal?
+    super(LinearTaskEmbed, self).__init__()
+    self.dim = out_dim
+    self.embedder = hk.Linear(output_size=out_dim,with_bias=False,w_init=hk.initializers.TruncatedNormal()) #default is mean 0, std 1
 
-  def __call__(self, inputs) -> jnp.ndarray:
-    output = self.layer(inputs)
-    return output #if we want to normalize, just tell USFA head to do "normalize_task"
+  def __call__(self, x):
+    return self.embedder(x)
 
+  @property
+  def out_dim(self):
+    return self.dim
 """
 concat conv features of s and s', then dense layer to get to desired dims
 use same setup structure as Wilka's example below

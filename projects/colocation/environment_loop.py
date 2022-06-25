@@ -8,7 +8,9 @@ from dm_env import specs
 import numpy as np
 import tree
 
-
+"""
+For debugging purposes only. You can rprint stuff here to check that things are working ok
+"""
 def _generate_zeros_from_spec(spec: specs.Array) -> np.ndarray:
   return np.zeros(spec.shape, spec.dtype)
 

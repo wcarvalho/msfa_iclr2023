@@ -122,6 +122,7 @@ class UsfaHead(hk.Module):
                nsamples: int = 30,
                sf_input_fn: hk.Module = None,
                task_embed: int = 0,
+               eval_task_support: str = 'train',
                duelling: bool = False,
                normalize_task: bool = False,
                z_as_train_task: bool = False,
@@ -181,10 +182,6 @@ class UsfaHead(hk.Module):
     # function to embed task and figure out dim of SF
     # -----------------------
     if isinstance(task_embed, int):
-      if task_embed > 0:
-        task_embed = OneHotTask(size=state_dim, dim=task_embed)
-        self.sf_out_dim = task_embed.dim
-      else:
         task_embed = lambda x: x
         self.sf_out_dim = state_dim
 
@@ -235,11 +232,11 @@ class UsfaHead(hk.Module):
       z = inputs.w_train
     else:
       # sample N times: [B, D_w] --> [B, N, D_w]
-      z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples * inputs.w.shape[0], axis=-2)
+      z_samples = sample_gauss(mean=w, var=self.var, key=key, nsamples=self.nsamples, axis=-2)
 
-    # combine samples with original task vector
-    z_base = jnp.expand_dims(w, axis=1) # [B, 1, D_w]
-    z = jnp.concatenate((z_base, z_samples), axis=1)  # [B, N+1, D_w]
+      # combine samples with original task vector
+      z_base = jnp.expand_dims(w, axis=1) # [B, 1, D_w]
+      z = jnp.concatenate((z_base, z_samples), axis=1)  # [B, N+1, D_w]
 
     return self.sfgpi(inputs=inputs, z=z, w=w,
       key=key,

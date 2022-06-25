@@ -24,10 +24,14 @@ from modules.farm_usfa import FarmUsfaHead
 
 from modules.vision import AtariVisionTorso, BabyAIVisionTorso
 from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, ConcatFlatStatePolicy, UniqueStatePolicyPairs, QBias
-from modules.embedding import OAREmbedding, LanguageTaskEmbedder, Identity, VectorEmbed
+from modules.embedding import OAREmbedding, LanguageTaskEmbedder, Identity
 
 from utils import data as data_utils
 
+
+#####################################
+# Copied from kitchen_gridworld (Not the whole file, just the part just below)
+#####################################
 class DuellingMLP(duelling.DuellingMLP):
   def __call__(self, *args, **kwargs):
     kwargs.pop("key", None)
@@ -68,30 +72,53 @@ def r2d1(config, env_spec, **kwargs):
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
+#####################################
+# Mostly from kitchen_gridworld but with slight changes noted in comments
+#####################################
 def usfa_prep_fn(inputs, memory_out, *args, **kwargs):
   return USFAInputs(
     w=inputs.observation.task,
     memory_out=memory_out,
-    w_train=inputs.observation.train_tasks
+    w_train=inputs.observation.train_tasks # we include w_train in our inputs
     )
 
 def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
   w_train = inputs.observation.train_tasks
   return USFAInputs(
     w=inputs.observation.task,
-    w_train=w_train,
+    w_train=w_train, # again, we include w_train in our inputs
     memory_out=memory_out,
     )
 
-def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False, cumulant_type = 'conv',train_task_as_z = None,**kwargs):
+"""
+USFA nets function
+    task_embed_type can be 'none' or 'vector'
+    cumulant_type can be 'conv' or 'lstm' when predict_cumulants is True
+    if train_task_as_z is None, it is just set to equal predict_cumulants
+"""
+def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False,
+         cumulant_type = 'conv',train_task_as_z = None, task_embed_type = 'none',**kwargs):
+  #First we set train_task_as_z if it is None
   if train_task_as_z is None:
     train_task_as_z = predict_cumulants
+
+  #get some config from the environment
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.state_features.shape[0]
-  task_embed = 0
-  if predict_cumulants:
-    task_embed = LinearTaskEmbed(config.cumulant_dimension)
-    state_dim = config.cumulant_dimension
+
+  # construct a task embedding if we're using one
+  if task_embed_type != 'none':
+      assert(predict_cumulants == True) #If we are embedding task, we better predict cumulants
+
+  if task_embed_type=='vector':
+      task_embed = LinearTaskEmbed(config.cumulant_dimension)
+      state_dim = config.cumulant_dimension
+
+  elif task_embed_type=='none':
+      task_embed = 0
+
+  else:
+      raise NotImplementedError(f"{task_embed_type} is not a valid task embed type")
 
   prediction_head=UsfaHead(
       num_actions=num_actions,
@@ -105,10 +132,11 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False, cu
       z_as_train_task=config.z_as_train_task,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       task_embed=task_embed,
-    ##SPECIAL TIME
       train_task_as_z=train_task_as_z
       )
   aux_tasks = []
+
+  #If we are predicting cumulants, we add an aux task for that and more losses
   if predict_cumulants:
     if cumulant_type=='lstm':
       aux_tasks.append(
@@ -145,6 +173,9 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants = False, cu
     aux_tasks=aux_tasks
   )
 
+#####################################
+# Copied from kitchen_gridworld
+#####################################
 def r2d1_noise(config, env_spec, **kwargs):
   num_actions = env_spec.actions.num_values
 
@@ -174,6 +205,9 @@ def r2d1_noise(config, env_spec, **kwargs):
     prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size])
   )
 
+#####################################
+# Copied from kitchen_gridworld
+#####################################
 # ======================================================
 # Modular USFA
 # ======================================================
@@ -204,13 +238,17 @@ def build_vision_net(config, **kwargs):
     raise NotImplementedError
   return vision
 
+
+#####################################
+# Mostly copied from kitchen_gridworld but with a tiny change
+#####################################
 def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=None):
   if task_embedding == 'none':
     embedder = embed_fn = Identity(task_dim)
     return embedder, embed_fn
 
-  elif task_embedding=='vector':
-    embedder = embed_fn = VectorEmbed(lang_task_dim)
+  elif task_embedding=='vector': #vector embedding got added :)
+    embedder = embed_fn = LinearTaskEmbed(lang_task_dim)
     return embedder, embed_fn
 
   elif task_embedding == 'language':
@@ -243,6 +281,10 @@ def build_task_embedder(task_embedding, config, lang_task_dim=None, task_dim=Non
   else:
     raise NotImplementedError(task_embedding)
 
+
+#####################################
+# Copied from kitchen_gridworld
+#####################################
 def replace_all_tasks_with_embedding(inputs, embed_fn):
   """Replace both tasks and train tasks."""
   new_observation = inputs.observation._replace(
@@ -266,6 +308,9 @@ def build_farm(config, **kwargs):
     recurrent_features=config.recurrent_conv,
     **kwargs)
 
+#####################################
+# Mostly copied from kitchen_gridworld (I just added the vector embedding)
+#####################################
 def msf(
   config,
   env_spec,
@@ -305,7 +350,7 @@ def msf(
 
   if task_embedding == "language":
     sf_out_dim = task_embedder.out_dim
-  elif task_embedding == "vector":
+  elif task_embedding == "vector": #added vector embedding
     sf_out_dim = task_embedder.out_dim
   elif task_embedding == "none":
     sf_out_dim = task_dim
@@ -367,6 +412,9 @@ def msf(
     **net_kwargs
   )
 
+#####################################
+# Copied from kitchen_gridworld
+#####################################
 def make_farm_prep_fn(num_actions, task_input=False, embed_task=None):
   """
   Return farm inputs, (1) obs features (2) [action, reward] vector
@@ -391,6 +439,10 @@ def make_farm_prep_fn(num_actions, task_input=False, embed_task=None):
 
   return prep
 
+
+#####################################
+# Copied from kitchen_gridworld
+#####################################
 def build_msf_head(config, sf_out_dim, num_actions):
 
   if config.sf_net == "flat":
@@ -470,6 +522,10 @@ def build_msf_head(config, sf_out_dim, num_actions):
 
   return head, pred_prep_fn, eval_prep_fn
 
+
+#####################################
+# Copied from kitchen_gridworld
+#####################################
 def build_msf_phi_net(config, sf_out_dim):
   contrast_module = getattr(config, "contrast_module_coeff", 0) > 0
   contrast_module_delta = getattr(config, "contrast_module_pred", 'delta') == 'delta'

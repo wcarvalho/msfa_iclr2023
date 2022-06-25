@@ -38,31 +38,27 @@ class MultiroomGoto(dm_env.Environment):
                room_size=8,
                doors_start_open=False,
                stop_when_gone=False,
-               wrappers=None,
                walls_gone=False,
                one_room = False,
                deterministic_rooms = False,
                room_reward_task_vector = True,
                room_reward = 0.0,
+               wrappers=None,
     **kwargs):
     """Initializes a new MultiroomGotoEnv
 
       Args:
-          *args: Description
-          objectlist (TYPE): a list of [{object_name: object_quantity}] one dictionary for each of the three rooms.
-          mission_objects: actually defines the levels by giving a mission per level
-          We have many of these, one for each level, in dict form
-          tile_size (int, optional): how many pixels to use for a tile, I think
-          rootdir (str, optional): Just a path for the kitchen env to search for files, probably leave this be
-          verbosity (int, optional): how much to print
-
-          epsilon (float, optional): chance that an object is not in its usual room
-          room_size (int, optional): the size of a room, duh
-          doors_start_open (bool, optional): make the doors start open (default is closed but unlocked)
-          stop_when_gone (bool, optional): should we stop the episode when all the objects with reward associated are gone?
+          See the babyai_kitchen/multiroom_goto.py file for an explanation of arguments related to the env
+          The only unique arguments here are:
+          mission_objects (Optional): This should just be a list of strings corresponding to all the objects in the env
+            which you want to have tasks associated with. Each mission object will then be assigned to its own "level"
+            for logging purposes. Highly recommended you use this instead of leaving it as None
+          wrappers (Optional) which allows you to add env wrappers to the environment
           **kwargs: Description
+
+          Everything else is totally boilerplate!
       """
-    #
+
     all_level_kwargs = dict()
     if mission_objects:
         for mission_object in mission_objects:
@@ -114,7 +110,7 @@ class MultiroomGoto(dm_env.Environment):
     else:
       self.default_env = GymWrapper(self.env)
 
-    self.keys = sorted(['image', 'pickup' , 'mission', 'train_tasks'])
+    self.keys = sorted(['image', 'pickup' , 'mission', 'train_tasks']) #we sort these to work with the env remap wrapper
 
 
   def reset(self) -> dm_env.TimeStep:

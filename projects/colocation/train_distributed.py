@@ -55,11 +55,12 @@ flags.DEFINE_bool('simple',False, 'should the environment be simple or have some
 flags.DEFINE_bool('nowalls',False,'No doors in environment')
 flags.DEFINE_bool('one_room',False, 'all in one room')
 flags.DEFINE_bool('deterministic_rooms',False,'rooms are not in random order')
-flags.DEFINE_float('room_reward',0,'reward for entering the correct room')
-flags.DEFINE_integer('train_task_as_z', 0, '0 for None, -1 for no, 1 for yes')
+flags.DEFINE_float('room_reward',.25,'reward for entering the correct room')
+flags.DEFINE_integer('train_task_as_z', -1, '0 for None, -1 for no, 1 for yes')
+flags.DEFINE_string('task_embedding','vector','options are "vector" and "none". Use vector for MSF and maybe for USFA with learned cumulants')
+flags.DEFINE_bool('room_reward_task_vector',False, 'Include dimensions for room reward in oracle cumulants and task vector')
 
-
-flags.DEFINE_string('agent', 'msf', 'which agent.')
+flags.DEFINE_string('agent', 'usfa_conv', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
@@ -89,8 +90,12 @@ def build_program(
   deterministic_rooms: bool = False,
   room_reward: float = 0,
   train_task_as_z: int = 0,
-  randomize_name: bool = True
+  task_embedding: str = 'none',
+  randomize_name: bool = True,
+  room_reward_task_vector: bool = True
     ):
+
+  #convert integer to None or bool for train_task_as_z
   if train_task_as_z==0:
       train_task_as_z = None
   elif train_task_as_z==-1:
@@ -100,15 +105,13 @@ def build_program(
   else:
       raise NotImplementedError("Invalid value for train_task_as_z: {0}".format(train_task_as_z))
 
-  room_reward_task_vector = True #in oracle case we want task vector to have room reward
-  if agent in ['usfa_conv','usfa_lstm','msf','conv_msf']:
-      room_reward_task_vector = False
   # -----------------------
   # load env stuff
   # -----------------------
-  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(evaluation=is_eval, simple=simple, agent=agent,
+  environment_factory = lambda is_eval: helpers.make_environment_sanity_check(simple=simple,
                                       nowalls=nowalls, one_room=one_room, deterministic_rooms=deterministic_rooms,
-                                              room_reward=room_reward, room_reward_task_vector=room_reward_task_vector)
+                                      room_reward=room_reward, room_reward_task_vector=room_reward_task_vector
+                                      )
   env = environment_factory(False)
   env_spec = acme.make_environment_spec(env)
   del env
@@ -116,7 +119,8 @@ def build_program(
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec, agent=agent, train_task_as_z=train_task_as_z, config_kwargs=config_kwargs)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings_sanity_check(env_spec,
+                                         agent=agent, train_task_as_z=train_task_as_z, config_kwargs=config_kwargs,task_embedding=task_embedding)
 
   #observers
   observers = [LevelReturnObserver(), RoomReturnObserver(),FullReturnObserver(), PickupCountObserver()]
@@ -137,15 +141,15 @@ def build_program(
       seed=config.seed,
       agent=str(agent))
 
-  # generate unique hash for name
-
+  # include configs in name for ease of use.
+  # if "randomize_name" we add a unique hash to the name to avoid overlap
     if wandb_name is None:
         wandb_name = 'test'
     wandb_name+= '-' + agent
-    if train_task_as_z or (train_task_as_z is None and (agent=='usfa_lstm' or agent=='usfa_conv')):
+    if train_task_as_z or (train_task_as_z is None and (agent in ['usfa_conv','usfa_lstm'])):
         wandb_name+='-new_sampling'
     else:
-        wandb_name+='-og_sampling'
+        wandb_name+='-normal_sampling' #hehe get it... "normal" sampling ;)
     if simple:
         wandb_name+='-simple'
     if one_room:
@@ -157,13 +161,13 @@ def build_program(
     if room_reward!=0:
         wandb_name+='-room_reward'
     if room_reward_task_vector:
-        wandb_name+='-oracle'
+        wandb_name+='-extended_task_and_cumulants'
     if randomize_name:
         letters = string.ascii_lowercase
         hashcode = ''.join(random.choice(letters) for _ in range(10))
         wandb_name+=hashcode
 
-
+    #setup wandb
     if wandb_init_kwargs:
       wandb_init_kwargs['name'] = wandb_name
       wandb_init_kwargs['config'] = dict(
@@ -174,6 +178,7 @@ def build_program(
       room_reward=room_reward
       )
 
+  #use common as usual
   return build_common_program(
     environment_factory=environment_factory,
     env_spec=env_spec,
@@ -191,7 +196,10 @@ def build_program(
     observers=observers
     )
 
+#this is all boilerplate
 def main(_):
+  print(FLAGS.agent)
+  print(FLAGS.train_task_as_z)
 
   config_kwargs = dict(seed=FLAGS.seed)
 
@@ -216,7 +224,9 @@ def main(_):
       deterministic_rooms=FLAGS.deterministic_rooms,
       room_reward=FLAGS.room_reward,
       wandb_name=FLAGS.wandb_name,
-      train_task_as_z=FLAGS.train_task_as_z
+      train_task_as_z=FLAGS.train_task_as_z,
+      task_embedding=FLAGS.task_embedding,
+      room_reward_task_vector=FLAGS.room_reward_task_vector
   )
 
   # Launch experiment.

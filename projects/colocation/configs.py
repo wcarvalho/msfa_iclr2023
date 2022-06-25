@@ -1,4 +1,4 @@
-"""Config."""
+"""Config. Copied from kitchen_gridworld"""
 import dataclasses
 
 from acme.adders import reverb as adders_reverb
@@ -95,6 +95,7 @@ class USFAConfig(R2D1Config):
   sf_layernorm: str = 'none' # coefficient for L1 on phi
   task_gate: str='none'
   sf_mask_loss: bool=False
+  cumulant_dimension: int = 8
 
 @dataclasses.dataclass
 class QAuxConfig:

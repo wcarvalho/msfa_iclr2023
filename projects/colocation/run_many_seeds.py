@@ -1,4 +1,9 @@
 """
+THIS FILE DOESN'T WORK, FEEL FREE TO IGNORE IT
+
+
+
+
 Run Successor Feature based agents and baselines on
   BabyAI derivative environments.
 

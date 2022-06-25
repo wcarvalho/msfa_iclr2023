@@ -86,8 +86,6 @@ class RoomReturnObserver(EnvLoopObserver):
 """Observer to monitor pickups
 It will just count total number of pickups and that's it
 """
-
-
 class PickupCountObserver(EnvLoopObserver):
 
   def __init__(self):

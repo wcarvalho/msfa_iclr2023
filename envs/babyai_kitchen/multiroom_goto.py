@@ -14,12 +14,19 @@ MANUAL_TEST = True
 Assumptions:
 6 rooms, agent always starts in bottom center room
 2 rooms empty, only 3 have stuff
-doors always have same colors, empty rooms are locked
+door color corresponds to which objects are in each room
+We number the rooms 0, 1, 2, 3
 _____________________
-|empty|       |empty|
+|empty|   2   |empty|
 |_____|_______|_____|
-|     | start |     |
-|_____|_______|_____|
+|  1  | start |  3  |
+|_____|___0___|_____|
+
+You can just run this file with MANUAL_TEST set to True to manually walk around the environment
+Just give integer inputs to stdin to control the agent.
+
+The descriptions of each argument to the environment below should help give a decent sense of how the Env works
+
 """
 class MultiroomGotoEnv(KitchenLevel):
     def __init__(self,
@@ -30,14 +37,14 @@ class MultiroomGotoEnv(KitchenLevel):
                  verbosity=0,
                  pickup_required=True,
                  epsilon = 0.0,
-                 room_size = 8,
+                 room_size = 5,
                  doors_start_open = False,
                  stop_when_gone = False,
                  walls_gone = False,
                  one_room = False,
                  mission_object = None,
                  deterministic_rooms = False,
-                 room_reward = 0.0,
+                 room_reward = 0.25,
                  room_reward_task_vector = True,
                  **kwargs):
         """Summary
@@ -45,14 +52,31 @@ class MultiroomGotoEnv(KitchenLevel):
         Args:
             *args: Description
             objectlist (TYPE): A nested list of [{object_name: object_quantity}] one dictionary for each of the three rooms
-            tile_size (int, optional): how many pixels to use for a tile, I think
+            tile_size (int, optional): how many pixels to use for a tile
             rootdir (str, optional): Just a path for the kitchen env to search for files, probably leave this be
-            verbosity (int, optional): how much to print
-
+            verbosity (int, optional): set this to 1 if you want a bunch of output to stdout
+            pickup_required (bool, optional): This should generally be True. It determines whether the task is to just goto
+                each object, or actually pick it up
             epsilon (float, optional): chance that an object is not in its usual room
-            room_size (int, optional): the size of a room, duh
+            room_size (int, optional): the size of a room in grid units. Minimum (and recommended value) is 5
             doors_start_open (bool, optional): make the doors start open (default is closed but unlocked)
-            stop_when_gone (bool, optional): should we stop the episode when all the objects with reward associated are gone?
+            stop_when_gone (bool, optional): If this is true, the episode ends when the objects with positive associated
+                reward are gone. Otherwise, the episode only ends if every object is picked up.
+            walls_gone (bool, optional): If you set this to true, there will be no walls between the rooms with objects
+            one_room (bool, optional): If you set this to True, We put walls without doors around the starting room.
+                All objects will be placed in the starting room in this case.
+            mission_object (string, Optional) This exists for use with the acme wrapper. It allows you to pass an object
+                to the environment which is always set as the target object every single episode. If it is None,
+                a random target will be chosen, which is standard behavior for debugging. However, mission_object is used
+                when working with the acme wrapper because it allows you to assign a single object to a "level"
+            deterministic_rooms (bool, Optional) If set to true, this argument makes it so that the objects in each room
+                are the same between episodes. When this is false (standard behavior) is to permute the room order so that the same objects
+                remain colocated and correspond to the same door color, but the room they are jointly in varies.
+            room_reward (float, Optional) You can give a small bonus reward to the agent for entering the room of the correct object.
+                This often seems to be necessary for learning. The reward is given at most once per episode
+            room_reward_task_vector (bool, Optional) If this set to True, the task vector and pickup vector will be augmented
+                by 4 dimensions. The added dimensions of the pickup vector will keep track of the room the first time
+                the agent enters each room, flipping the corresponding index to 1 at the moment of entry
             **kwargs: Description
         """
 
@@ -61,6 +85,7 @@ class MultiroomGotoEnv(KitchenLevel):
 
         #define all the objects in our world
         #any object can be an objective in this environment, so we don't need to keep track of which are pick-up-able
+        #be sure to give input objects which are allowed to be picked up!!
         self.one_room = one_room
         if one_room:
             walls_gone = False
@@ -70,37 +95,41 @@ class MultiroomGotoEnv(KitchenLevel):
         self.walls_gone = walls_gone
         self.stop_when_gone = stop_when_gone
         self.doors_start_open = doors_start_open
-        all_objects = set(functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[]))
-        self.num_objects = len(all_objects)
+        all_objects = set(functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[])) #a set of every object in our environment
+        self.num_objects = len(all_objects) #the number of unique objects in our environment
         self.pickup_required = pickup_required
         self.epsilon = epsilon
         self.verbosity = verbosity
-        self.room = None #variable to keep track of what the primary room of the target object is
-        self.room_location = None #same purpose, just instead of a number, it's 2 coords
+        self.room = None #variable to keep track of what the room of the target object is (RESET EVERY EPISODE)
+        self.room_location = None #same as above, just instead of a single index, it's 2 coords (RESET EVERY EPISODE)
         self.room_reward = room_reward
-        self.got_room_reward = False
-        self.carrying = None
+        self.got_room_reward = False #variable to keep track of if we have received a room reward yet in each episode (RESET EVERY EPISODE)
+        self.carrying = None #variable to keep track of what object we are carrying (CHANGES EACH STEP)
+        self.visited_rooms = [] #keeps track of which rooms we have visited during the episode (RESET EVERY EPISODE)
 
-
+        #if we have specified a mission object, we choose that as our mission every time
         self.random_mission = True
         if mission_object:
             self.random_mission = False
             self.mission_object = mission_object
 
-        #initialize the big objects we need
+        #initialize the kitchen object
         kitchen = Kitchen(
             objects=all_objects,
             tile_size=tile_size,
             rootdir=rootdir,
             verbosity=verbosity,
         )
-        #we need to reorder the type2idx dictionary based on the self.default_objects list
+        #we need to order the type2idx dictionary based on the self.default_objects list
         self.default_objects = copy.deepcopy(kitchen.objects)
         self._task_objects = [o.name for o in self.default_objects]
         self.type2idx = {o: i for i, o in enumerate(self._task_objects)}
 
-
-        #2 options: include room reward in task vector or not
+        # 2 options: include room reward in task vector or not
+        # If we include room reward in task vector, we update our train_tasks variable accordingly
+        # Otherwise self.train_tasks is just identity
+        # Be sure to use the environment's train_tasks variable for USFA/MSF for this reason and don't just \
+        # always set train_tasks to identity
         self.room_reward_task_vector = room_reward_task_vector
         if room_reward_task_vector:
             self.task_vector_dims = self.num_objects + 4
@@ -118,6 +147,7 @@ class MultiroomGotoEnv(KitchenLevel):
             self.train_tasks = np.eye(self.num_objects)
 
 
+        #define the action space
         kwargs["task_kinds"] = ['goto','pickup']
         kwargs['actions'] = ['left', 'right', 'forward','pickup_contents', 'place_down']
         if (not one_room) and (not walls_gone):
@@ -134,7 +164,7 @@ class MultiroomGotoEnv(KitchenLevel):
             room_size=room_size,
             **kwargs)
 
-        self.observation_space.spaces['mission'] = spaces.Box(
+        self.observation_space.spaces['mission'] = spaces.Box( #note we need floats to encode room reward
             low=0,
             high=255,
             shape=(self.task_vector_dims,),
@@ -143,7 +173,7 @@ class MultiroomGotoEnv(KitchenLevel):
         self.observation_space.spaces['pickup'] = spaces.Box(
             low=0,
             high=255,
-            shape=(self.num_objects + 4,),
+            shape=(self.task_vector_dims,),
             dtype='uint8'
         )
 
@@ -154,70 +184,85 @@ class MultiroomGotoEnv(KitchenLevel):
             dtype='float32'
         )
 
-    #resets self.mission_arr to a random mission (i.e. random object)
+    # Resets self.mission_arr to a random mission (i.e. random object) unless self.mission_object is defined
+    # NOTE: this function does not deal with the extra dimensions of the mission corresponding to room reward.
+    # That is dealt with in the reset_task function.
     def select_mission(self):
         self.mission_arr = np.zeros([self.num_objects],dtype=np.float32)
+
         if self.random_mission:
             goal_idx = np.random.choice(range(self.num_objects))
         else:
             goal_idx = self.type2idx[self.mission_object]
+
         self.mission_arr[goal_idx] = 1
         if self.verbosity==1:
             print("Goal is to " + ("pickup " if self.pickup_required else "goto ") + self._task_objects[goal_idx])
-            #print("mission: " + str(self.mission_arr))
 
     @property
     def task_objects(self):
         return self._task_objects
 
     def reset_task(self):
-        self.select_mission()
+        self.select_mission() #first we select which object we are going to be picking up
 
+        # These lists contain the rooms where objects will be placed (if one_room isn't True) and the door colors
+        # The door colors DO NOT necessarily correspond to the rooms above them.
+        # Recall that colors correspond to the objects in the room, not the room's location
         VALID_ROOMS_ = np.array([[0, 1], [1, 0], [2, 1]])
         DOOR_COLORS = np.array(['red', 'green', 'blue'])
 
 
-        #we permute valid rooms and colors:
+        # we permute valid rooms to randomize room order when deterministic_rooms is False
         if self.deterministic_rooms:
             perm = np.array([0,1,2])
         else:
             perm = np.random.permutation(3)
         VALID_ROOMS = VALID_ROOMS_[perm].tolist()
-        # DOOR_COLORS = DOOR_COLORS[perm].tolist()
 
         # generate grid
         self._gen_grid(width=self.width, height=self.height)
 
+        #initialize the object_occurrences array to hold which objects are in the environment
         self.object_occurrences = np.zeros(self.num_objects, dtype=np.uint8)
 
 
-        #place all of the objects
-        for room_idx, room_objects in enumerate(self.objectlist):
-            for (obj, num_to_place) in room_objects.items():
-                placeable_obj = self.default_objects[self.type2idx[obj]]
+        # place all of the objects
+        for room_idx, room_objects in enumerate(self.objectlist): # For each room ...
+            for (obj, num_to_place) in room_objects.items(): # For each object in each room ...
+                placeable_obj = self.default_objects[self.type2idx[obj]] #get the object
 
-                for _ in range(num_to_place):
-                    #if one room just place all in the same room
+                for _ in range(num_to_place): # we can place multiple of each object...
+
+                    #if one_room is True just place all objects in the starting room
                     if self.one_room:
                         self.place_in_room(1, 1, placeable_obj)
                         self.room = 0
                         self.room_location = (1,1)
+
                     else:
                         if self.mission_arr[self.type2idx[obj]]==1: #set self.room if this is indeed the reward object
                             self.room = perm[room_idx] + 1
                             self.room_location = tuple(VALID_ROOMS[room_idx])
-                        #epsilon chance of random room placement
+
+                        # epsilon chance of random room placement
                         if np.random.uniform(0,1)<self.epsilon:
                             random_room = VALID_ROOMS[np.random.choice(range(len(VALID_ROOMS)))]
                             self.place_in_room(random_room[0], random_room[1], placeable_obj)
+
                         else:
                             self.place_in_room(VALID_ROOMS[room_idx][0], VALID_ROOMS[room_idx][1], placeable_obj)
+
+                    # object_occurrences only keeps track of objects relevant to determining if the episode is over
+                    # If stop_when_gone is True, we only keep track of objects for which there is nonzero reward
                     if self.stop_when_gone:
                         self.object_occurrences[self.type2idx[obj]]+=int(self.mission_arr[self.type2idx[obj]]!=0)
                     else:
                         self.object_occurrences[self.type2idx[obj]]+=1
 
+        # remaining is like object_occurrences, but updates as the episode progresses
         self.remaining = np.array(self.object_occurrences)
+
         # The agent must be placed after all the object to respect constraints
         while True:
             self.place_agent(1,1)
@@ -225,19 +270,19 @@ class MultiroomGotoEnv(KitchenLevel):
             break
 
         # arrange the door colors and locks
-        # Order of the doors is right, down, left, up
-        #we have 3 doors we care about
-        #create the 3 doors to the starting room
+        # Order of the doors in a given room is right, down, left, up
+        # we have 3 doors we care about
+        # create the 3 doors to the starting room
         room_to_door = {(0,1):2,(1,0):3,(2,1):0}
 
-
-
-        if self.walls_gone: #walls are never gone if one room
+        # walls are never gone if one room
+        # If walls are gone we get rid of walls and don't worry about doors
+        if self.walls_gone:
             self.remove_wall(1,1,0)
             self.remove_wall(1, 1, 2)
             self.remove_wall(1, 1, 3)
         else:
-            if not self.one_room: #if one room, no doors
+            if not self.one_room: # if we have multiple rooms, we add doors to the starting room (unlocked)
                 door1, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[0])], DOOR_COLORS[0], locked=False)
                 door2, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[1])], DOOR_COLORS[1], locked=False)
                 door3, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[2])], DOOR_COLORS[2], locked=False)
@@ -248,32 +293,43 @@ class MultiroomGotoEnv(KitchenLevel):
                     door2.is_open = True
                     door3.is_open = True
 
-        #now we gotta update the mission arr based on the room reward
+        #now we have to update the mission arr based on the room reward
         if self.room_reward_task_vector:
             room_embed_task = np.zeros(4,dtype=np.float32)
             room_embed_task[self.room] = self.room_reward
             self.mission_arr = np.concatenate([self.mission_arr,room_embed_task],dtype=np.float32)
 
+        if self.verbosity==1:
+            print("Mission array: " + str(self.mission_arr))
 
     def reset(self):
-        obs = super().reset()
+        obs = super().reset() # this calls reset_task
+
+        # variables that need to be reset each episode that aren't handled by reset_task
         self.got_room_reward = False
+        self.visited_rooms = [(1,1)] #we start by visiting the 0'th room
         assert self.carrying is None
-        obs['pickup'] = np.zeros(self.num_objects + 4, dtype=np.uint8) #plus 4 is for room we are in
-        obs['pickup'][self.num_objects] = 1 #because we are in 0'th room
+
+        #define the starting observation
+        if self.room_reward_task_vector:
+            obs['pickup'] = np.zeros(self.num_objects + 4, dtype=np.uint8) #plus 4 is for room we are in
+            obs['pickup'][self.num_objects] = 1 # because we are in 0'th room for the first time
+        else:
+            obs['pickup'] = np.zeros(self.num_objects,dtype=np.uint8)
         obs['mission'] = self.mission_arr
-        obs['train_tasks'] = self.train_tasks
+        obs['train_tasks'] = self.train_tasks #this does not change episode-to-episode
         return obs
 
     def remove_object(self, fwd_pos, pickup_vector):
-        # get reward
+        # get the object that was picked up or gone-to
         object = self.grid.get(*fwd_pos)
-
         obj_type = object.type
 
+        # This should always be true since all of our objects are potential task objects
         if obj_type in self._task_objects:
             obj_idx = self.type2idx[obj_type]
 
+            #we need to figure out if we can pickup the object, and if so, pick it up
             action_info = self.kitchen.interact(
                 action='pickup_contents',
                 object_infront=object,
@@ -284,6 +340,9 @@ class MultiroomGotoEnv(KitchenLevel):
             self.carrying = self.kitchen.carrying
             if self.verbosity==1:
                 print(action_info)
+
+            #if we actually pick up the object, remove it from in front of the agent and decrease "remaining"
+            #also assign reward
             if action_info['success']:
                 self.grid.set(*fwd_pos, None)
                 pickup_vector[obj_idx] += 1
@@ -292,13 +351,11 @@ class MultiroomGotoEnv(KitchenLevel):
                     self.remaining[obj_idx] -= 1
             else:
                 reward = 0.0
-
-
-
             return reward
         assert obj_type=="wall" or obj_type=="door"
         return 0.0
 
+    #This function is just copied from goto_avoid
     def place_obj(self,
                   obj,
                   top=None,
@@ -357,14 +414,12 @@ class MultiroomGotoEnv(KitchenLevel):
         return pos
 
     def step(self, action):
-        """Copied from:
+        """Based off (but not totally copied from):
         - gym_minigrid.minigrid:MiniGridEnv.step
         - babyai.levels.levelgen:RoomGridLevel.step
         This class derives from RoomGridLevel. We want to use the parent of RoomGridLevel for step.
         """
-        # ======================================================
-        # copied from MiniGridEnv
-        # ======================================================
+
         self.step_count += 1
 
         reward = 0.0
@@ -401,13 +456,13 @@ class MultiroomGotoEnv(KitchenLevel):
                 if object_infront.type=='door':
                     object_infront.is_open = not object_infront.is_open
 
+        #place-down action: If we are carrying something, set it down in front of the agent
         elif action == self.actiondict.get('place_down',-1):
             #first check that we are carrying something and that space in front is empty
             if self.carrying is not None and self.grid.get(*fwd_pos)==None:
                 self.grid.set(*fwd_pos, self.carrying)
                 self.carrying = None
                 self.kitchen.update_carrying(None)
-
 
         # pickup or no-op if not pickup_required
         else:
@@ -416,28 +471,27 @@ class MultiroomGotoEnv(KitchenLevel):
                 reward = self.remove_object(fwd_pos, pickup)
 
 
-        #get the room reward for going in the right room for the first time
-        # add room to pickup
+        # get the room reward for going in the right room for the first time
+        # add room to pickup if room_reward_task_vector is True
         room_embed = np.zeros(4,dtype=np.uint8)
-        ROOM_ORDER = [(0, 1), (1, 0), (2, 1)]
-        if not self.got_room_reward:
-            curr_i = self.agent_pos[0]//(self.room_size - 1)
-            curr_j = self.agent_pos[1] // (self.room_size - 1)
+        ROOM_ORDER = [(1,1), (0, 1), (1, 0), (2, 1)]
+        curr_i = self.agent_pos[0] // (self.room_size - 1) # location of current room
+        curr_j = self.agent_pos[1] // (self.room_size - 1)
+        if not self.got_room_reward: # if we haven't already received room reward, we could get it again
             if (curr_i, curr_j)==self.room_location:
                 reward+=self.room_reward
                 self.got_room_reward = True
                 if self.verbosity==1:
                     print("Got reward for entering correct room: {0}".format(self.room_reward))
 
-                # check index of room we are in and add this to pickup
-                if (curr_i, curr_j) in ROOM_ORDER:
-                    room_embed[ROOM_ORDER.index((curr_i, curr_j)) + 1] = 1
-                else:
-                    room_embed[0] = 1
 
-        pickup = np.concatenate([pickup, room_embed],dtype=np.uint8)
+        # check index of room we are in and add this to pickup if the room is being visited for the first time
+        if (curr_i, curr_j) not in self.visited_rooms:
+            room_embed[ROOM_ORDER.index((curr_i, curr_j))] = 1
+            self.visited_rooms.append((curr_i,curr_j))
 
-        # print("remaining: " + str(self.remaining))
+        if self.room_reward_task_vector:
+            pickup = np.concatenate([pickup, room_embed],dtype=np.uint8)
 
         # ======================================================
         # copied from RoomGridLevel
@@ -459,14 +513,14 @@ class MultiroomGotoEnv(KitchenLevel):
 
         obs['mission'] = self.mission_arr
         obs['pickup'] = pickup
-        obs['train_tasks'] = self.train_tasks
+        obs['train_tasks'] = self.train_tasks #we add train_tasks to the observation!!!
 
         if self.verbosity==1:
             print("Pickup: " + str(pickup))
 
         return obs, reward, done, info
 
-
+#example of the env
 if __name__ == '__main__':
     import gym_minigrid.window
     import time
@@ -496,7 +550,7 @@ if __name__ == '__main__':
         one_room=False,
         deterministic_rooms=False,
         room_reward=.25,
-        room_reward_task_vector=False
+        room_reward_task_vector=True
     )
 
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)
@@ -556,62 +610,3 @@ if __name__ == '__main__':
             import ipdb;
 
             ipdb.set_trace()
-
-"""
-Advice:
- - change 1 thing at a time, record clearly how it works YEP
- - r2d1_noise can make r2d1 noisier and get reward DONE
- - do prioritized replay DONE
- - maybe get rid of walls? --> make sure agent can see deep into rooms if you do this
- - Maybe do frequent updates?
- -
-
-Q's:
-    how do you evaluate on each task separately?
-    error about ordering: why doesn't it break things?? How to fix?
-    [actor/0] The table signature is:
-[actor/0]     0: Tensor<name: 'observation/observation/image/0/observations/observation/image', dtype: uint8, shape: [?,50,50,3]>, 1: Tensor<name: 'observation/observation/pickup/0/observations/observation/pickup', dtype: uint8, shape: [?,3]>, 2: Tensor<name: 'observation/observation/task/0/observations/observation/task', dtype: uint8, shape: [?,3]>, 3: Tensor<name: 'observation/action/0/observations/action', dtype: int32, shape: [?]>, 4: Tensor<name: 'observation/reward/0/observations/reward', dtype: float, shape: [?]>, 5: Tensor<name: 'action/0/actions', dtype: int32, shape: [?]>, 6: Tensor<name: 'reward/0/rewards', dtype: float, shape: [?]>, 7: Tensor<name: 'discount/0/discounts', dtype: float, shape: [?]>, 8: Tensor<name: 'start_of_episode/start_of_episode', dtype: bool, shape: [?]>, 9: Tensor<name: 'extras/core_state/hidden/1/core_state/hidden', dtype: float, shape: [?,512]>, 10: Tensor<name: 'extras/core_state/cell/1/core_state/cell', dtype: float, shape: [?,512]>
-[actor/0]
-[actor/0] The provided trajectory signature is:
-[actor/0]     0: Tensor<name: '0', dtype: uint8, shape: [31,3]>, 1: Tensor<name: '1', dtype: uint8, shape: [31,50,50,3]>, 2: Tensor<name: '2', dtype: uint8, shape: [31,3]>, 3: Tensor<name: '3', dtype: int32, shape: [31]>, 4: Tensor<name: '4', dtype: float, shape: [31]>, 5: Tensor<name: '5', dtype: int32, shape: [31]>, 6: Tensor<name: '6', dtype: float, shape: [31]>, 7: Tensor<name: '7', dtype: float, shape: [31]>, 8: Tensor<name: '8', dtype: bool, shape: [31]>, 9: Tensor<name: '9', dtype: float, shape: [31,512]>, 10: Tensor<name: '10', dtype: float, shape: [31,512]>.
-[actor/0]
-
-Ideas to make agent learn better:
-Hyperparams:
- - bigger replay size, because reward is achieved so infrequently
- - change priority weight to get more samples with reward --> it's turned off rn
- - WILKA THINGS THIS WON'T MATTER: update the learner more frequently later on - variable_update period
- - bigger area the agent sees
-
-    
- walkthrough of usfa train code
-    look at msf nets.py
-    w_train is all the w's
-    by default during test time we GPI over all the w's
-    by default task embed is identity
-    ***In Jax you can't, just, uh, build stuff*** you gotta do it inside a ~Transform~ function
- 
-TODOs:
-    make actual metrics for how well thing is learning
-    make it learn
-    evaluate on tasks separately to see how well it does each task
-    look at vmap in losses usfa **this is confusing**
-    
-Learning Metrics:
-Mean episode return for actor and evaluator after 10M epochs
-Mean episode return per-task for actor and evaluator after 10M epochs
-Same after 2M epochs
-Loss of learner... but this one doesn't seem to be a problem
-Once colocation is introduced:
-    correlation coefs between colocated object returns versus non-colocated returns
-    
-    
-Bug Fixes:
- - run a bunch of times to make sure it's not random (both distributed and single) DONE
- - rework nets file (int casting is suspicious) (also check out BasicRecurrent class) DONE FOR R2D1
- - print out specs all over the place NO NEED
- - add a bunch of assertions in environment and sample many episodes with those in there DONE
- - potentially simplify to one room
- 
-  - transfer ideas to skill discovery
-"""

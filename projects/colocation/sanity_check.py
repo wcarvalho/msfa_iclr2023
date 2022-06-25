@@ -1,17 +1,11 @@
 
 
-"""HIGH LEVEL GOAL: Train an agent to do things in the colocated environment at a very basic level.
-TASK1: With no colocation (1 object per room), doors open by default, train an R2D1 agent to GOTO each object
-TASK1: With some colocation (2-3 objects per room), doors open by default, train an agent to GOTO each object"""
 
-#SETUP THINGS
-#conda activate acmejax
-#conda develop /path/to/rljax
-#export LD_LIBRARY_PATH=/home/nameer/miniconda3/envs/acmejax/lib
-#cd successor_features/rljax
-#python projects/colocation/sanity_check.py
+"""
+THIS FILE HASN'T BEEN USED IN A WHILE... IT IS SUPPOSED TO BE A NON-DISTRIBUTED TRAIN FOR DEBUGGING.
+IT PROBABLY NEEDS UPDATING TO LOOK MORE LIKE TRAIN_DISTRIBUTED.PY
 
-"""Comand I run:
+Comand I run:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
     CUDA_VISIBLE_DEVICES=2 \

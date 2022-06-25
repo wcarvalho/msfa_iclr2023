@@ -21,13 +21,21 @@ from losses.contrastive_model import ModuleContrastLoss, TimeContrastLoss
 from projects.colocation import nets
 from projects.colocation import configs
 
-def make_environment_sanity_check(evaluation: bool = False,
-                                  simple: bool = True,
-                                  agent='r2d1', nowalls: bool = False,
+
+"""
+This is our main environment building function. Most of its arguments are just passed on to the MultiroomGoto environment
+The only special arguments are:
+     - simple (bool, Optional) If this is true, we only put one object in each room, if it is False, we have 3 objects per room
+"""
+def make_environment_sanity_check(
+                                  simple: bool = False,
+                                  nowalls: bool = False,
                                   one_room:bool=False,
                                   deterministic_rooms:bool=False,
                                   room_reward: float = 0.0,
                                   room_reward_task_vector: bool = True):
+
+    #define objects we are working with
     if simple:
         objs = [{'pan': 1}, {'tomato': 1}, {'knife':1}]
     else:
@@ -35,6 +43,7 @@ def make_environment_sanity_check(evaluation: bool = False,
 
     unique_objs = list(set(functools.reduce(lambda x,y: x + list(y.keys()),objs,[])))
 
+    #build the environment
     env = MultiroomGoto(
         objs,
         agent_view_size=5,
@@ -54,6 +63,7 @@ def make_environment_sanity_check(evaluation: bool = False,
       functools.partial(RGBImgPartialObsWrapper, tile_size=8)]
     )
 
+    #super standard wrappers...
     wrapper_list = [
         functools.partial(ObservationRemapWrapper,
                           remap=dict(mission='task', pickup='state_features')),
@@ -62,6 +72,9 @@ def make_environment_sanity_check(evaluation: bool = False,
     ]
     return wrappers.wrap_all(env, wrapper_list)
 
+#####################################
+# Copied from kitchen_gridworld
+#####################################
 def q_aux_loss(config):
   """Create auxilliary Q-learning loss for SF
   """
@@ -79,6 +92,9 @@ def q_aux_loss(config):
           sched_end_val=config.q_aux_end_val,
           tx_pair=config.tx_pair)
 
+#####################################
+# Copied from kitchen_gridworld
+#####################################
 def q_aux_sf_loss(config):
   """Create auxilliary Q-learning loss for SF
   """
@@ -106,9 +122,10 @@ def q_aux_sf_loss(config):
           add_bias=add_bias,
           mask_loss=config.qaux_mask_loss)
 
-
+#####################################
+# Copied from kitchen_gridworld, but with
+#####################################
 def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=True, learn_model=False, task_embedding='none'):
-
 
   NetKwargs=dict(
     config=config,
@@ -177,10 +194,19 @@ def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=
 
   return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
 
+# Function to get agent settings for all relevant agents
+# train_task_as_z determines if we use gaussian sampling or sample all train tasks in training
+#   If it is True, we sample all train tasks
+#   If it is False, we sample gaussian noise around w
+#   If it is None, we set it equal to predict_cumulants
 
-def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1", train_task_as_z = None):
+#task_embedding can be 'none' or 'vector', but only set it to 'vector' if you are also predicting cumulants
+#recommended to always use vector when using MSF
+def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1", train_task_as_z = None, task_embedding = 'none'):
     default_config = dict()
     default_config.update(config_kwargs or {})
+
+    #R2D1
     if agent=='r2d1':
         config = configs.R2D1Config(**default_config)
 
@@ -190,6 +216,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
         LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
         loss_label = 'r2d1'
         eval_network= config.eval_network
+
+    #R2D1 Noise
     elif agent=='r2d1_noise':
         config = data_utils.merge_configs(
             dataclass_configs=[configs.NoiseConfig()],
@@ -202,6 +230,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
         LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
         loss_label = 'r2d1'
         eval_network = config.eval_network
+
+    #USFA with oracle cumulants
     elif agent=='usfa':
         config = data_utils.merge_configs(
             dataclass_configs=[configs.USFAConfig()],
@@ -212,7 +242,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
         NetKwargs = dict(
             config=config,
             env_spec=env_spec,
-            use_seperate_eval=True)
+            use_seperate_eval=True,
+            task_embed_type=task_embedding)
 
         LossFn = td_agent.USFALearning
         LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
@@ -223,6 +254,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
 
         loss_label = 'usfa'
         eval_network = config.eval_network
+
+    #USFA with conv cumulants
     elif agent == 'usfa_conv':
         config = data_utils.merge_configs(
             dataclass_configs=[
@@ -239,7 +272,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
             use_seperate_eval=True,
             predict_cumulants=True,
             cuulant_type='conv',
-            train_task_as_z=train_task_as_z)
+            train_task_as_z=train_task_as_z,
+            task_embed_type=task_embedding)
         LossFn = td_agent.USFALearning
         LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
         LossFnKwargs.update(
@@ -260,6 +294,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
             ])
         loss_label = 'usfa'
         eval_network = config.eval_network
+
+    #USFA with LSTM cumulants
     elif agent == 'usfa_lstm':
         config = data_utils.merge_configs(
             dataclass_configs=[
@@ -276,7 +312,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
             use_seperate_eval=True,
             predict_cumulants=True,
             cumulant_type='lstm',
-            train_task_as_z=train_task_as_z)
+            train_task_as_z=train_task_as_z,
+            task_embed_type=task_embedding)
         LossFn = td_agent.USFALearning
         LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
         LossFnKwargs.update(
@@ -297,6 +334,8 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
             ])
         loss_label = 'usfa'
         eval_network = config.eval_network
+
+    # MSF with linear task embedding
     elif agent == "msf":
         # USFA + cumulants from FARM + Q-learning
         config = data_utils.merge_configs(
@@ -316,8 +355,9 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
             predict_cumulants=True,
             learn_model=True,
             use_separate_eval=True,
-            task_embedding='vector')
+            task_embedding=task_embedding)
 
+    #MSF with conv cumulants
     elif agent == "conv_msf":
         # USFA + cumulants from FARM + Q-learning
         config = data_utils.merge_configs(
@@ -338,7 +378,7 @@ def load_agent_settings_sanity_check(env_spec, config_kwargs=None, agent = "r2d1
             predict_cumulants=True,
             learn_model=True,
             use_separate_eval=True,
-            task_embedding='vector')
+            task_embedding=task_embedding)
     else:
         raise ValueError("Please specify a valid agent type")
 
