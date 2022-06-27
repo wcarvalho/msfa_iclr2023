@@ -1,3 +1,5 @@
+import sys
+import re
 import numpy as np
 import functools
 from babyai.levels.verifier import Instr
@@ -55,6 +57,7 @@ class KitchenTask(Instr):
     argument_options=None,
     task_reps=None,
     use_subtasks=False,
+    negate=False,
     reset_behavior: str='none',
     init=True):
     """Summary
@@ -67,6 +70,7 @@ class KitchenTask(Instr):
         argument_options (None, optional): object types to be sampled from
         task_reps (None, optional): representation of tasks
         use_subtasks (bool, optional): use subtasks
+        negate (bool, optional): reward is negated and "not" is added before task description
         reset_behavior (str, optional): 'none': nothing happens.
           'remove': task objects are removed.
           'respawn': task objects are respawned.
@@ -75,8 +79,11 @@ class KitchenTask(Instr):
     super(KitchenTask, self).__init__()
     self.argument_options = argument_options or dict(x=[])
     self._task_objects = []
+    self.negate = negate
     self.env = env
     self._reward = reward
+    if negate:
+      self._reward *= -1
     self.kitchen = kitchen
     self.use_subtasks = use_subtasks
     self.finished = False
@@ -163,9 +170,13 @@ class KitchenTask(Instr):
   @property
   def task_rep(self):
     if self._task_reps is not None:
-      return self._task_reps.get(self.task_name, self.default_task_rep)
+      rep = self._task_reps.get(self.task_name, self.default_task_rep)
     else:
-      return self.default_task_rep
+      rep = self.default_task_rep
+
+    if self.negate:
+      rep = "not " + rep
+    return rep
 
   @property
   def task_name(self):
@@ -930,8 +941,10 @@ class CompositionClass(KitchenTask):
     self.classes = []
     self.variables = ['x', 'y', 'z', 'a', 'b', 'c', 'u', 'w', 'v']
     self.variables += [v.upper() for v in self.variables]
+    new_kwargs = {**kwargs}
+    new_kwargs['init'] = False
     for c in classes:
-      Cls = c(*args, init=False, **kwargs)
+      Cls = c(*args, **new_kwargs)
       self.classes.append(Cls)
     super(CompositionClass, self).__init__(*args, **kwargs)
 
@@ -1136,6 +1149,45 @@ class SliceAndCleanKnifeTask(KitchenTask):
     subgoals = self.slice_task.subgoals() + self.clean_task.subgoals()
     return subgoals
 
+
+def make_class(name: str, negate: bool=False):
+  numbers = re.findall(r'\d+', name)
+  assert len(numbers) in [0,1]
+  if len(numbers) > 0:
+    name = name.replace(numbers[0], "")
+
+
+  class_name = name.title() + "Task"
+  current_module = sys.modules[__name__]
+  Cls = getattr(current_module, class_name)
+
+  if len(numbers) > 0:
+    return functools.partial(CompositionClass, classes=[Cls]*int(numbers[0]), negate=negate)
+  else:
+    return functools.partial(Cls, negate=negate)
+
+
+def make_composite(name: str):
+
+  # clean_and_not_toggle --> [clean, not_toggle]
+  bases = name.split("_and_")
+
+  # [False, True]
+  negate = ["not" in b for b in bases]
+
+  # [clean, not_toggle] --> [clean, toggle]
+  clean_bases = [b.replace("not", "").replace("_", "") for b in bases]
+
+  classes = [make_class(b, n) for b, n in zip(clean_bases, negate)]
+
+  return functools.partial(CompositionClass, classes=classes)
+
+
+def get_task_class(name):
+  if 'and' in name:
+    return make_composite(name)
+  else:
+    return make_composite(name)
 
 def all_tasks():
   return dict(

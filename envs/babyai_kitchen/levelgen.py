@@ -288,8 +288,9 @@ class KitchenLevel(RoomGridLevel):
         if task_kind == 'none':
             task = None
         else:
-            available_tasks = envs.babyai_kitchen.tasks.all_tasks()
-            task_class = available_tasks[task_kind]
+            # available_tasks = envs.babyai_kitchen.tasks.all_tasks()
+            # task_class = available_tasks[task_kind]
+            task_class = envs.babyai_kitchen.tasks.get_task_class(task_kind)
 
             task = task_class(
                 env=self,
