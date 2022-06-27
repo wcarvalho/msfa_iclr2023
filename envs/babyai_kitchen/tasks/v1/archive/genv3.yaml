@@ -1,0 +1,119 @@
+train:
+
+  # -----------------------
+  # clean
+  # -----------------------
+  - name: "0.pickup"
+    task_kinds: pickup
+    taskarg_options:
+      x: [plates, bowl]
+    num_dists: 0
+
+  - name: "1.toggle"
+    task_kinds: toggle
+    taskarg_options:
+      x: [sink, stove]
+    num_dists: 0
+
+  - name: "5.clean"
+    task_kinds: clean
+    taskarg_options:
+      x: [pot, pan]
+    num_dists: 0
+
+  - name: "6.pickup_cleaned"
+    task_kinds: pickup_cleaned
+    taskarg_options:
+      x: [knife, fork, plates]
+    num_dists: 0
+
+  # -----------------------
+  # slice
+  # -----------------------
+  - name: "3.slice"
+    task_kinds: slice
+    taskarg_options:
+      x: [onion, orange]
+    num_dists: 0
+
+  - name: "7.pickup_sliced"
+    task_kinds: pickup_sliced
+    taskarg_options:
+      x: [tomato, apple, potato]
+    num_dists: 0
+
+  # -----------------------
+  # 2 objects
+  # -----------------------
+  - name: "2.toggle2"
+    task_kinds: toggle2
+    num_dists: 0
+
+  - name: "4.slice2"
+    task_kinds: slice2
+    num_dists: 0
+
+  # -----------------------
+  # cook
+  # -----------------------
+  - name: "8.cook"
+    task_kinds: cook
+    taskarg_options:
+      y: [pot]
+    num_dists: 0
+
+
+test:
+
+  - name: "arg0_pickup"
+    task_kinds: pickup
+    taskarg_options:
+      x: food
+    num_dists: 0
+
+  - name: "arg1_toggle"
+    task_kinds: toggle
+    taskarg_options:
+      x: [fridge, microwave]
+    num_dists: 0
+
+  - name: "arg2_pickup_cleaned"
+    task_kinds: pickup_cleaned
+    taskarg_options:
+      x: [pot, pan, bowl]
+    num_dists: 0
+
+  - name: "arg3_pickup_sliced"
+    task_kinds: pickup_sliced
+    taskarg_options:
+      x: [lettuce, onion, orange]
+    num_dists: 0
+
+  - name: "combo0_toggle_and_slice" # length 3
+    task_kinds: toggle_and_slice
+    taskarg_options:
+      x: [sink, stove]
+      y: [onion, orange]
+    num_dists: 0
+
+  - name: "combo1_clean_and_toggle" # length 4
+    task_kinds: clean_and_toggle
+    taskarg_options:
+      x: [pot, pan]
+      y: [sink, stove]
+    num_dists: 0
+
+  - name: "combo2_clean_and_slice" # length 5
+    task_kinds: clean_and_slice
+    taskarg_options:
+      x: [pot, pan]
+      y: [onion, orange]
+    num_dists: 0
+
+  - name: "combo3_clean_and_slice_and_toggle" # length 6
+    task_kinds: clean_and_slice_and_toggle
+    taskarg_options:
+      x: [pot, pan]
+      y: [onion, orange]
+      z: [sink, stove]
+    num_dists: 0

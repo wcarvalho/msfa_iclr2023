@@ -29,8 +29,6 @@ pip install --editable .
 cd ..
 
 git clone https://github.com/mila-iqia/babyai.git _babyai
-# DELETE setup.py:
-# 'gym_minigrid @ https://github.com/maximecb/gym-minigrid/archive/master.zip'
 cp install/babyai_setup.py _babyai/setup.py
 cd _babyai
 pip install --editable .

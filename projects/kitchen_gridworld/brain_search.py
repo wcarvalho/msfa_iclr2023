@@ -54,7 +54,7 @@ def get(search, agent=''):
         "struct_and": tune.grid_search([True]),
         "samples_per_insert": tune.grid_search([6.0]),
         "reward_coeff": tune.grid_search([50.0]),
-        "nmodules": tune.grid_search([4, 8]),
+        "nmodules": tune.grid_search([4]),
         "struct_policy_input": tune.grid_search([True]),
         "eval_task_support": tune.grid_search(['train']),
         "max_number_of_steps": tune.grid_search([5_000_000]),

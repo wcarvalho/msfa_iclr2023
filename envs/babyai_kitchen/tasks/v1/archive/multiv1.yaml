@@ -1,0 +1,43 @@
+# -----------------------
+# clean, slice, toggle2, slice2
+# -----------------------
+
+train:
+
+  # -----------------------
+  # clean
+  # -----------------------
+  - name: pickup
+    task_kinds: pickup
+    num_dists: 0
+
+  - name: clean
+    task_kinds: clean
+    num_dists: 0
+
+  - name: pickup_cleaned
+    task_kinds: pickup_cleaned
+    num_dists: 0
+
+  # -----------------------
+  # slice
+  # -----------------------
+  - name: slice
+    task_kinds: slice
+    num_dists: 0
+
+  - name: pickup_sliced
+    task_kinds: pickup_sliced
+    num_dists: 0
+
+
+  # -----------------------
+  # 2 objects
+  # -----------------------
+  - name: toggle2
+    task_kinds: toggle2
+    num_dists: 0
+
+  - name: slice2
+    task_kinds: slice2
+    num_dists: 0
