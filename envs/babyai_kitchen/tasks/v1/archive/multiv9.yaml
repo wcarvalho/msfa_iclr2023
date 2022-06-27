@@ -1,0 +1,42 @@
+train:
+
+
+  - name: "0.pickup"
+    task_kinds: pickup
+    num_dists: 0
+
+  - name: "0.place"
+    task_kinds: place
+    num_dists: 0
+
+  - name: "1.toggle2"
+    task_kinds: toggle2
+    num_dists: 0
+
+  - name: "2.slice"
+    task_kinds: slice
+    num_dists: 0
+
+  - name: "3.slice2"
+    task_kinds: slice2
+    num_dists: 0
+
+  - name: "4.heat"
+    task_kinds: heat
+    num_dists: 0
+
+  - name: "5.clean"
+    task_kinds: clean
+    num_dists: 0
+
+  - name: "6.pickup_cleaned"
+    task_kinds: pickup_cleaned
+    num_dists: 0
+
+  - name: "7.pickup_sliced"
+    task_kinds: pickup_sliced
+    num_dists: 0
+
+  - name: "8.cook"
+    task_kinds: cook
+    num_dists: 0
