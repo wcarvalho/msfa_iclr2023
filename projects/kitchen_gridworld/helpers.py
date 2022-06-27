@@ -47,6 +47,7 @@ def make_environment(evaluation: bool = False,
                      struct_and=False,
                      task_reset_behavior='none',
                      debug=False,
+                     **kwargs,
                      ) -> dm_env.Environment:
   setting = setting or 'SmallL2NoDist'
   """Loads environments."""
@@ -67,11 +68,11 @@ def make_environment(evaluation: bool = False,
   if evaluation and 'test' in tasks:
     task_dicts = tasks['test']
     train_task_dicts = tasks['train']
-    separate_eval=True
+    env_kwargs=dict(task_reset_behavior=task_reset_behavior)
   else:
     task_dicts = tasks['train']
     train_task_dicts = tasks['train']
-    separate_eval=False
+    env_kwargs=dict()
 
   if 'task_reps' in tasks:
     task_reps = tasks['task_reps']
@@ -90,7 +91,6 @@ def make_environment(evaluation: bool = False,
 
   env = MultitaskKitchen(
     task_dicts=task_dicts,
-    separate_eval=separate_eval, # hack so can access later
     tile_size=tile_size,
     path=path,
     num_dists=num_dists,
@@ -99,8 +99,9 @@ def make_environment(evaluation: bool = False,
     room_size=room_size,
     wrappers=env_wrappers,
     symbolic=symbolic,
-    task_reset_behavior=task_reset_behavior,
     debug=debug,
+    **env_kwargs,
+    **kwargs
     )
 
   # wrappers for dm_env: used by agent/replay buffer

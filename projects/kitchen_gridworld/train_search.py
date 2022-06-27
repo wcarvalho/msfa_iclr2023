@@ -91,8 +91,9 @@ def main(_):
     wandb_init_kwargs=wandb_init_kwargs,
     default_env_kwargs=default_env_kwargs,
     use_wandb=use_wandb,
-    # actor_label=actor_label,
-    # evaluator_label=evaluator_label,
+    build_kwargs=dict(
+      actor_label=actor_label,
+      evaluator_label=evaluator_label),
     terminal=FLAGS.terminal,
     skip=FLAGS.skip,
     use_ray=FLAGS.ray)

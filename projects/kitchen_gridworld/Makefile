@@ -3,7 +3,7 @@ agent?=msf
 eval?=1
 custom_loggers?=True
 task_reps?='object_verbose'
-env?='genv3'
+env?='gen_toggle'
 init?=0
 
 # Envivornmnet

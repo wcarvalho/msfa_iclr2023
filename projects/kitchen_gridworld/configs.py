@@ -55,7 +55,7 @@ class ModularUSFAConfig(USFAConfig):
   normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
-  struct_policy_input: bool = False # break up task per module
+  struct_policy_input: bool = True # break up task per module
 
   cumulant_source: str = 'lstm' # whether to normalize cumulants
   phi_conv_size: int = 0 # size of conv for cumulants

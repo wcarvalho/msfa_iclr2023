@@ -2,8 +2,8 @@ from ray import tune
 
 def get(search, agent=''):
   agent = agent or 'r2d1'
-  actor_label='actor_struct_and'
-  evaluator_label='eval_struct_and'
+  actor_label=None
+  evaluator_label=None
 
   if search == 'slice5':
     space = [
@@ -15,51 +15,50 @@ def get(search, agent=''):
       },
     ]
 
-
-  elif search == 'test11_baselines':
-    """
-    Next:
-    """
-    space = [
-      {
-        "seed": tune.grid_search([1, 2]),
-        "agent": tune.grid_search([agent]),
-        "setting": tune.grid_search(['toggle_gen']),
-        "struct_and": tune.grid_search([True]),
-        "task_reset_behavior": tune.grid_search([task_reset_behavior]),
-        "max_number_of_steps": tune.grid_search([2_000_000]),
-      } for task_reset_behavior in ['none', 'remove', 'respawn']
-    ]
-
-  elif search == 'test11_toggle':
+  elif search == 'test12_baselines':
     """
     Next:
     """
     space = [
       # {
       #   "seed": tune.grid_search([1]),
-      #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['toggle_gen']),
+      #   "agent": tune.grid_search([agent]),
+      #   "setting": tune.grid_search([setting]),
       #   "struct_and": tune.grid_search([True]),
-      #   "task_reps": tune.grid_search(['object_verbose']),
-      #   "label": tune.grid_search(['v4']),
-      #   "bag_of_words": tune.grid_search([True]),
-      #   "embed_task_dim": tune.grid_search([0, 16]),
-      #   "max_number_of_steps": tune.grid_search([1_000_000]),
+      #   "module_task_dim": tune.grid_search([1]),
+      #   "max_number_of_steps": tune.grid_search([20_000_000]),
+      # } for setting in ['clean_gen', 'cook_gen', 'toggle_gen', 'slice_gen']
+      # {
+      #   "seed": tune.grid_search([2, 3]),
+      #   "agent": tune.grid_search(['usfa_lstm', 'r2d1']),
+      #   "setting": tune.grid_search(['gen_toggle_pickup']),
+      #   "struct_and": tune.grid_search([True]),
+      #   "label": tune.grid_search(['v2']),
+      #   "samples_per_insert": tune.grid_search([6.0]),
+      #   "max_number_of_steps": tune.grid_search([5_000_000]),
       # },
+      # {
+      #   "seed": tune.grid_search([1]),
+      #   "agent": tune.grid_search([agent]),
+      #   "setting": tune.grid_search(['gen_toggle_pickup']),
+      #   "struct_and": tune.grid_search([True]),
+      #   "samples_per_insert": tune.grid_search([6.0]),
+      #   "reward_coeff": tune.grid_search([50.0, 10.0]),
+      #   "nmodules": tune.grid_search([8, 16]),
+      #   "max_number_of_steps": tune.grid_search([5_000_000]),
+      # }
       {
-        "seed": tune.grid_search([1]),
-        "agent": tune.grid_search(['msf']),
-        "setting": tune.grid_search(['toggle_gen']),
+        "seed": tune.grid_search([1, 2, 3]),
+        "agent": tune.grid_search([agent]),
+        "setting": tune.grid_search(['gen_toggle_pickup']),
         "struct_and": tune.grid_search([True]),
-        "task_reps": tune.grid_search(['object_verbose']),
-        "label": tune.grid_search(['v5']),
-        "bag_of_words": tune.grid_search([False]),
-        "word_compress": tune.grid_search(['last', 'sum']),
-        "embed_task_dim": tune.grid_search([0, 16]),
-        "module_task_dim": tune.grid_search([0]),
-        "max_number_of_steps": tune.grid_search([1_000_000]),
-      },
+        "samples_per_insert": tune.grid_search([6.0]),
+        "reward_coeff": tune.grid_search([50.0]),
+        "nmodules": tune.grid_search([4, 8]),
+        "struct_policy_input": tune.grid_search([True]),
+        "eval_task_support": tune.grid_search(['train']),
+        "max_number_of_steps": tune.grid_search([5_000_000]),
+      }
     ]
 
   else:

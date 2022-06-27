@@ -18,9 +18,10 @@ def task_names(tasks: dict):
 class TrainTasksWrapper(base.EnvironmentWrapper):
   """A wrapper that adds train tasks."""
 
-  def __init__(self, *args, train_tasks, task_reps, instr_preproc, max_length, **kwargs):
+  def __init__(self, *args, train_tasks, task_reps, instr_preproc, max_length, reset_at_step=False, **kwargs):
     super().__init__(*args, **kwargs)
 
+    self.reset_at_step = reset_at_step
     self.instr_preproc = instr_preproc
     self.max_length = max_length
 
@@ -55,6 +56,9 @@ class TrainTasksWrapper(base.EnvironmentWrapper):
 
   def step(self, action: types.NestedArray) -> dm_env.TimeStep:
     timestep = self._environment.step(action)
+    if self.reset_at_step:
+      import ipdb; ipdb.set_trace()
+      reset_tasks(self.train_tasks)
     new_timestep = self._augment_observation(timestep)
     return new_timestep
 

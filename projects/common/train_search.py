@@ -23,10 +23,10 @@ import jax
 DEFAULT_NUM_ACTORS=3
 DEFAULT_LABEL=''
 
-def create_and_run_program(config, build_program_fn, root_path, folder, group, wandb_init_kwargs, default_env_kwargs=None, use_wandb=True, terminal='current_terminal', skip=True, debug=False):
+def create_and_run_program(config, build_program_fn, root_path, folder, group, wandb_init_kwargs, default_env_kwargs=None, use_wandb=True, terminal='current_terminal', skip=True, ray=False, debug=False, build_kwargs=None):
   """Create and run launchpad program
   """
-
+  build_kwargs = build_kwargs or dict()
   agent = config.pop('agent', 'r2d1')
   num_actors = config.pop('num_actors', DEFAULT_NUM_ACTORS)
   cuda = config.pop('cuda', None)
@@ -107,6 +107,7 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     log_dir=log_dir,
     save_config_dict=save_config_dict,
     build=False,
+    **build_kwargs,
     )
   program = agent.build()
 
@@ -134,6 +135,8 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
   # if agent.wandb_obj:
   #   agent.wandb_obj.finish()
   print("Controller finished")
+  if ray:
+    time.sleep(60*5) # sleep for 5 minutes to avoid collisions
   time.sleep(120) # sleep for 60 seconds to avoid collisions
 
 
@@ -207,6 +210,7 @@ def run_experiments(
   skip=True,
   wait_time=30,
   use_ray=False,
+  build_kwargs=None,
   debug=False):
   
   if not terminal:
@@ -218,8 +222,8 @@ def run_experiments(
     print("DEBUGGING")
     print("="*30)
 
-  # wandb.require("service")
-  # wandb.setup()
+  wandb.require("service")
+  wandb.setup()
   if use_ray:
     from ray import tune
     def train_function(config):
@@ -237,6 +241,8 @@ def run_experiments(
           default_env_kwargs=default_env_kwargs,
           use_wandb=use_wandb,
           terminal=terminal,
+          build_kwargs=build_kwargs,
+          ray=True,
           skip=skip)
         )
       p.start()
@@ -266,6 +272,7 @@ def run_experiments(
         default_env_kwargs=default_env_kwargs,
         use_wandb=use_wandb,
         terminal=terminal,
+        build_kwargs=build_kwargs,
         debug=debug,
         skip=skip),
       space=space,

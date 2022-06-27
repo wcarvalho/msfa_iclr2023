@@ -59,6 +59,8 @@ def main(_):
     room_size=6,
     symbolic=symbolic,
     struct_and=True,
+    use_subtasks=True,
+    task_reset_behavior='none',
     )
   env = helpers.make_environment(
     setting=setting,
@@ -81,10 +83,10 @@ def main(_):
     config['batch_size'] = 8
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['nmodules'] = 4
-    config['target_phi'] = True
-    config['stop_w_grad'] = True
-    config['bag_of_words'] = True
+    # config['nmodules'] = 4
+    # config['target_phi'] = True
+    # config['stop_w_grad'] = True
+    config['struct_policy_input'] = True
     # config['struct_w'] = False
     print("="*50)
     print("="*20, "testing", "="*20)

@@ -1,7 +1,7 @@
 make lp_search search=gen5 cuda=0,1 terminal='current_terminal'
 
 
-make lp_search search=test11_baselines cuda=0,1,2 agent=r2d1
+make lp_search search=test12_baselines cuda=0,1,2,3 agent=r2d1
 
 
 
