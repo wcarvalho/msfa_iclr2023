@@ -19,22 +19,28 @@ class MissionIntegerWrapper(gym.core.ObservationWrapper):
         low=0,
         high=1,
         shape=shape,
-        dtype='uint8'
+        dtype='int32'
     )
 
   def observation(self, obs):
-    mission = self.instr_preproc(obs['mission'])
-    assert len(mission) <= self.max_length
-
-    obs['mission'] = np.zeros((self.max_length, self.max_length), dtype=np.uint8)
+    obs_mission = np.zeros((self.max_length, self.max_length), dtype=np.int32)
     if self.struct_and:
-      and_token = self.instr_preproc.vocab['and']
-      idx = np.where(mission != and_token)[0]
-      split = np.split(mission[idx],np.where(np.diff(idx)!=1)[0]+1)
-      for idx, s in enumerate(split):
-        obs['mission'][idx, :len(s)] = s
+      pieces = obs['mission'].split(' and ')
+      for idx, piece in enumerate(pieces):
+        if 'not' in piece:
+          clean_piece = piece.replace("not", "").strip()
+          tokens = self.instr_preproc(clean_piece)
+          obs_mission[idx, :len(tokens)] = -tokens
+        else:
+          tokens = self.instr_preproc(piece)
+          obs_mission[idx, :len(tokens)] = tokens
+
     else:
-      obs['mission'][0, :len(mission)] = mission
+      mission = self.instr_preproc(obs['mission'])
+      assert len(mission) <= self.max_length
+      obs_mission[0, :len(mission)] = mission
+
+    obs['mission'] = obs_mission
     return obs
 
 class RGBImgFullyObsWrapper(gym.core.ObservationWrapper):

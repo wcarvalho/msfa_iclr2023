@@ -32,3 +32,6 @@ test:
     task_kinds: toggle3
     use_subtasks: True
     num_dists: 2
+
+actor_label: actor_gen_toggle_pickup
+eval_label: evaluator_gen_toggle_pickup

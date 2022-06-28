@@ -8,12 +8,20 @@ train:
     task_kinds: toggle
     num_dists: 0
 
+  - name: "0.slice"
+    task_kinds: slice
+    num_dists: 0
+
   - name: "1.pickup_dists"
     task_kinds: pickup
     num_dists: 2
 
   - name: "1.toggle_dists"
     task_kinds: toggle
+    num_dists: 2
+
+  - name: "1.slice_dists"
+    task_kinds: slice
     num_dists: 2
 
 test:
@@ -33,8 +41,28 @@ test:
     use_subtasks: True
     num_dists: 0
 
+  - name: "0.slice2" # length 2
+    task_kinds: slice2
+    use_subtasks: True
+    num_dists: 0
+
+  - name: "0.slice3" # length 2
+    task_kinds: slice3
+    use_subtasks: True
+    num_dists: 0
+
+  - name: "0.slice4" # length 2
+    task_kinds: slice4
+    use_subtasks: True
+    num_dists: 0
+
   - name: "1.toggle_and_pickup" # length 3
     task_kinds: toggle_and_pickup
+    use_subtasks: True
+    num_dists: 0
+
+  - name: "1.toggle_and_slice" # length 3
+    task_kinds: toggle_and_slice
     use_subtasks: True
     num_dists: 0
 
@@ -43,8 +71,13 @@ test:
     use_subtasks: True
     num_dists: 0
 
+  - name: "2.not_toggle_and_pickup_and_slice" # length 3
+    task_kinds: not_toggle_and_pickup_and_slice
+    use_subtasks: True
+    num_dists: 0
+
   - name: "2.toggle_and_not_pickup" # length 3
-    task_kinds: not_toggle_and_pickup
+    task_kinds: toggle_and_not_pickup
     use_subtasks: True
     num_dists: 0
 
