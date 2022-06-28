@@ -291,7 +291,6 @@ class KitchenLevel(RoomGridLevel):
             # available_tasks = envs.babyai_kitchen.tasks.all_tasks()
             # task_class = available_tasks[task_kind]
             task_class = envs.babyai_kitchen.tasks.get_task_class(task_kind)
-
             task = task_class(
                 env=self,
                 kitchen=self.kitchen,

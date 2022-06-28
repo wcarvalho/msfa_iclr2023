@@ -273,6 +273,12 @@ class Kitchen(object):
             message=f"can't place inside {container.type}. not a container",
             )
 
+    # container is full
+    if container.contains is not None:
+        # try recursively placing. e.g. if stove, to put in pot
+        return self.place_inside(container.contains)
+        # return carrying
+
     # container doesn't accept the type being carried
     if not container.accepts(self.carrying): return dict(
             action='place_inside',
@@ -280,11 +286,6 @@ class Kitchen(object):
             message=f"can't place inside {container.type}. doesn't accept {self.carrying.type}",
             )
 
-    # container is full
-    if container.contains is not None:
-        # try recursively placing. e.g. if stove, to put in pot
-        return self.place_inside(container.contains)
-        # return carrying
 
 
     # place object inside container
@@ -375,7 +376,7 @@ class Kitchen(object):
                 name="plates",
                 rendering_scale=rendering_scale,
                 rootdir=rootdir,
-                can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                can_contain=['lettuce', 'potato', 'tomato', 'onion', 'fork', 'knife'],
                 properties=['dirty'],
                 visible_properties=['dirty'],
             ),
@@ -383,7 +384,7 @@ class Kitchen(object):
                 name="bowl",
                 rendering_scale=rendering_scale,
                 rootdir=rootdir,
-                can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                can_contain=['lettuce', 'potato', 'tomato', 'onion', 'fork', 'knife'],
                 properties=['dirty'],
                 visible_properties=['dirty'],
             ),

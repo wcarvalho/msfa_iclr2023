@@ -932,6 +932,208 @@ class PlaceSlicedTask(SliceTask):
         goto=self.container, actions=['place']),
     ]
 
+class PlaceCleanedTask(CleanTask):
+  """docstring for PlaceCleanedTask"""
+
+  @property
+  def task_name(self): return 'place_cleaned'
+  @property
+  def default_task_rep(self): return 'place cleaned x on y'
+
+  def generate(self, exclude, argops=None):
+    super(PlaceCleanedTask, self).generate(exclude+['bowl', 'plates'], argops)
+
+    # -----------------------
+    # y = container
+    # -----------------------
+    # restrict to wich can accept to_place
+    container_type_objs = [o for o in self.kitchen.objects 
+                            if o.accepts(self.object_to_clean)]
+
+    container_type_objs = remove_excluded(container_type_objs, exclude+['sink'])
+    assert len(container_type_objs) > 0, f"no match found {self.object_to_clean.name}"
+
+    # pick 1 at random
+    self.container = np.random.choice(container_type_objs)
+
+    self._task_objects += [self.container]
+
+    return self.task_rep.replace(
+      'x', self.object_to_clean.name).replace(
+      'y', self.container.name)
+
+  def check_status(self):
+    _, cleaned = super(PlaceCleanedTask, self).check_status()
+    if self.container.contains:
+        # let's any match fit, not just the example used for defining the task. 
+        # e.g., if multiple pots, any pot will work inside container
+        placed = self.container.contains.type == self.object_to_clean.type
+        done = reward = cleaned and placed
+    else:
+        done = reward = False
+
+    return reward, done
+
+  def subgoals(self):
+    return [
+      ActionsSubgoal(
+        goto=self.object_to_clean, actions=['pickup_contents']),
+      ActionsSubgoal(
+        goto=self.sink, actions=['place', 'toggle', 'pickup_contents']),
+      ActionsSubgoal(
+        goto=self.container, actions=['place'])
+      ]
+
+# -----------------------
+# Length 4
+# -----------------------
+class PlaceCookedTask(CookTask):
+  """docstring for PlaceCookedTask"""
+
+  @property
+  def task_name(self): return 'place_cooked'
+  @property
+  def default_task_rep(self): return 'place cooked x on y'
+
+  def generate(self, exclude, argops=None):
+    super(PlaceCookedTask, self).generate(exclude, argops)
+
+    # -----------------------
+    # y = container
+    # -----------------------
+    # restrict to wich can accept to_place
+    container_type_objs = [o for o in self.kitchen.objects 
+                            if o.accepts(self.object_to_cook)]
+
+    container_type_objs = remove_excluded(container_type_objs, exclude)
+    assert len(container_type_objs) > 0, f"no match found {self.object_to_cook.name}"
+
+    # pick 1 at random
+    self.container = np.random.choice(container_type_objs)
+
+    self._task_objects += [self.container]
+
+    return self.task_rep.replace(
+      'x', self.object_to_cook.name).replace(
+      'y', self.container.name)
+
+  def check_status(self):
+    _, cooked = super(PlaceCookedTask, self).check_status()
+    if self.container.contains:
+        # let's any match fit, not just the example used for defining the task. 
+        # e.g., if multiple pots, any pot will work inside container
+        placed = self.container.contains.type == self.object_to_cook.type
+        done = reward = cooked and placed
+    else:
+        done = reward = False
+
+    return reward, done
+
+  def subgoals(self):
+    return [
+      ActionsSubgoal(
+        goto=self.object_to_cook, actions=['pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_cook_with, actions=['place', 'pickup_container']),
+      ActionsSubgoal(
+        goto=self.object_to_cook_on, actions=['place', 'toggle', 'pickup_contents']),
+      ActionsSubgoal(
+        goto=self.container, actions=['place']),
+    ]
+
+# -----------------------
+# Length 5
+# -----------------------
+class CookWithCleanedTask(CookTask):
+  """docstring for PlaceCookedTask"""
+
+  @property
+  def task_name(self): return 'cook_with_cleaned'
+  @property
+  def default_task_rep(self): return 'cook x with cleaned y on z'
+
+  def generate(self, exclude, argops=None):
+    # generates x, y, z
+    super(CookWithCleanedTask, self).generate(exclude, argops)
+
+    self.object_to_cook_with.set_prop('dirty', True)
+
+    self.sink = self.kitchen.objects_by_type(["sink"])[0]
+    self.sink.set_prop('on', False)
+
+    self._task_objects += [self.sink]
+
+    task = self.task_rep.replace(
+      'x', self.object_to_cook.name).replace(
+      'y', self.object_to_cook_with.name).replace(
+      'z', self.object_to_cook_on.name)
+    return task
+
+
+  def check_status(self):
+    _, cooked = super(CookWithCleanedTask, self).check_status()
+    cleaned = self.object_to_cook_with.state['dirty'] == False
+    done = reward = cooked and cleaned
+
+    return reward, done
+
+  def subgoals(self):
+    return [
+      ActionsSubgoal(
+        goto=self.object_to_cook_with, actions=['pickup_contents']),
+      ActionsSubgoal(
+        goto=self.sink, actions=['place', 'toggle', 'pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_cook_on, actions=['place']),
+      ActionsSubgoal(
+        goto=self.object_to_cook, actions=['pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_cook_on, actions=['place', 'toggle']),
+      ]
+
+class CookSlicedTask(CookTask):
+  """docstring for PlaceCookedTask"""
+
+  @property
+  def task_name(self): return 'cook_sliced'
+  @property
+  def default_task_rep(self): return 'cook sliced x with y on z'
+
+  def generate(self, exclude, argops=None):
+    # generates x, y, z
+    super(CookSlicedTask, self).generate(exclude, argops)
+
+    self.knife = self.kitchen.objects_by_type(["knife"])[0]
+    self._task_objects += [self.knife]
+
+    task = self.task_rep.replace(
+      'x', self.object_to_cook.name).replace(
+      'y', self.object_to_cook_with.name).replace(
+      'z', self.object_to_cook_on.name)
+    return task
+
+
+  def check_status(self):
+    _, cooked = super(CookSlicedTask, self).check_status()
+    cleaned = self.object_to_cook_with.state['dirty'] == False
+    done = reward = cooked and cleaned
+
+    return reward, done
+
+  def subgoals(self):
+    return [
+      ActionsSubgoal(
+        goto=self.knife, actions=['pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_cook, actions=['slice', *(['left', 'place']*4), 'pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_cook_with, actions=['place', 'pickup_container']),
+      ActionsSubgoal(
+        goto=self.object_to_cook_on, actions=['place', 'toggle'])
+    ]
+
+
+
 # ======================================================
 # Compositions
 # ======================================================
@@ -1150,16 +1352,21 @@ class SliceAndCleanKnifeTask(KitchenTask):
     return subgoals
 
 
+def get_class_name(name: str):
+  return name.title().replace(" ","") + "Task"
+
 def make_class(name: str, negate: bool=False):
   numbers = re.findall(r'\d+', name)
   assert len(numbers) in [0,1]
   if len(numbers) > 0:
     name = name.replace(numbers[0], "")
 
-
-  class_name = name.title() + "Task"
+  class_name = get_class_name(name)
   current_module = sys.modules[__name__]
-  Cls = getattr(current_module, class_name)
+  try:
+    Cls = getattr(current_module, class_name)
+  except Exception as e:
+    raise f"{current_module} not module"
 
   if len(numbers) > 0:
     return functools.partial(CompositionClass, classes=[Cls]*int(numbers[0]), negate=negate)
@@ -1176,12 +1383,10 @@ def make_composite(name: str):
   negate = ["not" in b for b in bases]
 
   # [clean, not_toggle] --> [clean, toggle]
-  clean_bases = [b.replace("not", "").replace("_", "") for b in bases]
-
+  clean_bases = [b.replace("not_", "").replace("_", " ") for b in bases]
   classes = [make_class(b, n) for b, n in zip(clean_bases, negate)]
 
   return functools.partial(CompositionClass, classes=classes)
-
 
 def get_task_class(name):
   if 'and' in name:
