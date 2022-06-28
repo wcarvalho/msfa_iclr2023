@@ -18,7 +18,8 @@ pickup_cleaned: pickup cleaned x
 pickup_sliced: pickup sliced x
 pickup_chilled: pickup chilled x
 pickup_heated: pickup heated x
-cook: cook x with y
+cook: cook x with y on z
 pickup_cooked: pickup cooked x
 pickup_placed: pickup placed x
 place_sliced: place sliced x
+place_cleaned: place cleaned x
