@@ -22,7 +22,7 @@ class ModR2d1Config(R2D1Config):
   """Extra configuration options for USFA agent."""
   policy_size: int = 32 # embed dim for task input to q-fn
   policy_layers: int = 2 # number of layers to embed task for input to q-fn
-  struct_w: bool = False # break up task per module
+  struct_w: bool = True # break up task per module
   dot_qheads: bool = True # break up q-heads and dot-product
   nmodules: int = 4 # break up q-heads and dot-product
   module_task_dim: int=0 # task dim per module. if 0, use embed_task_dim and divide by nmodules

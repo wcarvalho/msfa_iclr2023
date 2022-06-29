@@ -20,13 +20,13 @@ def get(search, agent=''):
     """
     space = [
       {
-        "seed": tune.grid_search([1, 2]),
+        "seed": tune.grid_search([3, 4, 5]),
         "agent": tune.grid_search([agent]),
         "setting": tune.grid_search(['long']),
         "samples_per_insert": tune.grid_search([6.0]),
         "reward_coeff": tune.grid_search([10.0]),
-        "max_number_of_steps": tune.grid_search([50_000_000]),
-      } for agent in ['usfa_lstm', 'r2d1', 'msf', 'modr2d1']
+        "max_number_of_steps": tune.grid_search([40_000_000]),
+      } for agent in ['usfa_lstm', 'r2d1']
     ]
 
   elif search == 'long_msf':
@@ -75,6 +75,55 @@ def get(search, agent=''):
         "nmodules": tune.grid_search([8]),
         "struct_policy_input": tune.grid_search([False]),
         "max_number_of_steps": tune.grid_search([50_000_000]),
+      }
+    ]
+
+  elif search == 'long_msf2':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([3]),
+        "group": tune.grid_search(['long_baselines']),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['long']),
+        "samples_per_insert": tune.grid_search([6.0]),
+        "reward_coeff": tune.grid_search([10.0]),
+        "struct_policy_input": tune.grid_search([True]),
+        "max_number_of_steps": tune.grid_search([40_000_000]),
+      },
+      {
+        "seed": tune.grid_search([4]),
+        "group": tune.grid_search(['long_baselines']),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['long']),
+        "samples_per_insert": tune.grid_search([6.0]),
+        "reward_coeff": tune.grid_search([10.0]),
+        "struct_policy_input": tune.grid_search([True]),
+        "max_number_of_steps": tune.grid_search([40_000_000]),
+      },
+      {
+        "seed": tune.grid_search([1, 2]),
+        "group": tune.grid_search(['long_baselines']),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['long']),
+        "samples_per_insert": tune.grid_search([6.0]),
+        "reward_coeff": tune.grid_search([10.0]),
+        "nmodules": tune.grid_search([2]),
+        "struct_policy_input": tune.grid_search([True]),
+        "max_number_of_steps": tune.grid_search([40_000_000]),
+      },
+      {
+        "seed": tune.grid_search([3, 2]),
+        "group": tune.grid_search(['long_baselines']),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['long']),
+        "samples_per_insert": tune.grid_search([6.0]),
+        "reward_coeff": tune.grid_search([10.0]),
+        "nmodules": tune.grid_search([2]),
+        "struct_policy_input": tune.grid_search([True]),
+        "max_number_of_steps": tune.grid_search([40_000_000]),
       }
     ]
 
