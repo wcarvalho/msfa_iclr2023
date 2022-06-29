@@ -2,7 +2,7 @@ import jax.numpy as jnp
 
 
 
-def make_episode_mask(data, include_final=False, dtype=jnp.float32):
+def make_episode_mask(data, include_final=False, **kwargs):
   """Look at where have valid task data. Everything until 1 before final valid data counts towards task. Data.discount always ends two before final data. 
   e.g. if valid data is [x1, x2, x3, 0, 0], data.discount is [1,0,0,0,0]. So can use that to obtain masks.
   

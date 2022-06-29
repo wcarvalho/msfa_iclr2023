@@ -45,7 +45,9 @@ def make_environment(evaluation: bool = False,
                      path='.',
                      setting=None,
                      struct_and=False,
+                     task_reset_behavior='none',
                      debug=False,
+                     **kwargs,
                      ) -> dm_env.Environment:
   setting = setting or 'SmallL2NoDist'
   """Loads environments."""
@@ -66,11 +68,11 @@ def make_environment(evaluation: bool = False,
   if evaluation and 'test' in tasks:
     task_dicts = tasks['test']
     train_task_dicts = tasks['train']
-    separate_eval=True
+    env_kwargs=dict(task_reset_behavior=task_reset_behavior)
   else:
     task_dicts = tasks['train']
     train_task_dicts = tasks['train']
-    separate_eval=False
+    env_kwargs=dict()
 
   if 'task_reps' in tasks:
     task_reps = tasks['task_reps']
@@ -89,7 +91,7 @@ def make_environment(evaluation: bool = False,
 
   env = MultitaskKitchen(
     task_dicts=task_dicts,
-    separate_eval=separate_eval, # hack so can access later
+    tasks_file=tasks,
     tile_size=tile_size,
     path=path,
     num_dists=num_dists,
@@ -99,6 +101,8 @@ def make_environment(evaluation: bool = False,
     wrappers=env_wrappers,
     symbolic=symbolic,
     debug=debug,
+    **env_kwargs,
+    **kwargs
     )
 
   # wrappers for dm_env: used by agent/replay buffer
@@ -226,6 +230,26 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     LossFnKwargs.update(
       loss=config.r2d1_loss,
       mask_loss=config.q_mask_loss)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
+  elif agent == "r2d1_no_task": 
+  # UVFA + noise added to goal embedding
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+      configs.R2D1Config(),
+      configs.LangConfig()],
+      dict_configs=default_config
+    )
+
+    NetworkCls=nets.r2d1 # default: 2M params
+    NetKwargs=dict(config=config,
+      env_spec=env_spec,
+      task_embedding='language',
+      task_input='none')
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 

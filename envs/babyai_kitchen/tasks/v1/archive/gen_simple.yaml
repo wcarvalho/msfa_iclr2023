@@ -5,56 +5,18 @@ train:
     task_kinds: pickup
     num_dists: 0
 
-
   - name: "0.toggle"
     task_kinds: toggle
-    num_dists: 0
-
-  - name: "1.place"
-    task_kinds: place
     num_dists: 0
 
   - name: "2.slice"
     task_kinds: slice
     num_dists: 0
 
-  - name: "4.heat"
-    task_kinds: heat
-    num_dists: 0
-
   - name: "5.clean"
     task_kinds: clean
     num_dists: 0
 
-  - name: "6.pickup_cleaned"
-    task_kinds: pickup_cleaned
-    num_dists: 0
-
-  - name: "6.pickup_placed"
-    task_kinds: pickup_placed
-    num_dists: 0
-
-  - name: "7.pickup_sliced"
-    task_kinds: pickup_sliced
-    num_dists: 0
-
-  - name: "8.cook"
-    task_kinds: cook
-    taskarg_options:
-      y: [pot]
-    num_dists: 0
-
-  - name: "8.pickup_cooked"
-    task_kinds: pickup_cooked
-    taskarg_options:
-      y: [pot]
-    num_dists: 0
-
-
-
-  - name: "9.place_sliced"
-    task_kinds: place_sliced
-    num_dists: 0
 
 
 test:
@@ -95,3 +57,4 @@ test:
   - name: "combo3_clean_and_slice_and_toggle" # length 6
     task_kinds: clean_and_slice_and_toggle
     num_dists: 0
+

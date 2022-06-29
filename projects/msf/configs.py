@@ -11,7 +11,7 @@ class R2D1Config(configs.R2D1Config):
   """Configuration options for R2D2 agent."""
   discount: float = 0.99
   target_update_period: int = 2500
-  evaluation_epsilon: float = 0.1
+  evaluation_epsilon: float = 0.01
   num_epsilons: int = 256
   variable_update_period: int = 400 # how often to update actor
 
@@ -96,6 +96,7 @@ class USFAConfig(R2D1Config):
   phi_mask_loss: bool=True
   eval_task_support: str='train' # include eval task in support
   stop_w_grad: bool=False
+  stop_z_grad: bool=False
   target_phi: bool=False
 
 @dataclasses.dataclass

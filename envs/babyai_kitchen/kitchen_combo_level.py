@@ -86,7 +86,7 @@ class KitchenComboLevel(KitchenLevel):
 
     # kwargs["task_kinds"] = ['pickup']
     # kwargs['actions'] = ['left', 'right', 'forward', 'pickup_contents']
-    # kwargs['kitchen'] = kitchen
+    kwargs['extra_timesteps'] = max(1, kwargs['extra_timesteps'])
     super().__init__(
         *args,
         tile_size=tile_size,
@@ -135,7 +135,9 @@ class KitchenComboLevel(KitchenLevel):
     for task_kind, reward in self.task2reward.items():
       for task_idx in range(self.ntasks):
         # make task cheker
-        checker = self.rand_task(task_kind, init=False)
+        checker = self.rand_task(task_kind,
+          reward=self.task2reward[task_kind],
+          init=False)
         self.task2checkers[task_kind].append(checker)
 
         # generate task
@@ -214,16 +216,17 @@ class KitchenComboLevel(KitchenLevel):
 
     for idx, (task_kind, checkers) in enumerate(self.task2checkers.items()):
       for ck_idx, checker in enumerate(checkers):
-        _, task_done = checker.get_reward_done()
+        reward, task_done = checker.check_and_update_status()
+        # _, task_done = checker.get_reward_done()
+        total_reward += float(reward)
 
-        if task_done:
-          reward = self.task2reward[task_kind]
-          total_reward += float(reward)
-          checker.terminate()
-        checker.increment_done()
+        # if task_done:
+          # reward = self.task2reward[task_kind]
+          # checker.terminate()
+        # checker.increment_done()
 
         # wait 1 time-step to observe eff
-        if checker.time_complete > 1:
+        if task_done:
           self.on_task_complete(checker)
           self.completed[idx, ck_idx] = 1
 

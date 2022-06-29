@@ -139,7 +139,7 @@ def build_farm(config, **kwargs):
   # -----------------------
   if getattr(config, 'module_task_dim', 0) > 0:
     config.embed_task_dim=config.module_task_dim*config.nmodules
-  
+
   return farm_memory
 
 
@@ -177,6 +177,7 @@ def build_task_embedder(task_embedding, config, task_shape=None):
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         sentence_dim=config.word_dim,
+        bow=config.bag_of_words,
         task_dim=config.embed_task_dim,
         initializer=config.word_initializer,
         compress=config.word_compress,
@@ -236,20 +237,21 @@ def r2d1(config, env_spec,
   num_actions = env_spec.actions.num_values
   task_shape = env_spec.observations.observation.task.shape
   task_dim = task_shape[-1]
-  task_embedder, embed_fn = build_task_embedder(
-    task_embedding=task_embedding,
-    config=config,
-    task_shape=task_shape)
-  if task_embedding != 'none':
-    inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
-  else:
-    inputs_prep_fn = convert_floats
 
-  embedder = BabyAIEmbedding(num_actions=num_actions)
-  def task_in_memory_prep_fn(inputs, obs):
-    task = inputs.observation.task
-    oar = embedder(inputs, obs)
-    return jnp.concatenate((oar, task), axis=-1)
+  inputs_prep_fn = convert_floats
+  if task_input != 'none':
+    task_embedder, embed_fn = build_task_embedder(
+      task_embedding=task_embedding,
+      config=config,
+      task_shape=task_shape)
+    if task_embedding != 'none':
+      inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+
+    embedder = BabyAIEmbedding(num_actions=num_actions)
+    def task_in_memory_prep_fn(inputs, obs):
+      task = inputs.observation.task
+      oar = embedder(inputs, obs)
+      return jnp.concatenate((oar, task), axis=-1)
 
   if task_input == 'qfn':
     memory_prep_fn = embedder
@@ -257,8 +259,11 @@ def r2d1(config, env_spec,
   elif task_input == 'memory':
     memory_prep_fn=task_in_memory_prep_fn
     prediction_prep_fn = None # just use memory_out
-  else:
+  elif task_input == 'none':
     prediction_prep_fn = None # just use memory_out
+    memory_prep_fn=None
+  else:
+    raise RuntimeError(task_input)
 
   net = BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
@@ -438,7 +443,7 @@ def usfa(config, env_spec,
       nsamples=config.npolicies,
       duelling=config.duelling,
       policy_layers=config.policy_layers,
-      stop_w_grad=config.stop_w_grad,
+      stop_z_grad=config.stop_z_grad,
       z_as_train_task=config.z_as_train_task,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       multihead=config.multihead,
@@ -599,7 +604,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
         nsamples=config.npolicies,
         duelling=config.duelling,
         policy_layers=config.policy_layers,
-        stop_w_grad=config.stop_w_grad,
+        stop_z_grad=config.stop_z_grad,
         z_as_train_task=config.z_as_train_task,
         sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
         multihead=False,
@@ -644,7 +649,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
             nsamples=config.npolicies,
             relational_net=relational_net,
             policy_layers=config.policy_layers,
-            stop_w_grad=config.stop_w_grad,
+            stop_z_grad=config.stop_z_grad,
             struct_policy=config.struct_policy_input,
             eval_task_support=config.eval_task_support,
             multihead=config.seperate_value_params, # seperate params per cumulants
@@ -681,7 +686,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
             nsamples=config.npolicies,
             relational_net=relational_net,
             policy_layers=config.policy_layers,
-            stop_w_grad=config.stop_w_grad,
+            stop_z_grad=config.stop_z_grad,
             struct_policy=config.struct_policy_input,
             eval_task_support=config.eval_task_support,
             multihead=config.seperate_value_params, # seperate params per cumulants

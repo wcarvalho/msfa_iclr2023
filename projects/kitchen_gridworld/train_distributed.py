@@ -72,10 +72,16 @@ def build_program(
   log_dir=None, # where to save everything
   debug: bool=False,
   env_kwargs=None,
+  actor_label=None,
+  evaluator_label=None,
+  save_config_dict=None,
   **kwargs,
   ):
   config = config_kwargs or dict()
-  env_kwargs = env_kwargs or dict()
+  env_kwargs = env_kwargs or dict(
+    struct_and=True,
+    task_reset_behavior='remove'
+    )
   # -----------------------
   # load env stuff
   # -----------------------
@@ -86,6 +92,7 @@ def build_program(
     )
   env = environment_factory(False)
   max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
+  tasks_file = env.tasks_file # HACK
   config['symbolic'] = env_kwargs.get('symbolic', False)
   # config_kwargs['step_penalty'] = env.step_penalty
   env_spec = acme.make_environment_spec(env)
@@ -117,7 +124,8 @@ def build_program(
   # -----------------------
   # define dict to save. add some extra stuff here
   # -----------------------
-  save_config_dict = config.__dict__
+  save_config_dict = save_config_dict or dict()
+  save_config_dict.update(config.__dict__)
   save_config_dict.update(
     agent=agent,
     # setting=setting,
@@ -149,6 +157,11 @@ def build_program(
   os.chdir(path)
   setting = env_kwargs.get('setting', 'default')
 
+
+  def get(label, default):
+    return tasks_file.get(label, default)
+  actor_label = get("actor_label", actor_label or f"actor_{setting}")
+  evaluator_label = get("evaluator_label", evaluator_label or f"evaluator_{setting}")
   return build_common_program(
     environment_factory=environment_factory,
     env_spec=env_spec,
@@ -164,8 +177,8 @@ def build_program(
     log_every=log_every,
     observers=observers,
     loss_label='Loss',
-    actor_label=f"actor_{setting}",
-    evaluator_label=f"evaluator_{setting}",
+    actor_label=actor_label,
+    evaluator_label=evaluator_label,
     **kwargs,
     )
 

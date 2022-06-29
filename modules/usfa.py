@@ -122,7 +122,7 @@ class UsfaHead(hk.Module):
     sf_input_fn: hk.Module = None,
     eval_task_support: str = 'train', 
     duelling: bool = False,
-    stop_w_grad: bool = False,
+    stop_z_grad: bool = False,
     multihead: bool = False,
     **kwargs,
     ):
@@ -150,7 +150,7 @@ class UsfaHead(hk.Module):
     self.hidden_size = hidden_size
     self.var = variance
     self.nsamples = nsamples
-    self.stop_w_grad = stop_w_grad
+    self.stop_z_grad = stop_z_grad
     self.policy_size = policy_size
     self.eval_task_support = eval_task_support
     self.policy_layers = policy_layers
@@ -206,7 +206,7 @@ class UsfaHead(hk.Module):
     # combine samples with original task vector
     z_base = jnp.expand_dims(w, axis=1) # [B, 1, D_w]
     z = jnp.concatenate((z_base, z_samples), axis=1)  # [B, N+1, D_w]
-    if self.stop_w_grad:
+    if self.stop_z_grad:
       z = jax.lax.stop_gradient(z)
 
     return self.sfgpi(inputs=inputs, z=z, w=w,

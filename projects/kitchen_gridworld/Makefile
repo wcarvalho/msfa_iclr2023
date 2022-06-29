@@ -1,32 +1,37 @@
+# Training
 agent?=msf
 eval?=1
+custom_loggers?=True
+task_reps?='object_verbose'
+env?='gen_toggle'
+init?=0
+
+# Envivornmnet
 cuda?=3
 nan?=0
+nojit?=0
+
+# Wandb
 folder?='results/kitchen_grid/final'
 wandb?=True
 wandb_test?=False
-custom_loggers?=True
 date?=False
+project?='kitchen_grid3'
+group?=''
+name?=''
+
+# Searching
 gpus?=1
 cpus?=5
 actors?=3
-project?='kitchen_grid3'
-env?='genv3'
-task_reps?='object_verbose'
-group?=''
-name?=''
-notes?=''
-dist?='False'
-nojit?=0
 skip?=0
 ray?=0
-init?=0
 debug?=0
-or?=1
-eps?=5
-ckpts?=-1
 terminal?='output_to_files'
 spaces?='brain_search'
+
+
+
 
 export WANDB_START_METHOD=thread
 export PYTHONPATH:=$(PYTHONPATH):.
@@ -85,7 +90,6 @@ lp_search:
 	--wandb_project $(project) \
 	--group $(group) \
 	--search $(search) \
-	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
 	--terminal $(terminal) \
@@ -106,7 +110,6 @@ meta_search:
 	--group $(group) \
 	--spaces $(spaces) \
 	--searches "${searches}" \
-	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
 	--terminal $(terminal) \
@@ -114,7 +117,9 @@ meta_search:
 	--agent $(agent)
 
 
-
+or?=1
+ckpts?=-1
+eps?=5
 generate_analysis_data:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \

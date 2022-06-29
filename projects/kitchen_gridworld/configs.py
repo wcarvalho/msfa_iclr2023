@@ -22,7 +22,7 @@ class ModR2d1Config(R2D1Config):
   """Extra configuration options for USFA agent."""
   policy_size: int = 32 # embed dim for task input to q-fn
   policy_layers: int = 2 # number of layers to embed task for input to q-fn
-  struct_w: bool = False # break up task per module
+  struct_w: bool = True # break up task per module
   dot_qheads: bool = True # break up q-heads and dot-product
   nmodules: int = 4 # break up q-heads and dot-product
   module_task_dim: int=0 # task dim per module. if 0, use embed_task_dim and divide by nmodules
@@ -55,7 +55,7 @@ class ModularUSFAConfig(USFAConfig):
   normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
-  struct_policy_input: bool = False # break up task per module
+  struct_policy_input: bool = True # break up task per module
 
   cumulant_source: str = 'lstm' # whether to normalize cumulants
   phi_conv_size: int = 0 # size of conv for cumulants
@@ -97,7 +97,7 @@ class FarmModelConfig(FarmConfig):
 
   # Network hps
   temperature: float = 0.01
-  reward_coeff: float = 10.0 # coefficient for reward loss
+  reward_coeff: float = 50.0 # coefficient for reward loss
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
   out_layers: int = 0
   model_layers: int = 2
@@ -122,3 +122,4 @@ class LangConfig:
   word_compress: str = 'last'
   embed_task_dim: int = 16  # dimension of task
   lang_activation: str = 'none'  # whether to apply tanh
+  bag_of_words: bool=False
