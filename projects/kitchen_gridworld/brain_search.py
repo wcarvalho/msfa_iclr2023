@@ -192,6 +192,29 @@ def get(search, agent=''):
         "max_number_of_steps": tune.grid_search([5_000_000]),
       },
       {
+<<<<<<< HEAD
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['gen_simple']),
+        "task_reps": tune.grid_search(['object_verbose']),
+        "struct_and": tune.grid_search([True]),
+        "target_phi": tune.grid_search([True]),
+        "phi_l1_coeff": tune.grid_search([t]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      } for t in [1e-3, 1e-4]] + [
+      {
+        "seed": tune.grid_search([1]),
+        "agent": tune.grid_search(['msf']),
+        "setting": tune.grid_search(['gen_simple']),
+        "task_reps": tune.grid_search(['object_verbose']),
+        "struct_and": tune.grid_search([True]),
+        "target_phi": tune.grid_search([True]),
+        "seperate_value_params": tune.grid_search([True]),
+        # "out_hidden_size": tune.grid_search([128]),
+        "phi_l1_coeff": tune.grid_search([t]),
+        "max_number_of_steps": tune.grid_search([30_000_000]),
+      } for t in [1e-3, 1e-4] ]
+=======
         "seed": tune.grid_search([1, 2, 3]),
         "agent": tune.grid_search([agent]),
         "setting": tune.grid_search(['gen_toggle_pickup']),
@@ -204,6 +227,7 @@ def get(search, agent=''):
         "max_number_of_steps": tune.grid_search([5_000_000]),
       }
     ]
+>>>>>>> c22f4c14503048d361c97dae617a304f0b884682
 
   else:
     raise NotImplementedError(search)
