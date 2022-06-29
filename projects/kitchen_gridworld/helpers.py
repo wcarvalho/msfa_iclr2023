@@ -91,6 +91,7 @@ def make_environment(evaluation: bool = False,
 
   env = MultitaskKitchen(
     task_dicts=task_dicts,
+    tasks_file=tasks,
     tile_size=tile_size,
     path=path,
     num_dists=num_dists,
@@ -229,6 +230,26 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     LossFnKwargs.update(
       loss=config.r2d1_loss,
       mask_loss=config.q_mask_loss)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
+  elif agent == "r2d1_no_task": 
+  # UVFA + noise added to goal embedding
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+      configs.R2D1Config(),
+      configs.LangConfig()],
+      dict_configs=default_config
+    )
+
+    NetworkCls=nets.r2d1 # default: 2M params
+    NetKwargs=dict(config=config,
+      env_spec=env_spec,
+      task_embedding='language',
+      task_input='none')
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 

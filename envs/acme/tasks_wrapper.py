@@ -8,6 +8,7 @@ from collections import namedtuple
 
 
 from envs.babyai_kitchen import tasks as kitchen_tasks
+from envs.babyai_kitchen.tasks import get_task_class
 
 def reset_tasks(tasks: dict):
   [t.reset() for t in tasks.values()]
@@ -25,10 +26,10 @@ class TrainTasksWrapper(base.EnvironmentWrapper):
     self.instr_preproc = instr_preproc
     self.max_length = max_length
 
-    all_tasks = kitchen_tasks.all_tasks()
+    # all_tasks = kitchen_tasks.all_tasks()
     kitchen_copy = copy.deepcopy(self._environment.default_gym.kitchen)
     # env only needed on resets
-    self.train_tasks = {t:all_tasks[t](env=None, kitchen=kitchen_copy, task_reps=task_reps) for t in train_tasks}
+    self.train_tasks = {t:get_task_class(t)(env=None, kitchen=kitchen_copy, task_reps=task_reps) for t in train_tasks}
 
     # -----------------------
     # obs stuff

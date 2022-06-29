@@ -92,6 +92,7 @@ def build_program(
     )
   env = environment_factory(False)
   max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
+  tasks_file = env.tasks_file # HACK
   config['symbolic'] = env_kwargs.get('symbolic', False)
   # config_kwargs['step_penalty'] = env.step_penalty
   env_spec = acme.make_environment_spec(env)
@@ -155,8 +156,12 @@ def build_program(
   # -----------------------
   os.chdir(path)
   setting = env_kwargs.get('setting', 'default')
-  actor_label = actor_label or f"actor_{setting}"
-  evaluator_label = evaluator_label or f"evaluator_{setting}"
+
+
+  def get(label, default):
+    return tasks_file.get(label, default)
+  actor_label = get("actor_label", actor_label or f"actor_{setting}")
+  evaluator_label = get("evaluator_label", evaluator_label or f"evaluator_{setting}")
   return build_common_program(
     environment_factory=environment_factory,
     env_spec=env_spec,
