@@ -224,11 +224,35 @@ class LanguageTaskEmbedder(hk.Module):
       self.gate = hk.Linear(gates)
   
   def __call__(self, x : jnp.ndarray):
+    """
+    If len(x.shape) == 2: regular tokens,
+    If len(x.shape) == 3: structured tokens
+      assumptions:
+      1. if any x in a row is negative, we want to negate the embedding
+      2. we want to sum over rows to get embedding. For embedding [toggle x, toggle y], we get output = embed(toggle, x) + embed(toggle, y)
+
+    
+    Args:
+        x (jnp.ndarray): Description
+    
+    Returns:
+        TYPE: Description
+    
+    Raises:
+        NotImplementedError: Description
+    """
     if len(x.shape) == 2:
       out = self.embed(x)
     elif len(x.shape) == 3:
-      # [B, M, D]
-      z = hk.BatchApply(self.embed)(x)
+      # [B, M, D] --> [B, M, D]
+      z = hk.BatchApply(self.embed)(jnp.abs(x))
+
+      # multiple embedding by negative if x was negative at row
+      negate = (x.sum(-1) < 0)
+      negate = negate.astype(z.dtype)
+      coeff = -1*(negate) + 1*(1-negate)
+      z = z*jnp.expand_dims(coeff, 2)
+
       # sum over structure
       out = z.sum(1)
     else:

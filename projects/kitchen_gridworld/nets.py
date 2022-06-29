@@ -139,7 +139,7 @@ def build_farm(config, **kwargs):
   # -----------------------
   if getattr(config, 'module_task_dim', 0) > 0:
     config.embed_task_dim=config.module_task_dim*config.nmodules
-  
+
   return farm_memory
 
 
@@ -237,20 +237,21 @@ def r2d1(config, env_spec,
   num_actions = env_spec.actions.num_values
   task_shape = env_spec.observations.observation.task.shape
   task_dim = task_shape[-1]
-  task_embedder, embed_fn = build_task_embedder(
-    task_embedding=task_embedding,
-    config=config,
-    task_shape=task_shape)
-  if task_embedding != 'none':
-    inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
-  else:
-    inputs_prep_fn = convert_floats
 
-  embedder = BabyAIEmbedding(num_actions=num_actions)
-  def task_in_memory_prep_fn(inputs, obs):
-    task = inputs.observation.task
-    oar = embedder(inputs, obs)
-    return jnp.concatenate((oar, task), axis=-1)
+  inputs_prep_fn = convert_floats
+  if task_input != 'none':
+    task_embedder, embed_fn = build_task_embedder(
+      task_embedding=task_embedding,
+      config=config,
+      task_shape=task_shape)
+    if task_embedding != 'none':
+      inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+
+    embedder = BabyAIEmbedding(num_actions=num_actions)
+    def task_in_memory_prep_fn(inputs, obs):
+      task = inputs.observation.task
+      oar = embedder(inputs, obs)
+      return jnp.concatenate((oar, task), axis=-1)
 
   if task_input == 'qfn':
     memory_prep_fn = embedder
@@ -258,8 +259,11 @@ def r2d1(config, env_spec,
   elif task_input == 'memory':
     memory_prep_fn=task_in_memory_prep_fn
     prediction_prep_fn = None # just use memory_out
-  else:
+  elif task_input == 'none':
     prediction_prep_fn = None # just use memory_out
+    memory_prep_fn=None
+  else:
+    raise RuntimeError(task_input)
 
   net = BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
