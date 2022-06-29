@@ -298,6 +298,7 @@ class KitchenLevel(RoomGridLevel):
                 task_reps=self.task_reps,
                 done_delay=self.extra_timesteps,
                 reset_behavior=self.task_reset_behavior,
+                verbosity=self.verbosity,
                 use_subtasks=use_subtasks,
                 **kwargs)
     else:
