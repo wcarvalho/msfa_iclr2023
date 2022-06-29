@@ -518,7 +518,7 @@ def get(search, agent=''):
         "target_phi": tune.grid_search([True]),
         "phi_l1_coeff": tune.grid_search([t]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
-      } for t in [1e-3, 1e-4] + 
+      } for t in [1e-3, 1e-4]] + [
       {
         "seed": tune.grid_search([1]),
         "agent": tune.grid_search(['msf']),
@@ -530,39 +530,7 @@ def get(search, agent=''):
         # "out_hidden_size": tune.grid_search([128]),
         "phi_l1_coeff": tune.grid_search([t]),
         "max_number_of_steps": tune.grid_search([30_000_000]),
-      } for t in [1e-3, 1e-4] + 
-
-      # {
-      #   "seed": tune.grid_search([1]),
-      #   "group": tune.grid_search(['test9']),
-      #   "agent": tune.grid_search(['msf']),
-      #   "setting": tune.grid_search(['gen_simple']),
-      #   "task_reps": tune.grid_search(['object_verbose']),
-      #   "struct_and": tune.grid_search([True]),
-      #   "memory_size": tune.grid_search([1024]),
-      #   "max_number_of_steps": tune.grid_search([30_000_000]),
-      # },
-      # {
-      #   "seed": tune.grid_search([1]),
-      #   "group": tune.grid_search(['test9']),
-      #   "agent": tune.grid_search(['usfa_lstm']),
-      #   "setting": tune.grid_search(['gen_simple']),
-      #   "task_reps": tune.grid_search(['object_verbose']),
-      #   "struct_and": tune.grid_search([True]),
-      #   "memory_size": tune.grid_search([512]),
-      #   "max_number_of_steps": tune.grid_search([30_000_000]),
-      # },
-      # {
-      #   "seed": tune.grid_search([1]),
-      #   "group": tune.grid_search(['test9']),
-      #   "agent": tune.grid_search(['usfa_lstm']),
-      #   "setting": tune.grid_search(['gen_simple']),
-      #   "task_reps": tune.grid_search(['object_verbose']),
-      #   "struct_and": tune.grid_search([True]),
-      #   "memory_size": tune.grid_search([1024]),
-      #   "max_number_of_steps": tune.grid_search([30_000_000]),
-      # },
-    ]
+      } for t in [1e-3, 1e-4] ]
 
   else:
     raise NotImplementedError(search)
