@@ -31,6 +31,7 @@ class ModR2d1Config(R2D1Config):
 class USFAConfig(R2D1Config, configs.USFAConfig):
   """Extra configuration options for USFA agent."""
   policy_layers: int = 2
+  eval_task_support: str='train_eval'
 
 @dataclasses.dataclass
 class RewardConfig(configs.RewardConfig):
@@ -97,7 +98,7 @@ class FarmModelConfig(FarmConfig):
 
   # Network hps
   temperature: float = 0.01
-  reward_coeff: float = 50.0 # coefficient for reward loss
+  reward_coeff: float = 10.0 # coefficient for reward loss
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
   out_layers: int = 0
   model_layers: int = 2

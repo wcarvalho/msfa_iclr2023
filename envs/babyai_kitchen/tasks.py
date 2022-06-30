@@ -54,6 +54,7 @@ class KitchenTask(Instr):
     kitchen,
     done_delay=0,
     reward=1.0,
+    verbosity=0.0,
     argument_options=None,
     task_reps=None,
     use_subtasks=False,
@@ -80,6 +81,7 @@ class KitchenTask(Instr):
     self.argument_options = argument_options or dict(x=[])
     self._task_objects = []
     self.negate = negate
+    self.verbosity = verbosity
     self.env = env
     self._reward = reward
     if negate:
@@ -831,8 +833,7 @@ class PickupCookedTask(CookTask):
   @property
   def task_name(self): return 'pickup_cooked'
   @property
-  def default_task_rep(self):
-      return 'pickup cooked x'
+  def default_task_rep(self): return 'pickup cooked x'
 
 
   @property
@@ -918,8 +919,10 @@ class PlaceSlicedTask(SliceTask):
         placed = self.container.contains.type == self.object_to_slice.type
         done = reward = object_sliced and placed
     else:
+        object_sliced = False
         done = reward = False
-
+    if self.verbosity:
+      print(f"sliced={object_sliced}, placed={placed}")
     return reward, done
 
   def subgoals(self):
@@ -970,8 +973,10 @@ class PlaceCleanedTask(CleanTask):
         placed = self.container.contains.type == self.object_to_clean.type
         done = reward = cleaned and placed
     else:
+        placed = False
         done = reward = False
-
+    if self.verbosity:
+      print(f"cleaned={cleaned}, placed={placed}")
     return reward, done
 
   def subgoals(self):
@@ -1020,13 +1025,13 @@ class PlaceCookedTask(CookTask):
   def check_status(self):
     _, cooked = super(PlaceCookedTask, self).check_status()
     if self.container.contains:
-        # let's any match fit, not just the example used for defining the task. 
-        # e.g., if multiple pots, any pot will work inside container
         placed = self.container.contains.type == self.object_to_cook.type
         done = reward = cooked and placed
     else:
         done = reward = False
-
+        placed = False
+    if self.verbosity:
+      print(f"cooked={cooked}, placed={placed}")
     return reward, done
 
   def subgoals(self):
@@ -1073,6 +1078,8 @@ class CookWithCleanedTask(CookTask):
   def check_status(self):
     _, cooked = super(CookWithCleanedTask, self).check_status()
     cleaned = self.object_to_cook_with.state['dirty'] == False
+    if self.verbosity:
+      print(f"cooked={cooked}, cleaned={cleaned}")
     done = reward = cooked and cleaned
 
     return reward, done
@@ -1115,8 +1122,10 @@ class CookSlicedTask(CookTask):
 
   def check_status(self):
     _, cooked = super(CookSlicedTask, self).check_status()
-    cleaned = self.object_to_cook_with.state['dirty'] == False
-    done = reward = cooked and cleaned
+    sliced = self.object_to_cook.state['sliced'] == True
+    if self.verbosity:
+      print(f"cooked={cooked}, sliced={sliced}")
+    done = reward = cooked and sliced
 
     return reward, done
 

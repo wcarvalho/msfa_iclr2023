@@ -5,19 +5,19 @@ train:
     task_kinds: pickup
     num_dists: 0
 
-  - name: "2.slice"
+  - name: "2.a.slice"
     task_kinds: slice
     num_dists: 0
 
-  - name: "2.clean"
+  - name: "2.a.clean"
     task_kinds: clean
     num_dists: 0
 
-  - name: "2.5.pickup_cleaned"
+  - name: "2.b.pickup_cleaned"
     task_kinds: pickup_cleaned
     num_dists: 0
 
-  - name: "2.5.pickup_sliced"
+  - name: "2.b.pickup_sliced"
     task_kinds: pickup_sliced
     num_dists: 0
 
