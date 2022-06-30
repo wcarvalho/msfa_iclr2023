@@ -833,8 +833,7 @@ class PickupCookedTask(CookTask):
   @property
   def task_name(self): return 'pickup_cooked'
   @property
-  def default_task_rep(self):
-      return 'pickup cooked x'
+  def default_task_rep(self): return 'pickup cooked x'
 
 
   @property
