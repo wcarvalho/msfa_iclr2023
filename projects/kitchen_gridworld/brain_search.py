@@ -32,6 +32,27 @@ def get(search, agent=''):
         "max_number_of_steps": tune.grid_search([40_000_000]),
       }
     ]
+  elif search == 'long_baselines':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['r2d1']),
+        "setting": tune.grid_search(['long']),
+        "embed_task_dim": tune.grid_search([4]),
+        "max_number_of_steps": tune.grid_search([40_000_000]),
+      },
+      {
+        "seed": tune.grid_search([1, 2]),
+        "agent": tune.grid_search(['usfa_lstm']),
+        "setting": tune.grid_search(['long']),
+        "embed_task_dim": tune.grid_search([4]),
+        "max_number_of_steps": tune.grid_search([40_000_000]),
+      }
+    ]
+
   elif search == 'long_fixed':
     """
     Next:
