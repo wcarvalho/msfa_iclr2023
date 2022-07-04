@@ -53,6 +53,23 @@ def get(search, agent=''):
       }
     ]
 
+  elif search == 'long_modr2d1':
+    """
+    Next:
+    """
+    space = [
+      {
+        "seed": tune.grid_search([seed]),
+        "agent": tune.grid_search(['modr2d1']),
+        "setting": tune.grid_search(['long']),
+        "embed_task_dim": tune.grid_search([2]),
+        "nmodules": tune.grid_search([2]),
+        "struct_w": tune.grid_search([False]),
+        "dot_qheads": tune.grid_search([False]),
+        "max_number_of_steps": tune.grid_search([40_000_000]),
+      } for seed  in [1, 2, 3, 4]
+    ]
+
   elif search == 'long_fixed':
     """
     Next:
