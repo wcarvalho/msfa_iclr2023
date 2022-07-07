@@ -15,26 +15,29 @@ class R2D1Config(configs.R2D1Config):
   task_gate: str='none'
   task_embedding: str='language'
   embed_task_dim: int=16
+  samples_per_insert: float = 0.0 # 0.0=infinite
 
 @dataclasses.dataclass
 class ModR2d1Config(R2D1Config):
   """Extra configuration options for USFA agent."""
   policy_size: int = 32 # embed dim for task input to q-fn
   policy_layers: int = 2 # number of layers to embed task for input to q-fn
-  struct_w: bool = False # break up task per module
-  dot_qheads: bool = False # break up q-heads and dot-product
+  struct_w: bool = True # break up task per module
+  dot_qheads: bool = True # break up q-heads and dot-product
+  nmodules: int = 4 # break up q-heads and dot-product
   module_task_dim: int=0 # task dim per module. if 0, use embed_task_dim and divide by nmodules
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config, configs.USFAConfig):
   """Extra configuration options for USFA agent."""
   policy_layers: int = 2
+  eval_task_support: str='train_eval'
 
 @dataclasses.dataclass
 class RewardConfig(configs.RewardConfig):
   """Extra configuration options for USFA agent."""
   reward_coeff: float = 10.0 # coefficient for reward loss
-  value_coeff: float = 0.05 # coefficient for value loss
+  value_coeff: float = 0.5 # coefficient for value loss
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):
@@ -53,7 +56,7 @@ class ModularUSFAConfig(USFAConfig):
   normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
-  struct_policy_input: bool = False # break up task per module
+  struct_policy_input: bool = True # break up task per module
 
   cumulant_source: str = 'lstm' # whether to normalize cumulants
   phi_conv_size: int = 0 # size of conv for cumulants
@@ -75,7 +78,8 @@ class ModularUSFAConfig(USFAConfig):
 
   relate_w_init: float=2.
   resid_w_init: float=2.
-  relate_b_init: float=2.
+  relate_b_init: float=0.
+  relation_position_embed: int = 16 # whether to add position embeddings to modules
   resid_mlp: bool=False
   relate_residual: str="sigtanh"
   res_relu_gate: bool=True
@@ -94,7 +98,7 @@ class FarmModelConfig(FarmConfig):
 
   # Network hps
   temperature: float = 0.01
-  reward_coeff: float = 50.0 # coefficient for reward loss
+  reward_coeff: float = 10.0 # coefficient for reward loss
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
   out_layers: int = 0
   model_layers: int = 2
@@ -118,5 +122,5 @@ class LangConfig:
   word_initializer: str = 'RandomNormal'
   word_compress: str = 'last'
   embed_task_dim: int = 16  # dimension of task
-  lang_tanh: bool = False  # whether to apply tanh
-  lang_relu: bool = False # whether to apply relu
+  lang_activation: str = 'none'  # whether to apply tanh
+  bag_of_words: bool=False

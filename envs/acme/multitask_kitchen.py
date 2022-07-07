@@ -57,6 +57,7 @@ class MultitaskKitchen(dm_env.Environment):
   def __init__(self,
     task_dicts: dict=None,
     task_kinds: list=None,
+    tasks_file: dict=None,
     separate_eval: bool=False,
     room_size=10,
     task_reps=None,
@@ -87,6 +88,7 @@ class MultitaskKitchen(dm_env.Environment):
 
     self.symbolic = symbolic
     self.step_penalty = step_penalty
+    self.tasks_file = tasks_file
     # -----------------------
     # load level kwargs
     # -----------------------

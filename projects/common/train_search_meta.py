@@ -4,6 +4,7 @@ Param search.
 
 import os
 from absl import app
+import time
 from pprint import pprint
 from absl import flags
 import subprocess
@@ -30,6 +31,7 @@ def main(_):
       --wandb_project={FLAGS.wandb_project}
       --group={FLAGS.group}
       --search={search}
+      --terminal={FLAGS.terminal}
       --notes={FLAGS.notes}
       --skip={FLAGS.skip}
       --idx={idx}
@@ -59,11 +61,13 @@ def main(_):
       cuda = gpus[idx%len(gpus)]
       command = build_command(search=search)
       p = run(command, cuda)
+      time.sleep(30.0)
   else:
     for idx in range(len(gpus)):
       cuda = gpus[idx%len(gpus)]
       command = build_command(search=FLAGS.searches[0], idx=idx)
       p = run(command, cuda)
+      time.sleep(30.0)
 
 if __name__ == '__main__':
   app.run(main)

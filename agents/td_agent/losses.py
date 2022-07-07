@@ -268,11 +268,17 @@ def cumulants_from_preds(
   online_state,
   target_preds,
   target_state,
-  stop_grad=True):
-  if stop_grad:
-    return jax.lax.stop_gradient(online_preds.cumulants) # [T, B, C]
+  stop_grad=True,
+  use_target=False):
+  
+  if use_target:
+    cumulants = target_preds.cumulants
   else:
-    return online_preds.cumulants # [T, B, C]
+    cumulants = online_preds.cumulants
+  if stop_grad:
+    return jax.lax.stop_gradient(cumulants) # [T, B, C]
+  else:
+    return cumulants # [T, B, C]
 
 def dummy_cumulants_from_env(data, online_preds, online_state, target_preds, target_state):
   state_features = data.observation.observation.state_features # [T, B, C]

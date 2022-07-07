@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--objects', type=str, default=[], nargs="+")
     parser.add_argument('--random-object-state', type=int, default=0)
     parser.add_argument('--num-rows', type=int, default=1)
-    parser.add_argument('--tile-size', type=int, default=20)
+    parser.add_argument('--tile-size', type=int, default=8)
     parser.add_argument('--partial-obs', type=int, default=1)
     parser.add_argument('--seed', type=int, default=9)
     parser.add_argument('--check', type=int, default=0)
@@ -47,6 +47,8 @@ def main():
         tile_size=args.tile_size,
         load_actions_from_tasks=False,
         use_time_limit=False,
+        use_subtasks=True,
+        task_reset_behavior='remove',
         seed=args.seed,
         **kwargs)
     # mimic settings during training
@@ -87,6 +89,7 @@ def main():
         print("Reset")
         print("="*50)
         print("Task:", obs['mission'])
+        print("Distractors:", [d.type for d in env.distractors_added])
         print("Image Shape:", obs['image'].shape)
 
 
@@ -94,8 +97,12 @@ def main():
         window.set_caption(obs['mission'])
         window.show_img(combine(full, obs['image']))
 
+
         bot = KitchenBot(env)
         obss, actions, rewards, dones = bot.generate_traj(plot_fn=show)
+        for _ in range(3):
+          obs, reward, done, info = env.step(env.action_space.sample())
+          rewards.append(reward)
         print("Reward:", sum(rewards))
         all_rewards.append(sum(rewards))
         if args.check_end and ((mission_indx+1) % args.check_end == 0):

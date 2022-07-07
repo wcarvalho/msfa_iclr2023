@@ -20,51 +20,117 @@ def get(search, agent):
 
     ]
 
-  elif search == 'small_noreset':
+  elif search == 'test_noreset':
     space = [
+        # {
+        #   "seed": tune.grid_search([1]),
+        #   "agent": tune.grid_search(['msf']),
+        #   "max_number_of_steps": tune.grid_search([2_000_000]),
+        #   'task_embedding': tune.grid_search(['none']),
+        #   'setting': tune.grid_search(['test_noreset']),
+        #   'module_size': tune.grid_search([256]),
+        # },
         {
-          "seed": tune.grid_search([1, 2, 3]),
-          "agent": tune.grid_search([agent]),
-          "max_number_of_steps": tune.grid_search([20_000_000]),
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['msf']),
+          "max_number_of_steps": tune.grid_search([3_000_000]),
           'task_embedding': tune.grid_search(['none']),
-          'value_coeff': tune.grid_search([0.5]),
-          'setting': tune.grid_search(['small_noreset']),
+          'setting': tune.grid_search(['test_noreset']),
+          'module_size': tune.grid_search([128]),
+          'sf_net': tune.grid_search(['relational_action']),
+          'relate_residual': tune.grid_search(['skip']),
+          'relation_position_embed': tune.grid_search([16]),
         },
         {
-          "seed": tune.grid_search([1, 2, 3]),
-          "agent": tune.grid_search([agent]),
-          "max_number_of_steps": tune.grid_search([20_000_000]),
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['msf']),
+          "max_number_of_steps": tune.grid_search([3_000_000]),
           'task_embedding': tune.grid_search(['none']),
-          'value_coeff': tune.grid_search([0.05]),
-          'setting': tune.grid_search(['small_noreset']),
+          'setting': tune.grid_search(['test_noreset']),
+          'module_size': tune.grid_search([128]),
+          'sf_net': tune.grid_search(['relational_action']),
+          'relate_residual': tune.grid_search(['sigtanh']),
+          'relation_position_embed': tune.grid_search([16]),
         },
         {
-          "seed": tune.grid_search([1, 2, 3]),
-          "agent": tune.grid_search([agent]),
-          "max_number_of_steps": tune.grid_search([20_000_000]),
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['msf']),
+          "max_number_of_steps": tune.grid_search([3_000_000]),
           'task_embedding': tune.grid_search(['none']),
-          'value_coeff': tune.grid_search([0.5]),
-          'reward_coeff': tune.grid_search([50]),
-          'setting': tune.grid_search(['small_noreset']),
+          'setting': tune.grid_search(['test_noreset']),
+          'module_size': tune.grid_search([128]),
+          'sf_net': tune.grid_search(['relational_action']),
+          'relate_residual': tune.grid_search(['concat']),
+          'relation_position_embed': tune.grid_search([16]),
         },
         {
-          "seed": tune.grid_search([1, 2, 3]),
-          "agent": tune.grid_search([agent]),
-          "max_number_of_steps": tune.grid_search([20_000_000]),
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['msf']),
+          "max_number_of_steps": tune.grid_search([3_000_000]),
           'task_embedding': tune.grid_search(['none']),
-          'value_coeff': tune.grid_search([0.05]),
-          'reward_coeff': tune.grid_search([50]),
-          'setting': tune.grid_search(['small_noreset']),
+          'setting': tune.grid_search(['test_noreset']),
+          'module_size': tune.grid_search([128]),
+          'sf_net': tune.grid_search(['relational_action']),
+          'relate_residual': tune.grid_search(['output']),
+          'relation_position_embed': tune.grid_search([16]),
         },
     ]
-
-  elif search == 'test_noreset':
+  elif search == 'test12_relate':
     space = [
         {
           "seed": tune.grid_search([1]),
-          "agent": tune.grid_search([agent]),
-          "max_number_of_steps": tune.grid_search([1_000_000]),
-          'task_embedding': tune.grid_search(['none', 'embedding', 'struct_embed']),
+          "agent": tune.grid_search(['msf']),
+          "max_number_of_steps": tune.grid_search([5_000_000]),
+          'task_embedding': tune.grid_search(['none']),
+          'setting': tune.grid_search(['test_noreset']),
+          'module_size': tune.grid_search([128]),
+          'sf_net': tune.grid_search(['relational_action']),
+          'npolicies': tune.grid_search([3]),
+          'relate_residual': tune.grid_search(['concat']),
+          'relation_position_embed': tune.grid_search([16]),
+        },
+        {
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['msf']),
+          "max_number_of_steps": tune.grid_search([5_000_000]),
+          'task_embedding': tune.grid_search(['none']),
+          'setting': tune.grid_search(['test_noreset']),
+          'module_size': tune.grid_search([128]),
+        },
+    ]
+
+  elif search == 'test_noreset_baselines':
+    space = [
+        {
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['r2d1']),
+          "max_number_of_steps": tune.grid_search([3_000_000]),
+          'task_embedding': tune.grid_search(['none']),
+          'label': tune.grid_search(['redo']),
+          'setting': tune.grid_search(['test_noreset']),
+        },
+        {
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['usfa_lstm']),
+          "max_number_of_steps": tune.grid_search([3_000_000]),
+          'task_embedding': tune.grid_search(['none']),
+          'label': tune.grid_search(['redo']),
+          'setting': tune.grid_search(['test_noreset']),
+        },
+        {
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['r2d1']),
+          "max_number_of_steps": tune.grid_search([3_000_000]),
+          'task_embedding': tune.grid_search(['embedding']),
+          'label': tune.grid_search(['redo']),
+          'setting': tune.grid_search(['test_noreset']),
+        },
+        {
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['usfa_lstm']),
+          "max_number_of_steps": tune.grid_search([3_000_000]),
+          'task_embedding': tune.grid_search(['embedding']),
+          'label': tune.grid_search(['redo']),
           'setting': tune.grid_search(['test_noreset']),
         },
 
@@ -73,5 +139,6 @@ def get(search, agent):
 
   else:
     raise NotImplementedError(search)
+
 
   return space

@@ -116,17 +116,22 @@ def make_environment(evaluation: bool = False,
       task2rew=train
 
   if 'test' in setting:
-    task2rew={
-      '0.pickup': {"pickup" : 1, "toggle" : 0},
-      '0.toggle': {"pickup" : 0, "toggle" : 1},
+    train={
+      '0.pickup':{"pickup" : 1, 'toggle': 0},
+      '0.toggle':{"pickup" : 0, 'toggle': 1},
     }
     if evaluation:
-      task2rew = {
-        **task2rew,
-        '1.combo':{"pickup" : 1, "toggle" : 1},
-        '2.1,-1':{"pickup" : 1, "toggle" : -1},
-        '2.-1,1':{"pickup" : -1, "toggle" : 1}
+      task2rew={
+        **train,
+        '1.+|+':{"pickup" : 1, 'toggle': 1},
+        '2.+|-':{"pickup" : 1, 'toggle': -1},
+        '2.-|+':{"pickup" : -1, 'toggle': 1},
+        '3.-|0':{"pickup" : -1, 'toggle': 0},
+        '3.0|-':{"pickup" : 0, 'toggle': -1},
       }
+    else:
+      task2rew=train
+
 
   all_level_kwargs=dict()
   for key, item in task2rew.items():

@@ -24,7 +24,7 @@ export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export TF_FORCE_GPU_ALLOW_GROWTH=true
 
 killall:
-	kill -9 $(pgrep ray); kill -9 $(pgrep process_entry); kill -9 $(pgrep python); kill -9 $(pgrep wandb); kill -9 $(pgrep goto)
+	kill -9 $(pgrep ray); kill -9 $(pgrep process_entry); kill -9 $(pgrep python); kill -9 $(pgrep wandb); kill -9 $(pgrep train)
 
 
 eval?=1

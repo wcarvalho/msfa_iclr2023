@@ -32,7 +32,7 @@ from utils import make_logger, gen_log_dir
 # -----------------------
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_string('env_setting', 'EasyPickup', 'which environment setting.')
-flags.DEFINE_string('task_reps', 'pickup', 'which task reps to use.')
+flags.DEFINE_string('task_reps', 'object_verbose', 'which task reps to use.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('test', True, 'whether testing.')
@@ -58,6 +58,9 @@ def main(_):
   env_kwargs=dict(
     room_size=6,
     symbolic=symbolic,
+    struct_and=True,
+    use_subtasks=True,
+    task_reset_behavior='none',
     )
   env = helpers.make_environment(
     setting=setting,
@@ -80,8 +83,10 @@ def main(_):
     config['batch_size'] = 8
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['nmodules'] = 8
-    config['module_task_dim'] = 1
+    # config['nmodules'] = 4
+    # config['target_phi'] = True
+    # config['stop_w_grad'] = True
+    config['struct_policy_input'] = True
     # config['struct_w'] = False
     print("="*50)
     print("="*20, "testing", "="*20)

@@ -109,7 +109,7 @@ class Gate(hk.Module):
   """docstring for Gate"""
   def __init__(self,
     w_init=2.0,
-    init_bias=2.0,
+    init_bias=0.0,
     residual='sigtanh',
     relu_gate=False,
     layernorm=False):
@@ -252,7 +252,14 @@ class RelationalLayer(base.Module):
       queries: jnp.ndarray,
       factors: jnp.ndarray,
       ) -> jnp.ndarray:
-    """ """
+    """
+    Args:
+        queries (jnp.ndarray): B x N x D
+        factors (jnp.ndarray): B x M x D
+    
+    Returns:
+        jnp.ndarray: Description
+    """
     # -----------------------
     # prepare data
     # -----------------------
@@ -261,11 +268,12 @@ class RelationalLayer(base.Module):
     # queries = queries.transpose((1,0,2))  # [N, B, D]
 
     B, N = queries.shape[:2]
+    M = factors.shape[1]
     if self.position_embed > 0:
       self.embedder = hk.Embed(
         vocab_size=N,
         embed_dim=self.position_embed)
-      embeddings = self.embedder(jnp.arange(N)) # N x D
+      embeddings = self.embedder(jnp.arange(M)) # N x D
       concat = lambda a,b: jnp.concatenate((a, b), axis=-1)
       factors = jax.vmap(concat, in_axes=(0, None), out_axes=0)(
         factors, embeddings)

@@ -1,0 +1,27 @@
+train:
+
+  - name: "0.pickup"
+    task_kinds: pickup
+    num_dists: 0
+
+  - name: "0.clean"
+    task_kinds: clean
+    num_dists: 0
+
+  - name: "0.clean_dists"
+    task_kinds: clean
+    num_dists: 2
+
+test:
+
+  - name: "0.clean2" # length 2
+    task_kinds: clean2
+    use_subtasks: True
+    task_reset_behavior: 'remove'
+    num_dists: 0
+
+  - name: "0.clean2_dist" # length 2
+    task_kinds: clean2_dist
+    use_subtasks: True
+    task_reset_behavior: 'remove'
+    num_dists: 2
