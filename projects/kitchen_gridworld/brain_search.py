@@ -64,7 +64,7 @@ def get(search, agent=''):
         "setting": tune.grid_search(['long']),
         "embed_task_dim": tune.grid_search([2]),
         "nmodules": tune.grid_search([2]),
-        "struct_w": tune.grid_search([False]),
+        "struct_w": tune.grid_search([True]),
         "dot_qheads": tune.grid_search([False]),
         "max_number_of_steps": tune.grid_search([40_000_000]),
       } for seed  in [1, 2, 3, 4]
