@@ -774,6 +774,8 @@ class CookTask(KitchenTask):
     else:
       x_options = self.argument_options.get('x', [])
       y_options = self.argument_options.get('y', [])
+      if self.argument_options.get('z', None) is not None:
+        raise NotImplementedError 
 
     if x_options:
         objects_to_cook = self.kitchen.objects_by_type(x_options)
@@ -896,6 +898,7 @@ class PlaceSlicedTask(SliceTask):
     # restrict to wich can accept to_place
     container_type_objs = [o for o in self.kitchen.objects 
                             if o.accepts(self.object_to_slice)]
+    import ipdb; ipdb.set_trace()
     container_type_objs = remove_excluded(container_type_objs, exclude)
     assert len(container_type_objs) > 0, "no match found"
 
@@ -1150,6 +1153,72 @@ class CookSlicedTask(CookTask):
         goto=self.object_to_cook_on, actions=['place', 'toggle'])
     ]
 
+class CookSlicedWithCleanedTask(CookTask):
+  """docstring for PlaceCookedTask"""
+
+  @property
+  def task_name(self): return 'cook_sliced_with_cleaned'
+  @property
+  def default_task_rep(self): return 'cook sliced x with cleaned y'
+
+  def generate(self, exclude, argops=None):
+    # generates x, y, z
+    super(CookSlicedWithCleanedTask, self).generate(exclude, argops)
+
+    # -----------------------
+    # add slice obj
+    # -----------------------
+    self.knife = self.kitchen.objects_by_type(["knife"])[0]
+    self._task_objects += [self.knife]
+
+
+    # -----------------------
+    # add clean obj
+    # -----------------------
+    self.object_to_cook_with.set_prop('dirty', True)
+    self.sink = self.kitchen.objects_by_type(["sink"])[0]
+    self.sink.set_prop('on', False)
+
+    self._task_objects += [self.sink]
+
+
+    task = self.task_rep.replace(
+      'x', self.object_to_cook.name).replace(
+      'y', self.object_to_cook_with.name).replace(
+      'z', self.object_to_cook_on.name)
+    return task
+
+
+  def check_status(self):
+    _, cooked = super(CookSlicedWithCleanedTask, self).check_status()
+    sliced = self.object_to_cook.state['sliced'] == True
+    cleaned = self.object_to_cook_with.state['dirty'] == False
+
+    if cooked and (not sliced or not cleaned):
+      done = True
+      reward = False
+    else:
+      done = reward = cooked and sliced and cleaned
+    if self.verbosity:
+      print(f"cooked={cooked}, sliced={sliced}, cleaned={cleaned}")
+
+    return reward, done
+
+  def subgoals(self):
+    return [
+      ActionsSubgoal(
+        goto=self.object_to_cook_with, actions=['pickup_contents']),
+      ActionsSubgoal(
+        goto=self.sink, actions=['place', 'toggle', 'pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_cook_on, actions=['place']),
+      ActionsSubgoal(
+        goto=self.knife, actions=['pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_cook, actions=['slice', *(['left', 'place']*4), 'pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_cook_on, actions=['place', 'toggle'])
+    ]
 
 
 # ======================================================
