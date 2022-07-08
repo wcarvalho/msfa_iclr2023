@@ -6,7 +6,7 @@ dists?=0
 train?=1
 verb?=2
 tasks?="cook"
-mtasks?="genv3"
+mtasks?="test"
 
 cuda?=3
 

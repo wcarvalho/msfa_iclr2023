@@ -135,7 +135,7 @@ class KitchenTask(Instr):
     """
     return False, False
 
-  def update_status(self, goals_achieved: bool=False):
+  def update_status(self, goals_achieved: bool=False, done: bool = False):
     """If goals_achieved, set task to "finished". Return done after the 
     required number of delay steps before returning done.
     
@@ -146,7 +146,6 @@ class KitchenTask(Instr):
         TYPE: Description
     """
     reward = 0.0
-    done = False
     if self.finished:
       self._time_complete += 1
     else:
@@ -161,8 +160,8 @@ class KitchenTask(Instr):
   def check_and_update_status(self):
     """Summary
     """
-    _, goals_achieved = self.check_status()
-    reward, done = self.update_status(goals_achieved)
+    goals_achieved, task_done = self.check_status()
+    reward, done = self.update_status(goals_achieved, task_done)
     return reward, done
 
   @property
@@ -1076,11 +1075,16 @@ class CookWithCleanedTask(CookTask):
 
 
   def check_status(self):
-    _, cooked = super(CookWithCleanedTask, self).check_status()
     cleaned = self.object_to_cook_with.state['dirty'] == False
+    _, cooked = super(CookWithCleanedTask, self).check_status()
     if self.verbosity:
       print(f"cooked={cooked}, cleaned={cleaned}")
-    done = reward = cooked and cleaned
+
+    if cooked and not cleaned:
+      done = True
+      reward = False
+    else:
+      done = reward = cooked and cleaned
 
     return reward, done
 
@@ -1123,9 +1127,14 @@ class CookSlicedTask(CookTask):
   def check_status(self):
     _, cooked = super(CookSlicedTask, self).check_status()
     sliced = self.object_to_cook.state['sliced'] == True
+
+    if cooked and not sliced:
+      done = True
+      reward = False
+    else:
+      done = reward = cooked and sliced
     if self.verbosity:
       print(f"cooked={cooked}, sliced={sliced}")
-    done = reward = cooked and sliced
 
     return reward, done
 

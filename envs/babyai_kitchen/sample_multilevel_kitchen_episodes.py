@@ -56,7 +56,7 @@ def main():
         verbosity=args.verbosity,
         tile_size=args.tile_size,
         use_time_limit=False,
-        task_reset_behavior='respawn',
+        # task_reset_behavior='respawn',
         use_subtasks=True,
         seed=args.seed,
         )
