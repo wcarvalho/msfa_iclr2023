@@ -18,7 +18,7 @@ from modules.embedding import BabyAIEmbedding, OAREmbedding, LanguageTaskEmbedde
 from modules import farm
 from modules.relational import RelationalLayer, RelationalNet
 from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulants
-from modules.farm_usfa import FarmUsfaHead
+from modules.farm_usfa import FarmUsfaHead, RelationalFarmUsfaHead
 from modules.farm_uvfa import FarmUvfaHead, FarmUvfaInputs
 
 from modules.vision import AtariVisionTorso, BabyAIVisionTorso, BabyAIymbolicVisionTorso
@@ -139,16 +139,24 @@ def build_farm(config, **kwargs):
   # -----------------------
   if getattr(config, 'module_task_dim', 0) > 0:
     config.embed_task_dim=config.module_task_dim*config.nmodules
-  
+
   return farm_memory
 
 
-def build_task_embedder(task_embedding, config, task_dim=None):
+def build_task_embedder(task_embedding, config, task_shape=None):
+  num_tasks = task_shape[-1]
   if task_embedding == 'none':
-    embedder = embed_fn = Identity(task_dim)
+    assert len(task_shape) == 1, "don't know how to handle"
+    embedder = embed_fn = Identity(num_tasks)
     return embedder, embed_fn
-  elif task_embedding == 'embedding':
-    embedder = LinearTaskEmbedding(config.embed_task_dim)
+  elif task_embedding in ['embedding', 'struct_embed']:
+    structured = task_embedding == 'struct_embed'
+    embedder = LinearTaskEmbedding(
+      num_tasks=num_tasks,
+      hidden_dim=config.word_dim,
+      out_dim=config.embed_task_dim,
+      structured=structured)
+    assert len(task_shape) == 1, "don't know how to handle"
     def embed_fn(task):
       """Convert task to ints, batchapply if necessary, and run through embedding function."""
       has_time = len(task.shape) == 3
@@ -169,15 +177,25 @@ def build_task_embedder(task_embedding, config, task_dim=None):
         vocab_size=config.max_vocab_size,
         word_dim=config.word_dim,
         sentence_dim=config.word_dim,
+        bow=config.bag_of_words,
         task_dim=config.embed_task_dim,
         initializer=config.word_initializer,
         compress=config.word_compress,
-        tanh=config.lang_tanh,
-        relu=config.lang_relu,
+        activation=config.lang_activation,
         **lang_kwargs)
     def embed_fn(task):
       """Convert task to ints, batchapply if necessary, and run through embedding function."""
-      has_time = len(task.shape) == 3
+      if len(task.shape) == (len(task_shape) + 2):
+        # has (T, B) 
+        has_time = True
+      elif len(task.shape) == (len(task_shape) + 1):
+        # has (B)
+        has_time = False
+      elif len(task.shape) == (len(task_shape)):
+        # has (B)
+        has_time = False
+      else:
+        raise RuntimeError
       batchfn = hk.BatchApply if has_time else lambda x:x
       return batchfn(embedder)(task.astype(jnp.int32))
 
@@ -217,21 +235,23 @@ def r2d1(config, env_spec,
 
   # config.embed_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
-  task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(
-    task_embedding=task_embedding,
-    config=config,
-    task_dim=task_dim)
-  if task_embedding != 'none':
-    inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
-  else:
-    inputs_prep_fn = convert_floats
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
 
-  embedder = BabyAIEmbedding(num_actions=num_actions)
-  def task_in_memory_prep_fn(inputs, obs):
-    task = inputs.observation.task
-    oar = embedder(inputs, obs)
-    return jnp.concatenate((oar, task), axis=-1)
+  inputs_prep_fn = convert_floats
+  if task_input != 'none':
+    task_embedder, embed_fn = build_task_embedder(
+      task_embedding=task_embedding,
+      config=config,
+      task_shape=task_shape)
+    if task_embedding != 'none':
+      inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+
+    embedder = BabyAIEmbedding(num_actions=num_actions)
+    def task_in_memory_prep_fn(inputs, obs):
+      task = inputs.observation.task
+      oar = embedder(inputs, obs)
+      return jnp.concatenate((oar, task), axis=-1)
 
   if task_input == 'qfn':
     memory_prep_fn = embedder
@@ -239,8 +259,11 @@ def r2d1(config, env_spec,
   elif task_input == 'memory':
     memory_prep_fn=task_in_memory_prep_fn
     prediction_prep_fn = None # just use memory_out
-  else:
+  elif task_input == 'none':
     prediction_prep_fn = None # just use memory_out
+    memory_prep_fn=None
+  else:
+    raise RuntimeError(task_input)
 
   net = BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
@@ -261,8 +284,9 @@ def r2d1_noise(config, env_spec,
 
   # config.embed_task_dim = 0 # use GRU output
   num_actions = env_spec.actions.num_values
-  task_dim = env_spec.observations.observation.task.shape[0]
-  task_embedder, embed_fn = build_task_embedder(task_embedding=task_embedding, config=config, task_dim=task_dim)
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
+  task_embedder, embed_fn = build_task_embedder(task_embedding=task_embedding, config=config, task_shape=task_shape)
   if task_embedding != 'none':
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
   else:
@@ -318,11 +342,12 @@ def modr2d1(config, env_spec,
 
 
   num_actions = env_spec.actions.num_values
-  task_dim = env_spec.observations.observation.task.shape[0]
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
   task_embedder, embed_fn = build_task_embedder(
     task_embedding=task_embedding,
     config=config,
-    task_dim=task_dim)
+    task_shape=task_shape)
   if task_embedding != 'none':
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
   else:
@@ -392,11 +417,12 @@ def usfa(config, env_spec,
   # -----------------------
   # task embedder + prep functions (will embed task)
   # -----------------------
-  task_dim = env_spec.observations.observation.task.shape[0]
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
   task_embedder, embed_fn = build_task_embedder(
     task_embedding=task_embedding,
     config=config,
-    task_dim=task_dim)
+    task_shape=task_shape)
   if task_embedding != 'none':
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn, replace_fn=replace_all_tasks_with_embedding)
   else:
@@ -417,6 +443,7 @@ def usfa(config, env_spec,
       nsamples=config.npolicies,
       duelling=config.duelling,
       policy_layers=config.policy_layers,
+      stop_z_grad=config.stop_z_grad,
       z_as_train_task=config.z_as_train_task,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       multihead=config.multihead,
@@ -470,11 +497,17 @@ def msf(
   use_separate_eval=True,
   **net_kwargs):
 
-  assert config.sf_net in ['flat', 'independent', 'relational']
+  assert config.sf_net in ['flat', 'independent', 'relational', 'relational_action']
   assert config.phi_net in ['flat', 'independent', 'relational']
   num_actions = env_spec.actions.num_values
-  task_dim = env_spec.observations.observation.task.shape[0]
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
 
+
+  # -----------------------
+  # memory
+  # -----------------------
+  # ensure sizes are correct
   if task_embedding == 'none' and task_dim < config.nmodules:
     # if not embedding and don't have enough modules, reduce
     module_size = config.module_size
@@ -484,15 +517,12 @@ def msf(
     config.memory_size = config.nmodules*module_size
 
 
-  # -----------------------
-  # memory
-  # -----------------------
   farm_memory = build_farm(config, return_attn=True)
 
   task_embedder, embed_fn = build_task_embedder(
     task_embedding=task_embedding,
     config=config,
-    task_dim=task_dim)
+    task_shape=task_shape)
 
   if task_embedding != 'none':
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn,
@@ -574,6 +604,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
         nsamples=config.npolicies,
         duelling=config.duelling,
         policy_layers=config.policy_layers,
+        stop_z_grad=config.stop_z_grad,
         z_as_train_task=config.z_as_train_task,
         sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
         multihead=False,
@@ -592,41 +623,76 @@ def build_msf_head(config, sf_out_dim, num_actions):
         memory_out=flatten_structured_memory(memory_out.hidden))
 
   else:
-    if config.sf_net == "independent":
-      relational_net = lambda x: x
-    elif config.sf_net == "relational":
-      relational_net = RelationalNet(
-        layers=config.sf_net_layers,
-        num_heads=config.sf_net_heads,
-        attn_size=config.sf_net_attn_size,
-        layernorm=config.layernorm_rel,
-        pos_mlp=config.resid_mlp,
-        residual=config.relate_residual,
-        position_embed=True,
-        w_init_scale=config.relate_w_init,
-        res_w_init_scale=config.resid_w_init,
-        init_bias=config.relate_b_init,
-        relu_gate=config.res_relu_gate,
-        shared_parameters=not config.seperate_value_params)
-    else:
-      raise NotImplementedError(config.sf_net)
+    if config.sf_net == "relational_action":
+      hidden_size = config.out_hidden_size if config.out_hidden_size else config.module_size
+      config.sf_net_heads = config.nmodules//2
+      config.sf_net_attn_size = config.module_size*config.sf_net_heads
 
-    hidden_size = config.out_hidden_size if config.out_hidden_size else config.module_size
-    head = FarmUsfaHead(
-          num_actions=num_actions,
-          cumulants_per_module=sf_out_dim//config.nmodules,
-          hidden_size=hidden_size,
-          policy_size=config.policy_size,
-          variance=config.variance,
-          nsamples=config.npolicies,
-          relational_net=relational_net,
-          policy_layers=config.policy_layers,
-          struct_policy=config.struct_policy_input,
-          eval_task_support=config.eval_task_support,
-          multihead=config.seperate_value_params, # seperate params per cumulants
-          # vmap_multihead=config.farm_vmap,
-          # position_embed=config.embed_position,
-          )
+      relational_net = RelationalLayer(
+          num_heads=config.sf_net_heads,
+          attn_size=config.sf_net_attn_size,
+          layernorm=config.layernorm_rel,
+          pos_mlp=config.resid_mlp,
+          residual=config.relate_residual,
+          position_embed=config.relation_position_embed,
+          w_init_scale=config.relate_w_init,
+          res_w_init_scale=config.resid_w_init,
+          init_bias=config.relate_b_init,
+          relu_gate=config.res_relu_gate,
+          shared_parameters=True)
+      head = RelationalFarmUsfaHead(
+            num_actions=num_actions,
+            cumulants_per_module=sf_out_dim//config.nmodules,
+            hidden_size=hidden_size,
+            policy_size=config.policy_size,
+            variance=config.variance,
+            nsamples=config.npolicies,
+            relational_net=relational_net,
+            policy_layers=config.policy_layers,
+            stop_z_grad=config.stop_z_grad,
+            struct_policy=config.struct_policy_input,
+            eval_task_support=config.eval_task_support,
+            multihead=config.seperate_value_params, # seperate params per cumulants
+            # vmap_multihead=config.farm_vmap,
+            # position_embed=config.embed_position,
+            )
+    else:
+      if config.sf_net == "independent":
+        relational_net = lambda x: x
+      elif config.sf_net == "relational":
+        relational_net = RelationalNet(
+          layers=config.sf_net_layers,
+          num_heads=config.sf_net_heads,
+          attn_size=config.sf_net_attn_size,
+          layernorm=config.layernorm_rel,
+          pos_mlp=config.resid_mlp,
+          residual=config.relate_residual,
+          position_embed=config.relation_position_embed,
+          w_init_scale=config.relate_w_init,
+          res_w_init_scale=config.resid_w_init,
+          init_bias=config.relate_b_init,
+          relu_gate=config.res_relu_gate,
+          shared_parameters=True)
+      else:
+        raise NotImplementedError(config.sf_net)
+
+      hidden_size = config.out_hidden_size if config.out_hidden_size else config.module_size
+      head = FarmUsfaHead(
+            num_actions=num_actions,
+            cumulants_per_module=sf_out_dim//config.nmodules,
+            hidden_size=hidden_size,
+            policy_size=config.policy_size,
+            variance=config.variance,
+            nsamples=config.npolicies,
+            relational_net=relational_net,
+            policy_layers=config.policy_layers,
+            stop_z_grad=config.stop_z_grad,
+            struct_policy=config.struct_policy_input,
+            eval_task_support=config.eval_task_support,
+            multihead=config.seperate_value_params, # seperate params per cumulants
+            # vmap_multihead=config.farm_vmap,
+            # position_embed=config.embed_position,
+            )
     def pred_prep_fn(inputs, memory_out, *args, **kwargs):
       """Concat Farm module-states before passing them."""
       return usfa_prep_fn(
@@ -675,7 +741,7 @@ def build_msf_phi_net(config, sf_out_dim):
         res_w_init_scale=config.resid_w_init,
         init_bias=config.relate_b_init,
         relu_gate=config.res_relu_gate,
-        shared_parameters=not config.seperate_cumulant_params)
+        shared_parameters=True)
     else:
       raise NotImplementedError(config.phi_net)
 

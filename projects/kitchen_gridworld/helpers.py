@@ -44,6 +44,10 @@ def make_environment(evaluation: bool = False,
                      symbolic=False,
                      path='.',
                      setting=None,
+                     struct_and=False,
+                     task_reset_behavior='none',
+                     debug=False,
+                     **kwargs,
                      ) -> dm_env.Environment:
   setting = setting or 'SmallL2NoDist'
   """Loads environments."""
@@ -64,11 +68,11 @@ def make_environment(evaluation: bool = False,
   if evaluation and 'test' in tasks:
     task_dicts = tasks['test']
     train_task_dicts = tasks['train']
-    separate_eval=True
+    env_kwargs=dict(task_reset_behavior=task_reset_behavior)
   else:
     task_dicts = tasks['train']
     train_task_dicts = tasks['train']
-    separate_eval=False
+    env_kwargs=dict()
 
   if 'task_reps' in tasks:
     task_reps = tasks['task_reps']
@@ -76,8 +80,10 @@ def make_environment(evaluation: bool = False,
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
 
-  env_wrappers = [functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc,
-        max_length=max_text_length)]
+  env_wrappers = [functools.partial(MissionIntegerWrapper,
+        instr_preproc=instr_preproc,
+        max_length=max_text_length,
+        struct_and=struct_and and evaluation)]
 
   if not symbolic:
     env_wrappers.append(
@@ -85,7 +91,7 @@ def make_environment(evaluation: bool = False,
 
   env = MultitaskKitchen(
     task_dicts=task_dicts,
-    separate_eval=separate_eval, # hack so can access later
+    tasks_file=tasks,
     tile_size=tile_size,
     path=path,
     num_dists=num_dists,
@@ -94,6 +100,9 @@ def make_environment(evaluation: bool = False,
     room_size=room_size,
     wrappers=env_wrappers,
     symbolic=symbolic,
+    debug=debug,
+    **env_kwargs,
+    **kwargs
     )
 
   # wrappers for dm_env: used by agent/replay buffer
@@ -147,6 +156,7 @@ def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=
       cumulants.CumulantRewardLoss(
         shorten_data_for_cumulant=True,
         coeff=config.reward_coeff,
+        mask_loss=config.phi_mask_loss,
         loss=config.reward_loss,
         l1_coeff=getattr(config, "phi_l1_coeff", 0.0),
         wl1_coeff=getattr(config, "w_l1_coeff", 0.0),
@@ -183,7 +193,11 @@ def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=
     loss=config.sf_loss,
     mask_loss=config.sf_mask_loss,
     shorten_data_for_cumulant=True, # needed since using delta for cumulant
-    extract_cumulants=losses.cumulants_from_preds,
+    extract_cumulants=functools.partial(
+        losses.cumulants_from_preds,
+        use_target=config.target_phi,
+        stop_grad=True,
+      ),
     aux_tasks=aux_tasks)
 
   loss_label = None
@@ -216,6 +230,26 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     LossFnKwargs.update(
       loss=config.r2d1_loss,
       mask_loss=config.q_mask_loss)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
+  elif agent == "r2d1_no_task": 
+  # UVFA + noise added to goal embedding
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+      configs.R2D1Config(),
+      configs.LangConfig()],
+      dict_configs=default_config
+    )
+
+    NetworkCls=nets.r2d1 # default: 2M params
+    NetKwargs=dict(config=config,
+      env_spec=env_spec,
+      task_embedding='language',
+      task_input='none')
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(loss=config.r2d1_loss)
     loss_label = 'r2d1'
     eval_network = config.eval_network
 
@@ -268,6 +302,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
         cumulants.CumulantRewardLoss(
           shorten_data_for_cumulant=True,
           coeff=config.reward_coeff,
+          mask_loss=config.phi_mask_loss,
           loss=config.reward_loss,
           l1_coeff=config.phi_l1_coeff,
           wl1_coeff=config.w_l1_coeff,
@@ -287,6 +322,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
       shorten_data_for_cumulant=True,
       extract_cumulants=functools.partial(
         losses.cumulants_from_preds,
+        use_target=config.target_phi,
         stop_grad=True,
       ),
       aux_tasks=aux_tasks)

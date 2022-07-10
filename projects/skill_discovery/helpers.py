@@ -10,24 +10,15 @@ import rlax
 
 
 from utils import ObservationRemapWrapper
-from utils import data as data_utils
 
 from agents import td_agent
-from agents.td_agent import losses
-
-from losses.contrastive_model import ModuleContrastLoss, TimeContrastLoss
-from losses import cumulants
-from losses import msfa_stats
 
 
-from projects.msf.helpers import q_aux_sf_loss
-from projects.kitchen_gridworld import nets
-from projects.kitchen_gridworld import configs
 
-from envs.acme.tasks_wrapper import TrainTasksWrapper
-from envs.acme.multitask_kitchen import MultitaskKitchen
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper, MissionIntegerWrapper
 from envs.babyai_kitchen.utils import InstructionsPreprocessor
+from envs.acme.multitask_generic import MultitaskGeneric
+from envs.babyai_kitchen.levelgen import KitchenLevel
 
 
 
@@ -37,10 +28,9 @@ from envs.babyai_kitchen.utils import InstructionsPreprocessor
 def make_environment(evaluation: bool = False,
                      tile_size=8,
                      room_size=6,
-                     num_dists=0,
                      max_text_length=10,
                      path='.',
-                     task_kinds:str='pickup',
+                     setting:str='pickup',
                      ) -> dm_env.Environment:
   """Summary
   
@@ -48,7 +38,6 @@ def make_environment(evaluation: bool = False,
       evaluation (bool, optional): Description
       tile_size (int, optional): Description
       room_size (int, optional): Description
-      num_dists (int, optional): Description
       step_penalty (float, optional): Description
       task_reps (str, optional): Description
       max_text_length (int, optional): Description
@@ -65,33 +54,39 @@ def make_environment(evaluation: bool = False,
   TODO: 
   """
 
-  if task_kinds == 'none':
+  if setting == 'no_reward':
     raise NotImplementedError
     all_level_kwargs=dict(
-      my_env_1_obj=dict(task_kinds='none', num_dists=1),
-      my_env_2_obj=dict(task_kinds='none', num_dists=2),
+      env_1_obj=dict(task_kinds='none', num_dists=1, reward_coeff=0.0),
+      env_2_obj=dict(task_kinds='none', num_dists=2, reward_coeff=0.0),
+      env_3_obj=dict(task_kinds='none', num_dists=3, reward_coeff=0.0),
+      env_4_obj=dict(task_kinds='none', num_dists=4, reward_coeff=0.0),
       )
-  else:
+
+  elif setting =='pickup':
     # dict {env_name : env_kwargs}
     all_level_kwargs=dict(
       # use PickupTask class in envs.babyai_kitchen.tasks
-      my_env=dict(task_kinds='pickup'), 
+      pickup=dict(task_kinds='pickup'), 
       )
+  else:
+    raise RuntimeError
 
   instr_preproc = InstructionsPreprocessor(
     path=os.path.join(path, "data/babyai_kitchen/vocab.json"))
 
-  env = BabyAISkills(
+  env = MultitaskGeneric(
+    tile_size=tile_size,
     room_size=room_size,
-    num_dists=num_dists,
     all_level_kwargs=all_level_kwargs,
+    path=path,
     wrappers=[ # wrapper for babyAI gym env
       functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size),
       functools.partial(MissionIntegerWrapper, instr_preproc=instr_preproc,
         max_length=max_text_length)],
+    LevelCls=KitchenLevel,
     )
 
-  # wrappers for dm_env: used by agent/replay buffer
   wrapper_list = [
     functools.partial(ObservationRemapWrapper,
         remap=dict(mission='task')),
@@ -101,30 +96,25 @@ def make_environment(evaluation: bool = False,
 
   return wrappers.wrap_all(env, wrapper_list)
 
-def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
-  default_config = dict(max_vocab_size=max_vocab_size)
+
+def load_agent_settings(agent, env_spec, config_kwargs=None):
+  default_config = dict()
   default_config.update(config_kwargs or {})
 
   if agent == "r2d1":
   # Recurrent DQN (2.2M params)
-    config = data_utils.merge_configs(
-      dataclass_configs=[
-        configs.R2D1Config(),
-        configs.LangConfig(),
-      ],
-      dict_configs=default_config)
+    config = td_agent.R2D1Config(**default_config)
 
-    NetworkCls=nets.r2d1 # default: 2M params
+    from archs.recurrent_q_network import RecurrentQNetwork
+    NetworkCls=RecurrentQNetwork
     NetKwargs=dict(
-      config=config,
-      env_spec=env_spec,
-      task_embedding='language',
+      num_actions=env_spec.actions.num_values,
+      rnn_size=512,
       )
     LossFn = td_agent.R2D2Learning
     LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    loss_label = 'r2d1'
-    eval_network = config.eval_network
+
   else:
     raise NotImplementedError(agent)
 
-  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
+  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs

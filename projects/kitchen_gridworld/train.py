@@ -32,7 +32,7 @@ from utils import make_logger, gen_log_dir
 # -----------------------
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_string('env_setting', 'EasyPickup', 'which environment setting.')
-flags.DEFINE_string('task_reps', 'pickup', 'which task reps to use.')
+flags.DEFINE_string('task_reps', 'object_verbose', 'which task reps to use.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('test', True, 'whether testing.')
@@ -58,11 +58,15 @@ def main(_):
   env_kwargs=dict(
     room_size=6,
     symbolic=symbolic,
+    struct_and=True,
+    use_subtasks=True,
+    task_reset_behavior='none',
     )
   env = helpers.make_environment(
     setting=setting,
     task_reps=FLAGS.task_reps,
     evaluation=FLAGS.evaluate, # test set (harder)
+    debug=FLAGS.test,
     **env_kwargs
     )
   max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
@@ -75,18 +79,22 @@ def main(_):
   config=dict()
   config['symbolic'] = symbolic
   if FLAGS.test:
+    config['trace_length'] = 4
+    config['batch_size'] = 8
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['dot_qheads'] = False
-    config['struct_w'] = False
-
+    # config['nmodules'] = 4
+    # config['target_phi'] = True
+    # config['stop_w_grad'] = True
+    config['struct_policy_input'] = True
+    # config['struct_w'] = False
     print("="*50)
     print("="*20, "testing", "="*20)
     from pprint import pprint
     pprint(config)
     print("="*50)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = helpers.load_agent_settings(
     agent=FLAGS.agent,
     env_spec=env_spec,
     max_vocab_size=max_vocab_size,
@@ -117,7 +125,7 @@ def main(_):
     NetKwargs=NetKwargs,
     LossFn=LossFn,
     LossFnKwargs=LossFnKwargs,
-    loss_label=loss_label,
+    loss_label='Loss',
     log_dir=log_dir,
     evaluate=FLAGS.evaluate,
     seed=FLAGS.seed,

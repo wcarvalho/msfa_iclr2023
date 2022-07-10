@@ -22,6 +22,7 @@ class QLearningAuxLoss(nstep.QLearning):
     sched_end_val=1e-4,
     add_bias=False,
     stop_w_grad=False,
+    target_w=False,
     mask_loss=False,
     **kwargs):
     super().__init__(*args, **kwargs)
@@ -31,6 +32,7 @@ class QLearningAuxLoss(nstep.QLearning):
     self.sched_end_val = sched_end_val
     self.add_bias = add_bias
     self.stop_w_grad = stop_w_grad
+    self.target_w = target_w
     self.mask_loss = mask_loss
     if sched_end:
       self.schedule = optax.linear_schedule(
@@ -49,6 +51,9 @@ class QLearningAuxLoss(nstep.QLearning):
     if self.stop_w_grad:
       online_w = jax.lax.stop_gradient(online_w)
       target_w = jax.lax.stop_gradient(target_w)
+
+    if self.target_w:
+      online_w = target_w
 
     # output is [T, B, A]
     online_q = compute_q_jax(online_sf, online_w)

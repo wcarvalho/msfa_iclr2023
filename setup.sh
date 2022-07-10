@@ -25,11 +25,13 @@ cd ..
 
 git clone https://github.com/maximecb/gym-minigrid.git _gym-minigrid
 git checkout 03cf21f61bce58ab13a1de450f6269edd636183a
+cp install/minigrid_setup.py _gym-minigrid/setup.py
 cd _gym-minigrid
 pip install --editable .
 cd ..
 
 git clone https://github.com/mila-iqia/babyai.git _babyai
+cp install/babyai_setup.py _babyai/setup.py
 cd _babyai
 pip install --editable .
 cd ..

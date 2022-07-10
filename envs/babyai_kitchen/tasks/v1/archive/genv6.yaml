@@ -1,0 +1,76 @@
+train:
+
+
+  - name: "0.pickup"
+    task_kinds: pickup
+    num_dists: 0
+
+  - name: "0.toggle"
+    task_kinds: toggle
+    num_dists: 0
+
+  - name: "2.slice"
+    task_kinds: slice
+    num_dists: 0
+
+  - name: "4.heat"
+    task_kinds: heat
+    num_dists: 0
+
+  - name: "5.clean"
+    task_kinds: clean
+    num_dists: 0
+
+  - name: "6.pickup_cleaned"
+    task_kinds: pickup_cleaned
+    num_dists: 0
+
+  - name: "7.pickup_sliced"
+    task_kinds: pickup_sliced
+    num_dists: 0
+
+  - name: "8.cook"
+    task_kinds: cook
+    taskarg_options:
+      y: [pot]
+    num_dists: 0
+
+
+test:
+
+  - name: "and_slice2" # length 2
+    task_kinds: slice2
+    num_dists: 0
+
+  - name: "and_toggle2" # length 2
+    task_kinds: toggle2
+    num_dists: 0
+
+  - name: "and_slice3" # length 3
+    task_kinds: slice3
+    num_dists: 0
+
+  - name: "and_toggle3" # length 3
+    task_kinds: toggle3
+    num_dists: 0
+
+
+  - name: "combo0_toggle_and_pickup" # length 3
+    task_kinds: toggle_and_pickup
+    num_dists: 0
+
+  - name: "combo0_toggle_and_slice" # length 3
+    task_kinds: toggle_and_slice
+    num_dists: 0
+
+  - name: "combo1_clean_and_toggle" # length 4
+    task_kinds: clean_and_toggle
+    num_dists: 0
+
+  - name: "combo2_clean_and_slice" # length 5
+    task_kinds: clean_and_slice
+    num_dists: 0
+
+  - name: "combo3_clean_and_slice_and_toggle" # length 6
+    task_kinds: clean_and_slice_and_toggle
+    num_dists: 0

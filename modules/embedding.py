@@ -75,20 +75,63 @@ class BabyAIEmbedding(OAREmbedding):
 
 class LinearTaskEmbedding(hk.Module):
   """docstring for LinearTaskEmbedding"""
-  def __init__(self, dim, **kwargs):
+  def __init__(self, hidden_dim=128, out_dim=6, num_tasks=None, structured=False, **kwargs):
     super(LinearTaskEmbedding, self).__init__()
-    self.dim = dim
-    self.layer = hk.Linear(dim,
-      with_bias=False, 
-      w_init=hk.initializers.RandomNormal(
-          stddev=1., mean=0.))
+    self.hidden_dim = hidden_dim
+    self.structured = structured
+    self._out_dim = out_dim
+    if structured:
+      assert num_tasks is not None
+      self.layer2_dim = out_dim//num_tasks
+    else:
+      self.layer2_dim = out_dim
+
+    if hidden_dim > 0:
+      self.layer1 = hk.Linear(hidden_dim,
+        with_bias=False, 
+        w_init=hk.initializers.RandomNormal(
+            stddev=1., mean=0.))
+
+      self.layer2 = hk.Linear(self.layer2_dim)
+    else:
+      self.layer1 = lambda x:x
+      self.layer2 = hk.Linear(self.layer2_dim,
+        with_bias=False, 
+        w_init=hk.initializers.RandomNormal(
+            stddev=1., mean=0.))
 
   def __call__(self, x):
-    return self.layer(x)
+    """Summary
+    
+    Args:
+        x (TYPE): B x D
+    """
+    def apply_net(x_):
+      y = self.layer1(x_)
+      if self.hidden_dim > 0:
+        y = jax.nn.relu(y)
+      return self.layer2(y)
+
+    if self.structured:
+      # [D, D]
+      block_id = jnp.identity(x.shape[-1])
+      mul = jax.vmap(jnp.multiply, in_axes=(None, 0), out_axes=1)
+      # [B, D, D]
+      struct_x = mul(x, block_id)
+
+      z = hk.BatchApply(apply_net)(struct_x)
+
+      # [B, D_out]
+      # combine all tasks into one embedding
+      z = z.reshape(x.shape[0], -1)
+    else:
+      z = apply_net(x)
+
+    return z 
 
   @property
   def out_dim(self):
-    return self.dim
+    return self._out_dim
 
 
 
@@ -112,21 +155,6 @@ def st_bernoulli(x, key):
 
   return zero + jax.lax.stop_gradient(x)
 
-
-class VectorEmbed(hk.Module):
-  def __init__(self, out_dim):
-    super(VectorEmbed, self).__init__()
-    self.dim = out_dim
-    self.embedder = hk.Linear(output_size=out_dim,with_bias=False,w_init=hk.initializers.TruncatedNormal()) #default is mean 0, std 1
-
-  def __call__(self, x):
-    return self.embedder(x)
-
-  @property
-  def out_dim(self):
-    return self.dim
-
-
 def st_round(x):
   """Straight-through bernoulli sample"""
   zero = x - jax.lax.stop_gradient(x)
@@ -144,12 +172,28 @@ class LanguageTaskEmbedder(hk.Module):
       compress: str ='last',
       gates: int=None,
       gate_type: str='sample',
-      tanh: bool=False,
-      relu: bool=False,
+      bow: bool=False,
+      activation: str='none',
       **kwargs):
+    """Summary
+    
+    Args:
+        vocab_size (int): Description
+        word_dim (int): Description
+        sentence_dim (int): Description
+        task_dim (int, optional): Description
+        initializer (str, optional): Description
+        compress (str, optional): Description
+        gates (int, optional): Description
+        gate_type (str, optional): Description
+        bow (bool, optional): if True, embed words and sum
+        activation (str, optional): Description
+        **kwargs: Description
+    """
     super(LanguageTaskEmbedder, self).__init__()
     self.vocab_size = vocab_size
     self.word_dim = word_dim
+    self.bow = bow
     self.compress = compress
     initializer = getattr(hk.initializers, initializer)()
     self.embedder = hk.Embed(
@@ -168,14 +212,56 @@ class LanguageTaskEmbedder(hk.Module):
       self.task_projection = hk.Linear(task_dim)
 
     self.gates = gates
-    self.tanh = tanh
-    self.relu = relu
+    activation = activation.lower()
+    if activation == 'none':
+      self.activation = lambda x:x
+    else:
+      self.activation = getattr(jax.nn, activation)
+
     self.gate_type = gate_type.lower()
     assert self.gate_type in ['round', 'sample', 'sigmoid']
     if self.gates is not None and self.gates > 0:
       self.gate = hk.Linear(gates)
   
   def __call__(self, x : jnp.ndarray):
+    """
+    If len(x.shape) == 2: regular tokens,
+    If len(x.shape) == 3: structured tokens
+      assumptions:
+      1. if any x in a row is negative, we want to negate the embedding
+      2. we want to sum over rows to get embedding. For embedding [toggle x, toggle y], we get output = embed(toggle, x) + embed(toggle, y)
+
+    
+    Args:
+        x (jnp.ndarray): Description
+    
+    Returns:
+        TYPE: Description
+    
+    Raises:
+        NotImplementedError: Description
+    """
+    if len(x.shape) == 2:
+      out = self.embed(x)
+    elif len(x.shape) == 3:
+      # [B, M, D] --> [B, M, D]
+      z = hk.BatchApply(self.embed)(jnp.abs(x))
+
+      # multiple embedding by negative if x was negative at row
+      negate = (x.sum(-1) < 0)
+      negate = negate.astype(z.dtype)
+      coeff = -1*(negate) + 1*(1-negate)
+      z = z*jnp.expand_dims(coeff, 2)
+
+      # sum over structure
+      out = z.sum(1)
+    else:
+      raise NotImplementedError
+
+    return out
+
+
+  def embed(self, x : jnp.ndarray):
     """Embed words, then run through GRU.
     
     Args:
@@ -193,27 +279,27 @@ class LanguageTaskEmbedder(hk.Module):
     mask = (x > 0).astype(words.dtype)
     words = words*jnp.expand_dims(mask, axis=-1)
 
-    # -----------------------
-    # pass through GRU
-    # -----------------------
-    initial = self.language_model.initial_state(B)
-    words = jnp.transpose(words, (1,0,2))  # N x B x D
-    sentence, _ = hk.static_unroll(self.language_model, words, initial)
-
-    if self.compress == "last":
-      task = sentence[-1] # embedding at end
-    elif self.compress == "sum":
-      task = sentence.sum(0)
+    if self.bow:
+      task = words.sum(1)
     else:
-      raise NotImplementedError(self.compress)
+      # -----------------------
+      # pass through GRU
+      # -----------------------
+      initial = self.language_model.initial_state(B)
+      words = jnp.transpose(words, (1,0,2))  # N x B x D
+      sentence, _ = hk.static_unroll(self.language_model, words, initial)
+
+      if self.compress == "last":
+        task = sentence[-1] # embedding at end
+      elif self.compress == "sum":
+        task = sentence.sum(0)
+      else:
+        raise NotImplementedError(self.compress)
 
     # [B, D]
     task_proj = self.task_projection(task)
+    task_proj = self.activation(task_proj)
 
-    if self.tanh:
-      task_proj = jax.nn.tanh(task_proj)
-    if self.relu:
-      task_proj = jax.nn.relu(task_proj)
 
     if self.gates is not None and self.gates > 0:
       # [B, G]
@@ -222,7 +308,6 @@ class LanguageTaskEmbedder(hk.Module):
         gate = st_bernoulli(gate, key=hk.next_rng_key())
       elif self.gate_type == 'round':
         gate = st_round(gate)
-
 
       # [B, D] --> [B, G, D/G]
       task_proj = jnp.stack(jnp.split(task_proj, self.gates, axis=-1), axis=1) 

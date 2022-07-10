@@ -78,11 +78,12 @@ def run(env,
     evaluate: bool=False,
     seed: int=1,
     num_episodes: int=1_000,
-    log_every=5.0,
+    log_every=30.0,
     observers=None,
     actor_label='actor',
     wandb_init_kwargs=None,
     init_only=False,
+    pregenerate_named_tuple=True,
     **kwargs):
 
   # -----------------------
@@ -125,9 +126,10 @@ def run(env,
   # -----------------------
   # prepare networks
   # -----------------------
-  PredCls = create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs)
-  # insert into global namespace for pickling, etc.
-  NetKwargs.update(PredCls=PredCls)
+  if pregenerate_named_tuple:
+    PredCls = create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs)
+    # insert into global namespace for pickling, etc.
+    NetKwargs.update(PredCls=PredCls)
   if init_only:
     return
 

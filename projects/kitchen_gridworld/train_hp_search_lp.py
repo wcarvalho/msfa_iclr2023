@@ -30,20 +30,14 @@ flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_string('search', '', 'which search to use.')
 flags.DEFINE_string('spaces', 'brain_search', 'which search to use.')
 flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
+flags.DEFINE_string('actor_label', None, '.')
+flags.DEFINE_string('evaluator_label', None, '.')
 flags.DEFINE_float('num_gpus', 1, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('num_cpus', 3, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('actors', 4, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('skip', 1, 'skip run jobs.')
 flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
 flags.DEFINE_integer('idx', None, 'number of gpus per job. accepts fractions.')
-
-DEFAULT_ENV_SETTING = 'multiv9'
-DEFAULT_TASK_REPS='pickup'
-DEFAULT_LABEL=''
-DEFAULT_ROOM_SIZE = 7
-DEFAULT_SYMBOLIC = False
-DEFAULT_NUM_ACTORS = 4
-DEFAULT_NUM_DISTS = 0
 
 def main(_):
   FLAGS = flags.FLAGS
@@ -53,7 +47,7 @@ def main(_):
   num_gpus = float(FLAGS.num_gpus)
 
   assert FLAGS.search != '', 'set search!'
-  space = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
+  space, actor_label, evaluator_label = importlib.import_module(f'projects.kitchen_gridworld.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
   if FLAGS.idx is not None:
     listify_space(space)
     if FLAGS.idx < len(space):
@@ -79,11 +73,13 @@ def main(_):
   )
 
   default_env_kwargs = {
-    'setting' : DEFAULT_ENV_SETTING,
-    'task_reps' : DEFAULT_TASK_REPS,
-    'room_size' : DEFAULT_ROOM_SIZE,
-    'num_dists' : DEFAULT_NUM_DISTS,
-    'symbolic' : DEFAULT_SYMBOLIC,
+    'setting' : 'multiv9',
+    'task_reps' : 'object_verbose',
+    'room_size' : 7,
+    'num_dists' : 0,
+    'symbolic' : False,
+    'struct_and': False,
+    'task_reset_behavior': 'none',
   }
   run_experiments(
     build_program_fn=build_program,
@@ -94,6 +90,9 @@ def main(_):
     wandb_init_kwargs=wandb_init_kwargs,
     default_env_kwargs=default_env_kwargs,
     use_wandb=use_wandb,
+    build_kwargs=dict(
+      actor_label=actor_label,
+      evaluator_label=evaluator_label),
     terminal=FLAGS.terminal,
     skip=FLAGS.skip,
     use_ray=FLAGS.ray)

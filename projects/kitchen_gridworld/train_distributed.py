@@ -32,7 +32,7 @@ from utils import data as data_utils
 
 from projects.kitchen_gridworld import helpers
 from projects.common.train_distributed import build_common_program
-from projects.common.observers import LevelAvgReturnObserver
+from projects.common.observers import LevelAvgReturnObserver, LevelReturnObserver
 
 # -----------------------
 # flags
@@ -42,7 +42,7 @@ flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
 flags.DEFINE_string('env_setting', 'EasyPickup', 'which environment setting.')
-flags.DEFINE_string('task_reps', 'pickup', 'which task reps to use.')
+flags.DEFINE_string('task_reps', 'object_verbose', 'which task reps to use.')
 
 
 # -----------------------
@@ -66,16 +66,22 @@ def build_program(
   update_wandb_name=True, # use path from logdir to populate wandb name
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
-  log_every=5.0, # how often to log
+  log_every=30.0, # how often to log
   config_kwargs=None, # config
   path='.', # path that's being run from
   log_dir=None, # where to save everything
   debug: bool=False,
   env_kwargs=None,
+  actor_label=None,
+  evaluator_label=None,
+  save_config_dict=None,
   **kwargs,
   ):
   config = config_kwargs or dict()
-  env_kwargs = env_kwargs or dict()
+  env_kwargs = env_kwargs or dict(
+    struct_and=True,
+    task_reset_behavior='remove'
+    )
   # -----------------------
   # load env stuff
   # -----------------------
@@ -84,9 +90,9 @@ def build_program(
     path=path,
     **env_kwargs,
     )
-  env = environment_factory(True)
+  env = environment_factory(False)
   max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
-  separate_eval = env.separate_eval # HACK
+  tasks_file = env.tasks_file # HACK
   config['symbolic'] = env_kwargs.get('symbolic', False)
   # config_kwargs['step_penalty'] = env.step_penalty
   env_spec = acme.make_environment_spec(env)
@@ -104,7 +110,7 @@ def build_program(
     # config['cov_loss'] = 'l1_corr'
     print("="*50)
     print("="*20, "testing", "="*20)
-    import ipdb; ipdb.set_trace()
+
     from pprint import pprint
     pprint(config)
     print("="*50)
@@ -118,7 +124,8 @@ def build_program(
   # -----------------------
   # define dict to save. add some extra stuff here
   # -----------------------
-  save_config_dict = config.__dict__
+  save_config_dict = save_config_dict or dict()
+  save_config_dict.update(config.__dict__)
   save_config_dict.update(
     agent=agent,
     # setting=setting,
@@ -142,17 +149,19 @@ def build_program(
     if wandb_init_kwargs and update_wandb_name:
       wandb_init_kwargs['name'] = config_path_str
 
-  observers = [LevelAvgReturnObserver()]
+  # observers = [LevelAvgReturnObserver()]
+  observers = [LevelReturnObserver()]
   # -----------------------
   # wandb settup
   # -----------------------
   os.chdir(path)
   setting = env_kwargs.get('setting', 'default')
-  if separate_eval:
-    evaluator_factories=None # will create
-  else:
-    evaluator_factories=[]
 
+
+  def get(label, default):
+    return tasks_file.get(label, default)
+  actor_label = get("actor_label", actor_label or f"actor_{setting}")
+  evaluator_label = get("evaluator_label", evaluator_label or f"evaluator_{setting}")
   return build_common_program(
     environment_factory=environment_factory,
     env_spec=env_spec,
@@ -168,9 +177,8 @@ def build_program(
     log_every=log_every,
     observers=observers,
     loss_label='Loss',
-    actor_label=f"actor_{setting}",
-    evaluator_label=f"evaluator_{setting}",
-    evaluator_factories=evaluator_factories, # no effect to not have evaluators
+    actor_label=actor_label,
+    evaluator_label=evaluator_label,
     **kwargs,
     )
 
@@ -199,7 +207,7 @@ def main(_):
     env_kwargs=dict(
       setting=FLAGS.env_setting,
       task_reps=FLAGS.task_reps,
-      symbolic=True,
+      symbolic=False,
     )
     )
 

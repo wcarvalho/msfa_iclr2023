@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import collections
 from gym import spaces
@@ -18,6 +19,16 @@ class AttrDict(dict):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
+def reject_next_to(env, pos):
+  """
+  Function to filter out object positions that are right next to
+  the agent's starting point
+  """
+
+  sx, sy = env.agent_pos
+  x, y = pos
+  d = abs(sx - x) + abs(sy - y)
+  return d < 2
 
 class KitchenLevel(RoomGridLevel):
   """
@@ -27,7 +38,8 @@ class KitchenLevel(RoomGridLevel):
     room_size=8,
     num_rows=1,
     num_cols=1,
-    num_dists=8,
+    num_dists=0,
+    debug=False,
     # locked_room_prob=0,
     unblocking=False,
     kitchen=None,
@@ -40,18 +52,21 @@ class KitchenLevel(RoomGridLevel):
     taskarg_options=None,
     task_reps=None,
     instr_kinds=['action'], # IGNORE. not implemented
-    use_subtasks=False, # IGNORE. not implemented
+    use_subtasks=False,
+    task_reset_behavior: str='none',
     use_time_limit=True,
     tile_size=8,
     rootdir='.',
     distant_vision=False,
     agent_view_size=7,
+    reward_coeff=1.0,
     extra_timesteps=1,
     seed=None,
     verbosity=0,
     **kwargs,
       ):
     self.num_dists = num_dists
+    self.debug = debug
     # self.locked_room_prob = locked_room_prob
     self.use_time_limit = use_time_limit
     self.unblocking = unblocking
@@ -65,9 +80,15 @@ class KitchenLevel(RoomGridLevel):
     self.task_reps = task_reps or dict()
     self.instr_kinds = instr_kinds
     self.random_object_state = random_object_state
+    self.task_reset_behavior = task_reset_behavior.lower()
+    if self.task_reset_behavior == 'respawn':
+      if not use_subtasks:
+        logging.info("Turning subtasks on for object respawning behavior")
+      use_subtasks = True
     self.use_subtasks = use_subtasks
-    self.taskarg_options = taskarg_options
 
+    self.taskarg_options = taskarg_options
+    self.reward_coeff = reward_coeff
     self.verbosity = verbosity
     self.locked_room = None
     self.extra_timesteps = extra_timesteps
@@ -163,6 +184,25 @@ class KitchenLevel(RoomGridLevel):
     """
     super(RoomGridLevel, self)._gen_grid(*args, **kwargs)
 
+  def place_in_room(self, i, j, obj):
+      """
+      Add an existing object to room (i, j)
+      """
+
+      room = self.get_room(i, j)
+
+      pos = self.place_obj(
+          obj,
+          room.top,
+          room.size,
+          reject_fn=reject_next_to,
+          max_tries=1000
+      )
+
+      room.objs.append(obj)
+
+      return obj, pos
+
   def add_objects(self, task=None, num_distractors=10):
     """
     - if have task, place task objects
@@ -176,9 +216,9 @@ class KitchenLevel(RoomGridLevel):
     if task is not None:
         for obj in task.task_objects:
             self.place_in_room(0, 0, obj)
-            placed_objects.add(obj.type)
+            placed_objects.add(obj)
             if self.verbosity > 1:
-                print(f"Added task object: {obj.type}")
+                print(f"Added task object: {obj}")
 
     # if number of left over objects is less than num_distractors, set as that
     # possible_space = (self.grid.width - 2)*(self.grid.height - 2)
@@ -188,10 +228,10 @@ class KitchenLevel(RoomGridLevel):
     if len(placed_objects) == 0:
         num_distractors = max(num_distractors, 1)
 
-    distractors_added = []
+    self.distractors_added = []
     num_tries = 0
 
-    while len(distractors_added) < num_distractors:
+    while len(self.distractors_added) < num_distractors:
         # infinite loop catch
         num_tries += 1
         if num_tries > 1000:
@@ -201,14 +241,25 @@ class KitchenLevel(RoomGridLevel):
         random_object = np.random.choice(self.kitchen.objects)
 
         # if already added, try again
-        if random_object.type in placed_objects:
+        if random_object in placed_objects:
             continue
 
+        self.distractors_added.append(random_object)
+        placed_objects.add(random_object)
+
+    if self.verbosity > 0:
+      print('-'*10)
+      print("Distractors:", [d.type for d in self.distractors_added])
+
+    for random_object in self.distractors_added:
+        random_object.reset()
         self.place_in_room(0, 0, random_object)
-        distractors_added.append(random_object.type)
-        placed_objects.add(random_object.type)
-        if self.verbosity > 1:
-            print(f"Added distractor: {random_object.type}")
+        if self.verbosity > 0:
+          print('-'*10)
+          print(f"Added distractor: {random_object.type}")
+          room = self.get_room(0, 0)
+          pprint([o.type for o in room.objs])
+
     # TODO: test ``active objects''
     # self.kitchen.set_active_objects(placed_objects)
   
@@ -220,12 +271,10 @@ class KitchenLevel(RoomGridLevel):
     task_kinds,
     instr_kinds=['action'],
     use_subtasks=False,
-    depth=0,
+    # depth=0,
     **kwargs
     ):
 
-    if use_subtasks:
-        raise RuntimeError("Don't know how to have subtask rewards")
 
     instruction_kind = np.random.choice(instr_kinds)
 
@@ -239,13 +288,18 @@ class KitchenLevel(RoomGridLevel):
         if task_kind == 'none':
             task = None
         else:
-            available_tasks = envs.babyai_kitchen.tasks.all_tasks()
-            task_class = available_tasks[task_kind]
-
+            # available_tasks = envs.babyai_kitchen.tasks.all_tasks()
+            # task_class = available_tasks[task_kind]
+            task_class = envs.babyai_kitchen.tasks.get_task_class(task_kind)
             task = task_class(
-                env=self.kitchen,
+                env=self,
+                kitchen=self.kitchen,
                 argument_options=self.taskarg_options,
                 task_reps=self.task_reps,
+                done_delay=self.extra_timesteps,
+                reset_behavior=self.task_reset_behavior,
+                verbosity=self.verbosity,
+                use_subtasks=use_subtasks,
                 **kwargs)
     else:
         raise RuntimeError(f"Instruction kind not supported: '{instruction_kind}'")
@@ -318,10 +372,12 @@ class KitchenLevel(RoomGridLevel):
     # rejection sampling gets stuck in an infinite loop
     tries = 0
     while True:
-        tries += 1
         if tries > 1000:
             raise RuntimeError("can't sample task???")
         try:
+            tries += 1
+            if self.verbosity > 0:
+              print(f"RESET ATTEMPT {tries}")
             # generate grid of observation
             self._gen_grid(width=self.width, height=self.height)
 
@@ -424,6 +480,9 @@ class KitchenLevel(RoomGridLevel):
     self.timesteps_complete = 0
     self.interaction_info = {}
 
+    if self.debug:
+      self.max_steps = max(np.random.randint(5), 1)
+
     return obs
 
   def straction(self, action : str):
@@ -495,20 +554,22 @@ class KitchenLevel(RoomGridLevel):
 
     step_info = self.kitchen.step()
 
-    if self.verbosity > 1:
+    if self.verbosity > 0:
         from pprint import pprint
         print('='*50)
         obj_type = object_infront.type if object_infront else None
-        print(self.idx2action[int(action)], obj_type)
-        pprint(action_info)
-        print('-'*10, 'Env Info', '-'*10)
-        print("Carrying:", self.carrying)
-        if self.task is not None:
-            print(f"task objects:")
-            pprint(self.task.task_objects)
-        else:
-            print(f"env objects:")
-            pprint(self.kitchen.objects)
+        action_str = self.idx2action[int(action)]
+        print(f"ACTION: ({action_str}, {obj_type})", obj_type)
+        if self.verbosity > 1:
+          pprint(action_info)
+          print('-'*10, 'Env Info', '-'*10)
+          print("Carrying:", self.carrying)
+          if self.task is not None:
+              print(f"task objects:")
+              pprint(self.task.task_objects)
+          else:
+              print(f"env objects:")
+              pprint(self.kitchen.objects)
 
     # ======================================================
     # copied from RoomGridLevel
@@ -518,25 +579,21 @@ class KitchenLevel(RoomGridLevel):
     info = {'success': False}
     done = False
     if self.task is not None:
-        reward, task_done = self.task.get_reward_done()
+        # reward, done = self.task.get_reward_done()
+        reward, done = self.task.check_and_update_status()
         reward = float(reward)
-
-        if task_done:
-          self.task.terminate()
-
-        if self.task.finished:
-            info['success'] = True
-            self.timesteps_complete += 1
-
-        # in order to complete final states in observation stream
-        if self.timesteps_complete > self.extra_timesteps:
-          done = True
-
+        if self.verbosity > 0:
+          if reward !=0:
+            print("REWARD:", reward)
     # if past step count, done
     if self.step_count >= self.max_steps and self.use_time_limit:
         done = True
 
     obs = self.gen_obs()
+    if self.debug:
+      reward = 1.0
+
+    reward = reward*self.reward_coeff
     return obs, reward, done, info
 
 

@@ -26,6 +26,10 @@ class R2D1Config(r2d2_config.R2D2Config):
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
+  loss_coeff: float = 1.0
+  q_mask_loss: bool = True # whether to mask outside of episode boundary
+  schedule_end: int = None
+  final_lr_scale: float = 1e-5
 
   # How many gradient updates to perform per learner step.
   num_sgd_steps_per_step: int = 1
@@ -46,17 +50,3 @@ class R2D1Config(r2d2_config.R2D2Config):
   importance_sampling_exponent: float = 0.6
   priority_exponent: float = 0.9
   max_priority_weight: float = 0.9
-
-
-@dataclasses.dataclass
-class USFAConfig(R2D1Config):
-  """Extra configuration options for USFA agent."""
-  npolicies: int = 10 # number of policies to sample
-  variance: float = 0.1
-
-@dataclasses.dataclass
-class USFARewardConfig(USFAConfig):
-  """Extra configuration options for USFA agent."""
-  reward_coeff: float = 0.01 # coefficient for loss
-  reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
-
