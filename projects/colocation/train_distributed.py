@@ -5,12 +5,12 @@ Run Successor Feature based agents and baselines on
 Command I run to train:
   PYTHONPATH=$PYTHONPATH:$HOME/successor_features/rljax/ \
     LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/envs/acmejax/lib/ \
-    CUDA_VISIBLE_DEVICES=0 \
+    CUDA_VISIBLE_DEVICES=3 \
     XLA_PYTHON_CLIENT_PREALLOCATE=false \
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     WANDB_START_METHOD="thread" \
     python projects/colocation/train_distributed.py \
-    --agent msf --room_reward .25 --wandb_name 6-13 --seed 1
+    --agent r2d1 --wandb_name 7-9
 
 
 Command for tensorboard
@@ -51,16 +51,17 @@ import random
 # -----------------------
 
 flags.DEFINE_string('wandb_name', None, 'wandb name')
-flags.DEFINE_bool('simple',False, 'should the environment be simple or have some colocation')
+flags.DEFINE_bool('simple',False, 'some colocation (3 objects/room) if true, no colocation (1 object/room) if false')
 flags.DEFINE_bool('nowalls',False,'No doors in environment')
 flags.DEFINE_bool('one_room',False, 'all in one room')
+flags.DEFINE_bool('two_rooms',False, 'Only use 2 rooms instead of 3 (no other arguments need to be adjusted)')
 flags.DEFINE_bool('deterministic_rooms',False,'rooms are not in random order')
 flags.DEFINE_float('room_reward',.25,'reward for entering the correct room')
-flags.DEFINE_integer('train_task_as_z', -1, '0 for None, -1 for no, 1 for yes')
-flags.DEFINE_string('task_embedding','vector','options are "vector" and "none". Use vector for MSF and maybe for USFA with learned cumulants')
+flags.DEFINE_integer('train_task_as_z', -1, '0 for automatic, -1 for no, 1 for yes')
+flags.DEFINE_string('task_embedding','none','options are "vector" and "none". Use vector for MSF and maybe for USFA with learned cumulants')
 flags.DEFINE_bool('room_reward_task_vector',False, 'Include dimensions for room reward in oracle cumulants and task vector')
 
-flags.DEFINE_string('agent', 'usfa_conv', 'which agent.')
+flags.DEFINE_string('agent', 'usfa', 'which agent.')
 flags.DEFINE_integer('seed', 1, 'Random seed.')
 flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
 flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')

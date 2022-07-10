@@ -42,6 +42,7 @@ class MultiroomGotoEnv(KitchenLevel):
                  stop_when_gone = False,
                  walls_gone = False,
                  one_room = False,
+                 two_rooms = False,
                  mission_object = None,
                  deterministic_rooms = False,
                  room_reward = 0.25,
@@ -80,22 +81,34 @@ class MultiroomGotoEnv(KitchenLevel):
             **kwargs: Description
         """
 
-        #assert args are legit
-        assert len(objectlist)==3
-
+        #Even if 2 rooms, we just leave things as they are cut cut off the top room
+        assert len(objectlist) == 3
+        self.number_of_rooms = 3
         #define all the objects in our world
         #any object can be an objective in this environment, so we don't need to keep track of which are pick-up-able
         #be sure to give input objects which are allowed to be picked up!!
         self.one_room = one_room
         if one_room:
             walls_gone = False
+            two_rooms = False
             room_reward = 0
+            self.number_of_rooms = 1
+        self.two_rooms = two_rooms
+
+
         self.deterministic_rooms = deterministic_rooms
-        self.objectlist = objectlist
         self.walls_gone = walls_gone
         self.stop_when_gone = stop_when_gone
         self.doors_start_open = doors_start_open
-        all_objects = set(functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[])) #a set of every object in our environment
+
+        if self.two_rooms:
+            all_objects = set(functools.reduce(lambda x, y: x + list(y.keys()), objectlist[:2],
+                                               []))  # a set of every object in our environment, ignore the last room
+            self.objectlist = objectlist[:2]
+            self.number_of_rooms = 2
+        else:
+            all_objects = set(functools.reduce(lambda x,y: x + list(y.keys()),objectlist,[])) #a set of every object in our environment
+            self.objectlist = objectlist
         self.num_objects = len(all_objects) #the number of unique objects in our environment
         self.pickup_required = pickup_required
         self.epsilon = epsilon
@@ -209,15 +222,19 @@ class MultiroomGotoEnv(KitchenLevel):
         # These lists contain the rooms where objects will be placed (if one_room isn't True) and the door colors
         # The door colors DO NOT necessarily correspond to the rooms above them.
         # Recall that colors correspond to the objects in the room, not the room's location
-        VALID_ROOMS_ = np.array([[0, 1], [1, 0], [2, 1]])
-        DOOR_COLORS = np.array(['red', 'green', 'blue'])
+        if self.two_rooms:
+            VALID_ROOMS_ = np.array([[0, 1], [1, 0]])
+            DOOR_COLORS = np.array(['red', 'green'])
+        else:
+            VALID_ROOMS_ = np.array([[0, 1], [1, 0], [2, 1]])
+            DOOR_COLORS = np.array(['red', 'green', 'blue'])
 
 
         # we permute valid rooms to randomize room order when deterministic_rooms is False
         if self.deterministic_rooms:
-            perm = np.array([0,1,2])
+            perm = np.arange(self.number_of_rooms)
         else:
-            perm = np.random.permutation(3)
+            perm = np.random.permutation(self.number_of_rooms)
         VALID_ROOMS = VALID_ROOMS_[perm].tolist()
 
         # generate grid
@@ -285,13 +302,15 @@ class MultiroomGotoEnv(KitchenLevel):
             if not self.one_room: # if we have multiple rooms, we add doors to the starting room (unlocked)
                 door1, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[0])], DOOR_COLORS[0], locked=False)
                 door2, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[1])], DOOR_COLORS[1], locked=False)
-                door3, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[2])], DOOR_COLORS[2], locked=False)
+                if not self.two_rooms:
+                    door3, _ = self.add_door(1, 1, room_to_door[tuple(VALID_ROOMS[2])], DOOR_COLORS[2], locked=False)
 
                 #potentially start with the doors open
                 if self.doors_start_open:
                     door1.is_open = True
                     door2.is_open = True
-                    door3.is_open = True
+                    if not self.two_rooms:
+                        door3.is_open = True
 
         #now we have to update the mission arr based on the room reward
         if self.room_reward_task_vector:
@@ -550,7 +569,8 @@ if __name__ == '__main__':
         one_room=False,
         deterministic_rooms=False,
         room_reward=.25,
-        room_reward_task_vector=True
+        room_reward_task_vector=True,
+        two_rooms=True
     )
 
     #env = Level_GoToImpUnlock(num_rows=2,num_cols=3)

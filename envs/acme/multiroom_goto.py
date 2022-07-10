@@ -40,6 +40,7 @@ class MultiroomGoto(dm_env.Environment):
                stop_when_gone=False,
                walls_gone=False,
                one_room = False,
+               two_rooms = False,
                deterministic_rooms = False,
                room_reward_task_vector = True,
                room_reward = 0.0,
@@ -75,6 +76,7 @@ class MultiroomGoto(dm_env.Environment):
                 stop_when_gone=stop_when_gone,
                 walls_gone=walls_gone,
                 one_room=one_room,
+                two_rooms = two_rooms,
                 deterministic_rooms = deterministic_rooms,
                 room_reward=room_reward,
                 room_reward_task_vector = room_reward_task_vector
@@ -92,6 +94,7 @@ class MultiroomGoto(dm_env.Environment):
                 stop_when_gone=stop_when_gone,
                 walls_gone=walls_gone,
                 one_room=one_room,
+                two_rooms = two_rooms,
                 deterministic_rooms = deterministic_rooms,
                 room_reward=room_reward,
                 room_reward_task_vector=room_reward_task_vector

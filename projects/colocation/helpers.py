@@ -31,6 +31,7 @@ def make_environment_sanity_check(
                                   simple: bool = False,
                                   nowalls: bool = False,
                                   one_room:bool=False,
+                                  two_rooms: bool = False,
                                   deterministic_rooms:bool=False,
                                   room_reward: float = 0.0,
                                   room_reward_task_vector: bool = True):
@@ -56,6 +57,7 @@ def make_environment_sanity_check(
         stop_when_gone=True,
         walls_gone=nowalls,
         one_room=one_room,
+        two_rooms = two_rooms,
         deterministic_rooms=deterministic_rooms,
         room_reward = room_reward,
         room_reward_task_vector=room_reward_task_vector,
