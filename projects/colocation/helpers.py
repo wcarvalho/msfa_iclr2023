@@ -42,7 +42,10 @@ def make_environment_sanity_check(
     else:
         objs = [{'pan': 1,'pot':1,'bowl':1}, {'tomato': 1,'lettuce':1, 'onion':1}, {'knife':1,'apple':1, 'orange':1}]
 
-    unique_objs = list(set(functools.reduce(lambda x,y: x + list(y.keys()),objs,[])))
+    if two_rooms:
+        unique_objs = list(set(functools.reduce(lambda x,y: x + list(y.keys()),objs[:2],[])))
+    else:
+        unique_objs = list(set(functools.reduce(lambda x, y: x + list(y.keys()), objs, [])))
 
     #build the environment
     env = MultiroomGoto(

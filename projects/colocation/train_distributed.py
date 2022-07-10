@@ -10,7 +10,7 @@ Command I run to train:
     TF_FORCE_GPU_ALLOW_GROWTH=true \
     WANDB_START_METHOD="thread" \
     python projects/colocation/train_distributed.py \
-    --agent r2d1 --wandb_name 7-9
+    --agent r2d1 --wandb_name 7-9 --two_rooms
 
 
 Command for tensorboard
@@ -88,6 +88,7 @@ def build_program(
   simple: bool = True,
   nowalls: bool = False,
   one_room: bool = False,
+  two_rooms: bool = False,
   deterministic_rooms: bool = False,
   room_reward: float = 0,
   train_task_as_z: int = 0,
@@ -110,7 +111,7 @@ def build_program(
   # load env stuff
   # -----------------------
   environment_factory = lambda is_eval: helpers.make_environment_sanity_check(simple=simple,
-                                      nowalls=nowalls, one_room=one_room, deterministic_rooms=deterministic_rooms,
+                                      nowalls=nowalls, one_room=one_room, two_rooms= two_rooms, deterministic_rooms=deterministic_rooms,
                                       room_reward=room_reward, room_reward_task_vector=room_reward_task_vector
                                       )
   env = environment_factory(False)
@@ -155,6 +156,8 @@ def build_program(
         wandb_name+='-simple'
     if one_room:
         wandb_name+='-one_room'
+    if two_rooms:
+        wandb_name+='-two_rooms'
     if nowalls:
         wandb_name+='-no_walls'
     if deterministic_rooms:
@@ -222,6 +225,7 @@ def main(_):
       simple=FLAGS.simple,
       nowalls=FLAGS.nowalls,
       one_room=FLAGS.one_room,
+      two_rooms = FLAGS.two_rooms,
       deterministic_rooms=FLAGS.deterministic_rooms,
       room_reward=FLAGS.room_reward,
       wandb_name=FLAGS.wandb_name,
