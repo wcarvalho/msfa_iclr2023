@@ -898,7 +898,6 @@ class PlaceSlicedTask(SliceTask):
     # restrict to wich can accept to_place
     container_type_objs = [o for o in self.kitchen.objects 
                             if o.accepts(self.object_to_slice)]
-    import ipdb; ipdb.set_trace()
     container_type_objs = remove_excluded(container_type_objs, exclude)
     assert len(container_type_objs) > 0, "no match found"
 
@@ -1476,6 +1475,10 @@ def make_composite(name: str):
   return functools.partial(CompositionClass, classes=classes)
 
 def get_task_class(name):
+  defaults = all_tasks()
+  if name in defaults:
+    return defaults[name]
+
   if 'and' in name:
     return make_composite(name)
   else:
