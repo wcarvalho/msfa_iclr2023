@@ -11,35 +11,35 @@ from babyai.levels.verifier import (ObjDesc, pos_next_to,
                             GoToInstr, OpenInstr, PickupInstr, PutNextInstr, BeforeInstr, AndInstr, AfterInstr)
 
 def reject_next_to(env, pos):
-    """
-    Function to filter out object positions that are right next to
-    the agent's starting point
-    """
+  """
+  Function to filter out object positions that are right next to
+  the agent's starting point
+  """
 
-    sx, sy = env.agent_pos
-    x, y = pos
-    d = abs(sx - x) + abs(sy - y)
-    return d < 2
+  sx, sy = env.agent_pos
+  x, y = pos
+  d = abs(sx - x) + abs(sy - y)
+  return d < 2
 
 def get_matching_objects(kitchen, object_types=None, matchfn=None):
-    """Get objects matching conditions
-    
-    Args:
-        kitchen (Kitchen): kitchen world containing objects
-        object_types (None, optional): list of object types to sample from
-        matchfn (TYPE, optional): criteria on objects to use for selecting
-            options
-    
-    Returns:
-        list: objects
-    """
-    if object_types is None and matchfn is None:
-        return []
+  """Get objects matching conditions
+  
+  Args:
+      kitchen (Kitchen): kitchen world containing objects
+      object_types (None, optional): list of object types to sample from
+      matchfn (TYPE, optional): criteria on objects to use for selecting
+          options
+  
+  Returns:
+      list: objects
+  """
+  if object_types is None and matchfn is None:
+      return []
 
-    if object_types:
-        return kitchen.objects_by_type(object_types)
-    else:
-        return [o for o in kitchen.objects if matchfn(o)]
+  if object_types:
+      return kitchen.objects_by_type(object_types)
+  else:
+      return [o for o in kitchen.objects if matchfn(o)]
 
 def pickedup(kitchen, obj):
   return kitchen.carrying.type == obj.type
