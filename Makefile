@@ -1,4 +1,5 @@
 step?=0
+port?=4442
 check?=25
 missions?=50
 roomsize?=7
@@ -60,4 +61,4 @@ jupyter_lab:
 	LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/ \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	DISPLAY=$(cuda) \
-	jupyter lab --port 9999 --no-browser --ip 0.0.0.0
+	jupyter lab --port $(port) --no-browser --ip 0.0.0.0
