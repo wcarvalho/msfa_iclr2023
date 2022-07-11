@@ -52,6 +52,7 @@ class R2D1Config(configs.R2D1Config):
   # Network hps
   memory_size: int = 512
   out_hidden_size: int = 128
+  out_layers: int = 1
   task_embedding: str='none'
   eval_network: bool = True
   vision_torso: str = 'atari'

@@ -38,7 +38,7 @@ class FarmUsfaHead(UsfaHead):
     self.vmap_multihead = vmap_multihead
     self.relational_net = relational_net
     self._cumulants_per_module = cumulants_per_module
-    self.sf_factory = lambda: hk.nets.MLP([self.hidden_size, self.num_actions*cumulants_per_module])
+    self.sf_factory = lambda: hk.nets.MLP([self.hidden_size]*self.head_layers+[self.num_actions*cumulants_per_module])
     self.policy_net_factory = lambda: hk.nets.MLP(
           [self.policy_size]*self.policy_layers)
     self.position_embed = position_embed

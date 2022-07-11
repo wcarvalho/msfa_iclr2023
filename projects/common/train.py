@@ -89,24 +89,29 @@ def run(env,
   # -----------------------
   # loggers + observers
   # -----------------------
-  use_wandb = True if wandb_init_kwargs is not None else False
-  logger_fn = lambda: make_logger(
+  logger_fn = None
+  env_logger = None
+  if log_dir:
+      use_wandb = True if wandb_init_kwargs is not None else False
+      logger_fn = lambda: make_logger(
+            log_dir=log_dir,
+            label=loss_label,
+            time_delta=log_every,
+            wandb=use_wandb,
+            max_number_of_steps=config.max_number_of_steps,
+            asynchronous=True)
+
+      env_logger = make_logger(
         log_dir=log_dir,
-        label=loss_label,
-        time_delta=log_every,
+        label=actor_label,
         wandb=use_wandb,
-        asynchronous=True)
+        max_number_of_steps=config.max_number_of_steps,
+        time_delta=log_every,
+        steps_key="steps")
 
-  env_logger = make_logger(
-    log_dir=log_dir,
-    label=actor_label,
-    wandb=use_wandb,
-    time_delta=log_every,
-    steps_key="steps")
-
-  if wandb_init_kwargs is not None:
-    import wandb
-    wandb.init(**wandb_init_kwargs)
+      if wandb_init_kwargs is not None:
+        import wandb
+        wandb.init(**wandb_init_kwargs)
 
   observers = observers or [LevelReturnObserver()]
   # -----------------------

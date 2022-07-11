@@ -1,3 +1,5 @@
+#!/bin/bash
+
 if [[ $1 = gpu ]]; then
   arch=gpu
 elif [[ $1 = cpu ]]; then

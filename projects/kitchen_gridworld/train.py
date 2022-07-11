@@ -83,11 +83,14 @@ def main(_):
     config['batch_size'] = 8
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
+    config['max_number_of_steps'] = 1_000
     # config['nmodules'] = 4
     # config['target_phi'] = True
-    # config['stop_w_grad'] = True
-    config['struct_policy_input'] = True
-    # config['struct_w'] = False
+    config['nmodules'] = 2
+    config['embed_task_dim'] = 2
+    # config['struct_policy_input'] = True
+    config['struct_w'] = False
+    config['dot_qheads'] = False
     print("="*50)
     print("="*20, "testing", "="*20)
     from pprint import pprint

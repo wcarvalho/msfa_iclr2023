@@ -55,7 +55,7 @@ def make_environment(evaluation: bool = False,
   task_reps_file = f"envs/babyai_kitchen/tasks/task_reps/{task_reps}.yaml"
   task_reps_file = os.path.join(path, task_reps_file)
   assert os.path.exists(task_reps_file)
-  with open(os.path.join(path, task_reps_file), 'r') as f:
+  with open(task_reps_file, 'r') as f:
     task_reps = yaml.load(f, Loader=yaml.SafeLoader)
 
   tasks_file = f"envs/babyai_kitchen/tasks/v1/{setting}.yaml"

@@ -77,6 +77,7 @@ def make_logger(
   asynchronous: bool = False,
   tensorboard=True,
   wandb=False,
+  max_number_of_steps: int=None,
   time_delta: float=10.0,
   steps_key: str=None) -> loggers.Logger:
   """Creates ACME loggers as we wish.
@@ -100,7 +101,7 @@ def make_logger(
       TFSummaryLogger(log_dir, label=label, steps_key=steps_key))
 
   if wandb:
-    _loggers.append(WandbLogger(label=label, steps_key=steps_key))
+    _loggers.append(WandbLogger(label=label, steps_key=steps_key, max_number_of_steps=max_number_of_steps))
 
   # Dispatch to all writers and filter Nones.
   logger = loggers.Dispatcher(_loggers, copy_numpy)  # type: ignore
@@ -141,7 +142,8 @@ class WandbLogger(base.Logger):
       self,
       label: str = 'Logs',
       labels_skip=('Loss'),
-      steps_key: Optional[str] = None
+      steps_key: Optional[str] = None,
+      max_number_of_steps: int = None,
   ):
     """Initializes the logger.
 
@@ -156,11 +158,28 @@ class WandbLogger(base.Logger):
     self._iter = 0
     # self.summary = tf.summary.create_file_writer(logdir)
     self._steps_key = steps_key
+    self.max_number_of_steps = max_number_of_steps
+    if max_number_of_steps is not None:
+      logging.warning(f"Will exit after {max_number_of_steps} steps")
+
+  def try_terminate(self, step: int):
+    if step > self.max_number_of_steps:
+      try:
+        logging.warning("Exiting launchpad")
+        import launchpad as lp  # pylint: disable=g-import-not-at-top
+        lp.stop()
+      except Exception as e:
+        pass
+
+      if step > int(1.1*self.max_number_of_steps):
+        # emergency exit
+        import os; os._exit(0)
+
 
   def write(self, values: base.LoggingData):
     if self._steps_key is not None and self._steps_key not in values:
-      logging.warn('steps key "%s" not found. Skip logging.', self._steps_key)
-      logging.warn('Available keys:', str(values.keys()))
+      logging.warning('steps key "%s" not found. Skip logging.', self._steps_key)
+      logging.warning('Available keys:', str(values.keys()))
       return
 
     step = values[self._steps_key] if self._steps_key is not None else self._iter
@@ -186,9 +205,21 @@ class WandbLogger(base.Logger):
 
     to_log[f'{self.label}/step']  = step
 
+    try:
+      wandb.log(to_log)
+    except Exception as e:
+      pass
 
-    wandb.log(to_log)
     self._iter += 1
+    if self.max_number_of_steps is not None:
+      if self._steps_key == 'actor_steps':
+        self.try_terminate(step)
+      else:
+        try:
+          self.try_terminate(values['actor_steps'])
+        except Exception as e:
+          pass
+
 
   def close(self):
     pass

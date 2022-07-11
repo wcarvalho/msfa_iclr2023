@@ -115,6 +115,7 @@ class UsfaHead(hk.Module):
     num_actions: int,
     state_dim: int,
     hidden_size : int=128,
+    head_layers: int=1,
     policy_size : int=32,
     policy_layers : int=2,
     variance: float=0.1,
@@ -156,6 +157,7 @@ class UsfaHead(hk.Module):
     self.policy_layers = policy_layers
     self.multihead = multihead
     self.sf_out_dim = state_dim
+    self.head_layers = head_layers
 
     # -----------------------
     # function to combine state + policy
@@ -181,11 +183,11 @@ class UsfaHead(hk.Module):
       else:
         self.sf_q_net = DuellingSfQNet(num_actions=num_actions, 
           num_cumulants=self.sf_out_dim,
-          hidden_sizes=[hidden_size])
+          hidden_sizes=[hidden_size]*self.head_layers)
     else:
       self.sf_q_net = SfQNet(num_actions=num_actions,
         num_cumulants=self.sf_out_dim,
-        hidden_sizes=[hidden_size],
+        hidden_sizes=[hidden_size]*self.head_layers,
         multihead=multihead)
 
   def __call__(self,

@@ -31,9 +31,9 @@ class TrainTasksWrapper(base.EnvironmentWrapper):
     # env only needed on resets
     self.train_tasks = {t:get_task_class(t)(env=None, kitchen=kitchen_copy, task_reps=task_reps) for t in train_tasks}
 
-    from pprint import pprint
-    print("="*10, f"{len(train_tasks)} train tasks", "="*10)
-    pprint(train_tasks)
+    # from pprint import pprint
+    # print("="*10, f"{len(train_tasks)} train tasks", "="*10)
+    # pprint(train_tasks)
 
     # -----------------------
     # obs stuff

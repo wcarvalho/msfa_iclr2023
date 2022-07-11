@@ -102,6 +102,7 @@ def build_program(
   if debug:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 100
+    config['max_number_of_steps'] = 50_000
     config['learning_rate'] = 1e-2
     # config['cov_loss'] = 'l2_corr'
     config['cov_coeff'] = None
