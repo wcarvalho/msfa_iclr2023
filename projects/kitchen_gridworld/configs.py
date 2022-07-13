@@ -31,7 +31,7 @@ class ModR2d1Config(R2D1Config):
 class USFAConfig(R2D1Config, configs.USFAConfig):
   """Extra configuration options for USFA agent."""
   policy_layers: int = 2
-  eval_task_support: str='train_eval'
+  eval_task_support: str='eval'
 
 @dataclasses.dataclass
 class RewardConfig(configs.RewardConfig):
@@ -110,8 +110,6 @@ class FarmModelConfig(FarmConfig):
   contrast_time_coeff: float = 0.0
   extra_module_negatives: int = 4
   extra_time_negatives: int = 0
-
-
 
 
 

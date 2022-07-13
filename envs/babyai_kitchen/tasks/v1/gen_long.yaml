@@ -182,3 +182,7 @@ test:
     num_dists: 0
     taskarg_options:
       x: cookfood1
+
+
+actor_label: actor_long
+eval_label: evaluator_long

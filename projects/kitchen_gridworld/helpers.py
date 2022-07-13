@@ -222,7 +222,32 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     NetKwargs=dict(
       config=config,
       env_spec=env_spec,
-      task_input='qfn',
+      task_input='qfn_concat',
+      task_embedding='language',
+      )
+    LossFn = td_agent.R2D2Learning
+    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
+    LossFnKwargs.update(
+      loss=config.r2d1_loss,
+      mask_loss=config.q_mask_loss)
+    loss_label = 'r2d1'
+    eval_network = config.eval_network
+
+  elif agent == "r2d1_dot":
+  # Recurrent DQN (2.2M params)
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.R2D1Config(),
+        configs.LangConfig(),
+      ],
+      dict_configs=default_config)
+    config.memory_size = 550
+
+    NetworkCls=nets.r2d1 # default: 2M params
+    NetKwargs=dict(
+      config=config,
+      env_spec=env_spec,
+      task_input='qfn_dot',
       task_embedding='language',
       )
     LossFn = td_agent.R2D2Learning
@@ -351,6 +376,52 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
       use_separate_eval=True,
       task_embedding='language')
 
+  elif agent == "msf_4mod_small":
+  # USFA + cumulants from FARM + Q-learning
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.QAuxConfig(),
+        configs.ModularUSFAConfig(),
+        configs.RewardConfig(),
+        configs.FarmModelConfig(),
+        configs.LangConfig(),
+      ],
+      dict_configs=default_config)
+    config.module_size=140
+    config.nmodules=4
+    config.memory_size=None
+    return msf(
+      config,
+      env_spec,
+      NetworkCls=nets.msf,
+      predict_cumulants=True,
+      learn_model=True,
+      use_separate_eval=True,
+      task_embedding='language')
+
+  elif agent == "msf_2mod_small":
+  # USFA + cumulants from FARM + Q-learning
+    config = data_utils.merge_configs(
+      dataclass_configs=[
+        configs.QAuxConfig(),
+        configs.ModularUSFAConfig(),
+        configs.RewardConfig(),
+        configs.FarmModelConfig(),
+        configs.LangConfig(),
+      ],
+      dict_configs=default_config)
+    config.module_size=None
+    config.nmodules=2
+    config.memory_size=460
+
+    return msf(
+      config,
+      env_spec,
+      NetworkCls=nets.msf,
+      predict_cumulants=True,
+      learn_model=True,
+      use_separate_eval=True,
+      task_embedding='language')
 
   elif agent == "msf_monolithic":
   # USFA + cumulants from FARM + Q-learning

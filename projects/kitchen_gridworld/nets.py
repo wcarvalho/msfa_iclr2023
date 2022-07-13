@@ -17,6 +17,7 @@ from modules.basic_archs import BasicRecurrent
 from modules.embedding import BabyAIEmbedding, OAREmbedding, LanguageTaskEmbedder, Identity, LinearTaskEmbedding
 from modules import farm
 from modules.relational import RelationalLayer, RelationalNet
+from modules.dot_qhead import DotQMlp, DotQMlpInputs
 from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulants
 from modules.farm_usfa import FarmUsfaHead, RelationalFarmUsfaHead
 from modules.farm_uvfa import FarmUvfaHead, FarmUvfaInputs
@@ -239,7 +240,10 @@ def r2d1(config, env_spec,
   task_dim = task_shape[-1]
 
   inputs_prep_fn = convert_floats
-  if task_input != 'none':
+  if task_input == 'none':
+    prediction_prep_fn = None # just use memory_out
+    memory_prep_fn=None
+  elif task_input != 'none':
     task_embedder, embed_fn = build_task_embedder(
       task_embedding=task_embedding,
       config=config,
@@ -253,17 +257,27 @@ def r2d1(config, env_spec,
       oar = embedder(inputs, obs)
       return jnp.concatenate((oar, task), axis=-1)
 
-  if task_input == 'qfn':
-    memory_prep_fn = embedder
-    prediction_prep_fn = r2d1_prediction_prep_fn
-  elif task_input == 'memory':
-    memory_prep_fn=task_in_memory_prep_fn
-    prediction_prep_fn = None # just use memory_out
-  elif task_input == 'none':
-    prediction_prep_fn = None # just use memory_out
-    memory_prep_fn=None
-  else:
-    raise RuntimeError(task_input)
+    if task_input == 'qfn_concat':
+      memory_prep_fn = embedder
+      prediction_prep_fn = r2d1_prediction_prep_fn
+      prediction = DuellingMLP(num_actions,
+        hidden_sizes=[config.out_hidden_size]*config.out_q_layers)
+    elif task_input == 'qfn_dot':
+      memory_prep_fn = embedder
+      def make_dot_inputs(inputs, memory_out, **kwargs):
+        return DotQMlpInputs(
+          inputs=r2d1_prediction_prep_fn(inputs, memory_out),
+          task=inputs.observation.task,
+          )
+      prediction_prep_fn = make_dot_inputs
+      prediction = DotQMlp(num_actions,
+        task_dim=config.embed_task_dim,
+        hidden_sizes=[config.out_hidden_size]*config.out_q_layers)
+    elif task_input == 'memory':
+      memory_prep_fn=task_in_memory_prep_fn
+      prediction_prep_fn = None # just use memory_out
+    else:
+      raise RuntimeError(task_input)
 
   net = BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
@@ -272,7 +286,7 @@ def r2d1(config, env_spec,
     memory_prep_fn=memory_prep_fn,
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=prediction_prep_fn,
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]*config.out_layers),
+    prediction=prediction,
     **kwargs
   )
   return net
@@ -373,7 +387,7 @@ def modr2d1(config, env_spec,
     prediction_prep_fn=prediction_prep_fn,
     prediction=FarmUvfaHead(
       num_actions=num_actions,
-      hidden_sizes=[config.out_hidden_size]*config.out_layers,
+      hidden_sizes=[config.out_hidden_size]*config.out_q_layers,
       task_embed_dim=config.policy_size,
       task_embed_layers=config.policy_layers,
       struct_w_input=config.struct_w,
@@ -438,7 +452,7 @@ def usfa(config, env_spec,
       num_actions=num_actions,
       state_dim=sf_out_dim,
       hidden_size=config.out_hidden_size,
-      head_layers=config.out_layers,
+      head_layers=config.out_q_layers,
       policy_size=config.policy_size,
       variance=config.variance,
       nsamples=config.npolicies,
@@ -600,7 +614,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
         num_actions=num_actions,
         state_dim=sf_out_dim,
         hidden_size=config.out_hidden_size,
-        head_layers=config.out_layers,
+        head_layers=config.out_q_layers,
         policy_size=config.policy_size,
         variance=config.variance,
         nsamples=config.npolicies,
@@ -646,7 +660,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
             num_actions=num_actions,
             cumulants_per_module=sf_out_dim//config.nmodules,
             hidden_size=hidden_size,
-            head_layers=config.out_layers,
+            head_layers=config.out_q_layers,
             policy_size=config.policy_size,
             variance=config.variance,
             nsamples=config.npolicies,
@@ -684,7 +698,7 @@ def build_msf_head(config, sf_out_dim, num_actions):
             num_actions=num_actions,
             cumulants_per_module=sf_out_dim//config.nmodules,
             hidden_size=hidden_size,
-            head_layers=config.out_layers,
+            head_layers=config.out_q_layers,
             policy_size=config.policy_size,
             variance=config.variance,
             nsamples=config.npolicies,

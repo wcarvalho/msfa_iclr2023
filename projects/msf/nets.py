@@ -20,7 +20,7 @@ from modules.relational import RelationalLayer, RelationalNet
 from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulants
 from modules.farm_usfa import FarmUsfaHead
 
-from modules.vision import AtariVisionTorso, BabyAIVisionTorso
+from modules.vision import AtariVisionTorso, BabyAIVisionTorso, AtariImpalaTorso
 from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, ConcatFlatStatePolicy, UniqueStatePolicyPairs
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules import usfa as usfa_modules
@@ -70,6 +70,8 @@ def build_vision_net(config, **kwargs):
     vision = AtariVisionTorso(**kwargs)
   elif config.vision_torso == 'babyai':
     vision = BabyAIVisionTorso(**kwargs)
+  elif config.vision_torso == 'impala':
+    vision = AtariImpalaTorso(**kwargs)
   else:
     raise NotImplementedError
   return vision
@@ -107,7 +109,7 @@ def r2d1(config, env_spec, task_input=True, **kwargs):
   net = BasicRecurrent(
     inputs_prep_fn=convert_floats,
     vision_prep_fn=get_image_from_inputs,
-    vision=AtariVisionTorso(flatten=True),
+    vision=build_vision_net(config, flatten=True),
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=prediction_prep_fn,

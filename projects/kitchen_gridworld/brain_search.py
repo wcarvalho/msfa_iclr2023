@@ -70,7 +70,7 @@ def get(search, agent=''):
       } for seed  in [1, 2, 3, 4]
     ]
 
-  elif search == 'long_fixed':
+  elif search == 'gen_long':
     """
     Next:
     """
@@ -78,7 +78,7 @@ def get(search, agent=''):
       {
         "seed": tune.grid_search([seed]),
         "agent": tune.grid_search([agent]),
-        "setting": tune.grid_search(['long']),
+        "setting": tune.grid_search(['gen_long']),
         "max_number_of_steps": tune.grid_search([40_000_000]),
       } for seed in [1, 2, 3, 4]
     ]

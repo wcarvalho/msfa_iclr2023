@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ $1 = gpu ]]; then
-  arch=gpu
+  arch=gpu2
 elif [[ $1 = cpu ]]; then
   arch=cpu
 else
@@ -9,12 +9,26 @@ else
   exit
 fi
 
-conda env create --force -f $arch.yaml
+conda create -n acmejax python=3.9 --force
+
 eval "$(conda shell.bash hook)"
 conda activate acmejax
 
-conda install -c anaconda cudnn==8.2.1 --force
+##############################################
+# For Minihack
+##############################################
+# missing: libbz2-dev build-essential ninja-build software-properties-common
+conda install -c anaconda cmake
+conda install -c conda-forge bison
 
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${HOME}/miniconda3/envs/acmejax/lib/
+
+##############################################
+# Main installation
+##############################################
+conda env update --name acmejax --file $arch.yaml
+
+conda install -c anaconda cudnn==8.2.1 --force
 
 ##############################################
 # ACME
@@ -47,7 +61,6 @@ cd ..
 # ProcGen (FruitBot)
 ##############################################
 cd envs/fruitbot
-conda env update --name acmejax --file environment.yml
 pip install -e .
 cd ../..
 
