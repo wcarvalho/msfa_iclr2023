@@ -37,7 +37,7 @@ test_sync:
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python -m ipdb -c continue projects/kitchen_combo/train.py \
 	--agent $(agent) \
-	--env_setting $(env) \
+	--env $(env) \
 	--test=True \
 	--wandb=$(wandb_test)
 

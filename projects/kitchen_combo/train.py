@@ -14,7 +14,6 @@ import acme
 import functools
 
 from agents import td_agent
-from projects.kitchen_combo import helpers
 from projects.common.train import run
 from utils import make_logger, gen_log_dir
 
@@ -23,6 +22,7 @@ from utils import make_logger, gen_log_dir
 # -----------------------
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 flags.DEFINE_string('env_setting', 'medium', 'which environment setting.')
+flags.DEFINE_string('env', 'kitchen_combo', 'which environment.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('test', True, 'whether testing.')
@@ -42,9 +42,6 @@ FLAGS = flags.FLAGS
 
 
 def main(_):
-  env = helpers.make_environment(setting=FLAGS.env_setting, evaluation=FLAGS.evaluate)
-  env_spec = acme.make_environment_spec(env)
-
   config = dict()
   if FLAGS.test:
     config['max_replay_size'] = 10_000
@@ -63,13 +60,24 @@ def main(_):
     print("="*20, "testing", "="*20)
     print("="*50)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
+  if FLAGS.env == "kitchen_combo":
+    from projects.kitchen_combo import combo_helpers
+    env = combo_helpers.make_environment(setting=FLAGS.env_setting, evaluation=FLAGS.evaluate)
+    env_spec = acme.make_environment_spec(env)
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = combo_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
+  elif FLAGS.env == "fruitbot":
+    from projects.kitchen_combo import fruitbot_helpers
+    env = fruitbot_helpers.make_environment(evaluation=FLAGS.evaluate)
+    env_spec = acme.make_environment_spec(env)
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = fruitbot_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
+  else:
+    raise NotImplementedError(FLAGS.env)
 
   # -----------------------
   # logger
   # -----------------------
   log_dir = gen_log_dir(
-    base_dir="results/kitchen_combo/local",
+    base_dir=f"results/{FLAGS.env}/local",
     agent=FLAGS.agent,
     seed=config.seed)
 
