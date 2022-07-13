@@ -23,7 +23,8 @@ import jax
 DEFAULT_NUM_ACTORS=3
 DEFAULT_LABEL=''
 
-def create_and_run_program(config, build_program_fn, root_path, folder, group, wandb_init_kwargs, default_env_kwargs=None, use_wandb=True, terminal='current_terminal', skip=True, ray=False, debug=False, build_kwargs=None):
+def create_and_run_program(config, build_program_fn, root_path, folder, group, wandb_init_kwargs, default_env_kwargs=None, use_wandb=True, terminal='current_terminal', skip=True, ray=False, debug=False, build_kwargs=None,
+  log_every=30.0):
   """Create and run launchpad program
   """
   build_kwargs = build_kwargs or dict()
@@ -105,6 +106,7 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     env_kwargs=env_kwargs,
     path=root_path,
     log_dir=log_dir,
+    log_every=log_every,
     save_config_dict=save_config_dict,
     build=False,
     **build_kwargs,
@@ -114,9 +116,9 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
   local_resources = {
       "actor": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
       "evaluator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      # "counter": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      # "replay": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
-      # "coordinator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      "counter": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      "replay": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
+      "coordinator": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
   }
   if cuda:
     local_resources['learner'] = PythonProcess(
