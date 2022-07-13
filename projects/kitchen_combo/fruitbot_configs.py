@@ -6,6 +6,7 @@ from projects.kitchen_gridworld import configs
 class R2D1Config(configs.R2D1Config):
   vision_torso: str = 'impala'
   memory_size: int = 256
+  out_hidden_size: int = 512
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config, configs.USFAConfig):

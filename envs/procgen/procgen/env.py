@@ -14,6 +14,11 @@ MAX_STATE_SIZE = 2 ** 20
 ENV_NAMES = [
     "fruitbot",
     "foodbot",
+    "fruitbotnn",
+    "fruitbotnp",
+    "fruitbotpn",
+    "fruitbotzp",
+    "fruitbotpz",
 ]
 
 EXPLORATION_LEVEL_SEEDS = {}

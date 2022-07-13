@@ -29,14 +29,12 @@ from projects.msf import helpers as msf_helpers
 from projects.kitchen_combo import fruitbot_configs
 
 from envs.gym_multitask import MultitaskGym
+from envs.procgen_env import ProcgenGymTask
 
-class ComboObsTuple(NamedTuple):
-  """Container for (Observation, Action, Reward) tuples."""
-  image: types.Nest
-  mission: types.Nest
-  train_tasks: types.Nest
-
-def make_environment(evaluation: bool = False) -> dm_env.Environment:
+def make_environment(
+  setting='easy',
+  num_levels=200,
+  evaluation: bool = False) -> dm_env.Environment:
   """Loads environments.
   
   Args:
@@ -47,24 +45,32 @@ def make_environment(evaluation: bool = False) -> dm_env.Environment:
   """
   if evaluation:
     all_level_kwargs={
-      '0,1': dict(
-        env='procgen:procgen-fruitbot-v0',
-        task=[0,1]),
-      '1,0': dict(
-        env='procgen:procgen-foodbot-v0',
-        task=[1,0])
+      '-1,-1': dict(
+        env='fruitbotnn',
+        task=[-1,-1]),
+      '-1,1': dict(
+        env='fruitbotnp',
+        task=[-1,1]),
+      '1,-1': dict(
+        env='fruitbotpn',
+        task=[1,-1])
     }
   else:
     all_level_kwargs={
       '0,1': dict(
-        env='procgen:procgen-fruitbot-v0',
+        env='fruitbotzp',
         task=[0,1]),
       '1,0': dict(
-        env='procgen:procgen-foodbot-v0',
+        env='fruitbotpz',
         task=[1,0])
     }
 
-  env = MultitaskGym(all_level_kwargs=all_level_kwargs)
+  env = MultitaskGym(
+    all_level_kwargs=all_level_kwargs,
+    EnvCls=ProcgenGymTask,
+    distribution_mode=setting,
+    num_levels=num_levels,
+    )
 
   wrapper_list = [
     wrappers.ObservationActionRewardWrapper,
