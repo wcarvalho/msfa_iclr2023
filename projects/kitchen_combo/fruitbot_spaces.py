@@ -38,6 +38,17 @@ def get(search, agent):
           # 'out_q_layers': tune.grid_search([1, 2]),
         }
     ]
+  elif search == 'r2d1_bs':
+    space = [
+        {
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['r2d1']),
+          "max_number_of_steps": tune.grid_search([50_000_000]),
+          'setting': tune.grid_search(['original_easy']),
+          'batch_size': tune.grid_search([64, 128]),
+          # 'out_q_layers': tune.grid_search([1, 2]),
+        }
+    ]
   else:
     raise NotImplementedError(search)
 

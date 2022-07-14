@@ -68,7 +68,7 @@ cd ../..
 ##############################################
 # JAX (CUDA)
 ##############################################
-if [[ $arch = 'gpu' ]]; then
+if [[ $arch = 'gpu_procgen_minihack' ]]; then
   pip install --upgrade jax[cuda]==0.2.27 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
   # EXPECTED ERRORS for jax>=0.2.26
   # 1. rlax 0.1.1 requires <=0.2.21

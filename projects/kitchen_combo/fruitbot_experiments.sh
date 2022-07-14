@@ -1,7 +1,7 @@
-# make train_search_fruitbot search=r2d1 cuda=0,1 ray=1
-make train_search_fruitbot search=r2d1 cuda=0,1,2,3 ray=1
-make train_search_fruitbot search=r2d1_lr cuda=0,1,2,3 ray=1
-make train_search_fruitbot search=r2d1_nstep cuda=0,1,2,3 ray=1
+make train_search_fruitbot search=r2d1_bs cuda=0,1 ray=1
+make train_search_fruitbot search=r2d1 cuda=0,1,2,3 ray=1 #R11
+make train_search_fruitbot search=r2d1_lr cuda=0,1,2,3 ray=1 #R13
+make train_search_fruitbot search=r2d1_nstep cuda=0,1,2,3 ray=1 #18
 # make train_search search=msf_reward2 cuda=0,1,2,3 terminal=current_terminal, ray=1
 
 
