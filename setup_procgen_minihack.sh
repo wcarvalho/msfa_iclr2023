@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ $1 = gpu ]]; then
-  arch=gpu2
+  arch=gpu_procgen_minihack
 elif [[ $1 = cpu ]]; then
   arch=cpu
 else
@@ -60,7 +60,7 @@ cd ..
 ##############################################
 # ProcGen (FruitBot)
 ##############################################
-cd envs/fruitbot
+cd envs/procgen
 pip install -e .
 cd ../..
 

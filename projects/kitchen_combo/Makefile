@@ -1,8 +1,8 @@
 agent?=msf
+
+
 cuda?=2,3
-folder?='results/kitchen_combo/final'
 wandb?=True
-env?=medium
 custom_loggers?=True
 date?=False
 num_gpus?=1
@@ -29,7 +29,8 @@ killall:
 
 eval?=1
 wandb_test?=False
-env?='medium'
+env?='fruitbot'
+setting?=''
 init?=0
 
 test_sync:
@@ -38,6 +39,7 @@ test_sync:
 	python -m ipdb -c continue projects/kitchen_combo/train.py \
 	--agent $(agent) \
 	--env $(env) \
+	--env_setting $(setting) \
 	--test=True \
 	--wandb=$(wandb_test)
 
@@ -45,30 +47,49 @@ test_async:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python -m ipdb -c continue projects/kitchen_combo/train_distributed.py \
-	--agent $(agent)
+	--agent $(agent) \
+	--env $(env)
 
-train_search:
+train_search_combo:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/kitchen_combo/train_search.py \
-	--folder $(folder) \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project $(project) \
+	--wandb_project 'kitchen_combo' \
+	--group $(group) \
+	--search $(search) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--spaces combo_spaces \
+	--terminal $(terminal) \
+	--agent $(agent) \
+	--debug_search $(debug)
+
+train_search_fruitbot:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/kitchen_combo/train_search.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project 'fruitbot' \
 	--group $(group) \
 	--search $(search) \
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
 	--terminal $(terminal) \
+	--spaces fruitbot_spaces \
 	--agent $(agent) \
+	--debug_search $(debug)
+
 
 meta_search:
 	cd ../..; \
 	echo ${searches}; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/common/train_search_meta.py \
-	--folder $(folder) \
 	--wandb=$(wandb) \
 	--python_file="projects/kitchen_combo/train_search.py" \
 	--date=$(date) \

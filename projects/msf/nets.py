@@ -113,7 +113,8 @@ def r2d1(config, env_spec, task_input=True, **kwargs):
     memory_prep_fn=OAREmbedding(num_actions=num_actions),
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=prediction_prep_fn,
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    prediction=DuellingMLP(num_actions,
+        hidden_sizes=[config.out_hidden_size]*config.out_q_layers),
     **kwargs
   )
   return net
@@ -144,7 +145,8 @@ def r2d1_noise(config, env_spec, eval_noise=True, **net_kwargs):
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=add_noise_concat, # add noise
     evaluation_prep_fn=evaluation_prep_fn, # (maybe) don't add noise
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    prediction=DuellingMLP(num_actions,
+        hidden_sizes=[config.out_hidden_size]*config.out_q_layers),
     **net_kwargs
   )
 
@@ -170,7 +172,8 @@ def r2d1_farm(config, env_spec, **net_kwargs):
       task_input=config.farm_task_input),
     memory=build_farm(config, return_attn=True),
     prediction_prep_fn=prediction_prep_fn,
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    prediction=DuellingMLP(num_actions,
+        hidden_sizes=[config.out_hidden_size]*config.out_q_layers),
     **net_kwargs
   )
 
@@ -204,6 +207,7 @@ def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False, **ne
       num_actions=num_actions,
       state_dim=state_dim,
       hidden_size=config.out_hidden_size,
+      head_layers=config.out_q_layers,
       policy_size=config.policy_size,
       variance=config.variance,
       nsamples=config.npolicies,
@@ -265,6 +269,7 @@ def build_usfa_farm_head(config, state_dim, num_actions, farm_memory, sf_input_f
       num_actions=num_actions,
       state_dim=state_dim,
       hidden_size=config.out_hidden_size,
+      head_layers=config.out_q_layers,
       policy_size=config.policy_size,
       variance=config.variance,
       nsamples=config.npolicies,
@@ -367,6 +372,7 @@ def build_msf_head(config, state_dim, num_actions):
         num_actions=num_actions,
         state_dim=state_dim,
         hidden_size=config.out_hidden_size,
+        head_layers=config.out_q_layers,
         policy_size=config.policy_size,
         variance=config.variance,
         nsamples=config.npolicies,
@@ -415,6 +421,7 @@ def build_msf_head(config, state_dim, num_actions):
           num_actions=num_actions,
           cumulants_per_module=cumulants_per_module,
           hidden_size=config.out_hidden_size,
+          head_layers=config.out_q_layers,
           policy_size=config.policy_size,
           variance=config.variance,
           nsamples=config.npolicies,

@@ -111,7 +111,6 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     build=False,
     **build_kwargs,
     )
-  program = agent.build()
 
   local_resources = {
       "actor": PythonProcess(env={"CUDA_VISIBLE_DEVICES": ""}),
@@ -124,10 +123,14 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     local_resources['learner'] = PythonProcess(
       env={"CUDA_VISIBLE_DEVICES": str(cuda)})
 
+  print('debug', debug)
   if debug:
+    print("="*50)
+    print("LOCAL RESOURCES")
     print(local_resources)
     return
 
+  program = agent.build()
   controller = lp.launch(program,
     lp.LaunchType.LOCAL_MULTI_PROCESSING,
     terminal=terminal, 
@@ -207,7 +210,7 @@ def run_experiments(
   default_env_kwargs=None,
   use_wandb=True,
   terminal='current_terminal',
-  num_cpus=4,
+  num_cpus=3,
   num_gpus=1,
   skip=True,
   wait_time=30,
@@ -245,6 +248,7 @@ def run_experiments(
           terminal=terminal,
           build_kwargs=build_kwargs,
           ray=True,
+          debug=debug,
           skip=skip)
         )
       p.start()

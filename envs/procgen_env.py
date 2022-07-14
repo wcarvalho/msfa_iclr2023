@@ -16,8 +16,8 @@ class ProcgenGymTask(object):
       env_name=env,
       num_envs=1,
       num_threads=1,
-      distribution_mode=distribution_mode,
-      num_levels=num_levels)
+      distribution_mode=str(distribution_mode),
+      num_levels=int(num_levels))
     self.task = np.array(task, dtype=np.int32)
     # custom observation space
     image_space = self._env.observation_space['rgb']

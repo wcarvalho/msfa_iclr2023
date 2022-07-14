@@ -35,7 +35,7 @@ class R2D1Config(configs.R2D1Config):
   # Replay options
   samples_per_insert_tolerance_rate: float = 0.1
   samples_per_insert: float = 6.0 # 0.0=single process
-  min_replay_size: int = 100
+  min_replay_size: int = 100 
   max_replay_size: int = 100_000
   batch_size: int = 32
   store_lstm_state: bool = True
@@ -57,6 +57,7 @@ class R2D1Config(configs.R2D1Config):
   eval_network: bool = True
   vision_torso: str = 'atari'
   r2d1_loss: str = 'n_step_q_learning'
+  task_gate: str='none'
 
 @dataclasses.dataclass
 class NoiseConfig(R2D1Config):
@@ -99,6 +100,7 @@ class USFAConfig(R2D1Config):
   stop_w_grad: bool=False
   stop_z_grad: bool=False
   target_phi: bool=False
+
 
 @dataclasses.dataclass
 class QAuxConfig:
@@ -169,6 +171,7 @@ class ModularUSFAConfig(USFAConfig):
   relate_w_init: float=2.
   resid_w_init: float=2.
   relate_b_init: float=2.
+  relation_position_embed: int = 16 # whether to add position embeddings to modules
   resid_mlp: bool=False
   relate_residual: str="sigtanh"
   res_relu_gate: bool=True
@@ -176,6 +179,11 @@ class ModularUSFAConfig(USFAConfig):
   argmax_mod: bool=False # argmax over modules
   qaux_mask_loss: bool=True
   sf_mask_loss: bool=True
+
+  cov_loss: str = 'l1_cov' # apply L1 per module or for all phi
+  cumulant_source: str = 'lstm' # whether to normalize cumulants
+  phi_conv_size: int = 0 # size of conv for cumulants
+  module_l1: bool = False # apply L1 per module or for all phi
 
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):

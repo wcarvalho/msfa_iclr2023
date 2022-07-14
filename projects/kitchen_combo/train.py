@@ -21,8 +21,8 @@ from utils import make_logger, gen_log_dir
 # flags
 # -----------------------
 flags.DEFINE_string('agent', 'r2d1', 'which agent.')
-flags.DEFINE_string('env_setting', 'medium', 'which environment setting.')
-flags.DEFINE_string('env', 'kitchen_combo', 'which environment.')
+flags.DEFINE_string('env_setting', '', 'which environment setting.')
+flags.DEFINE_string('env', 'fruitbot', 'which environment.')
 flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('test', True, 'whether testing.')
@@ -46,14 +46,15 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['trace_length'] = 4
-    config['batch_size'] = 8
-    config['word_dim'] = 0
+    # config['trace_length'] = 4
+    # config['batch_size'] = 32
+    config['importance_sampling_exponent'] = .6
+    # config['trace_length'] = 40
     # config['task_embedding'] = 'embedding'
-    config['task_embedding'] = 'struct_embed' 
-    # config['stop_w_grad'] = True
-    config['sf_net'] = 'relational_action'
-    config['relate_residual'] = 'concat'
+    # config['task_embedding'] = 'struct_embed' 
+    # # config['stop_w_grad'] = True
+    # config['sf_net'] = 'relational_action'
+    # config['relate_residual'] = 'concat'
 
     # config['argmax_mod'] = True
     print("="*50)
@@ -62,12 +63,16 @@ def main(_):
 
   if FLAGS.env == "kitchen_combo":
     from projects.kitchen_combo import combo_helpers
-    env = combo_helpers.make_environment(setting=FLAGS.env_setting, evaluation=FLAGS.evaluate)
+    env = combo_helpers.make_environment(
+      setting=FLAGS.env_setting or 'medium',
+      evaluation=FLAGS.evaluate)
     env_spec = acme.make_environment_spec(env)
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = combo_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
   elif FLAGS.env == "fruitbot":
     from projects.kitchen_combo import fruitbot_helpers
-    env = fruitbot_helpers.make_environment(evaluation=FLAGS.evaluate)
+    env = fruitbot_helpers.make_environment(
+      setting=FLAGS.env_setting or 'easy',
+      evaluation=FLAGS.evaluate)
     env_spec = acme.make_environment_spec(env)
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = fruitbot_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
   else:

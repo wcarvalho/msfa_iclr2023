@@ -28,7 +28,7 @@ from envs.babyai_kitchen.kitchen_combo_level import KitchenComboLevel
 from projects.kitchen_gridworld import nets
 from projects.kitchen_gridworld import helpers as kitchen_helpers
 from projects.msf import helpers as msf_helpers
-from projects.kitchen_combo import configs
+from projects.kitchen_combo import combo_configs
 
 class ComboObsTuple(NamedTuple):
   """Container for (Observation, Action, Reward) tuples."""
@@ -170,7 +170,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
   if agent == "r2d1":
   # Recurrent DQN/UVFA
     config = data_utils.merge_configs(
-      dataclass_configs=[configs.R2D1Config()],
+      dataclass_configs=[combo_configs.R2D1Config()],
       dict_configs=default_config
     )
 
@@ -189,9 +189,9 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
 
     config = data_utils.merge_configs(
       dataclass_configs=[
-        configs.USFAConfig(),
-        configs.QAuxConfig(),
-        configs.RewardConfig()],
+        combo_configs.USFAConfig(),
+        combo_configs.QAuxConfig(),
+        combo_configs.RewardConfig()],
       dict_configs=default_config
       )
 
@@ -224,10 +224,10 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
 # USFA + cumulants from FARM + Q-learning
     config = data_utils.merge_configs(
       dataclass_configs=[
-        configs.QAuxConfig(),
-        configs.ModularUSFAConfig(),
-        configs.RewardConfig(),
-        configs.FarmConfig(),
+        combo_configs.QAuxConfig(),
+        combo_configs.ModularUSFAConfig(),
+        combo_configs.RewardConfig(),
+        combo_configs.FarmConfig(),
       ],
       dict_configs=default_config)
 

@@ -2,7 +2,7 @@
 Param search.
 """
 
-
+import functools
 from absl import app
 from absl import flags
 from pathlib import Path
@@ -24,7 +24,7 @@ from projects.common.train_search import run_experiments, listify_space
 from projects.kitchen_combo.train_distributed import build_program
 
 
-flags.DEFINE_string('folder', 'set', 'folder.')
+flags.DEFINE_string('folder', '', 'folder.')
 flags.DEFINE_string('root', None, 'root folder.')
 flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_string('search', '', 'which search to use.')
@@ -61,7 +61,7 @@ def main(_):
   # root_path is needed to tell program absolute path
   # this is used for BabyAI
   root_path = FLAGS.root if FLAGS.root else str(Path().absolute())
-  folder=FLAGS.folder if FLAGS.folder else "results/kitchen_combo/refactor"
+  folder=FLAGS.folder if FLAGS.folder else f"results/{FLAGS.env}"
   use_date = FLAGS.date
   use_wandb = FLAGS.wandb
   group = FLAGS.group if FLAGS.group else FLAGS.search # overall group
@@ -73,9 +73,15 @@ def main(_):
     save_code=True,
   )
 
-  default_env_kwargs=dict(setting='medium')
+  if FLAGS.env == "kitchen_combo":
+    default_env_kwargs=dict(setting='medium')
+  elif FLAGS.env == "fruitbot":
+    default_env_kwargs=dict(setting='easy', num_levels=200)
+
+
   run_experiments(
-    build_program_fn=build_program,
+    build_program_fn=functools.partial(build_program,
+      env=FLAGS.env),
     space=space,
     root_path=root_path,
     folder=folder,

@@ -12,10 +12,9 @@ class R2D1Config(configs.R2D1Config):
   # Network hps
   out_hidden_size: int = 512
   r2d1_loss: str = 'transformed_n_step_q_learning'
-  task_gate: str='none'
   task_embedding: str='language'
   embed_task_dim: int=16
-  samples_per_insert: float = 0.0 # 0.0=infinite
+  samples_per_insert: float = 6.0 # 0.0=infinite
 
 @dataclasses.dataclass
 class ModR2d1Config(R2D1Config):
@@ -50,47 +49,11 @@ class FarmConfig(configs.FarmConfig):
   module_attn_heads: float = .5  # how many attention heads between modules
 
 @dataclasses.dataclass
-class ModularUSFAConfig(USFAConfig):
+class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
   """Extra configuration options for USFA agent."""
-  normalize_delta: bool = True # whether to normalize delta between states
-  normalize_state: bool = True # whether to normalize delta between states
-  embed_position: int = 0 # whether to add position embeddings to modules
-  position_hidden: bool = False # whether to add position embeddings to modules
   struct_policy_input: bool = True # break up task per module
 
-  cumulant_source: str = 'lstm' # whether to normalize cumulants
-  phi_conv_size: int = 0 # size of conv for cumulants
-  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
-  seperate_value_params: bool=False # seperate parameters per SF set
-  phi_l1_coeff: float = 0.00 # coefficient for L1 on phi
-  w_l1_coeff: float = 0.00 # coefficient for L1 on w
-  module_l1: bool = False # apply L1 per module or for all phi
-  cov_loss: str = 'l1_cov' # apply L1 per module or for all phi
-
-  sf_net: str = 'independent'
-  sf_net_heads: int = 2
-  sf_net_layers: int=1
-  sf_net_attn_size: int = 256
-
-  phi_net: str = 'independent'
-  phi_net_heads: int = 2
-  phi_net_layers: int=1
-
-  relate_w_init: float=2.
-  resid_w_init: float=2.
-  relate_b_init: float=0.
-  relation_position_embed: int = 16 # whether to add position embeddings to modules
-  resid_mlp: bool=False
-  relate_residual: str="sigtanh"
-  res_relu_gate: bool=True
-  layernorm_rel: bool=False
-
-  task_gate: str='none'
   module_task_dim: int=1 # task dim per module. if 0, use embed_task_dim and divide by nmodules
-  qaux_mask_loss: bool=True
-  sf_mask_loss: bool=True
-  phi_mask_loss: bool=True
-
 
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):

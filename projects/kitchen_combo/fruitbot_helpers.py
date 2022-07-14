@@ -43,27 +43,35 @@ def make_environment(
   Returns:
       dm_env.Environment: Multitask environment is returned.
   """
-  if evaluation:
+  if setting == 'original_easy':
+    setting = 'easy'
     all_level_kwargs={
-      '-1,-1': dict(
-        env='fruitbotnn',
-        task=[-1,-1]),
-      '-1,1': dict(
-        env='fruitbotnp',
-        task=[-1,1]),
-      '1,-1': dict(
-        env='fruitbotpn',
-        task=[1,-1])
-    }
+        '1,-1': dict(
+          env='fruitbot',
+          task=[-1,-1]),
+      }
   else:
-    all_level_kwargs={
-      '0,1': dict(
-        env='fruitbotzp',
-        task=[0,1]),
-      '1,0': dict(
-        env='fruitbotpz',
-        task=[1,0])
-    }
+    if evaluation:
+      all_level_kwargs={
+        '-1,-1': dict(
+          env='fruitbotnn',
+          task=[-1,-1]),
+        '-1,1': dict(
+          env='fruitbotnp',
+          task=[-1,1]),
+        '1,-1': dict(
+          env='fruitbotpn',
+          task=[1,-1])
+      }
+    else:
+      all_level_kwargs={
+        '0,1': dict(
+          env='fruitbotzp',
+          task=[0,1]),
+        '1,0': dict(
+          env='fruitbotpz',
+          task=[1,0])
+      }
 
   env = MultitaskGym(
     all_level_kwargs=all_level_kwargs,
