@@ -85,7 +85,18 @@ class AtariImpalaTorso(hk.Module):
     self.conv_dim = conv_dim
     self.out_dim = out_dim
 
-  def __call__(self, inputs):
+  def __call__(self, inputs: jnp.ndarray):
+    """Summary
+    
+    Args:
+        inputs (jnp.ndarray): B x H x W x C
+    
+    Returns:
+        TYPE: Description
+    
+    Raises:
+        ValueError: Description
+    """
     inputs_rank = jnp.ndim(inputs)
     batched_inputs = inputs_rank == 4
     if inputs_rank < 3 or inputs_rank > 4:
