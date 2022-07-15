@@ -57,6 +57,7 @@ add_library(env
   src/games/fruitbot.cpp
   src/games/fruitbotnn.cpp
   src/games/fruitbotnp.cpp
+  src/games/fruitbotpp.cpp
   src/games/fruitbotpn.cpp
   src/games/fruitbotzp.cpp
   src/games/fruitbotpz.cpp
