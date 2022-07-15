@@ -18,7 +18,14 @@ class ProcgenGymTask(object):
       num_threads=1,
       distribution_mode=str(distribution_mode),
       num_levels=int(num_levels))
-    self.task = np.array(task, dtype=np.int32)
+
+    if len(task) == 3:
+      self.task = np.array(task, dtype=np.float32)
+    elif len(task) == 2:
+      # reward for "present"
+      self.task = np.array(task + [.1], dtype=np.float32)
+    else:
+      raise NotImplementedError
     # custom observation space
     image_space = self._env.observation_space['rgb']
     task_space = spaces.Box(
