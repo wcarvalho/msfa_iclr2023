@@ -46,6 +46,7 @@ def make_environment(
   setting = setting or 'procgen_easy'
   assert setting in [
     'procgen_easy',
+    'procgen_easy_medium',
     'procgen_hard',
     'taskgen_easy',
     'taskgen_hard']
@@ -76,21 +77,30 @@ def make_environment(
         '|1,0|': dict(
           env='fruitbotpz', task=[1,0])
       }
+    if 'easy' in setting:
+      num_levels=200
+    elif 'hard' in setting:
+      num_levels=500
   elif 'procgen' in setting:
     all_level_kwargs={
         '1,-1': dict(
           env='fruitbot', task=[1,1]), # ignore it
       }
+    if 'easy' in setting:
+      num_levels=200
+    elif 'easy_medium' in setting:
+      setting = 'easy'
+      num_levels=100
+    elif 'easy_hard' in setting:
+      setting = 'easy'
+      num_levels=50
+    elif 'hard' in setting: # hard uses new distribution
+      num_levels=500
   # -----------------------
   # num levels
   # -----------------------
   if evaluation:
     num_levels=0
-  else:
-    if 'easy' in setting:
-      num_levels=200
-    elif 'hard' in setting:
-      num_levels=500
 
   # -----------------------
   # settting

@@ -6,7 +6,7 @@ wandb?=True
 custom_loggers?=True
 date?=False
 num_gpus?=1
-project?='kitchen_combo'
+
 search?='baselines'
 terminal?='output_to_files'
 group?=''
@@ -67,13 +67,14 @@ train_search_combo:
 	--agent $(agent) \
 	--debug_search $(debug)
 
+project?='fruitbot'
 train_search_fruitbot:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/kitchen_combo/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project 'fruitbot' \
+	--wandb_project $(project) \
 	--group $(group) \
 	--search $(search) \
 	--notes $(notes) \

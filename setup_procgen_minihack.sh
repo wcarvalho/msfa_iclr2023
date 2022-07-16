@@ -58,14 +58,6 @@ cd ..
 
 
 ##############################################
-# ProcGen (FruitBot)
-##############################################
-cd envs/procgen
-pip install -e .
-cd ../..
-
-
-##############################################
 # JAX (CUDA)
 ##############################################
 if [[ $arch = 'gpu_procgen_minihack' ]]; then
@@ -75,3 +67,11 @@ if [[ $arch = 'gpu_procgen_minihack' ]]; then
   # 2. distrax 0.1.0 requires jax<=0.2.21,
 
 fi
+
+##############################################
+# ProcGen (FruitBot)
+##############################################
+cd envs/procgen
+pip install -e .
+cd ../..
+

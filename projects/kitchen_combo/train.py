@@ -48,7 +48,7 @@ def main(_):
     config['min_replay_size'] = 10
     # config['trace_length'] = 4
     # config['batch_size'] = 32
-    config['importance_sampling_exponent'] = .6
+    config['module_size'] = 80
     # config['trace_length'] = 40
     # config['task_embedding'] = 'embedding'
     # config['task_embedding'] = 'struct_embed' 
@@ -64,14 +64,14 @@ def main(_):
   if FLAGS.env == "kitchen_combo":
     from projects.kitchen_combo import combo_helpers
     env = combo_helpers.make_environment(
-      setting=FLAGS.env_setting or 'medium',
+      setting=FLAGS.env_setting,
       evaluation=FLAGS.evaluate)
     env_spec = acme.make_environment_spec(env)
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = combo_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
   elif FLAGS.env == "fruitbot":
     from projects.kitchen_combo import fruitbot_helpers
     env = fruitbot_helpers.make_environment(
-      setting=FLAGS.env_setting or 'easy',
+      setting=FLAGS.env_setting,
       evaluation=FLAGS.evaluate)
     env_spec = acme.make_environment_spec(env)
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = fruitbot_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
