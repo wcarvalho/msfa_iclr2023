@@ -60,7 +60,7 @@ cd ..
 ##############################################
 # ProcGen (FruitBot)
 ##############################################
-cd envs/procgen
+cd envs/fruitbot
 pip install -e .
 cd ../..
 

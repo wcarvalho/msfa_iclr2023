@@ -29,7 +29,7 @@ from projects.msf import helpers as msf_helpers
 from projects.kitchen_combo import fruitbot_configs
 
 from envs.gym_multitask import MultitaskGym
-from envs.procgen_env import ProcgenGymTask
+from envs.procgen_gym_task import ProcgenGymTask
 
 def make_environment(
   setting='easy',

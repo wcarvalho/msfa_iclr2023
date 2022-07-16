@@ -1,6 +1,6 @@
 import numpy as np
 from gym import spaces
-from procgen import ProcgenEnv
+from procgen.env import ProcgenEnv
 
 class ProcgenGymTask(object):
   """docstring for ProcgenGymTask"""
