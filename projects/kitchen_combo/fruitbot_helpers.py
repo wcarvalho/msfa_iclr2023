@@ -49,13 +49,15 @@ def make_environment(
     'procgen_easy_medium',
     'procgen_easy_hard',
     'procgen_hard',
-    'taskgen_easy',
-    'taskgen_hard']
+    'taskgen_short_easy',
+    'taskgen_short_hard',
+    'taskgen_long_easy',
+    'taskgen_long_hard']
 
   # -----------------------
   # environments
   # -----------------------
-  if 'taskgen' in setting:
+  if 'taskgen_short' in setting:
     if evaluation:
       all_level_kwargs={
         'b.eval|-1,-1|': dict(
@@ -78,6 +80,35 @@ def make_environment(
         '|1,0|': dict(
           env='fruitbotpz', task=[1,0])
       }
+    if 'easy' in setting:
+      num_levels=200
+    elif 'hard' in setting:
+      num_levels=500
+  elif 'taskgen_long' in setting:
+    train_level_kwargs={
+        'a.train|1,0,0,0|': dict(
+          env='wilkabotpzzz', task=[1,0,0,0]),
+        'a.train|0,1,0,0|': dict(
+          env='wilkabotpzpp', task=[0,1,0,0]),
+        'a.train|0,0,1,0|': dict(
+          env='wilkabotzzpz', task=[0,0,1,0]),
+        'a.train|0,0,0,1|': dict(
+          env='wilkabotzzzp', task=[0,0,0,1]),
+      }
+    if evaluation:
+      all_level_kwargs={
+        'b.eval|1,1,1,1|': dict(
+          env='wilkabotpppp', task=[1,1,1,1]),
+        'b.eval|1,-1,-1,-1|': dict(
+          env='wilkabotopnnn', task=[1,-1,-1,-1]),
+        'b.eval|1,0,-1,-1|': dict(
+          env='wilkabotopznn', task=[1,0,-1,-1]),
+        'b.eval|1,0,0,-1|': dict(
+          env='wilkabotopzzn', task=[1,0,0,-1]),
+        **train_level_kwargs,
+      }
+    else:
+      all_level_kwargs=train_level_kwargs
     if 'easy' in setting:
       num_levels=200
     elif 'hard' in setting:
