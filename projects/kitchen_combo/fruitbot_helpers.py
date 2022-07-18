@@ -29,7 +29,7 @@ from projects.msf import helpers as msf_helpers
 from projects.kitchen_combo import fruitbot_configs
 
 from envs.gym_multitask import MultitaskGym
-from envs.procgen_env import ProcgenGymTask
+from envs.procgen_env import ProcgenGymTask, ProcGenMultitask
 
 def make_environment(
   setting='',
@@ -47,6 +47,7 @@ def make_environment(
   assert setting in [
     'procgen_easy',
     'procgen_easy_medium',
+    'procgen_easy_hard',
     'procgen_hard',
     'taskgen_easy',
     'taskgen_hard']
@@ -86,16 +87,20 @@ def make_environment(
         '1,-1': dict(
           env='fruitbot', task=[1,1]), # ignore it
       }
-    if 'easy' in setting:
+    if setting == 'procgen_easy':
+      setting = 'easy'
       num_levels=200
-    elif 'easy_medium' in setting:
+    elif setting == 'procgen_easy_medium':
       setting = 'easy'
       num_levels=100
-    elif 'easy_hard' in setting:
+    elif setting == 'procgen_easy_hard':
       setting = 'easy'
       num_levels=50
-    elif 'hard' in setting: # hard uses new distribution
+    elif setting == 'procgen_hard':
+      setting = 'hard'
       num_levels=500
+    else:
+      raise NotImplementedError(setting)
   # -----------------------
   # num levels
   # -----------------------
@@ -107,7 +112,7 @@ def make_environment(
   # -----------------------
   setting = 'easy' if 'easy' in setting else 'hard'
 
-  env = MultitaskGym(
+  env = ProcGenMultitask(
     all_level_kwargs=all_level_kwargs,
     EnvCls=ProcgenGymTask,
     distribution_mode=setting,

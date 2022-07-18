@@ -17,6 +17,7 @@ ray?=0
 debug?=0
 
 
+
 export PYTHONPATH:=$(PYTHONPATH):.
 export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
 
@@ -37,9 +38,10 @@ test_sync:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python -m ipdb -c continue projects/kitchen_combo/train.py \
-	--agent $(agent) \
-	--env $(env) \
-	--env_setting $(setting) \
+	--agent=$(agent) \
+	--env=$(env) \
+	--env_setting=$(setting) \
+	--evaluate=$(eval) \
 	--test=True \
 	--wandb=$(wandb_test)
 
