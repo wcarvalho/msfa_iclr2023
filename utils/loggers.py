@@ -163,8 +163,9 @@ class WandbLogger(base.Logger):
       logging.warning(f"Will exit after {max_number_of_steps} steps")
 
   def try_terminate(self, step: int):
-    if step > self.max_number_of_steps:
+    if step > int(1.05*self.max_number_of_steps):
       try:
+        wandb.finish()
         logging.warning("Exiting launchpad")
         import launchpad as lp  # pylint: disable=g-import-not-at-top
         lp.stop()
@@ -222,5 +223,8 @@ class WandbLogger(base.Logger):
 
 
   def close(self):
-    pass
+    try:
+      wandb.finish()
+    except Exception as e:
+      pass
 

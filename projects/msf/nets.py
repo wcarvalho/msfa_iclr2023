@@ -507,10 +507,12 @@ def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs
   state_dim = env_spec.observations.observation.task.shape[0]
 
   module_size = config.module_size
+  if config.module_task_dim != 0:
+    config.nmodules = int(state_dim//config.module_task_dim)
   if config.module_size is None:
-    module_size = config.memory_size//config.nmodules
-  config.nmodules = state_dim
-  config.memory_size = config.nmodules*module_size
+    config.module_size = config.memory_size//config.nmodules
+  config.memory_size = config.nmodules*config.module_size
+
   farm_memory = build_farm(config, return_attn=True)
 
   assert config.sf_net in ['flat', 'independent', 'relational', 'relational']

@@ -90,7 +90,7 @@ def build_program(
   elif env == "fruitbot":
     from projects.kitchen_combo import fruitbot_helpers
 
-    setting = env_kwargs.get('setting', 'taskgen_easy')
+    setting = env_kwargs.get('setting', 'taskgen_long_easy')
     # -----------------------
     # load env stuff
     # -----------------------

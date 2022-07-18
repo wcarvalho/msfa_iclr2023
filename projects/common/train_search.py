@@ -227,8 +227,8 @@ def run_experiments(
     print("DEBUGGING")
     print("="*30)
 
-  wandb.require("service")
-  wandb.setup()
+  # wandb.require("service")
+  # wandb.setup()
   if use_ray:
     from ray import tune
     def train_function(config):

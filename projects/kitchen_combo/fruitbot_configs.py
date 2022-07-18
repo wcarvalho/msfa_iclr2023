@@ -5,7 +5,7 @@ from projects.msf import configs
 @dataclasses.dataclass
 class R2D1Config(configs.R2D1Config):
   vision_torso: str = 'impala'
-  memory_size: int = 256
+  memory_size: int = 512
   out_hidden_size: int = 512
   out_q_layers: int = 2
   r2d1_loss: str = 'transformed_n_step_q_learning'
@@ -19,7 +19,6 @@ class R2D1Config(configs.R2D1Config):
 class USFAConfig(R2D1Config, configs.USFAConfig):
   reward_coeff: float = 10
   value_coeff: float = 0.5
-  memory_size: int = 300
   eval_task_support: str=None
 
 @dataclasses.dataclass
@@ -30,7 +29,8 @@ class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):
-  module_size: int = 80
+  module_size: int = None
   nmodules: int = None
+  memory_size: int = 512
   module_attn_heads: int = 1
   module_task_dim: int = 1 # divide embed_task_dim by nmodules

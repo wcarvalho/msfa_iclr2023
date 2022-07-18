@@ -43,7 +43,7 @@ def make_environment(
   Returns:
       dm_env.Environment: Multitask environment is returned.
   """
-  setting = setting or 'procgen_easy'
+  setting = setting or 'taskgen_long_easy'
   assert setting in [
     'procgen_easy',
     'procgen_easy_medium',
@@ -89,7 +89,7 @@ def make_environment(
         'a.train|1,0,0,0|': dict(
           env='wilkabotpzzz', task=[1,0,0,0]),
         'a.train|0,1,0,0|': dict(
-          env='wilkabotpzpp', task=[0,1,0,0]),
+          env='wilkabotzpzz', task=[0,1,0,0]),
         'a.train|0,0,1,0|': dict(
           env='wilkabotzzpz', task=[0,0,1,0]),
         'a.train|0,0,0,1|': dict(
@@ -100,11 +100,11 @@ def make_environment(
         'b.eval|1,1,1,1|': dict(
           env='wilkabotpppp', task=[1,1,1,1]),
         'b.eval|1,-1,-1,-1|': dict(
-          env='wilkabotopnnn', task=[1,-1,-1,-1]),
+          env='wilkabotpnnn', task=[1,-1,-1,-1]),
         'b.eval|1,0,-1,-1|': dict(
-          env='wilkabotopznn', task=[1,0,-1,-1]),
+          env='wilkabotpznn', task=[1,0,-1,-1]),
         'b.eval|1,0,0,-1|': dict(
-          env='wilkabotopzzn', task=[1,0,0,-1]),
+          env='wilkabotpzzn', task=[1,0,0,-1]),
         **train_level_kwargs,
       }
     else:

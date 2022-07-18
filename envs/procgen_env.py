@@ -43,10 +43,6 @@ class ProcgenGymTask(object):
 
   def step(self, action):
     image, reward, done, info = self._env.step(np.array((int(action),)))
-    if info[0]['prev_level_complete']:
-      import ipdb; ipdb.set_trace()
-    # if done:
-    #   import ipdb; ipdb.set_trace()
     obs=dict(
       image=image['rgb'][0],
       task=self.task)
@@ -64,7 +60,9 @@ class ProcGenMultitask(MultitaskGym):
   """
 
   def step(self, action: int) -> dm_env.TimeStep:
-    """Updates the environment according to the action."""
+    """Updates the environment according to the action.
+    Change: when previous level is complete, don't terminate but set discount to 0.0
+    """
     obs, reward, done, info = self.env.step(action)
     obs = self.ObsTuple(**{k: obs[k] for k in self.obs_keys})
 
