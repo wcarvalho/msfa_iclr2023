@@ -19,7 +19,7 @@ debug?=0
 
 
 export PYTHONPATH:=$(PYTHONPATH):.
-export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
+export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/:${HOME}/miniconda3/lib
 
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export TF_FORCE_GPU_ALLOW_GROWTH=true
@@ -88,20 +88,33 @@ train_search_fruitbot:
 	--debug_search $(debug)
 
 
-meta_search:
+# meta_search:
+# 	cd ../..; \
+# 	echo ${searches}; \
+# 	CUDA_VISIBLE_DEVICES=$(cuda) \
+# 	python projects/common/train_search_meta.py \
+# 	--wandb=$(wandb) \
+# 	--python_file="projects/kitchen_combo/train_search.py" \
+# 	--date=$(date) \
+# 	--wandb_project $(project) \
+# 	--group $(group) \
+# 	--spaces $(spaces) \
+# 	--searches "${searches}" \
+# 	--notes $(notes) \
+# 	--skip $(skip) \
+# 	--ray $(ray) \
+# 	--debug_search $(debug) \
+# 	--agent $(agent)
+
+
+overwrite?=1
+ckpts?=-1
+eps?=5
+generate_fruitbot_data:
 	cd ../..; \
-	echo ${searches}; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/common/train_search_meta.py \
-	--wandb=$(wandb) \
-	--python_file="projects/kitchen_combo/train_search.py" \
-	--date=$(date) \
-	--wandb_project $(project) \
-	--group $(group) \
-	--spaces $(spaces) \
-	--searches "${searches}" \
-	--notes $(notes) \
-	--skip $(skip) \
-	--ray $(ray) \
-	--debug_search $(debug) \
-	--agent $(agent)
+	python -m ipdb -c continue projects/kitchen_combo/create_analysis_data.py \
+	--overwrite=$(overwrite) \
+	--ckpts=$(ckpts) \
+	--num_episodes=$(eps) \
+	--video_path='./results/fruitbot/videos'
