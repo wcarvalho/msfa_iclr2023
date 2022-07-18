@@ -54,6 +54,15 @@ add_library(env
   src/games/climber.cpp
   src/games/coinrun_old.cpp
   src/games/coinrun.cpp
+  src/games/wilkabot.cpp
+  src/games/wilkabotpppp.cpp
+  src/games/wilkabotpnnn.cpp
+  src/games/wilkabotpznn.cpp
+  src/games/wilkabotpzzn.cpp
+  src/games/wilkabotpzzz.cpp
+  src/games/wilkabotzpzz.cpp
+  src/games/wilkabotzzpz.cpp
+  src/games/wilkabotzzzp.cpp
   src/games/fruitbot.cpp
   src/games/fruitbotnn.cpp
   src/games/fruitbotnp.cpp

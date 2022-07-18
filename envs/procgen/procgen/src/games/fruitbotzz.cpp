@@ -7,7 +7,7 @@ const std::string NAME = "fruitbotzp";
 
 const int COMPLETION_BONUS = 0.0f;
 const int POSITIVE_REWARD = 0.0f;
-const int PENALTY = 0.0f;
+const int PENALTY = 1.0f;
 
 const int BARRIER = 1;
 const int OUT_OF_BOUNDS_WALL = 2;
