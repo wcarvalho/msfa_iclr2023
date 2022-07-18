@@ -6,17 +6,17 @@ import matplotlib.pyplot as plt
 ACTIONS = ['left', 'right', 'forward', 'pickup_container', 'pickup_contents', 'place', 'toggle', 'slice']
 
 def split_episodes(episodes):
-    rewarding = []
-    failure = []
-    for episode in episodes:
-        if episode['rewards'].sum() > 0:
-          rewarding.append(episode)
-        else:
-          failure.append(episode)
-    return dict(
-      success=rewarding,
-      failure=failure,
-      )
+  rewarding = []
+  failure = []
+  for episode in episodes:
+      if episode['rewards'].sum() > 0:
+        rewarding.append(episode)
+      else:
+        failure.append(episode)
+  return dict(
+    success=rewarding,
+    failure=failure,
+    )
 
 # ======================================================
 # General plotting
@@ -74,66 +74,66 @@ def bar_plot(ax, names=[], values=[], bar_kwargs={}, colors=None, important_name
 # ======================================================
 
 def get_sfz_stats(episode, config, verbosity=0):
-    sf = episode['preds'].sf # [T, A, D]
-    w = episode['preds'].w # [T, D]
-    actions = episode['action']
+  sf = episode['preds'].sf # [T, A, D]
+  w = episode['preds'].w # [T, D]
+  actions = episode['action']
 
-    multiply = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)
-    multiply = jax.vmap(multiply, in_axes=(1, None), out_axes=1)
+  multiply = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)
+  multiply = jax.vmap(multiply, in_axes=(1, None), out_axes=1)
 
-    sf_ = multiply(sf, w) # [T, Z, A, D]
-    q = sf_.sum(-1) # [T, Z, A]
-    if verbosity:
-        print('multiply:', sf_.shape, '=', sf.shape, w.shape)
-    sf_ = jnp.stack(jnp.split(sf_, config['nmodules'], axis=-1), axis=3) # [T, Z, A, N, D/N]
-    if verbosity:
-        print('split by module:', sf_.shape)
-    sfz = sf_.sum(-1).transpose(0, 1, 3, 2) # [T, Z, A, N] --> [T, Z, N, A]
-    if verbosity:
-        print('sfz norms:', sfz.shape)
-    
-    qsf = jnp.concatenate((jnp.expand_dims(q, axis=2), sfz), axis=2)
-    
-    return dict(sfz=sfz, q=q, qsf=qsf)
+  sf_ = multiply(sf, w) # [T, Z, A, D]
+  q = sf_.sum(-1) # [T, Z, A]
+  if verbosity:
+      print('multiply:', sf_.shape, '=', sf.shape, w.shape)
+  sf_ = jnp.stack(jnp.split(sf_, config['nmodules'], axis=-1), axis=3) # [T, Z, A, N, D/N]
+  if verbosity:
+      print('split by module:', sf_.shape)
+  sfz = sf_.sum(-1).transpose(0, 1, 3, 2) # [T, Z, A, N] --> [T, Z, N, A]
+  if verbosity:
+      print('sfz norms:', sfz.shape)
+  
+  qsf = jnp.concatenate((jnp.expand_dims(q, axis=2), sfz), axis=2)
+  
+  return dict(sfz=sfz, q=q, qsf=qsf)
 
 def get_sfw_stats(episode, config, verbosity=0):
-    sf = episode['preds'].sf[:, 0] # [T, A, D]
-    w = episode['preds'].w # [T, D]
-    actions = episode['action']
+  sf = episode['preds'].sf[:, 0] # [T, A, D]
+  w = episode['preds'].w # [T, D]
+  actions = episode['action']
 
-    multiply = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)
-    
-    sf_ = multiply(sf, w) # [T, A, D]
-    q = sf_.sum(-1) # [T, A]
-    if verbosity:
-        print('multiply:', sf_.shape, '=', sf.shape, w.shape)
-    sf_ = jnp.stack(jnp.split(sf_, config['nmodules'], axis=-1), axis=2) # [T, A, N, D/N]
-    if verbosity:
-        print('split by module:', sf_.shape)
-    sfw = sf_.sum(-1).transpose(0,2,1) # [T, A, N] --> [T, N, A]
-    if verbosity:
-        print('sfw norms:', sfw.shape)
-    
-    qsf = jnp.concatenate((jnp.expand_dims(q, axis=1), sfw), axis=1)
-    
-    return dict(sfw=sfw, q=q, qsf=qsf)
+  multiply = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)
+  
+  sf_ = multiply(sf, w) # [T, A, D]
+  q = sf_.sum(-1) # [T, A]
+  if verbosity:
+      print('multiply:', sf_.shape, '=', sf.shape, w.shape)
+  sf_ = jnp.stack(jnp.split(sf_, config['nmodules'], axis=-1), axis=2) # [T, A, N, D/N]
+  if verbosity:
+      print('split by module:', sf_.shape)
+  sfw = sf_.sum(-1).transpose(0,2,1) # [T, A, N] --> [T, N, A]
+  if verbosity:
+      print('sfw norms:', sfw.shape)
+  
+  qsf = jnp.concatenate((jnp.expand_dims(q, axis=1), sfw), axis=1)
+  
+  return dict(sfw=sfw, q=q, qsf=qsf)
 
 def interaction_labels(episode):
-    info = episode['interaction_info']
-    labels = []
-    for i in info:
-        if i:
-            label = f"{i['action']}\n{i['object']}"
-        else:
-            label = ''
-        labels.append(label)
-    return labels
+  info = episode['interaction_info']
+  labels = []
+  for i in info:
+      if i:
+          label = f"{i['action']}\n{i['object']}"
+      else:
+          label = ''
+      labels.append(label)
+  return labels
 
 def highlight_cell(x,y, ax=None, **kwargs):
-    rect = plt.Rectangle((x-.5, y-.5), 1,1, fill=False, **kwargs)
-    ax = ax or plt.gca()
-    ax.add_patch(rect)
-    return rect
+  rect = plt.Rectangle((x-.5, y-.5), 1,1, fill=False, **kwargs)
+  ax = ax or plt.gca()
+  ax.add_patch(rect)
+  return rect
 
 def plot_agreement(ax, episode, ax_time=None, tdx=None, config=None, stats=None, option='w', ticksize=12, title='', title_size=16):
   actions = episode['action']
@@ -200,71 +200,71 @@ def plot_agreement(ax, episode, ax_time=None, tdx=None, config=None, stats=None,
 # ======================================================
 
 def get_all_qvalues(sf, w):
-    multiply = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)
-    q_values = jax.vmap(multiply)(sf, w)
-    return q_values.sum(-1)
+  multiply = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)
+  q_values = jax.vmap(multiply)(sf, w)
+  return q_values.sum(-1)
 
 def get_chosen_a_qvalues(q_values, actions):
-    def index(q : jnp.ndarray, a : int):
-        return q[a]
-    index = jax.vmap(index, in_axes=(0, None), out_axes=0)
-    index = jax.vmap(index)
-    return index(q_values, actions)
+  def index(q : jnp.ndarray, a : int):
+      return q[a]
+  index = jax.vmap(index, in_axes=(0, None), out_axes=0)
+  index = jax.vmap(index)
+  return index(q_values, actions)
 
 def get_chosen_a_sfs(sf_, z_idx_, action_):
-    # sf [T, Z, A, D]
-    # z_idx [T] 
-    def index(sf : jnp.ndarray, i : int):
-        return sf[i]
-    index = jax.vmap(index)
-    sfz = index(sf_, z_idx_)
-    sfza = index(sfz, action_)
-    return sfza
+  # sf [T, Z, A, D]
+  # z_idx [T] 
+  def index(sf : jnp.ndarray, i : int):
+      return sf[i]
+  index = jax.vmap(index)
+  sfz = index(sf_, z_idx_)
+  sfza = index(sfz, action_)
+  return sfza
 
 def get_module_sf_norms(sf_, w_, mods=4, norm='task'):
-    if norm == 'task':
-        q_ = sf_*w_
-        # dims_per_mod = sf_.shape[-1]/mods
-        q_ = jnp.stack(jnp.split(q_, mods, axis=-1), axis=1)
-        return q_.sum(-1)
-    elif norm == "l2":
-        sf_ = jnp.stack(jnp.split(sf_, mods, axis=-1), axis=1)
-        return jnp.linalg.norm(sf_, ord=2, axis=-1)
-    else:
-        raise RuntimeError(norm)
+  if norm == 'task':
+      q_ = sf_*w_
+      # dims_per_mod = sf_.shape[-1]/mods
+      q_ = jnp.stack(jnp.split(q_, mods, axis=-1), axis=1)
+      return q_.sum(-1)
+  elif norm == "l2":
+      sf_ = jnp.stack(jnp.split(sf_, mods, axis=-1), axis=1)
+      return jnp.linalg.norm(sf_, ord=2, axis=-1)
+  else:
+      raise RuntimeError(norm)
 
 def get_chosen_a_sf_stats(episode, config, norm='task'):
-    sf = episode['preds'].sf # [T, Z, A, D]
-    w = episode['preds'].w # [T, D]
-    actions = episode['action'] # [T]
-    # actions = jnp.ones(actions.shape, dtype=actions.dtype)*5
-    stats = dict()
+  sf = episode['preds'].sf # [T, Z, A, D]
+  w = episode['preds'].w # [T, D]
+  actions = episode['action'] # [T]
+  # actions = jnp.ones(actions.shape, dtype=actions.dtype)*5
+  stats = dict()
 
-    # all q-values [T, Z, A]
-    all_q = get_all_qvalues(sf, w)
+  # all q-values [T, Z, A]
+  all_q = get_all_qvalues(sf, w)
 
-    # get q-values of chosen actions, [T, Z]
-    q_chosen = get_chosen_a_qvalues(all_q, actions)
-    
-    # get chosen policy embedding, [T]
-    z_idx = jnp.argmax(q_chosen, axis=1)
+  # get q-values of chosen actions, [T, Z]
+  q_chosen = get_chosen_a_qvalues(all_q, actions)
+  
+  # get chosen policy embedding, [T]
+  z_idx = jnp.argmax(q_chosen, axis=1)
 
-    # get sfs for chosen actions/policies [T, D]
-    chosen_sfs = get_chosen_a_sfs(sf, z_idx, actions)
-    # print('chosen_sfs', chosen_sfs.shape)
+  # get sfs for chosen actions/policies [T, D]
+  chosen_sfs = get_chosen_a_sfs(sf, z_idx, actions)
+  # print('chosen_sfs', chosen_sfs.shape)
 
-    # get weighted average [T, N]
-    sf_norms = get_module_sf_norms(chosen_sfs, w, mods=config['nmodules'], norm=norm)
-    
-    return dict(
-        chosen_sfs=chosen_sfs,
-        sf_norms=sf_norms,
-        q_chosen=q_chosen,
-        all_q=all_q,
-        z_idx=z_idx,
-        actions=actions,
-        sf=sf,
-    )
+  # get weighted average [T, N]
+  sf_norms = get_module_sf_norms(chosen_sfs, w, mods=config['nmodules'], norm=norm)
+  
+  return dict(
+      chosen_sfs=chosen_sfs,
+      sf_norms=sf_norms,
+      q_chosen=q_chosen,
+      all_q=all_q,
+      z_idx=z_idx,
+      actions=actions,
+      sf=sf,
+  )
 
 def plotq_action(ax, episode, tdx, config, **kwargs):
 

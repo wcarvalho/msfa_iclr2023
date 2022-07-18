@@ -37,6 +37,7 @@ class LevelReturnObserver(EnvLoopObserver):
       _generate_zeros_from_spec,
       env.reward_spec())
     self.level = str(env.env.current_levelname)
+    self.nsteps = 1
 
   def observe(self, env: dm_env.Environment, timestep: dm_env.TimeStep,
               action: np.ndarray) -> None:
@@ -45,11 +46,13 @@ class LevelReturnObserver(EnvLoopObserver):
       operator.iadd,
       self._episode_return,
       timestep.reward)
+    self.nsteps += 1
 
   def get_metrics(self) -> Dict[str, Number]:
     """Returns metrics collected for the current episode."""
     result = {
-        f'0.task/{self.level}/episode_return': self._episode_return,
+        f'0.task/episode_return/{self.level}': self._episode_return,
+        f'0.task/episode_length/{self.level}': self.nsteps,
     }
     return result
 
