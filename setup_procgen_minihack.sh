@@ -9,7 +9,7 @@ else
   exit
 fi
 
-conda create -n acmejax python=3.9 --force
+conda create -n acmejax python=3.9 -y
 
 eval "$(conda shell.bash hook)"
 conda activate acmejax
@@ -18,18 +18,17 @@ conda activate acmejax
 # For Minihack
 ##############################################
 # missing: libbz2-dev build-essential ninja-build software-properties-common
-conda install -c anaconda cmake
-conda install -c conda-forge bison
+conda install -c anaconda -y cmake
+conda install -c conda-forge -y bison
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${HOME}/miniconda3/envs/acmejax/lib/
-
 ##############################################
 # Main installation
 ##############################################
 conda env update --name acmejax --file $arch.yaml
 
 if [[ $1 = gpu ]]; then
-  conda install -c anaconda cudnn==8.2.1 --force
+  conda install -c anaconda -y cudnn==8.2.1
 fi
 
 ##############################################
