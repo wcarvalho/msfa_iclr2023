@@ -56,6 +56,7 @@ add_library(env
   src/games/coinrun.cpp
   src/games/wilkabot.cpp
   src/games/wilkabotpppp.cpp
+  src/games/wilkabotpzpp.cpp
   src/games/wilkabotpnnn.cpp
   src/games/wilkabotpznn.cpp
   src/games/wilkabotpzzn.cpp
