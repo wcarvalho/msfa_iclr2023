@@ -11,7 +11,7 @@ class R2D1Config(configs.R2D1Config):
   """Configuration options for R2D2 agent."""
   discount: float = 0.99
   target_update_period: int = 2500
-  evaluation_epsilon: float = 0.01
+  evaluation_epsilon: float = 0.00
   num_epsilons: int = 256
   variable_update_period: int = 400 # how often to update actor
 
@@ -160,6 +160,7 @@ class ModularUSFAConfig(USFAConfig):
 
   sf_net: str = 'independent'
   sf_net_heads: int = 2
+  sf_share_output: bool=True
   sf_net_layers: int=1
   sf_net_attn_size: int = 256
 

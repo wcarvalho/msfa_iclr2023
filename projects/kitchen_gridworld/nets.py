@@ -22,7 +22,8 @@ from modules.farm_model import FarmModel, FarmCumulants, FarmIndependentCumulant
 from modules.farm_usfa import FarmUsfaHead, RelationalFarmUsfaHead
 from modules.farm_uvfa import FarmUvfaHead, FarmUvfaInputs
 
-from modules.vision import AtariVisionTorso, BabyAIVisionTorso, BabyAIymbolicVisionTorso
+from modules.vision import AtariVisionTorso, BabyAIVisionTorso, BabyAIymbolicVisionTorso, AtariImpalaTorso
+
 from modules.usfa import UsfaHead, USFAInputs, CumulantsFromMemoryAuxTask, ConcatFlatStatePolicy, UniqueStatePolicyPairs, QBias
 from modules.ensembles import QEnsembleInputs, QEnsembleHead
 from modules import usfa as usfa_modules
@@ -107,6 +108,8 @@ def build_vision_net(config, env_spec, **kwargs):
       vision = AtariVisionTorso(**kwargs)
     elif config.vision_torso == 'babyai':
       vision = BabyAIVisionTorso(**kwargs)
+    elif config.vision_torso == 'impala':
+      vision = AtariImpalaTorso(**kwargs)
     else:
       raise NotImplementedError
   return vision
@@ -422,7 +425,7 @@ def replace_all_tasks_with_embedding(inputs, embed_fn):
 def usfa(config, env_spec,
   task_embedding='none',
   use_separate_eval=True,
-  predict_cumulants=False,
+  predict_cumulants=True,
   **net_kwargs):
 
   num_actions = env_spec.actions.num_values
@@ -433,20 +436,16 @@ def usfa(config, env_spec,
   # -----------------------
   task_shape = env_spec.observations.observation.task.shape
   task_dim = task_shape[-1]
-  task_embedder, embed_fn = build_task_embedder(
-    task_embedding=task_embedding,
-    config=config,
-    task_shape=task_shape)
   if task_embedding != 'none':
+    task_embedder, embed_fn = build_task_embedder(
+      task_embedding=task_embedding,
+      config=config,
+      task_shape=task_shape)
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn, replace_fn=replace_all_tasks_with_embedding)
+    sf_out_dim = task_embedder.out_dim
   else:
     inputs_prep_fn = convert_floats
-
-  if task_embedding == "none":
     sf_out_dim = task_dim
-  else:
-    sf_out_dim = task_embedder.out_dim
-
 
   prediction_head=UsfaHead(
       num_actions=num_actions,
@@ -463,6 +462,7 @@ def usfa(config, env_spec,
       sf_input_fn=ConcatFlatStatePolicy(config.state_hidden_size),
       multihead=config.multihead,
       concat_w=config.concat_w,
+      eval_task_support=config.eval_task_support,
       normalize_task=config.normalize_task and config.embed_task,
       )
 
@@ -659,6 +659,8 @@ def build_msf_head(config, sf_out_dim, num_actions):
       head = RelationalFarmUsfaHead(
             num_actions=num_actions,
             cumulants_per_module=sf_out_dim//config.nmodules,
+            nmodules=config.nmodules,
+            share_output=config.sf_share_output,
             hidden_size=hidden_size,
             head_layers=config.out_q_layers,
             policy_size=config.policy_size,
@@ -697,6 +699,8 @@ def build_msf_head(config, sf_out_dim, num_actions):
       head = FarmUsfaHead(
             num_actions=num_actions,
             cumulants_per_module=sf_out_dim//config.nmodules,
+            nmodules=config.nmodules,
+            share_output=config.sf_share_output,
             hidden_size=hidden_size,
             head_layers=config.out_q_layers,
             policy_size=config.policy_size,

@@ -420,6 +420,8 @@ def build_msf_head(config, state_dim, num_actions):
     head = FarmUsfaHead(
           num_actions=num_actions,
           cumulants_per_module=cumulants_per_module,
+          nmodules=config.nmodules,
+          share_output=config.sf_share_output,
           hidden_size=config.out_hidden_size,
           head_layers=config.out_q_layers,
           policy_size=config.policy_size,
