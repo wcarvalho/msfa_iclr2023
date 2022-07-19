@@ -52,7 +52,7 @@ class LevelReturnObserver(EnvLoopObserver):
     """Returns metrics collected for the current episode."""
     result = {
         f'0.task/episode_return/{self.level}': self._episode_return,
-        f'0.task/episode_length/{self.level}': self.nsteps,
+        f'1.task/episode_length/{self.level}': self.nsteps,
     }
     return result
 
