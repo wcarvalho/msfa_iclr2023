@@ -1,6 +1,9 @@
 import numpy as np
+import dm_env
 from gym import spaces
+
 from procgen.env import ProcgenEnv
+from envs.gym_multitask import MultitaskGym
 
 class ProcgenGymTask(object):
   """docstring for ProcgenGymTask"""
@@ -10,7 +13,7 @@ class ProcgenGymTask(object):
     ):
     super(ProcgenGymTask, self).__init__()
     print("="*50)
-    print(f"Loading: {env}")
+    print(f"Loading: {env}, {num_levels} levels")
     print("="*50)
     self._env = ProcgenEnv(
       env_name=env,
@@ -18,7 +21,8 @@ class ProcgenGymTask(object):
       num_threads=1,
       distribution_mode=str(distribution_mode),
       num_levels=int(num_levels))
-    self.task = np.array(task, dtype=np.int32)
+
+    self.task = np.array(task, dtype=np.float32)
     # custom observation space
     image_space = self._env.observation_space['rgb']
     task_space = spaces.Box(
@@ -51,3 +55,27 @@ class ProcgenGymTask(object):
       image=image['rgb'][0],
       task=self.task)
     return obs
+
+class ProcGenMultitask(MultitaskGym):
+  """
+  """
+
+  def step(self, action: int) -> dm_env.TimeStep:
+    """Updates the environment according to the action.
+    Change: when previous level is complete, don't terminate but set discount to 0.0
+    """
+    obs, reward, done, info = self.env.step(action)
+    obs = self.ObsTuple(**{k: obs[k] for k in self.obs_keys})
+
+    if info['prev_level_complete'] == 1:
+      # finished level, done = False, but discount=0.0
+      # avoids resetting environment
+      timestep = dm_env.transition(reward=reward, observation=obs)
+      timestep = timestep._replace(discount=0.0)
+    else:
+      if done:
+        timestep = dm_env.termination(reward=reward, observation=obs)
+      else:
+        timestep = dm_env.transition(reward=reward, observation=obs)
+
+    return timestep

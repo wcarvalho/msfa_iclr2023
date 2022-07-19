@@ -1,0 +1,36 @@
+name: acmejax
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - pip
+  - opencv
+  #### copied from from procgen
+  - python>=3.7.3
+  - c-compiler=1.3.0
+  - cmake=3.21.3
+  - qt=5.12.5  # conda-forge does not have 5.13.2 available
+
+  - pip:
+    - pip
+    - gpustat
+    - setuptools
+    - hyperopt
+    - ray[tune]
+    - ipdb
+    - wheel
+    - sklearn
+    - Pillow
+    - matplotlib
+    - numpy
+    - gym[atari]
+
+    #### minihack
+    - minihack
+
+
+
+
+# conda env create -f cpu.yaml
+# conda env update --file cpu.yaml --prune
+# conda remove --name acmejax --all

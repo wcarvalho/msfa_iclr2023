@@ -213,7 +213,7 @@ def run_experiments(
   num_cpus=3,
   num_gpus=1,
   skip=True,
-  wait_time=30,
+  wait_time=60,
   use_ray=False,
   build_kwargs=None,
   debug=False):
@@ -227,8 +227,8 @@ def run_experiments(
     print("DEBUGGING")
     print("="*30)
 
-  wandb.require("service")
-  wandb.setup()
+  # wandb.require("service")
+  # wandb.setup()
   if use_ray:
     from ray import tune
     def train_function(config):

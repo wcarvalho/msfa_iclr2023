@@ -156,7 +156,7 @@ class ModularUSFAConfig(USFAConfig):
 
   seperate_cumulant_params: bool=True # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
-  struct_policy_input: bool=False
+  struct_policy_input: bool=True
 
   sf_net: str = 'independent'
   sf_net_heads: int = 2

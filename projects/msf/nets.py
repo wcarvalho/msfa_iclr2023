@@ -199,7 +199,7 @@ def usfa_eval_prep_fn(inputs, memory_out, *args, **kwargs):
 
 def usfa(config, env_spec, use_seperate_eval=True, predict_cumulants=False, **net_kwargs):
   num_actions = env_spec.actions.num_values
-  state_dim = env_spec.observations.observation.state_features.shape[0]
+  state_dim = env_spec.observations.observation.task.shape[0]
 
   vision_net = build_vision_net(config, flatten=True)
 
@@ -286,7 +286,7 @@ def build_usfa_farm_head(config, state_dim, num_actions, farm_memory, sf_input_f
 
 def usfa_farmflat_model(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs):
   num_actions = env_spec.actions.num_values
-  state_dim = env_spec.observations.observation.state_features.shape[0]
+  state_dim = env_spec.observations.observation.task.shape[0]
 
   farm_memory = build_farm(config, return_attn=True)
 
@@ -504,7 +504,14 @@ def build_msf_phi_net(config, module_cumulants):
 
 def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs):
   num_actions = env_spec.actions.num_values
-  state_dim = env_spec.observations.observation.state_features.shape[0]
+  state_dim = env_spec.observations.observation.task.shape[0]
+
+  module_size = config.module_size
+  if config.module_task_dim != 0:
+    config.nmodules = int(state_dim//config.module_task_dim)
+  if config.module_size is None:
+    config.module_size = config.memory_size//config.nmodules
+  config.memory_size = config.nmodules*config.module_size
 
   farm_memory = build_farm(config, return_attn=True)
 

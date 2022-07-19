@@ -5,7 +5,7 @@
 
 const std::string NAME = "fruitbotnn";
 
-const float COMPLETION_BONUS = 10.0;
+const int COMPLETION_BONUS = 0.0f;
 const int POSITIVE_REWARD = -1.0f;
 const int PENALTY = -1.0f;
 

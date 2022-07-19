@@ -3,17 +3,18 @@
 #include <set>
 #include <queue>
 
-const std::string NAME = "fruitbotzp";
+const std::string NAME = "wilkabotpznn";
 
 const int COMPLETION_BONUS = 0.0f;
-const int POSITIVE_REWARD = 0.0f;
-const int PENALTY = 0.0f;
+const int POSITIVE_REWARD = 1.0f;
+const int PENALTY = -1.0f;
 
 const int BARRIER = 1;
 const int OUT_OF_BOUNDS_WALL = 2;
 const int PLAYER_BULLET = 3;
 const int BAD_OBJ = 4;
 const int GOOD_OBJ = 7;
+const int NEUTRAL_OBJ = 8;
 const int LOCKED_DOOR = 10;
 const int LOCK = 11;
 const int PRESENT = 12;
@@ -22,13 +23,13 @@ const int KEY_DURATION = 8;
 
 const float DOOR_ASPECT_RATIO = 3.25;
 
-class FruitBotZPGame : public BasicAbstractGame {
+class WilkaBotPZNNGame : public BasicAbstractGame {
   public:
     float min_dim = 0.0f;
     float bullet_vscale = 0.0f;
     int last_fire_time = 0;
 
-    FruitBotZPGame()
+    WilkaBotPZNNGame()
         : BasicAbstractGame(NAME) {
         mixrate = .5;
         maxspeed = 0.85f;
@@ -51,6 +52,20 @@ class FruitBotZPGame : public BasicAbstractGame {
             names.push_back("misc_assets/tileStone_slope.png");
         } else if (type == PLAYER_BULLET) {
             names.push_back("misc_assets/keyRed2.png");
+        } else if (type == GOOD_OBJ) {
+            names.push_back("misc_assets/fruit1.png");
+            names.push_back("misc_assets/fruit2.png");
+            names.push_back("misc_assets/fruit3.png");
+            names.push_back("misc_assets/fruit1.png");
+            names.push_back("misc_assets/fruit2.png");
+            names.push_back("misc_assets/fruit3.png");
+        } else if (type == NEUTRAL_OBJ) {
+            names.push_back("misc_assets/fruit4.png");
+            names.push_back("misc_assets/fruit5.png");
+            names.push_back("misc_assets/fruit6.png");
+            names.push_back("misc_assets/fruit4.png");
+            names.push_back("misc_assets/fruit5.png");
+            names.push_back("misc_assets/fruit6.png");
         } else if (type == BAD_OBJ) {
             names.push_back("misc_assets/food1.png");
             names.push_back("misc_assets/food2.png");
@@ -58,13 +73,6 @@ class FruitBotZPGame : public BasicAbstractGame {
             names.push_back("misc_assets/food4.png");
             names.push_back("misc_assets/food5.png");
             names.push_back("misc_assets/food6.png");
-        } else if (type == GOOD_OBJ) {
-            names.push_back("misc_assets/fruit1.png");
-            names.push_back("misc_assets/fruit2.png");
-            names.push_back("misc_assets/fruit3.png");
-            names.push_back("misc_assets/fruit4.png");
-            names.push_back("misc_assets/fruit5.png");
-            names.push_back("misc_assets/fruit6.png");
         } else if (type == LOCKED_DOOR) {
             names.push_back("misc_assets/fenceYellow.png");
         } else if (type == LOCK) {
@@ -98,14 +106,16 @@ class FruitBotZPGame : public BasicAbstractGame {
 
         if (obj->type == BARRIER) {
             step_data.done = true;
+        } else if (obj->type == GOOD_OBJ) {
+            step_data.reward += POSITIVE_REWARD;
+            obj->will_erase = true;
+        } else if (obj->type == NEUTRAL_OBJ) {
+            obj->will_erase = true;
         } else if (obj->type == BAD_OBJ) {
             step_data.reward += PENALTY;
             obj->will_erase = true;
         } else if (obj->type == LOCKED_DOOR) {
             step_data.done = true;
-        } else if (obj->type == GOOD_OBJ) {
-            step_data.reward += POSITIVE_REWARD;
-            obj->will_erase = true;
         } else if (obj->type == PRESENT) {
             if (!step_data.done) {
             }
@@ -151,7 +161,7 @@ class FruitBotZPGame : public BasicAbstractGame {
             main_width = 20;
         }
 
-        main_height = 60;
+        main_height = 90;
     }
 
     void set_action_xy(int move_action) override {
@@ -228,7 +238,8 @@ class FruitBotZPGame : public BasicAbstractGame {
 
         agent->y = agent->ry;
 
-        int num_good = rand_gen.randn(10) + 10;
+        int num_good = rand_gen.randn(10) + 5;
+        int num_neutral = rand_gen.randn(10) + 5;
         int num_bad = rand_gen.randn(10) + 10;
 
         for (int i = 0; i < main_width; i++) {
@@ -237,10 +248,11 @@ class FruitBotZPGame : public BasicAbstractGame {
         }
 
         spawn_entities(num_good, .5, GOOD_OBJ, 0, 0, main_width, main_height);
+        spawn_entities(num_neutral, .5, NEUTRAL_OBJ, 0, 0, main_width, main_height);
         spawn_entities(num_bad, .5, BAD_OBJ, 0, 0, main_width, main_height);
 
         for (auto ent : entities) {
-            if (ent->type == GOOD_OBJ || ent->type == BAD_OBJ) {
+            if (ent->type == GOOD_OBJ || ent->type == BAD_OBJ || ent->type == NEUTRAL_OBJ) {
                 ent->image_theme = rand_gen.randn(object_group_size);
                 fit_aspect_ratio(ent);
             }
@@ -277,4 +289,4 @@ class FruitBotZPGame : public BasicAbstractGame {
     }
 };
 
-REGISTER_GAME(NAME, FruitBotZPGame);
+REGISTER_GAME(NAME, WilkaBotPZNNGame);

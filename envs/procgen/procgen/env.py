@@ -19,6 +19,15 @@ ENV_NAMES = [
     "fruitbotpn",
     "fruitbotzp",
     "fruitbotpz",
+    "wilkabot",
+    "wilkabotpppp",
+    "wilkabotpnnn",
+    "wilkabotpznn",
+    "wilkabotpzzn",
+    "wilkabotpzzz",
+    "wilkabotzpzz",
+    "wilkabotzzpz",
+    "wilkabotzzzp",
 ]
 
 EXPLORATION_LEVEL_SEEDS = {}

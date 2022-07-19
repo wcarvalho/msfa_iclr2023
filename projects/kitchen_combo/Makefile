@@ -6,7 +6,7 @@ wandb?=True
 custom_loggers?=True
 date?=False
 num_gpus?=1
-project?='kitchen_combo'
+
 search?='baselines'
 terminal?='output_to_files'
 group?=''
@@ -15,6 +15,7 @@ skip?=1
 spaces?='spaces'
 ray?=0
 debug?=0
+
 
 
 export PYTHONPATH:=$(PYTHONPATH):.
@@ -37,9 +38,10 @@ test_sync:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python -m ipdb -c continue projects/kitchen_combo/train.py \
-	--agent $(agent) \
-	--env $(env) \
-	--env_setting $(setting) \
+	--agent=$(agent) \
+	--env=$(env) \
+	--env_setting=$(setting) \
+	--evaluate=$(eval) \
 	--test=True \
 	--wandb=$(wandb_test)
 
@@ -67,13 +69,14 @@ train_search_combo:
 	--agent $(agent) \
 	--debug_search $(debug)
 
+project?='fruitbot'
 train_search_fruitbot:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/kitchen_combo/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project 'fruitbot' \
+	--wandb_project $(project) \
 	--group $(group) \
 	--search $(search) \
 	--notes $(notes) \

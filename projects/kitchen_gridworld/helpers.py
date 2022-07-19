@@ -133,10 +133,9 @@ def make_environment(evaluation: bool = False,
 # ======================================================
 # Building Agent Networks
 # ======================================================
-def msf(config, env_spec, NetworkCls, use_separate_eval=True, predict_cumulants=True, learn_model=False, task_embedding='none'):
+def msf(config, env_spec, NetworkCls, NetKwargs=None, use_separate_eval=True, predict_cumulants=True, learn_model=False, task_embedding='none'):
 
-
-  NetKwargs=dict(
+  NetKwargs=NetKwargs or dict(
     config=config,
     env_spec=env_spec,
     predict_cumulants=predict_cumulants,

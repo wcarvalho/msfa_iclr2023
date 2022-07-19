@@ -90,13 +90,12 @@ def build_program(
   elif env == "fruitbot":
     from projects.kitchen_combo import fruitbot_helpers
 
-    setting = env_kwargs.get('setting', 'easy')
-    num_levels = env_kwargs.get('num_levels', 200)
+    setting = env_kwargs.get('setting', 'taskgen_long_easy')
     # -----------------------
     # load env stuff
     # -----------------------
     environment_factory = lambda is_eval: fruitbot_helpers.make_environment(
-        evaluation=is_eval, num_levels=num_levels, setting=setting)
+        evaluation=is_eval, setting=setting)
     env = environment_factory(False)
     env_spec = acme.make_environment_spec(env)
     del env
@@ -104,6 +103,15 @@ def build_program(
     # load agent/network stuff
     # -----------------------
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = fruitbot_helpers.load_agent_settings(agent, env_spec, config_kwargs)
+    try:
+      if config.eval_task_support is None:
+        if 'procgen' in setting:
+          config.eval_task_support = 'eval'
+        elif 'taskgen' in setting:
+          config.eval_task_support = 'train'
+    except AttributeError as e:
+      pass
+
   else:
     raise NotImplementedError(FLAGS.env)
 
@@ -164,6 +172,7 @@ def build_program(
     NetworkCls=NetworkCls,
     NetKwargs=NetKwargs,
     LossFn=LossFn,
+    num_evaluators=1,
     LossFnKwargs=LossFnKwargs,
     num_actors=num_actors,
     save_config_dict=save_config_dict,
