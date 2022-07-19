@@ -13,3 +13,9 @@ train:
 	JAX_DEBUG_NANS=True \
 	python -m ipdb -c continue projects/skill_discovery/train.py \
 	--agent $(agent)
+
+distributed:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python -m ipdb -c continue projects/skill_discovery/train_distributed.py \
+	--agent $(agent)

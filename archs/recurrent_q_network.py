@@ -33,6 +33,11 @@ class RecurrentQNetwork(hk.RNNCore):
     self._core = hk.LSTM(rnn_size)
     self._head = hk.nets.MLP([num_actions])
 
+  def evaluate(self, *args, **kwargs):
+    """Call __call__. Evaluation assumed to be same as training.
+    """
+    return self.__call__(*args, **kwargs)
+
   def __call__(
       self,
       inputs: observation_action_reward,  # [B, ...]

@@ -37,6 +37,7 @@ def build_common_program(
   loss_label='Loss',
   actor_label='actor',
   evaluator_label='evaluator',
+  pregenerate_named_tuple=True,
   build=True,
   **kwargs,
   ):
@@ -44,8 +45,9 @@ def build_common_program(
   # -----------------------
   # prepare networks
   # -----------------------
-  PredCls = create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs)
-  NetKwargs.update(PredCls=PredCls)
+  if pregenerate_named_tuple:
+    PredCls = create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs)
+    NetKwargs.update(PredCls=PredCls)
 
   def network_factory(spec):
     return td_agent.make_networks(

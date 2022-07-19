@@ -10,7 +10,7 @@ import functools
 from agents import td_agent
 from projects.common.train import run
 from projects.skill_discovery import helpers
-from utils import make_logger, gen_log_dir
+from utils import gen_log_dir
 
 # -----------------------
 # flags

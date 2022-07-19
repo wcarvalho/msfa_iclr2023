@@ -191,5 +191,5 @@ class WandbLogger(base.Logger):
     self._iter += 1
 
   def close(self):
-    pass
+    wandb.finish()
 
