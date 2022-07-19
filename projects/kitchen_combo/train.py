@@ -48,7 +48,7 @@ def main(_):
     config['min_replay_size'] = 10
     # config['trace_length'] = 4
     # config['batch_size'] = 32
-    # config['module_size'] = 80
+    config['sf_share_output'] = False
     # config['trace_length'] = 40
     # config['task_embedding'] = 'embedding'
     # config['task_embedding'] = 'struct_embed' 
@@ -70,21 +70,23 @@ def main(_):
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = combo_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
   elif FLAGS.env == "fruitbot":
     from projects.kitchen_combo import fruitbot_helpers
+    setting = FLAGS.env_setting or 'taskgen_long_easy'
     env = fruitbot_helpers.make_environment(
-      setting=FLAGS.env_setting,
+      setting=setting ,
       evaluation=FLAGS.evaluate)
     env_spec = acme.make_environment_spec(env)
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = fruitbot_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
 
-    setting = FLAGS.env_setting
     try:
       if config.eval_task_support is None:
         if 'procgen' in setting:
           config.eval_task_support = 'eval'
         elif 'taskgen' in setting:
           config.eval_task_support = 'train'
+        else:
+          raise RuntimeError(setting)
     except AttributeError as e:
-      pass
+      print(e)
   else:
     raise NotImplementedError(FLAGS.env)
 
