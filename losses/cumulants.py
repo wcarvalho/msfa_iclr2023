@@ -9,11 +9,11 @@ class CumulantRewardLoss:
   """"""
   def __init__(self, coeff: float, loss: str = 'l2', shorten_data_for_cumulant: bool = False,
     balance: float = 0,
-    reward_bias: float = 0,
     nmodules: int = 1,
-    mask_loss: bool = False,
+    mask_loss: bool = True,
     l1_coeff=None,
-    wl1_coeff=None):
+    wl1_coeff=None,
+    **kwargs):
     self.coeff = coeff
     loss = loss.lower()
     assert loss in ['l2', 'binary']
@@ -22,7 +22,6 @@ class CumulantRewardLoss:
     self.balance = balance
     self.random = True
     self.l1_coeff = l1_coeff
-    self.reward_bias = reward_bias
     self.nmodules = nmodules
     self.wl1_coeff = wl1_coeff
     self.mask_loss = mask_loss
@@ -35,9 +34,6 @@ class CumulantRewardLoss:
     if self.mask_loss:
       mask = make_episode_mask(data)
 
-    if self.reward_bias:
-      rewards = rewards + self.reward_bias # offset time-step penality
-      raise NotImplementedError("check balancing")
 
     if self.shorten_data_for_cumulant and cumulants.shape[0] < task.shape[0]:
       shape = cumulants.shape[0]
