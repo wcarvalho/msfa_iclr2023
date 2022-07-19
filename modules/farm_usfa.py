@@ -24,21 +24,43 @@ class FarmUsfaHead(UsfaHead):
 
   def __init__(self,
     cumulants_per_module: int,
+    nmodules: int,
     vmap_multihead: str = 'lift',
     relational_net = lambda x:x,
     position_embed: int=0,
     struct_policy: bool=False,
+    share_output:bool=True,
     argmax_mod: bool=False,
-    **kwargs,
-    ):
+    **kwargs):
+    """Summary
+    
+    Args:
+        cumulants_per_module (int): Description
+        nmodules (int): Description
+        vmap_multihead (str, optional): Description
+        relational_net (TYPE, optional): Description
+        position_embed (int, optional): Description
+        struct_policy (bool, optional): Description
+        share_output (bool, optional): Description
+        argmax_mod (bool, optional): Description
+        **kwargs: Description
+    """
     super(FarmUsfaHead, self).__init__(
       state_dim=1, # will be ignored
       **kwargs)
 
+    self.nmodules = nmodules
     self.vmap_multihead = vmap_multihead
     self.relational_net = relational_net
     self._cumulants_per_module = cumulants_per_module
-    self.sf_factory = lambda: hk.nets.MLP([self.hidden_size]*self.head_layers+[self.num_actions*cumulants_per_module])
+    self.share_output = share_output
+
+    if share_output:
+      self.outn = self.num_actions*cumulants_per_module
+    else:
+      self.outn = self.num_actions*cumulants_per_module*nmodules
+
+    self.sf_factory = lambda: hk.nets.MLP([self.hidden_size]*self.head_layers+[self.outn])
     self.policy_net_factory = lambda: hk.nets.MLP(
           [self.policy_size]*self.policy_layers)
     self.position_embed = position_embed
@@ -63,16 +85,15 @@ class FarmUsfaHead(UsfaHead):
     # -----------------------
     # get input
     # -----------------------
-    
-    if self.struct_policy:
-      # create 1-hot like vectors for each module with only its subset of task dimensions
-      # e.g. [w1, w2, ...] --> [w1, 0, 0, 0]
-      block_size = policy.shape[-1]//M
-      ones = jnp.ones((1, block_size)).astype(policy.dtype)
+    # create 1-hot like vectors for each module with only its subset of task dimensions
+    # e.g. [w1, w2, ...] --> [w1, 0, 0, 0]
+    block_size = policy.shape[-1]//M
+    ones = jnp.ones((1, block_size)).astype(policy.dtype)
 
-      # Policy = [B, D_z]
-      # [M, D_z]
-      block_id = jax.scipy.linalg.block_diag(*[ones for _ in range(M)])
+    # Policy = [B, D_z]
+    # [M, D_z]
+    block_id = jax.scipy.linalg.block_diag(*[ones for _ in range(M)])
+    if self.struct_policy:
 
       mul = jax.vmap(jnp.multiply, in_axes=(None, 0))
       mul = jax.vmap(mul, in_axes=(0, None))
@@ -101,13 +122,23 @@ class FarmUsfaHead(UsfaHead):
           factors=state_policy, size=self.position_embed)
       sf = hk.BatchApply(self.sf_factory())(state_policy)
 
-    sf = jnp.reshape(sf, [B, M, A, C])
-    # [B, A, C*M=D_w]
-    sf = sf.transpose(0, 2, 1, 3).reshape(B, A, -1)
+    if self.share_output:
+      sf = jnp.reshape(sf, [B, M, A, C])
+      # [B, A, C*M=D_w]
+      sf = sf.transpose(0, 2, 1, 3).reshape(B, A, -1)
+
+    else:
+      sf = jnp.reshape(sf, [B, M, A, task.shape[-1]])
+
+      mul = jax.vmap(jnp.multiply, in_axes=(0, None), out_axes=0) # B
+      mul = jax.vmap(mul, in_axes=(1, 0), out_axes=1) # M
+      mul = jax.vmap(mul, in_axes=(2, None), out_axes=2) # A
+
+      # [B, M, A, C*M=D_w] --> [B, A, C*M=D_w]
+      sf = mul(sf, block_id).sum(1)
 
     # vmap loop over A for SF
     q_prod = jax.vmap(jnp.multiply, in_axes=(1, None), out_axes=1)(sf, task)
-    
 
     return sf, q_prod
 
