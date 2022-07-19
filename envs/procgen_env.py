@@ -53,6 +53,7 @@ class ProcgenGymTask(object):
     obs=dict(
       image=image['rgb'][0],
       task=self.task)
+
     return obs
 
 class ProcGenMultitask(MultitaskGym):
@@ -67,10 +68,9 @@ class ProcGenMultitask(MultitaskGym):
     obs = self.ObsTuple(**{k: obs[k] for k in self.obs_keys})
 
     if info['prev_level_complete'] == 1:
-      # finished level, done = False, but discount=0.0
+      # finished level, done = False
       # avoids resetting environment
       timestep = dm_env.transition(reward=reward, observation=obs)
-      timestep = timestep._replace(discount=0.0)
     else:
       if done:
         timestep = dm_env.termination(reward=reward, observation=obs)
