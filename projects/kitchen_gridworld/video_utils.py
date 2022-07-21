@@ -90,8 +90,12 @@ class DataStorer(object):
   def observe(self, env: dm_env.Environment, timestep: dm_env.TimeStep,
               action: np.ndarray) -> None:
     """Skip"""
-    info = env.env.interaction_info
-    self.interaction_info.append(info)
+    try:
+      info = env.env.interaction_info
+      self.interaction_info.append(info)
+    except AttributeError as e:
+      pass
+
     self.rewards.append(timestep.reward)
     # self._episode_return = tree.map_structure(
     #   operator.iadd,

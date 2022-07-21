@@ -221,7 +221,7 @@ def r2d1_prediction_prep_fn(inputs, memory_out, **kwargs):
   return jnp.concatenate((memory_out, task), axis=-1)
 
 def r2d1(config, env_spec,
-  task_input: str='qfn',
+  task_input: str='qfn_concat',
   task_embedding: str='none',
    **kwargs):
   """Summary
@@ -246,7 +246,7 @@ def r2d1(config, env_spec,
   if task_input == 'none':
     prediction_prep_fn = None # just use memory_out
     memory_prep_fn=None
-  elif task_input != 'none':
+  else:
     task_embedder, embed_fn = build_task_embedder(
       task_embedding=task_embedding,
       config=config,
@@ -507,7 +507,7 @@ def msf(
   config,
   env_spec,
   predict_cumulants=True,
-  learn_model=True,
+  learn_model=False,
   task_embedding: str='none',
   use_separate_eval=True,
   **net_kwargs):
@@ -523,7 +523,14 @@ def msf(
   # memory
   # -----------------------
   # ensure sizes are correct
-  if task_embedding == 'none' and task_dim < config.nmodules:
+  if task_embedding == 'none' and config.nmodules is None:
+    assert config.module_task_dim != 0
+    config.nmodules = int(task_dim//config.module_task_dim)
+    if config.module_size is None:
+      config.module_size = config.memory_size//config.nmodules
+    config.memory_size = config.nmodules*config.module_size
+
+  elif task_embedding == 'none' and task_dim < config.nmodules:
     # if not embedding and don't have enough modules, reduce
     module_size = config.module_size
     if config.module_size is None:
@@ -534,21 +541,18 @@ def msf(
 
   farm_memory = build_farm(config, return_attn=True)
 
-  task_embedder, embed_fn = build_task_embedder(
-    task_embedding=task_embedding,
-    config=config,
-    task_shape=task_shape)
 
   if task_embedding != 'none':
+    task_embedder, embed_fn = build_task_embedder(
+      task_embedding=task_embedding,
+      config=config,
+      task_shape=task_shape)
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn,
-    replace_fn=replace_all_tasks_with_embedding)
+      replace_fn=replace_all_tasks_with_embedding)
+    sf_out_dim = task_embedder.out_dim
   else:
     inputs_prep_fn = convert_floats
-
-  if task_embedding == "none":
     sf_out_dim = task_dim
-  else:
-    sf_out_dim = task_embedder.out_dim
 
   # -----------------------
   # USFA Head
@@ -571,9 +575,9 @@ def msf(
     phi_net = build_msf_phi_net(config, sf_out_dim)
     aux_tasks.append(phi_net)
 
-  add_bias = getattr(config, "step_penalty", 0) > 0
-  if add_bias:
-    aux_tasks.append(QBias())
+  # add_bias = getattr(config, "step_penalty", 0) > 0
+  # if add_bias:
+  #   aux_tasks.append(QBias())
 
   # -----------------------
   # Model

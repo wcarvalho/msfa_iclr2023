@@ -76,8 +76,11 @@ def main(_):
   if FLAGS.env == "kitchen_combo":
     default_env_kwargs=dict(setting='medium')
   elif FLAGS.env == "fruitbot":
-    default_env_kwargs=dict(setting='easy')
-    
+    default_env_kwargs=dict(
+      setting='easy',
+      max_episodes=3,
+      completion_bonus=0.0)
+
 
 
   run_experiments(

@@ -13,7 +13,9 @@ from losses.utils import episode_mean, make_episode_mask
 def compute_q(sf, w):
   return jnp.sum(sf*w, axis=-1)
 
-class QLearningAuxLoss(nstep.QLearning):
+from losses.base import BaseLoss
+
+class QLearningAuxLoss(BaseLoss):
   def __init__(self,
     coeff,
     *args,
@@ -25,7 +27,7 @@ class QLearningAuxLoss(nstep.QLearning):
     target_w=False,
     mask_loss=False,
     **kwargs):
-    super().__init__(*args, **kwargs)
+    super().__init__(elementwise=True)
     self.coeff = coeff
     self.sched_end = sched_end
     self.sched_start_val = sched_start_val
@@ -34,6 +36,7 @@ class QLearningAuxLoss(nstep.QLearning):
     self.stop_w_grad = stop_w_grad
     self.target_w = target_w
     self.mask_loss = mask_loss
+    self.loss_fn = nstep.QLearning(*args, **kwargs)
     if sched_end:
       self.schedule = optax.linear_schedule(
                   init_value=sched_start_val,
@@ -64,7 +67,7 @@ class QLearningAuxLoss(nstep.QLearning):
       target_q = target_q + target_preds.qbias
 
 
-    batch_td_error = super().__call__(
+    batch_td_error = self.loss_fn(
       online_q=online_q,  # [T, B, A]
       target_q=target_q,  # [T, B, A]
       discount=data.discount,  # [T, B]
@@ -77,26 +80,27 @@ class QLearningAuxLoss(nstep.QLearning):
       batch_loss = episode_mean(
         x=batch_loss,
         mask=make_episode_mask(data)[:-1])
-      batch_loss = batch_loss.mean()
-    else:
-      batch_loss = batch_loss.mean()
+    #   batch_loss = batch_loss.mean()
+    # else:
+    #   batch_loss = batch_loss.mean()
 
     coeff = self.coeff
     if self.sched_end is not None and self.sched_end > 0:
       coeff = self.schedule(steps)*coeff
 
-    loss = coeff*batch_loss
+    cbatch_loss = coeff*batch_loss
+    cbatch_td_error = coeff*batch_td_error
 
     metrics = {
-      'loss_qlearning_sf_raw': batch_loss,
-      'loss_qlearning_sf': loss,
+      'loss_qlearning_sf_raw': cbatch_loss.mean(),
+      'loss_qlearning_sf': batch_loss.mean(),
       'z.q_sf_coeff': coeff,
       'z.q_sf_mean': online_q.mean(),
       'z.q_sf_var': online_q.var(),
       'z.q_sf_max': online_q.max(),
       'z.q_sf_min': online_q.min()}
 
-    return loss, metrics
+    return cbatch_td_error, cbatch_loss, metrics
 
 
 class QLearningEnsembleAuxLoss(QLearningAuxLoss):

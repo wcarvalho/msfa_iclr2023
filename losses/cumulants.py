@@ -4,25 +4,24 @@ import jax.numpy as jnp
 import haiku as hk
 import rlax
 from losses.utils import make_episode_mask
+from losses.base import BaseLoss
 
-class CumulantRewardLoss:
+class CumulantRewardLoss(BaseLoss):
   """"""
   def __init__(self, coeff: float, loss: str = 'l2', shorten_data_for_cumulant: bool = False,
     balance: float = 0,
-    reward_bias: float = 0,
     nmodules: int = 1,
-    mask_loss: bool = False,
+    mask_loss: bool = True,
     l1_coeff=None,
-    wl1_coeff=None):
+    wl1_coeff=None,
+    **kwargs):
+    super().__init__(elementwise=True, random=True, **kwargs)
     self.coeff = coeff
-    loss = loss.lower()
-    assert loss in ['l2', 'binary']
-    self.loss = loss
+    self.loss = loss.lower()
+    assert self.loss in ['l2', 'binary']
     self.shorten_data_for_cumulant = shorten_data_for_cumulant
     self.balance = balance
-    self.random = True
     self.l1_coeff = l1_coeff
-    self.reward_bias = reward_bias
     self.nmodules = nmodules
     self.wl1_coeff = wl1_coeff
     self.mask_loss = mask_loss
@@ -35,9 +34,6 @@ class CumulantRewardLoss:
     if self.mask_loss:
       mask = make_episode_mask(data)
 
-    if self.reward_bias:
-      rewards = rewards + self.reward_bias # offset time-step penality
-      raise NotImplementedError("check balancing")
 
     if self.shorten_data_for_cumulant and cumulants.shape[0] < task.shape[0]:
       shape = cumulants.shape[0]
@@ -48,20 +44,20 @@ class CumulantRewardLoss:
 
     reward_pred = jnp.sum(cumulants*task, -1)  # dot product  [T, B]
     if self.loss == 'l2':
-      error = rlax.l2_loss(predictions=reward_pred, targets=rewards)
+      # [T, B]
+      elem_error = rlax.l2_loss(predictions=reward_pred, targets=rewards)
     elif self.loss == 'binary':
-      error = -distrax.Bernoulli(logits=reward_pred).log_prob(rewards)
+      # [T, B]
+      elem_error = -distrax.Bernoulli(logits=reward_pred).log_prob(rewards)
 
     phi_l1 = None
     w_l1 = None
     if self.balance > 0:
       # flatten
-      raw_final_error = error.mean()
-      error = error.reshape(-1)
-      nonzero = (rewards != 0).reshape(-1)
+      nonzero = (rewards != 0)
 
       # get all that have 0 reward
-      zero = (jnp.abs(rewards) < 1e-5).reshape(-1)
+      zero = (jnp.abs(rewards) < 1e-5)
 
       probs = zero.astype(jnp.float32)*self.balance
       keep_zero = distrax.Independent(
@@ -72,25 +68,29 @@ class CumulantRewardLoss:
 
       all_keep = (nonzero + keep_zero)
       positive_keep = nonzero.sum()
-      positive_error = (error*nonzero).sum()/(1e-5+positive_keep)
+      positive_error = (elem_error*nonzero).sum()/(1e-5+positive_keep)
 
       if self.mask_loss:
-        mask = mask.reshape(-1)
-        error = error*mask
+        # mask = mask.reshape(-1)
+        elem_error = elem_error*mask
         all_keep = all_keep*mask
 
-      total_keep = all_keep.sum()
-      final_error = (error*all_keep).sum()/(1e-5+total_keep)
+      # [B]
+      batch_loss = (elem_error*all_keep).sum(0)/(1e-5+all_keep.sum(0))
+
+
+      cbatch_loss = self.coeff*batch_loss
+      celem_error = self.coeff*elem_error
 
       # [T, B, D] --> [T, B]
       phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
-      phi_l1_rewarding = (phi_l1.reshape(-1)*nonzero).sum()/(1e-5+positive_keep)
+      phi_l1_rewarding = (phi_l1*nonzero).sum()/(1e-5+positive_keep)
       w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
       metrics = {
-        f'loss_reward_{self.loss}': final_error,
-        f'z.raw_loss_{self.loss}': raw_final_error,
+        f'loss_reward_{self.loss}': batch_loss.mean(),
+        f'z.raw_loss_{self.loss}': elem_error.mean(),
         f'z.positive_error': positive_error,
-        f'z.keep_all': total_keep,
+        f'z.keep_all': all_keep.sum(),
         f'z.keep_positive': positive_keep,
         f'z.reward_pred': reward_pred.mean(),
         f'z.reward': rewards.mean(),
@@ -102,14 +102,17 @@ class CumulantRewardLoss:
         f'z.w_l1_all': w_l1.mean(),
         f'z.phi_std': cumulants.std(),
       }
-    else:
-      final_error = error.mean()
-      metrics = {
-        f'loss_reward_{self.loss}': final_error,
-      }
 
-    final_error = final_error*self.coeff
+    else:
+      raise RuntimeError("Needed to work")
+      # final_error = error.mean()
+      # metrics = {
+      #   f'loss_reward_{self.loss}': final_error,
+      # }
+
+    # final_error = final_error*self.coeff
     if self.l1_coeff is not None and self.l1_coeff != 0:
+      raise NotImplementedError("don't have elementwise error")
       if phi_l1 is None:
         # cumulants = [T, B, D]
         phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
@@ -122,6 +125,7 @@ class CumulantRewardLoss:
       final_error = final_error + phi_l1
 
     if self.wl1_coeff is not None and self.wl1_coeff != 0:
+      raise NotImplementedError("don't have elementwise error")
 
       if w_l1 is None:
         w_l1 = jnp.linalg.norm(task, ord=1, axis=-1)
@@ -132,7 +136,7 @@ class CumulantRewardLoss:
 
       final_error = final_error + w_l1
 
-    return final_error, metrics
+    return celem_error, cbatch_loss, metrics
 
 
 
