@@ -25,6 +25,7 @@ ENV_NAMES = [
     "wilkabotpnnn",
     "wilkabotpznn",
     "wilkabotpzzn",
+    "wilkabotpzzp",
     "wilkabotpzzz",
     "wilkabotzpzz",
     "wilkabotzzpz",

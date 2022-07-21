@@ -8,6 +8,7 @@ import sys
 import platform
 import multiprocessing as mp
 
+import socket
 import gym3
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -99,7 +100,7 @@ def build(package=False, debug=False):
     build_dir = os.path.join(SCRIPT_DIR, ".build")
     os.makedirs(build_dir, exist_ok=True)
 
-    build_type = "relwithdebinfo"
+    build_type = "relwithdebinfo" + str(socket.gethostname())
     if debug:
         build_type = "debug"
 

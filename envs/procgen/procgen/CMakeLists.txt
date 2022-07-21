@@ -64,6 +64,7 @@ add_library(env
   src/games/wilkabotzpzz.cpp
   src/games/wilkabotzzpz.cpp
   src/games/wilkabotzzzp.cpp
+  src/games/wilkabotpzzp.cpp
   src/games/fruitbot.cpp
   src/games/fruitbotnn.cpp
   src/games/fruitbotnp.cpp
