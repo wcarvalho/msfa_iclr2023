@@ -4,15 +4,23 @@ from gym import spaces
 from procgen import ProcgenEnv
 from envs.gym_multitask import MultitaskGym
 
+COMPLETION_BONUS=0.5
+
 class ProcgenGymTask(object):
   """docstring for ProcgenGymTask"""
-  def __init__(self, env, task,
+  def __init__(self,
+    env : str,
+    task : list,
     distribution_mode='easy',
     num_levels=200,
+    completion_bonus=0.0,
     ):
     super(ProcgenGymTask, self).__init__()
+    if completion_bonus:
+      task = task + [completion_bonus] # append
+
     print("="*50)
-    print(f"Loading: {env}, {num_levels} levels")
+    print(f"Loading: {env}, {num_levels} levels, task {str(task)}")
     print("="*50)
     self._env = ProcgenEnv(
       env_name=env,
@@ -20,6 +28,7 @@ class ProcgenGymTask(object):
       num_threads=1,
       distribution_mode=str(distribution_mode),
       num_levels=int(num_levels))
+
 
     self.task = np.array(task, dtype=np.float32)
     # custom observation space
@@ -59,6 +68,18 @@ class ProcgenGymTask(object):
 class ProcGenMultitask(MultitaskGym):
   """
   """
+  def __init__(self,
+    *args,
+    max_episodes=4,
+    completion_bonus=0.0,
+    **kwargs):
+    super().__init__(*args, completion_bonus=completion_bonus, **kwargs)
+    self.max_episodes = max_episodes
+    self.completion_bonus = completion_bonus
+
+  def reset(self):
+    self.completed_episodes = 0
+    return super().reset()
 
   def step(self, action: int) -> dm_env.TimeStep:
     """Updates the environment according to the action.
@@ -68,9 +89,16 @@ class ProcGenMultitask(MultitaskGym):
     obs = self.ObsTuple(**{k: obs[k] for k in self.obs_keys})
 
     if info['prev_level_complete'] == 1:
+      self.completed_episodes += 1
       # finished level, done = False
       # avoids resetting environment
-      timestep = dm_env.transition(reward=reward, observation=obs)
+      reward += self.completion_bonus
+
+      # timestep = dm_env.transition(reward=reward, observation=obs)
+      if self.completed_episodes >= self.max_episodes:
+        timestep = dm_env.termination(reward=reward, observation=obs)
+      else:
+        timestep = dm_env.transition(reward=reward, observation=obs)
     else:
       if done:
         timestep = dm_env.termination(reward=reward, observation=obs)

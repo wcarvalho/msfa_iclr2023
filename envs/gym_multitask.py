@@ -104,7 +104,7 @@ class MultiLevelEnv(object):
 
     self.levelname2idx = {k:idx for idx, k in enumerate(self.levelnames)}
 
-    train_tasks = [kw['task'] for kw in all_level_kwargs.values()]
+    train_tasks = [self.get_level(idx).task for idx in range(len(self.levelnames))]
     self.train_tasks = np.array(train_tasks,
       dtype=self.observation_space['task'].dtype)
 
