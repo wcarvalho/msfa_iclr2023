@@ -25,6 +25,7 @@ from absl import flags
 import acme
 from acme.utils import paths
 import functools
+from pprint import pprint
 
 from agents import td_agent
 from utils import make_logger, gen_log_dir
@@ -89,13 +90,15 @@ def build_program(
 
   elif env == "fruitbot":
     from projects.kitchen_combo import fruitbot_helpers
-
+    print("="*20,'env kwargs', "="*20)
+    pprint(env_kwargs)
     setting = env_kwargs.get('setting', 'taskgen_long_easy')
     # -----------------------
     # load env stuff
     # -----------------------
     environment_factory = lambda is_eval: fruitbot_helpers.make_environment(
-        evaluation=is_eval, setting=setting)
+        evaluation=is_eval,
+        **env_kwargs)
     env = environment_factory(False)
     env_spec = acme.make_environment_spec(env)
     del env
@@ -172,7 +175,7 @@ def build_program(
     NetworkCls=NetworkCls,
     NetKwargs=NetKwargs,
     LossFn=LossFn,
-    num_evaluators=1,
+    num_evaluators=2,
     LossFnKwargs=LossFnKwargs,
     num_actors=num_actors,
     save_config_dict=save_config_dict,

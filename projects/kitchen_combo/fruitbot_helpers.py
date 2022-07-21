@@ -35,7 +35,9 @@ from envs.procgen_env import ProcgenGymTask, ProcGenMultitask
 def make_environment(
   setting='',
   evaluation: bool = False,
-  train_in_eval=True,
+  train_in_eval=False,
+  max_episodes=3,
+  completion_bonus=0.0,
   **kwargs) -> dm_env.Environment:
   """Loads environments.
   
@@ -103,6 +105,8 @@ def make_environment(
       all_level_kwargs={
         'b.eval|1,0,1,1|': dict(
           env='wilkabotpzpp', task=[1,0,1,1]),
+        'b.eval|1,0,0,1|': dict(
+          env='wilkabotpzzp', task=[1,0,0,1]),
         'b.eval|1,1,1,1|': dict(
           env='wilkabotpppp', task=[1,1,1,1]),
         'b.eval|1,-1,-1,-1|': dict(
@@ -164,6 +168,8 @@ def make_environment(
     EnvCls=ProcgenGymTask,
     distribution_mode=setting,
     num_levels=num_levels,
+    max_episodes=max_episodes,
+    completion_bonus=completion_bonus,
     )
 
   wrapper_list = [

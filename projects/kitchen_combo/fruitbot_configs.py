@@ -27,6 +27,7 @@ class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
   reward_coeff: float = 1 # > 1.0 fails in this domain 
   value_coeff: float = 0.5
   eval_task_support: str=None
+  sf_share_output: bool=False
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):
