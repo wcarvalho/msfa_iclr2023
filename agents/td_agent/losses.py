@@ -31,6 +31,8 @@ class RecurrentTDLearning(learning_lib.LossFn):
   max_priority_weight: float = 0.9
   bootstrap_n: int = 5
   importance_sampling_exponent: float = 0.2
+  priority_weights_aux: bool=False
+  priority_use_aux: bool=False
 
   burn_in_length: int = None
   clip_rewards : bool = False
@@ -109,77 +111,113 @@ class RecurrentTDLearning(learning_lib.LossFn):
     target_preds, target_state = unroll.apply(target_params, key1, data.observation,
                                target_state, key2)
 
+    # ======================================================
+    # losses
+    # ======================================================
+
+    # Importance weighting.
+    probs = batch.info.probability
+    # [B]
+    importance_weights = (1. / (probs + 1e-6)).astype(online_preds.q.dtype)
+    importance_weights **= self.importance_sampling_exponent
+    importance_weights /= jnp.max(importance_weights)
     # -----------------------
     # main loss
     # -----------------------
-    batch_td_error, batch_loss, metrics = self.error(
+    # [T-1, B], [B]
+    elemwise_error, batch_loss, metrics = self.error(
       data=data,
       online_preds=online_preds,
       online_state=online_state,
       target_preds=target_preds,
       target_state=target_state,
       steps=steps)
-
-    # Importance weighting.
-    probs = batch.info.probability
-    importance_weights = (1. / (probs + 1e-6)).astype(online_preds.q.dtype)
-    importance_weights **= self.importance_sampling_exponent
-    importance_weights /= jnp.max(importance_weights)
-    mean_loss = jnp.mean(importance_weights * batch_loss)
+    batch_loss = self.loss_coeff*batch_loss
+    elemwise_error = self.loss_coeff*elemwise_error
 
     Cls = lambda x: x.__class__.__name__
     metrics={
       Cls(self) : {
         **metrics,
-        'loss_main':mean_loss,
+        # 'loss_main': batch_loss.mean(),
         'z.importance': importance_weights.mean(),
         'z.reward' :data.reward.mean()
         }
       }
-    mean_loss = self.loss_coeff*mean_loss
-
-    # Calculate priorities as a mixture of max and mean sequence errors.
-    abs_td_error = jnp.abs(batch_td_error).astype(online_preds.q.dtype)
-    max_priority = self.max_priority_weight * jnp.max(abs_td_error, axis=0)
-    mean_priority = (1 - self.max_priority_weight) * jnp.mean(abs_td_error, axis=0)
-    priorities = (max_priority + mean_priority)
-
 
     # -----------------------
     # auxilliary tasks
     # -----------------------
+    total_aux_scalar_loss = 0.0
+    total_aux_batch_loss = jnp.zeros(batch_loss.shape, dtype=batch_loss.dtype)
+    total_aux_elem_error = jnp.zeros(elemwise_error.shape, dtype=elemwise_error.dtype)
     if self.aux_tasks:
-      aux_tasks = self.aux_tasks
-      if not isinstance(aux_tasks, list): aux_tasks = [aux_tasks]
-
-      for aux_task in aux_tasks:
+      for aux_task in self.aux_tasks:
         # does this aux task need a random key?
         kwargs=dict()
+
         if hasattr(aux_task, 'random') and aux_task.random:
           key_grad, key = jax.random.split(key_grad, 2)
           kwargs['key'] = key
 
-        aux_loss, aux_metrics = aux_task(
-          data=data,
-          online_preds=online_preds,
-          online_state=online_state,
-          target_preds=target_preds,
-          target_state=target_state,
-          steps=steps,
-          **kwargs)
+        if aux_task.elementwise:
+          aux_elemwise_error, aux_batch_loss, aux_metrics = aux_task(
+            data=data,
+            online_preds=online_preds,
+            online_state=online_state,
+            target_preds=target_preds,
+            target_state=target_state,
+            steps=steps,
+            **kwargs)
+          total_aux_batch_loss += aux_batch_loss
+          total_aux_elem_error += aux_elemwise_error
+        else:
+          aux_loss, aux_metrics = aux_task(
+            data=data,
+            online_preds=online_preds,
+            online_state=online_state,
+            target_preds=target_preds,
+            target_state=target_state,
+            steps=steps,
+            **kwargs)
+          total_aux_scalar_loss += aux_loss
 
-        
-        # metrics={**metrics,**aux_metrics}
         metrics[Cls(aux_task)] = aux_metrics
-        mean_loss = mean_loss + aux_loss
 
-      metrics[Cls(self)]['loss_w_aux'] = mean_loss
+    # -----------------------
+    # mean loss over everything
+    # -----------------------
+    if self.priority_weights_aux:
+      # sum all losses and then weight
+      total_batch_loss = total_aux_batch_loss + batch_loss # [B]
+      mean_loss = jnp.mean(importance_weights * total_batch_loss) # []
+      mean_loss += importance_weights.mean()*total_aux_scalar_loss # []
+    else:
+      mean_loss = jnp.mean(importance_weights * batch_loss) # []
+      mean_loss += total_aux_batch_loss.mean() # []
+
+    metrics[Cls(self)]['loss_w_aux'] = mean_loss
+
+    # -----------------------
+    # priorities
+    # -----------------------
+    # Calculate priorities as a mixture of max and mean sequence errors.
+    if self.priority_use_aux:
+      total_elemwise_error = elemwise_error + total_aux_elem_error
+    else:
+      total_elemwise_error = elemwise_error
+
+    abs_td_error = jnp.abs(total_elemwise_error).astype(online_preds.q.dtype)
+    max_priority = self.max_priority_weight * jnp.max(abs_td_error, axis=0)
+    mean_priority = (1 - self.max_priority_weight) * jnp.mean(total_elemwise_error, axis=0)
+    priorities = (max_priority + mean_priority)
 
     reverb_update = learning_lib.ReverbUpdate(
         keys=batch.info.key,
         priorities=priorities
         )
     extra = learning_lib.LossExtra(metrics=metrics, reverb_update=reverb_update)
+
     return mean_loss, extra
 
 

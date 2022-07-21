@@ -8,7 +8,6 @@ from agents.td_agent import losses
 from utils import data as data_utils
 
 
-
 class QLearning:
   """Calculates transformed n-step TD errors.
 

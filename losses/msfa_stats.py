@@ -4,8 +4,9 @@ def compute_q(sf, w):
   return jnp.sum(sf*w, axis=-1)
 
 
+from losses.base import BaseLoss
 
-class MsfaStats:
+class MsfaStats(BaseLoss):
 
   def __call__(self, data, online_preds, target_preds, steps, **kwargs):
 
