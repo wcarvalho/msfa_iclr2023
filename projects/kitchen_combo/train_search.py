@@ -80,6 +80,10 @@ def main(_):
       setting='easy',
       max_episodes=3,
       completion_bonus=0.0)
+  elif FLAGS.env == "minihack":
+    default_env_kwargs=dict(
+      setting='room',
+      num_train_seeds=200)
 
 
 

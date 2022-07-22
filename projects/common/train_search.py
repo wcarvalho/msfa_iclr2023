@@ -138,11 +138,12 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     )
   controller.wait()
   print("Controller finished")
-  # if agent.wandb_obj:
-  #   agent.wandb_obj.finish()
+  if agent.wandb_obj:
+    agent.wandb_obj.finish()
+    print("Wandb Finished")
   # if ray:
     # time.sleep(60*5) # sleep for 5 minutes to avoid collisions
-  time.sleep(120) # sleep for 60 seconds to avoid collisions
+  # time.sleep(120) # sleep for 60 seconds to avoid collisions
 
 
 def manual_parallel(fn, space, debug=False, wait_time=30):

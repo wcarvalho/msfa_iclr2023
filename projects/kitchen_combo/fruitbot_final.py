@@ -96,68 +96,6 @@ def get(search, agent):
         }
     ]
 
-
-  # ======================================================
-  # Final
-  # ======================================================
-  elif search == 'taskgen_final':
-    shared = {
-      "seed": tune.grid_search([1, 2, 3, 4]),
-      'setting': tune.grid_search(['taskgen_long_easy']),
-      "group": tune.grid_search(['taskgen_final-1']),
-      "max_number_of_steps": tune.grid_search([10_000_000]),
-    }
-    space = [
-        {
-          "agent": tune.grid_search(['r2d1']),
-          **shared,
-        },
-        {
-          "agent": tune.grid_search(['usfa_lstm']),
-          'eval_task_support': tune.grid_search(['train']),
-          **shared,
-        },
-        {
-         "agent": tune.grid_search(['msf']),
-          'eval_task_support': tune.grid_search(['train']),
-          **shared,
-        },
-        {
-         "agent": tune.grid_search(['msf']),
-          'eval_task_support': tune.grid_search(['eval']),
-          **shared,
-        },
-    ]
-
-  elif search == 'procgen_final':
-    shared = {
-      "seed": tune.grid_search([1, 2, 3, 4]),
-      'setting': tune.grid_search(['procgen_easy']),
-      "group": tune.grid_search(['procgen_final-1']),
-      "max_number_of_steps": tune.grid_search([15_000_000]),
-    }
-    space = [
-        {
-          "agent": tune.grid_search(['r2d1']),
-          **shared,
-        },
-        {
-          "agent": tune.grid_search(['usfa_lstm']),
-          'eval_task_support': tune.grid_search(['train']),
-          **shared,
-        },
-        {
-         "agent": tune.grid_search(['msf']),
-          'eval_task_support': tune.grid_search(['train']),
-          **shared,
-        },
-        {
-         "agent": tune.grid_search(['msf']),
-          'eval_task_support': tune.grid_search(['eval']),
-          **shared,
-        },
-    ]
-
   else:
     raise NotImplementedError(search)
 

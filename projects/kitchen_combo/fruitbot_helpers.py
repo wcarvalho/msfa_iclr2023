@@ -157,11 +157,6 @@ def make_environment(
   if evaluation:
     num_levels=0
 
-  # -----------------------
-  # settting
-  # -----------------------
-  setting = 'easy' if 'easy' in setting else 'hard'
-
   env = ProcGenMultitask(
     all_level_kwargs=all_level_kwargs,
     EnvCls=ProcgenGymTask,

@@ -93,6 +93,20 @@ def main(_):
           raise RuntimeError(setting)
     except AttributeError as e:
       print(e)
+  elif FLAGS.env == "minihack":
+    from projects.kitchen_combo import minihack_helpers
+    setting = FLAGS.env_setting or ''
+    env_kwargs=dict(
+      setting=setting,
+      # max_episodes=4,
+      # completion_bonus=0.0,
+    )
+    env = minihack_helpers.make_environment(
+      **env_kwargs,
+      evaluation=FLAGS.evaluate)
+    env_spec = acme.make_environment_spec(env)
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = minihack_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
+
   else:
     raise NotImplementedError(FLAGS.env)
 

@@ -54,19 +54,22 @@ test_async:
 	--agent $(agent) \
 	--env $(env)
 
+
+project?='kitchen_combo'
 train_search_combo:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/kitchen_combo/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project 'kitchen_combo' \
+	--wandb_project $(project) \
 	--group $(group) \
 	--search $(search) \
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
 	--spaces combo_spaces \
+	--env kitchen_combo \
 	--terminal $(terminal) \
 	--agent $(agent) \
 	--debug_search $(debug)
@@ -86,27 +89,108 @@ train_search_fruitbot:
 	--ray $(ray) \
 	--terminal $(terminal) \
 	--spaces fruitbot_spaces \
+	--env fruibot \
+	--agent $(agent) \
+	--debug_search $(debug)
+
+project?='minihack'
+train_search_minihack:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/kitchen_combo/train_search.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project $(project) \
+	--group $(group) \
+	--search $(search) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--terminal $(terminal) \
+	--spaces minihack_spaces \
+	--env minihack \
 	--agent $(agent) \
 	--debug_search $(debug)
 
 
-# meta_search:
-# 	cd ../..; \
-# 	echo ${searches}; \
-# 	CUDA_VISIBLE_DEVICES=$(cuda) \
-# 	python projects/common/train_search_meta.py \
-# 	--wandb=$(wandb) \
-# 	--python_file="projects/kitchen_combo/train_search.py" \
-# 	--date=$(date) \
-# 	--wandb_project $(project) \
-# 	--group $(group) \
-# 	--spaces $(spaces) \
-# 	--searches "${searches}" \
-# 	--notes $(notes) \
-# 	--skip $(skip) \
-# 	--ray $(ray) \
-# 	--debug_search $(debug) \
-# 	--agent $(agent)
+project?='kitchen_combo'
+final_combo:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/kitchen_combo/train_search.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project $(project) \
+	--group $(group) \
+	--search $(search) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--spaces combo_spaces \
+	--env kitchen_combo \
+	--terminal $(terminal) \
+	--searches "${searches}" \
+	--agent $(agent) \
+	--debug_search $(debug)
+
+
+project?='fruitbot'
+final_fruitbot:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/kitchen_combo/train_search.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project $(project) \
+	--group $(group) \
+	--search $(search) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--terminal $(terminal) \
+	--searches "${searches}" \
+	--spaces fruitbot_spaces \
+	--env fruibot \
+	--agent $(agent) \
+	--debug_search $(debug)
+
+project?='minihack'
+final_minihack:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project $(project) \
+	--group $(group) \
+	--search $(search) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--terminal $(terminal) \
+	--searches "${searches}" \
+	--spaces minihack_spaces \
+	--env minihack \
+	--agent $(agent) \
+	--debug_search $(debug)
+
+meta_search:
+	cd ../..; \
+	echo ${searches}; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--wandb=$(wandb) \
+	--python_file="projects/kitchen_combo/train_search.py" \
+	--date=$(date) \
+	--wandb_project $(project) \
+	--group $(group) \
+	--spaces $(spaces) \
+	--searches "${searches}" \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--debug_search $(debug) \
+	--agent $(agent)
 
 
 overwrite?=1

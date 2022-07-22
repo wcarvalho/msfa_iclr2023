@@ -115,6 +115,24 @@ def build_program(
     except AttributeError as e:
       pass
 
+  elif env == "minihack":
+    from projects.kitchen_combo import minihack_helpers
+    print("="*20,'env kwargs', "="*20)
+    pprint(env_kwargs)
+    # -----------------------
+    # load env stuff
+    # -----------------------
+    setting = env_kwargs.get('setting', 'room_small')
+    environment_factory = lambda is_eval: minihack_helpers.make_environment(
+        evaluation=is_eval,
+        **env_kwargs)
+    env = environment_factory(False)
+    env_spec = acme.make_environment_spec(env)
+    del env
+    # -----------------------
+    # load agent/network stuff
+    # -----------------------
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = minihack_helpers.load_agent_settings(agent, env_spec, config_kwargs)
   else:
     raise NotImplementedError(FLAGS.env)
 

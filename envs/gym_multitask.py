@@ -67,7 +67,8 @@ class GymTask(object):
 
 class MultiLevelEnv(object):
 
-  """Wrapper environment that acts like the `current_level`.
+  """Gym Environment.
+  Wrapper environment that acts like the `current_level`.
   Everytime reset is called, a new level is sampled.
   Attributes:
       levelnames (list): names of levels
@@ -163,6 +164,7 @@ class MultiLevelEnv(object):
 
 class MultitaskGym(dm_env.Environment):
   """
+  DM environment.
   """
 
   def __init__(self,
