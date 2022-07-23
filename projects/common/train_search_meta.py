@@ -8,12 +8,12 @@ import time
 from pprint import pprint
 from absl import flags
 import subprocess
-from projects.msf.goto_distributed import build_program
-from projects.msf.goto_search_lp import main
 
-flags.DEFINE_spaceseplist('searches', 'baselines', 'which search to use.')
+flags.DEFINE_spaceseplist('searches', '', 'which search to use.')
 flags.DEFINE_string('python_file', '', 'which python script to use.')
 
+from projects.common import train_distributed
+from projects.common import train_search
 
 def main(_):
   """This will loop through the spaces list in FLAGS.spaces and run each item on a different GPU
@@ -24,19 +24,22 @@ def main(_):
   FLAGS = flags.FLAGS
   def build_command(search=None, idx=None):
     command = f"""python {FLAGS.python_file}
-      --folder={FLAGS.folder}
       --wandb={FLAGS.wandb}
-      --date={FLAGS.date}
-      --spaces={FLAGS.spaces}
       --wandb_project={FLAGS.wandb_project}
+      --folder={FLAGS.folder}
       --group={FLAGS.group}
+      --notes={FLAGS.notes}
+      --date={FLAGS.date}
+      --agent={FLAGS.agent}
+      --env={FLAGS.env}
+      --spaces={FLAGS.spaces}
       --search={search}
       --terminal={FLAGS.terminal}
-      --notes={FLAGS.notes}
       --skip={FLAGS.skip}
       --idx={idx}
       --ray={FLAGS.ray}
-      --agent={FLAGS.agent} """
+      --debug_search={FLAGS.debug_search}
+      """
 
     if search is not None:
       command += f" --search={search}"
@@ -61,13 +64,15 @@ def main(_):
       cuda = gpus[idx%len(gpus)]
       command = build_command(search=search)
       p = run(command, cuda)
-      time.sleep(30.0)
+      if not FLAGS.debug_search:
+        time.sleep(30.0)
   else:
     for idx in range(len(gpus)):
       cuda = gpus[idx%len(gpus)]
       command = build_command(search=FLAGS.searches[0], idx=idx)
       p = run(command, cuda)
-      time.sleep(30.0)
+      if not FLAGS.debug_search:
+        time.sleep(30.0)
 
 if __name__ == '__main__':
   app.run(main)

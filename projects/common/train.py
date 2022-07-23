@@ -14,6 +14,27 @@ from projects.common.observers import LevelReturnObserver
 
 from acme.environment_loop import EnvironmentLoop
 
+# -----------------------
+# flags
+# -----------------------
+flags.DEFINE_string('agent', 'r2d1', 'which agent.')
+flags.DEFINE_string('env', 'fruitbot', 'which environment.')
+flags.DEFINE_string('env_setting', '', 'which environment setting.')
+flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.')
+flags.DEFINE_integer('seed', 0, 'Random seed.')
+flags.DEFINE_bool('test', True, 'whether testing.')
+flags.DEFINE_bool('evaluate', True, 'whether to use evaluation policy.')
+
+# -----------------------
+# wandb
+# -----------------------
+flags.DEFINE_bool('wandb', False, 'whether to log.')
+flags.DEFINE_string('wandb_project', 'msf_sync', 'wand project.')
+flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
+flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
+flags.DEFINE_string('notes', '', 'notes for wandb.')
+
+
 def create_net_prediction_tuple(config, env_spec, NetworkCls, NetKwargs, data_length = 2):
   """ Create dummy output and use that to define a NamedTuple that will be used to collect data. 
   Note: Assumes BasicArch will be used.

@@ -17,6 +17,13 @@ from utils import data as data_utils
 from projects.common.observers import LevelReturnObserver
 from projects.common.train import create_net_prediction_tuple
 
+# -----------------------
+# flags
+# -----------------------
+flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
+flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
+flags.DEFINE_bool('debug', False, 'whether to debug.')
+
 def build_common_program(
   environment_factory,
   env_spec,
