@@ -158,23 +158,26 @@ class WandbLogger(base.Logger):
     self._iter = 0
     # self.summary = tf.summary.create_file_writer(logdir)
     self._steps_key = steps_key
+    self.should_terminate = False
     self.max_number_of_steps = max_number_of_steps
     if max_number_of_steps is not None:
       logging.warning(f"Will exit after {max_number_of_steps} steps")
 
   def try_terminate(self, step: int):
+    if self.should_terminate:
+      # emergency exit
+      import os; os._exit(0)
+
     if step > int(1.05*self.max_number_of_steps):
       try:
         wandb.finish()
         logging.warning("Exiting launchpad")
+        self.should_terminate = True
         import launchpad as lp  # pylint: disable=g-import-not-at-top
         lp.stop()
       except Exception as e:
         pass
 
-      if step > int(1.1*self.max_number_of_steps):
-        # emergency exit
-        import os; os._exit(0)
 
 
   def write(self, values: base.LoggingData):
