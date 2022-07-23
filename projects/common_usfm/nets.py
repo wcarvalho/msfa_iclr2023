@@ -247,6 +247,7 @@ def r2d1(config, env_spec,
     prediction_prep_fn = None # just use memory_out
     memory_prep_fn=None
   else:
+    task_embedding = task_embedding or config.task_embedding
     task_embedder, embed_fn = build_task_embedder(
       task_embedding=task_embedding,
       config=config,
@@ -303,6 +304,7 @@ def r2d1_noise(config, env_spec,
   num_actions = env_spec.actions.num_values
   task_shape = env_spec.observations.observation.task.shape
   task_dim = task_shape[-1]
+  task_embedding = task_embedding or config.task_embedding
   task_embedder, embed_fn = build_task_embedder(task_embedding=task_embedding, config=config, task_shape=task_shape)
   if task_embedding != 'none':
     inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
@@ -361,6 +363,8 @@ def modr2d1(config, env_spec,
   num_actions = env_spec.actions.num_values
   task_shape = env_spec.observations.observation.task.shape
   task_dim = task_shape[-1]
+
+  task_embedding = task_embedding or config.task_embedding
   task_embedder, embed_fn = build_task_embedder(
     task_embedding=task_embedding,
     config=config,
@@ -436,6 +440,7 @@ def usfa(config, env_spec,
   # -----------------------
   task_shape = env_spec.observations.observation.task.shape
   task_dim = task_shape[-1]
+  task_embedding = task_embedding or config.task_embedding
   if task_embedding != 'none':
     task_embedder, embed_fn = build_task_embedder(
       task_embedding=task_embedding,
@@ -518,7 +523,7 @@ def msf(
   task_shape = env_spec.observations.observation.task.shape
   task_dim = task_shape[-1]
 
-
+  task_embedding = task_embedding or config.task_embedding
   # -----------------------
   # memory
   # -----------------------
