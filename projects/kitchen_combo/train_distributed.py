@@ -34,22 +34,6 @@ from utils import data as data_utils
 from projects.common.train_distributed import build_common_program
 from projects.common.observers import LevelReturnObserver
 
-# -----------------------
-# flags
-# -----------------------
-flags.DEFINE_string('agent', 'r2d1', 'which agent.')
-flags.DEFINE_string('env', 'fruitbot', 'which agent.')
-flags.DEFINE_integer('seed', 1, 'Random seed.')
-flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
-flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
-# WANDB
-flags.DEFINE_bool('debug', False, 'whether to debug.')
-flags.DEFINE_bool('custom_loggers', True, 'whether to use custom loggers.')
-flags.DEFINE_bool('wandb', False, 'whether to log.')
-flags.DEFINE_string('wandb_project', 'kitchen_combo2', 'wand project.')
-flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
-flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
-flags.DEFINE_string('notes', '', 'notes for wandb.')
 
 FLAGS = flags.FLAGS
 
@@ -115,6 +99,24 @@ def build_program(
     except AttributeError as e:
       pass
 
+  elif env == "minihack":
+    from projects.kitchen_combo import minihack_helpers
+    print("="*20,'env kwargs', "="*20)
+    pprint(env_kwargs)
+    # -----------------------
+    # load env stuff
+    # -----------------------
+    setting = env_kwargs.get('setting', 'room_small')
+    environment_factory = lambda is_eval: minihack_helpers.make_environment(
+        evaluation=is_eval,
+        **env_kwargs)
+    env = environment_factory(False)
+    env_spec = acme.make_environment_spec(env)
+    del env
+    # -----------------------
+    # load agent/network stuff
+    # -----------------------
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = minihack_helpers.load_agent_settings(agent, env_spec, config_kwargs)
   else:
     raise NotImplementedError(FLAGS.env)
 

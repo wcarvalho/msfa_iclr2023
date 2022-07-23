@@ -29,8 +29,7 @@ from projects.msf import helpers as msf_helpers
 from projects.kitchen_combo import fruitbot_configs
 from projects.common_usfm import agent_loading
 
-from envs.gym_multitask import MultitaskGym
-from envs.procgen_env import ProcgenGymTask, ProcGenMultitask
+from envs.procgen_gym_task import ProcgenGymTask, ProcGenMultitask
 
 def make_environment(
   setting='',
@@ -159,11 +158,6 @@ def make_environment(
   # -----------------------
   if evaluation:
     num_levels=0
-
-  # -----------------------
-  # settting
-  # -----------------------
-  setting = 'easy' if 'easy' in setting else 'hard'
 
   env = ProcGenMultitask(
     all_level_kwargs=all_level_kwargs,

@@ -547,6 +547,34 @@ class PickupCleanedTask(CleanTask):
         goto=self.sink, actions=['place', 'toggle', 'pickup_contents'])
     ]
 
+class SlicePutdownTask(SliceTask):
+  """docstring for SliceTask"""
+
+  @property
+  def task_name(self): return 'slice_putdown'
+  @property
+  def default_task_rep(self): return 'slice x and drop knife'
+
+  @property
+  def num_navs(self): return 2
+
+  def check_status(self):
+    sliced = self.object_to_slice.state['sliced'] == True
+    not_carrying_knife = self.kitchen.carrying is not self.knife
+    reward = done = sliced and not_carrying_knife
+
+    return reward, done
+
+
+  def subgoals(self):
+    # TODO: rotate and try to place is a hack that should be replaced
+    return [
+      ActionsSubgoal(
+        goto=self.knife, actions=['pickup_contents']),
+      ActionsSubgoal(
+        goto=self.object_to_slice, actions=['slice', *(['left', 'place']*4)])
+    ]
+
 class PickupSlicedTask(SliceTask):
   """docstring for SliceTask"""
 
@@ -1492,6 +1520,7 @@ def all_tasks():
     heat=HeatTask,
     clean=CleanTask,
     slice=SliceTask,
+    slice_putdown=SlicePutdownTask,
     chill=ChillTask,
     slice2=Slice2Task,
     cook2=Cook2Task,

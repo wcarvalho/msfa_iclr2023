@@ -1,7 +1,8 @@
 import numpy as np
 import dm_env
 from gym import spaces
-from procgen import ProcgenEnv
+
+from procgen.env import ProcgenEnv
 from envs.gym_multitask import MultitaskGym
 
 COMPLETION_BONUS=0.5

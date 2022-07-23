@@ -10,3 +10,10 @@ make meta_search searches='usfa_lstm' cuda=0,1,2,3 # RLDL13
 make meta_search searches='msf_mask' cuda=0,1,2,3 # RLDL16
 make meta_search searches='msf_struct' cuda=0,1,2,3 # RLDL17
 
+
+########################
+# Final
+########################
+make final_msf searches='replication' cuda=0,1,2,3
+make final_msf searches='ablate_modularity' cuda=0,1,2,3
+make final_msf searches='ablate_shared' cuda=0,1,2,3

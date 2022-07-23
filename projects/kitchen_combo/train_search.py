@@ -23,19 +23,6 @@ import importlib
 from projects.common.train_search import run_experiments, listify_space
 from projects.kitchen_combo.train_distributed import build_program
 
-
-flags.DEFINE_string('folder', '', 'folder.')
-flags.DEFINE_string('root', None, 'root folder.')
-flags.DEFINE_bool('date', True, 'use date.')
-flags.DEFINE_string('search', '', 'which search to use.')
-flags.DEFINE_string('spaces', 'spaces', 'which search to use.')
-flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
-flags.DEFINE_integer('idx', None, 'number of gpus per job. accepts fractions.')
-flags.DEFINE_integer('skip', 1, 'skip run jobs.')
-flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
-flags.DEFINE_integer('debug_search', 0, 'whether to use ray tune.')
-
-
 FLAGS = flags.FLAGS
 
 def main(_):
@@ -80,6 +67,12 @@ def main(_):
       setting='easy',
       max_episodes=3,
       completion_bonus=0.0)
+  elif FLAGS.env == "minihack":
+    default_env_kwargs=dict(
+      setting='room',
+      num_train_seeds=200)
+  else:
+    raise NotImplementedError(FLAGS.env)
 
 
 

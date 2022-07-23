@@ -24,16 +24,16 @@ from projects.common.train_search import run_experiments, listify_space
 from projects.msf.goto_distributed import build_program
 
 
-flags.DEFINE_string('folder', 'set', 'folder.')
-flags.DEFINE_string('root', None, 'root folder.')
-flags.DEFINE_bool('date', True, 'use date.')
-flags.DEFINE_string('search', '', 'which search to use.')
-flags.DEFINE_string('spaces', 'msf_search', 'which search to use.')
-flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
-flags.DEFINE_integer('idx', None, 'number of gpus per job. accepts fractions.')
-flags.DEFINE_integer('skip', 1, 'skip run jobs.')
-flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
-flags.DEFINE_integer('debug_search', 0, 'whether to use ray tune.')
+# flags.DEFINE_string('folder', 'set', 'folder.')
+# flags.DEFINE_string('root', None, 'root folder.')
+# flags.DEFINE_bool('date', True, 'use date.')
+# flags.DEFINE_string('search', '', 'which search to use.')
+# flags.DEFINE_string('spaces', 'msf_search', 'which search to use.')
+# flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
+# flags.DEFINE_integer('idx', None, 'number of gpus per job. accepts fractions.')
+# flags.DEFINE_integer('skip', 1, 'skip run jobs.')
+# flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
+# flags.DEFINE_integer('debug_search', 0, 'whether to use ray tune.')
 
 
 FLAGS = flags.FLAGS
