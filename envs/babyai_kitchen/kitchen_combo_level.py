@@ -34,6 +34,7 @@ class KitchenComboLevel(KitchenLevel):
     kitchen=None,
     objects=None,
     infinite=True,
+    task2arguments=None,
     # pickup_required=True,
     **kwargs):
     """Summary
@@ -49,6 +50,7 @@ class KitchenComboLevel(KitchenLevel):
         **kwargs: Description
     """
     self.task2reward = task2reward
+    self.task2arguments = task2arguments or dict()
     self.infinite = infinite
     if not self.infinite:
       assert ntasks==1, "only know how to do non-infinite tasks if 1 task per type. otherwise share objects (e.g. knife in slice apple, slice orange)"
@@ -86,7 +88,7 @@ class KitchenComboLevel(KitchenLevel):
 
     # kwargs["task_kinds"] = ['pickup']
     # kwargs['actions'] = ['left', 'right', 'forward', 'pickup_contents']
-    kwargs['extra_timesteps'] = max(1, kwargs['extra_timesteps'])
+    kwargs['extra_timesteps'] = max(1, kwargs.get('extra_timesteps', 1))
     super().__init__(
         *args,
         tile_size=tile_size,
@@ -135,17 +137,15 @@ class KitchenComboLevel(KitchenLevel):
     for task_kind, reward in self.task2reward.items():
       for task_idx in range(self.ntasks):
         # make task cheker
+        kwargs=dict()
+        if self.task2arguments:
+          kwargs['argument_options']=self.task2arguments.get(task_kind, {})
         checker = self.rand_task(task_kind,
           reward=self.task2reward[task_kind],
-          init=False)
+          # init=False,
+          **kwargs)
         self.task2checkers[task_kind].append(checker)
 
-        # generate task
-        if task_kind == 'slice':
-          checker.reset(exclude=task_object_types+['apple', 'orange'])
-          checker.object_to_slice.set_prop('cooked', True)
-        else:
-          checker.reset(exclude=task_object_types)
         task_object_types.extend(checker.task_types)
         task_objects.update(checker.task_objects)
 

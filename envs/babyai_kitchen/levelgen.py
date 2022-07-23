@@ -294,7 +294,6 @@ class KitchenLevel(RoomGridLevel):
             task = task_class(
                 env=self,
                 kitchen=self.kitchen,
-                argument_options=self.taskarg_options,
                 task_reps=self.task_reps,
                 done_delay=self.extra_timesteps,
                 reset_behavior=self.task_reset_behavior,
@@ -319,6 +318,7 @@ class KitchenLevel(RoomGridLevel):
     # Generate random instructions
     task = self.rand_task(
         task_kinds=self.task_kinds,
+        argument_options=self.taskarg_options,
         instr_kinds=self.instr_kinds,
         use_subtasks=self.use_subtasks,
     )
@@ -327,6 +327,7 @@ class KitchenLevel(RoomGridLevel):
         while not task.instruction in self.valid_tasks:
             task = self.rand_task(
                 task_kinds=self.task_kinds,
+                argument_options=self.taskarg_options,
                 instr_kinds=self.instr_kinds,
                 use_subtasks=self.use_subtasks,
             )
