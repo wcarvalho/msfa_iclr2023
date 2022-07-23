@@ -29,6 +29,7 @@ from projects.kitchen_gridworld import nets
 from projects.kitchen_gridworld import helpers as kitchen_helpers
 from projects.msf import helpers as msf_helpers
 from projects.kitchen_combo import combo_configs
+from projects.common_usfm import agent_loading
 
 class ComboObsTuple(NamedTuple):
   """Container for (Observation, Action, Reward) tuples."""
@@ -38,7 +39,7 @@ class ComboObsTuple(NamedTuple):
 
 def make_environment(evaluation: bool = False,
                      tile_size=8,
-                     setting='medium',
+                     setting='',
                      path='.',
                      task2rew=None,
                      ) -> dm_env.Environment:
@@ -53,63 +54,99 @@ def make_environment(evaluation: bool = False,
   Returns:
       dm_env.Environment: Multitask GotoAvoid environment is returned.
   """
+  setting = setting or 'medium'
   settings = dict(
     test=dict(room_size=5, ntasks=1),
     test_noreset=dict(room_size=5, ntasks=1, infinite=False),
     small=dict(room_size=7, ntasks=1),
     small_noreset=dict(room_size=7, ntasks=1, infinite=False),
-    medium=dict(room_size=9, ntasks=2),
+    medium=dict(room_size=9, ntasks=1),
+    medium_noreset=dict(room_size=9, ntasks=1, infinite=False),
+  )
+  assert setting in settings.keys()
+  task2arguments=dict(
+      toggle=dict(x=['microwave', 'stove']),
+      slice_putdown=dict(x=['potato', 'apple', 'orange']),
+      clean=dict(x=['pot', 'pan', 'plates']), # also uses stove
+      chill=dict(x=['lettuce', 'onion', 'tomato']),
   )
   if task2rew is None:
     train = {
-          "0.slice":{
-              "slice" : 1,
-              "chill" : 0,
+          "a.Train.1.toggle":{
+              "slice_putdown" : 1,
+              "toggle" : 0,
               "clean" : 0,
-              },
-          "1.chill":{
-              "slice" : 0,
-              "chill" : 1,
-              "clean" : 0,
-              },
-          "2.clean":{
-              "slice" : 0,
               "chill" : 0,
+              },
+          "a.Train.2.slice":{
+              "slice_putdown" : 0,
+              "toggle" : 1,
+              "clean" : 0,
+              "chill" : 0,
+              },
+          "a.Train.3.clean":{
+              "slice_putdown" : 0,
+              "toggle" : 0,
               "clean" : 1,
+              "chill" : 0,
+              },
+          "a.Train.4.chill":{
+              "slice_putdown" : 0,
+              "toggle" : 0,
+              "clean" : 0,
+              "chill" : 1,
               }
       }
     if evaluation:
       task2rew={
           **train,
-          "3.slice-chill":{
-              "slice" : 1,
-              "chill" : 1,
+          "b.Eval.2.slice-toggle":{
+              "slice_putdown" : 1,
+              "toggle" : 1,
               "clean" : 0,
-              },
-          "4.slice-clean":{
-              "slice" : 1,
               "chill" : 0,
-              "clean" : 1,
               },
-          "5.chill-clean":{
-              "slice" : 0,
+          "b.Eval.2.slice-clean":{
+              "slice_putdown" : 1,
+              "toggle" : 0,
+              "clean" : 1,
+              "chill" : 0,
+              },
+          "b.Eval.2.toggle-clean":{
+              "slice_putdown" : 0,
+              "toggle" : 1,
+              "clean" : 1,
+              "chill" : 0,
+              },
+          "b.Eval.2.chill-clean":{
+              "slice_putdown" : 0,
+              "toggle" : 0,
+              "clean" : 1,
               "chill" : 1,
-              "clean" : 1,
               },
-          "6.slice-chill-clean":{
-              "slice" : 1,
+          "b.Eval.3.slice-toggle-clean":{
+              "slice_putdown" : 1,
+              "toggle" : 1,
+              "clean" : 1,
+              "chill" : 0,
+              },
+          "b.Eval.3.toggle-clean-chill":{
+              "slice_putdown" : 0,
+              "toggle" : 1,
+              "clean" : 1,
               "chill" : 1,
-              "clean" : 1,
               },
-          "7.slice-neg-chill-clean":{
-              "slice" : 1,
-              "chill" : -1,
+          "b.Eval.3.slice-toggle-clean":{
+              "slice_putdown" : 1,
+              "toggle" : 0,
               "clean" : 1,
+              "chill" : 1,
               },
-          "8.slice-neg-chill-neg-clean":{
-              "slice" : 1,
-              "chill" : -1,
-              "clean" : -1,
+          "b.Eval.4.slice-toggle-clean-chill":{
+              "slice_putdown" : 1,
+              "toggle" : 1,
+              "clean" : 1,
+              "chill" : 1,
               },
       }
     else:
@@ -146,6 +183,7 @@ def make_environment(evaluation: bool = False,
     path=path,
     wrappers=[functools.partial(RGBImgPartialObsWrapper, tile_size=tile_size)],
     LevelCls=KitchenComboLevel,
+    task2arguments=task2arguments,
     **settings[setting],
     )
 
@@ -169,77 +207,37 @@ def load_agent_settings(agent, env_spec, config_kwargs=None):
 
   if agent == "r2d1":
   # Recurrent DQN/UVFA
-    config = data_utils.merge_configs(
-      dataclass_configs=[combo_configs.R2D1Config()],
-      dict_configs=default_config
-    )
-
-    NetworkCls=nets.r2d1 # default: 2M params
-    NetKwargs=dict(
-      config=config,
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.r2d1(
       env_spec=env_spec,
-      task_embedding=config.task_embedding,
-      )
-    LossFn = td_agent.R2D2Learning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(loss=config.r2d1_loss)
+      default_config=default_config,
+      dataclass_configs=[
+        combo_configs.R2D1Config(),
+      ])
 
   elif agent == "usfa_lstm":
   # USFA + cumulants from LSTM + Q-learning
-
-    config = data_utils.merge_configs(
-      dataclass_configs=[
-        combo_configs.USFAConfig(),
-        combo_configs.QAuxConfig(),
-        combo_configs.RewardConfig()],
-      dict_configs=default_config
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.usfa_lstm(
+        env_spec=env_spec,
+        default_config=default_config,
+        dataclass_configs=[
+          combo_configs.QAuxConfig(),
+          combo_configs.RewardConfig(),
+          combo_configs.USFAConfig(),
+          ],
       )
-
-    NetworkCls=nets.usfa # default: 2M params
-    NetKwargs=dict(
-      config=config,
-      env_spec=env_spec,
-      task_embedding=config.task_embedding,
-      use_separate_eval=True,
-      predict_cumulants=True,)
-
-    LossFn = td_agent.USFALearning
-    LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    LossFnKwargs.update(
-      loss=config.sf_loss,
-      mask_loss=config.sf_mask_loss,
-      shorten_data_for_cumulant=True,
-      extract_cumulants=losses.cumulants_from_preds,
-      aux_tasks=[
-        msf_helpers.q_aux_sf_loss(config),
-        cumulants.CumulantRewardLoss(
-          shorten_data_for_cumulant=True,
-          coeff=config.reward_coeff,
-          loss=config.reward_loss,
-          balance=config.balance_reward,
-          ),
-      ])
 
   elif agent == "msf":
 # USFA + cumulants from FARM + Q-learning
-    config = data_utils.merge_configs(
-      dataclass_configs=[
-        combo_configs.QAuxConfig(),
-        combo_configs.ModularUSFAConfig(),
-        combo_configs.RewardConfig(),
-        combo_configs.FarmConfig(),
-      ],
-      dict_configs=default_config)
-
-    return kitchen_helpers.msf(
-      config,
-      env_spec,
-      NetworkCls=nets.msf,
-      predict_cumulants=True,
-      learn_model=False,
-      use_separate_eval=True,
-      task_embedding=config.task_embedding)
-
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.msf(
+        env_spec=env_spec,
+        default_config=default_config,
+        dataclass_configs=[
+          combo_configs.QAuxConfig(),
+          combo_configs.RewardConfig(),
+          combo_configs.ModularUSFAConfig(),
+          combo_configs.FarmConfig(),
+        ],
+      )
   else:
     raise NotImplementedError(agent)
 

@@ -11,8 +11,8 @@ make train_search_fruitbot project=fruitbot-taskgen search=msf_taskgen_easy2 cud
 # make train_search search=msf_reward2 cuda=0,1,2,3 terminal=current_terminal, ray=1
 
 
-# make meta_search searches='r2d1_norest' cuda=0,1 # RLDL2
-
-# make meta_search searches='test12_relate' cuda=0,1,2,3
-
-# make meta_search searches='test_noreset' agent='msf' cuda=2,3
+########################
+# Final
+########################
+make final_fruitbot_taskgen searches='taskgen_final' cuda=0,1,2,3
+make final_fruitbot_procgen searches='procgen_final' cuda=0,1,2,3

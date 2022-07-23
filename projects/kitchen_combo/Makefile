@@ -55,14 +55,14 @@ test_async:
 	--env $(env)
 
 
-project?='kitchen_combo'
+
 train_search_combo:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/kitchen_combo/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project $(project) \
+	--wandb_project 'kitchen_combo' \
 	--group $(group) \
 	--search $(search) \
 	--notes $(notes) \
@@ -74,14 +74,14 @@ train_search_combo:
 	--agent $(agent) \
 	--debug_search $(debug)
 
-project?='fruitbot'
+
 train_search_fruitbot:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/kitchen_combo/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project $(project) \
+	--wandb_project 'fruitbot' \
 	--group $(group) \
 	--search $(search) \
 	--notes $(notes) \
@@ -89,18 +89,19 @@ train_search_fruitbot:
 	--ray $(ray) \
 	--terminal $(terminal) \
 	--spaces fruitbot_spaces \
-	--env fruibot \
+	--env fruitbot \
+	--folder 'results/fruitbot' \
 	--agent $(agent) \
 	--debug_search $(debug)
 
-project?='minihack'
+
 train_search_minihack:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/kitchen_combo/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project $(project) \
+	--wandb_project 'minihack' \
 	--group $(group) \
 	--search $(search) \
 	--notes $(notes) \
@@ -109,61 +110,80 @@ train_search_minihack:
 	--terminal $(terminal) \
 	--spaces minihack_spaces \
 	--env minihack \
+	--folder 'results/minihack' \
 	--agent $(agent) \
 	--debug_search $(debug)
 
 
-project?='kitchen_combo'
 final_combo:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/kitchen_combo/train_search.py \
+	python projects/common/train_search_meta.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project $(project) \
+	--python_file="projects/kitchen_combo/train_search.py" \
+	--wandb_project 'kitchen_combo' \
 	--group $(group) \
-	--search $(search) \
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
 	--spaces combo_spaces \
 	--env kitchen_combo \
+	--folder 'results/kitchen_combo' \
 	--terminal $(terminal) \
 	--searches "${searches}" \
 	--agent $(agent) \
 	--debug_search $(debug)
 
-
-project?='fruitbot'
-final_fruitbot:
+final_fruitbot_taskgen:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/kitchen_combo/train_search.py \
+	python projects/common/train_search_meta.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project $(project) \
+	--python_file="projects/kitchen_combo/train_search.py" \
+	--wandb_project 'fruitbot-taskgen' \
 	--group $(group) \
-	--search $(search) \
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
 	--terminal $(terminal) \
 	--searches "${searches}" \
 	--spaces fruitbot_spaces \
-	--env fruibot \
+	--env fruitbot \
+	--folder 'results/fruitbot' \
 	--agent $(agent) \
 	--debug_search $(debug)
 
-project?='minihack'
+final_fruitbot_procgen:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--python_file="projects/kitchen_combo/train_search.py" \
+	--wandb_project 'fruitbot' \
+	--group $(group) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--terminal $(terminal) \
+	--searches "${searches}" \
+	--spaces fruitbot_spaces \
+	--env fruitbot \
+	--folder 'results/fruitbot' \
+	--agent $(agent) \
+	--debug_search $(debug)
+
 final_minihack:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/common/train_search_meta.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project $(project) \
+	--python_file="projects/kitchen_combo/train_search.py" \
+	--wandb_project 'minihack' \
 	--group $(group) \
-	--search $(search) \
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
@@ -171,6 +191,28 @@ final_minihack:
 	--searches "${searches}" \
 	--spaces minihack_spaces \
 	--env minihack \
+	--folder 'results/minihack' \
+	--agent $(agent) \
+	--debug_search $(debug)
+
+
+final_msf:
+	cd ../..; \
+	echo "${searches}"; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--python_file="projects/msf/goto_search_lp.py" \
+	--wandb_project 'msf2' \
+	--group $(group) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--spaces msf_search \
+	--folder 'results/msf2' \
+	--terminal $(terminal) \
+	--searches="${searches}" \
 	--agent $(agent) \
 	--debug_search $(debug)
 

@@ -34,22 +34,6 @@ from utils import data as data_utils
 from projects.common.train_distributed import build_common_program
 from projects.common.observers import LevelReturnObserver
 
-# -----------------------
-# flags
-# -----------------------
-flags.DEFINE_string('agent', 'r2d1', 'which agent.')
-flags.DEFINE_string('env', 'fruitbot', 'which agent.')
-flags.DEFINE_integer('seed', 1, 'Random seed.')
-flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
-flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
-# WANDB
-flags.DEFINE_bool('debug', False, 'whether to debug.')
-flags.DEFINE_bool('custom_loggers', True, 'whether to use custom loggers.')
-flags.DEFINE_bool('wandb', False, 'whether to log.')
-flags.DEFINE_string('wandb_project', 'kitchen_combo2', 'wand project.')
-flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
-flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
-flags.DEFINE_string('notes', '', 'notes for wandb.')
 
 FLAGS = flags.FLAGS
 
