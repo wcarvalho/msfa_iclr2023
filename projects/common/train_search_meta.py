@@ -65,14 +65,14 @@ def main(_):
       command = build_command(search=search)
       p = run(command, cuda)
       if not FLAGS.debug_search:
-        time.sleep(30.0)
+        time.sleep(10.0)
   else:
     for idx in range(len(gpus)):
       cuda = gpus[idx%len(gpus)]
       command = build_command(search=FLAGS.searches[0], idx=idx)
       p = run(command, cuda)
       if not FLAGS.debug_search:
-        time.sleep(30.0)
+        time.sleep(10.0)
 
 if __name__ == '__main__':
   app.run(main)

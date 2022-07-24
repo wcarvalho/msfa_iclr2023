@@ -149,9 +149,9 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     )
   controller.wait()
   print("Controller finished")
-  if agent.wandb_obj:
-    agent.wandb_obj.finish()
-    print("Wandb Finished")
+  # if agent.wandb_obj:
+  #   agent.wandb_obj.finish()
+  #   print("Wandb Finished")
   # if ray:
     # time.sleep(60*5) # sleep for 5 minutes to avoid collisions
   # time.sleep(120) # sleep for 60 seconds to avoid collisions
@@ -189,7 +189,8 @@ def manual_parallel(fn, space, debug=False, wait_time=30):
       args=(config,))
     p.start()
     processes.append(p)
-    time.sleep(wait_time) # sleep for 60 seconds to avoid collisions
+    if wait_time:
+      time.sleep(wait_time) # sleep for 60 seconds to avoid collisions
     if wait:
       print("="*100)
       print("Waiting")
@@ -200,7 +201,7 @@ def manual_parallel(fn, space, debug=False, wait_time=30):
       print("="*100)
       print("Running new set")
       print("="*100)
-      time.sleep(60*5) # sleep for 5 minutes to finish syncing++
+      # time.sleep(60*5) # sleep for 5 minutes to finish syncing++
     idx += 1
 
 def listify_space(space):
@@ -225,7 +226,7 @@ def run_experiments(
   num_cpus=3,
   num_gpus=1,
   skip=True,
-  wait_time=60,
+  wait_time=0,
   use_ray=False,
   build_kwargs=None,
   debug=False):
@@ -267,7 +268,7 @@ def run_experiments(
           skip=skip)
         )
       p.start()
-      if not debug:
+      if wait_time and not debug:
         time.sleep(wait_time)
       p.join() # this blocks until the process terminates
       # this will call right away and end.

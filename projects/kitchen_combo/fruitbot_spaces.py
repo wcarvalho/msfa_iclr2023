@@ -36,7 +36,32 @@ def get(search, agent):
           "group": tune.grid_search(['r2d1_procgen-2']),
         }
     ]
+  elif search == 'msf_procgen_easy':
+    space = [
+        {
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['msf']),
+          "max_number_of_steps": tune.grid_search([10_000_000]),
+          'setting': tune.grid_search(['procgen_easy']),
+          'reward_coeff': tune.grid_search([1.0, 10.0, 50.0, 100.0]),
+          "group": tune.grid_search(['procgen-3']),
+        }
+    ]
+  elif search == 'usfa_procgen_easy':
+    space = [
+        {
+          "seed": tune.grid_search([1]),
+          "agent": tune.grid_search(['usfa_lstm']),
+          "max_number_of_steps": tune.grid_search([10_000_000]),
+          'setting': tune.grid_search(['procgen_easy']),
+          'reward_coeff': tune.grid_search([1.0, 10.0, 50.0, 100.0]),
+          "group": tune.grid_search(['procgen-3']),
+        }
+    ]
 
+  # -----------------------
+  # taskgen
+  # -----------------------
   elif search == 'r2d1_taskgen_easy':
     space = [
         {

@@ -52,7 +52,7 @@ class R2D1Config(configs.R2D1Config):
 
 
   # Network hps
-  memory_size: int = 512
+  memory_size: int = 256
   out_hidden_size: int = 128
   out_q_layers: int = 1
   task_embedding: str='none'
@@ -71,6 +71,7 @@ class NoiseConfig(R2D1Config):
 class USFAConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
   npolicies: int = 10 # number of policies to sample
+  memory_size: int = 300
   variance: float = 0.5
   # Network hps
   policy_size: int = 32
@@ -131,8 +132,8 @@ class FarmConfig:
   """Extra configuration options for FARM module."""
 
   # Network hps
-  memory_size: int = None
-  module_size: int = 128
+  memory_size: int = 200
+  module_size: int = None
   nmodules: int = 4
   out_layers: int = 0
   module_attn_size: int = None
@@ -156,6 +157,7 @@ class ModularUSFAConfig(USFAConfig):
   embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
 
+  module_task_dim: int=0
   seperate_cumulant_params: bool=True # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
   struct_policy_input: bool=True

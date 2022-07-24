@@ -135,7 +135,7 @@ def make_environment(
   elif 'procgen' in setting:
     all_level_kwargs={
         '1,-1': dict(
-          env='fruitbot', task=[1,-1]), # ignore it
+          env='fruitbot', task=[1, 1]), # ignore it
       }
     max_episodes = 1
     completion_bonus = 0.0
