@@ -91,6 +91,7 @@ def make_environment(
       num_levels=500
 
   elif 'taskgen_long' in setting:
+    reward_coeff=1.0
     train_level_kwargs={
         'a.train|1,0,0,0|': dict(
           env='wilkabotpzzz', task=[1,0,0,0]),

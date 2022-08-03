@@ -55,7 +55,7 @@ dependencies:
     - dm-control==0.0.364896371
     - keras==2.7.0 # new
     - pytype==2021.8.11
-    - dm-launchpad==0.4.1 # new
+    - dm-launchpad==0.5.0 # new
     - dm-reverb==0.6.1 # new
     - tensorflow-datasets==4.4.0
     - tensorflow-estimator==2.7.0 # new
