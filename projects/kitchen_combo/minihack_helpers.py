@@ -28,11 +28,12 @@ from modules.ensembles import QLearningEnsembleLoss
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper
 
 
-from projects.msf import nets
+# from projects.msf import nets
 from projects.kitchen_gridworld import helpers as kitchen_helpers
 from projects.msf import helpers as msf_helpers
 from projects.kitchen_combo import minihack_configs
 from projects.common_usfm import agent_loading
+# from projects.common_usfm import nets
 
 from envs.gym_multitask import GymTask, MultitaskGym, MultiLevelEnv
 

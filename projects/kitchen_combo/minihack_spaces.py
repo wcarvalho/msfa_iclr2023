@@ -7,7 +7,7 @@ def get(search, agent):
           "seed": tune.grid_search([1]),
           "agent": tune.grid_search(['r2d1']),
           "group": tune.grid_search(['exp-1']),
-          "max_number_of_steps": tune.grid_search([20_000_000]),
+          "max_number_of_steps": tune.grid_search([10_000_000]),
           'setting': tune.grid_search(['room_small', 'room_large']),
           'num_train_seeds': tune.grid_search([200, 500]),
           # 'importance_sampling_exponent': tune.grid_search([0.0, 0.6]),
@@ -17,14 +17,14 @@ def get(search, agent):
   elif search == 'usfa':
     space = [
         {
-          "seed": tune.grid_search([1]),
+          "seed": tune.grid_search([1, 2]),
           "agent": tune.grid_search(['usfa_lstm']),
-          "max_number_of_steps": tune.grid_search([20_000_000]),
+          "max_number_of_steps": tune.grid_search([10_000_000]),
           'setting': tune.grid_search(['room_small', 'room_large']),
-          'num_train_seeds': tune.grid_search([200, 500]),
-          "group": tune.grid_search(['exp-1']),
-          'value_coeff': tune.grid_search([.5]),
-          'reward_coeff': tune.grid_search([10.0]),
+          'num_train_seeds': tune.grid_search([200]),
+          "group": tune.grid_search(['exp-2-reward']),
+          'reward_coeff': tune.grid_search([1.0, 10.0]),
+          'memory_size': tune.grid_search([600]),
           'eval_task_support': tune.grid_search(['train']),
         }
     ]
@@ -33,11 +33,12 @@ def get(search, agent):
         {
           "seed": tune.grid_search([1]),
           "agent": tune.grid_search(['msf']),
-          "max_number_of_steps": tune.grid_search([20_000_000]),
-          'setting': tune.grid_search(['room_small', 'room_large']),
-          'num_train_seeds': tune.grid_search([200, 500]),
-          "group": tune.grid_search(['exp-1']),
-          'reward_coeff': tune.grid_search([10.0]),
+          "max_number_of_steps": tune.grid_search([10_000_000]),
+          'setting': tune.grid_search(['room_large']),
+          'num_train_seeds': tune.grid_search([500, 1000]),
+          "group": tune.grid_search(['exp-2-reward']),
+          'reward_coeff': tune.grid_search([1.0]),
+          'task_embedding': tune.grid_search(['none', 'embedding']),
           # 'priority_use_aux': tune.grid_search([True, False]),
           # 'priority_weights_aux': tune.grid_search([True, False]),
           # 'max_episodes': tune.grid_search([1.0]),
@@ -93,7 +94,7 @@ def get(search, agent):
         {
           "agent": tune.grid_search(['usfa_lstm']),
           'eval_task_support': tune.grid_search(['train']),
-          "memory_size": tune.grid_search([600]),
+          "memory_size": tune.grid_search([600]), # 3.66M
           **shared,
         },
     ]
@@ -108,7 +109,7 @@ def get(search, agent):
         {
          "agent": tune.grid_search(['msf']),
           'eval_task_support': tune.grid_search(['train']),
-          "memory_size": tune.grid_search([480]),
+          "memory_size": tune.grid_search([480]), # 3.64M
           **shared,
         },
         {
