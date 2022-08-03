@@ -31,6 +31,7 @@ def main(_):
     # config['priority_use_aux'] = True
     # config['priority_weights_aux'] = True
     config['task_embedding'] = 'embedding'
+    config['task_activation'] = 'tanh'
     # config['task_embedding'] = 'embedding'
     # config['task_embedding'] = 'struct_embed' 
     # # config['stop_w_grad'] = True

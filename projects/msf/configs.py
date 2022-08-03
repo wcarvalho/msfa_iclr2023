@@ -58,6 +58,8 @@ class R2D1Config(configs.R2D1Config):
   task_embedding: str='none'
   embed_hidden_dim: int = 0
   embed_task_dim: int = 0
+  embed_stddev: float=1.0
+  task_activation: str='none'
   eval_network: bool = True
   vision_torso: str = 'atari'
   r2d1_loss: str = 'n_step_q_learning'
