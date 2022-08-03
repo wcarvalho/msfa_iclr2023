@@ -62,6 +62,7 @@ def make_environment(
   # environments
   # -----------------------
   if 'taskgen_short' in setting:
+    reward_coeff=1.0
     if evaluation:
       all_level_kwargs={
         'b.eval|-1,-1|': dict(
@@ -139,6 +140,7 @@ def make_environment(
       }
     max_episodes = 1
     completion_bonus = 0.0
+    reward_coeff=0.1 # max reward = 10.0
     if setting == 'procgen_easy':
       setting = 'easy'
       num_levels=200
@@ -166,6 +168,7 @@ def make_environment(
     num_levels=num_levels,
     max_episodes=max_episodes,
     completion_bonus=completion_bonus,
+    reward_coeff=reward_coeff,
     )
 
   wrapper_list = [

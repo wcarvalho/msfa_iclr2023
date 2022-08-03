@@ -129,7 +129,8 @@ def get(search, agent):
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
       'setting': tune.grid_search(['taskgen_long_easy']),
-      "group": tune.grid_search(['taskgen_final-1']),
+      "group": tune.grid_search(['taskgen_final-2']),
+      "max_episodes": tune.grid_search([4]),
       "max_number_of_steps": tune.grid_search([10_000_000]),
     }
     space = [
@@ -158,7 +159,8 @@ def get(search, agent):
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
       'setting': tune.grid_search(['procgen_easy']),
-      "group": tune.grid_search(['procgen_final-1']),
+      "group": tune.grid_search(['procgen_final-2']),
+      "label": tune.grid_search(['env_rew_coeff']),
       "max_number_of_steps": tune.grid_search([15_000_000]),
     }
     space = [

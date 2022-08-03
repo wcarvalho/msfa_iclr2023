@@ -44,39 +44,6 @@ def get(search, agent):
           'eval_task_support': tune.grid_search(['train']),
         },
     ]
-  elif search == 'r2d1_rate':
-    space = [
-        {
-          "seed": tune.grid_search([1]),
-          "agent": tune.grid_search(['r2d1']),
-          "max_number_of_steps": tune.grid_search([2_000_000]),
-          'setting': tune.grid_search(['room_small']),
-          'num_train_seeds': tune.grid_search([500]),
-          "group": tune.grid_search(['rate-limiter-linear']),
-          'samples_per_insert': tune.grid_search([6.0, 8.0]),
-          # 'priority_use_aux': tune.grid_search([True, False]),
-          # 'priority_weights_aux': tune.grid_search([True, False]),
-          # 'max_episodes': tune.grid_search([1.0]),
-          'eval_task_support': tune.grid_search(['train']),
-        },
-    ]
-  elif search == 'msf_rate':
-    space = [
-        {
-          "seed": tune.grid_search([1]),
-          "agent": tune.grid_search(['msf']),
-          "max_number_of_steps": tune.grid_search([2_000_000]),
-          'setting': tune.grid_search(['room_small']),
-          'num_train_seeds': tune.grid_search([500]),
-          "group": tune.grid_search(['rate-limiter-linear']),
-          'reward_coeff': tune.grid_search([10.0]),
-          'samples_per_insert': tune.grid_search([4.0, 6.0, 8.0]),
-          # 'priority_use_aux': tune.grid_search([True, False]),
-          # 'priority_weights_aux': tune.grid_search([True, False]),
-          # 'max_episodes': tune.grid_search([1.0]),
-          'eval_task_support': tune.grid_search(['train']),
-        },
-    ]
 
   # ======================================================
   # Final
