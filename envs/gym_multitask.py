@@ -171,6 +171,7 @@ class MultitaskGym(dm_env.Environment):
     all_level_kwargs: dict, 
     ObsTuple:GymObsTuple=GymObsTuple,
     MultilevelCls: MultiLevelEnv=MultiLevelEnv,
+    reward_coeff=1.0,
     obs_keys=None,
     **kwargs):
     """Initializes a Multitask environment environment.
@@ -196,7 +197,7 @@ class MultitaskGym(dm_env.Environment):
 
     self.obs_keys = obs_keys or ObsTuple._fields
     self.ObsTuple = ObsTuple
-
+    self._reward_coeff = reward_coeff
 
   def reset(self) -> dm_env.TimeStep:
     """Returns the first `TimeStep` of a new episode."""
@@ -210,6 +211,8 @@ class MultitaskGym(dm_env.Environment):
     """Updates the environment according to the action."""
     obs, reward, done, info = self.env.step(action)
     obs = self.ObsTuple(**{k: obs[k] for k in self.obs_keys})
+
+    reward = reward*self._reward_coeff
 
     if done:
       timestep = dm_env.termination(reward=reward, observation=obs)

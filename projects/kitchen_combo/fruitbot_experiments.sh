@@ -1,5 +1,7 @@
 # Procgen
-make train_search_fruitbot search=r2d1_procgen_easy cuda=0,1 ray=1
+make train_search_fruitbot search=r2d1_procgen_easy cuda=0,1,2,3 ray=1
+make train_search_fruitbot search=usfa_procgen_easy cuda=0,1,2,3 ray=1
+make train_search_fruitbot search=msf_procgen_easy cuda=0,1,2,3 ray=1
 
 
 # Taskgen

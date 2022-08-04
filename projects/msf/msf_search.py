@@ -144,17 +144,14 @@ def get(search):
         },
         {
           "agent": tune.grid_search(['usfa_lstm']),
-          'eval_task_support': tune.grid_search(['train']),
           **shared,
         },
         {
          "agent": tune.grid_search(['msf']),
-          'eval_task_support': tune.grid_search(['train']),
           **shared,
         },
         {
-         "agent": tune.grid_search(['msf']),
-          'eval_task_support': tune.grid_search(['eval']),
+         "agent": tune.grid_search(['usfa']),
           **shared,
         },
     ]

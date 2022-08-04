@@ -89,6 +89,8 @@ class ProcGenMultitask(MultitaskGym):
     obs, reward, done, info = self.env.step(action)
     obs = self.ObsTuple(**{k: obs[k] for k in self.obs_keys})
 
+    reward = reward*self._reward_coeff
+
     if info['prev_level_complete'] == 1:
       self.completed_episodes += 1
       # finished level, done = False

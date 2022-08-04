@@ -7,6 +7,7 @@ class R2D1Config(configs.R2D1Config):
   vision_torso: str = 'impala'
   memory_size: int = 256
   out_hidden_size: int = 512
+  embed_task_dim: int = 12
   out_q_layers: int = 2
   r2d1_loss: str = 'transformed_n_step_q_learning'
   max_number_of_steps: int = 10_000_000
@@ -31,7 +32,7 @@ class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):
   module_size: int = None
-  nmodules: int = None
+  nmodules: int = 3
   memory_size: int = 240 # based on fruitbot
   module_attn_heads: float = .5
-  module_task_dim: int = 1 # divide embed_task_dim by nmodules
+  module_task_dim: int = 0 # divide embed_task_dim by nmodules

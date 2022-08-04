@@ -206,7 +206,6 @@ def main(_):
     config_kwargs=config_kwargs,
     wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
     debug=FLAGS.debug,
-    custom_loggers=FLAGS.custom_loggers,
     )
 
   # Launch experiment.

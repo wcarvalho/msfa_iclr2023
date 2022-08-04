@@ -23,7 +23,7 @@ from modules.ensembles import QLearningEnsembleLoss
 from envs.babyai_kitchen.wrappers import RGBImgPartialObsWrapper
 
 
-from projects.msf import nets
+# from projects.msf import nets
 from projects.kitchen_gridworld import helpers as kitchen_helpers
 from projects.msf import helpers as msf_helpers
 from projects.kitchen_combo import fruitbot_configs
@@ -62,6 +62,7 @@ def make_environment(
   # environments
   # -----------------------
   if 'taskgen_short' in setting:
+    reward_coeff=1.0
     if evaluation:
       all_level_kwargs={
         'b.eval|-1,-1|': dict(
@@ -90,6 +91,7 @@ def make_environment(
       num_levels=500
 
   elif 'taskgen_long' in setting:
+    reward_coeff=1.0
     train_level_kwargs={
         'a.train|1,0,0,0|': dict(
           env='wilkabotpzzz', task=[1,0,0,0]),
@@ -135,8 +137,11 @@ def make_environment(
   elif 'procgen' in setting:
     all_level_kwargs={
         '1,-1': dict(
-          env='fruitbot', task=[1,1]), # ignore it
+          env='fruitbot', task=[1, 1]), # ignore it
       }
+    max_episodes = 1
+    completion_bonus = 0.0
+    reward_coeff=0.1 # max reward = 10.0
     if setting == 'procgen_easy':
       setting = 'easy'
       num_levels=200
@@ -164,6 +169,7 @@ def make_environment(
     num_levels=num_levels,
     max_episodes=max_episodes,
     completion_bonus=completion_bonus,
+    reward_coeff=reward_coeff,
     )
 
   wrapper_list = [

@@ -65,7 +65,7 @@ def main(_):
   elif FLAGS.env == "fruitbot":
     default_env_kwargs=dict(
       setting='easy',
-      max_episodes=3,
+      max_episodes=4,
       completion_bonus=0.0)
   elif FLAGS.env == "minihack":
     default_env_kwargs=dict(

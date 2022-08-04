@@ -75,7 +75,7 @@ class BabyAIEmbedding(OAREmbedding):
 
 class LinearTaskEmbedding(hk.Module):
   """docstring for LinearTaskEmbedding"""
-  def __init__(self, hidden_dim=128, out_dim=6, num_tasks=None, structured=False, **kwargs):
+  def __init__(self, hidden_dim=128, out_dim=6, num_tasks=None, structured=False, stddev=1.0, activation: str='none', **kwargs):
     super(LinearTaskEmbedding, self).__init__()
     self.hidden_dim = hidden_dim
     self.structured = structured
@@ -86,11 +86,17 @@ class LinearTaskEmbedding(hk.Module):
     else:
       self.layer2_dim = out_dim
 
+    activation = activation.lower()
+    if activation == 'none':
+      self.activation = lambda x:x
+    else:
+      self.activation = getattr(jax.nn, activation)
+
     if hidden_dim > 0:
       self.layer1 = hk.Linear(hidden_dim,
         with_bias=False, 
         w_init=hk.initializers.RandomNormal(
-            stddev=1., mean=0.))
+            stddev=stddev, mean=0.))
 
       self.layer2 = hk.Linear(self.layer2_dim)
     else:
@@ -98,7 +104,7 @@ class LinearTaskEmbedding(hk.Module):
       self.layer2 = hk.Linear(self.layer2_dim,
         with_bias=False, 
         w_init=hk.initializers.RandomNormal(
-            stddev=1., mean=0.))
+            stddev=stddev, mean=0.))
 
   def __call__(self, x):
     """Summary
@@ -127,7 +133,7 @@ class LinearTaskEmbedding(hk.Module):
     else:
       z = apply_net(x)
 
-    return z 
+    return self.activation(z)
 
   @property
   def out_dim(self):
@@ -257,6 +263,7 @@ class LanguageTaskEmbedder(hk.Module):
       out = z.sum(1)
     else:
       raise NotImplementedError
+
 
     return out
 

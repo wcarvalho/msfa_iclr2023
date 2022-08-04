@@ -125,38 +125,35 @@ def usfa_lstm(
     dict_configs=default_config
     )
 
-  NetworkCls=nets.usfa # default: (1.96M) params
+  NetworkCls = NetworkCls or nets.usfa # default: (1.96M) params
   NetKwargs=dict(
     config=config,
     env_spec=env_spec,
-    use_separate_eval=True,
     predict_cumulants=predict_cumulants,
     **kwargs)
 
   LossFn = td_agent.USFALearning
   LossFnKwargs = default_loss_kwargs(config)
 
-
-  aux_tasks=[
-      q_aux_sf_loss(config),
-      cumulants.CumulantRewardLoss(
-        shorten_data_for_cumulant=True,
-        coeff=config.reward_coeff,
-        mask_loss=config.phi_mask_loss,
-        loss=config.reward_loss,
-        l1_coeff=config.phi_l1_coeff,
-        wl1_coeff=config.w_l1_coeff,
-        balance=config.balance_reward,
-        ),
-  ]
-
   LossFnKwargs.update(
-    loss=config.sf_loss,
-    mask_loss=config.sf_mask_loss,
-    shorten_data_for_cumulant=True,
-    aux_tasks=aux_tasks)
+      loss=config.sf_loss,
+      mask_loss=config.sf_mask_loss)
 
   if predict_cumulants:
+    LossFnKwargs['aux_tasks']=[
+        q_aux_sf_loss(config),
+        cumulants.CumulantRewardLoss(
+          shorten_data_for_cumulant=True,
+          coeff=config.reward_coeff,
+          mask_loss=config.phi_mask_loss,
+          loss=config.reward_loss,
+          l1_coeff=config.phi_l1_coeff,
+          wl1_coeff=config.w_l1_coeff,
+          balance=config.balance_reward,
+          )
+    ]
+    LossFnKwargs['shorten_data_for_cumulant']=True
+
     LossFnKwargs['extract_cumulants'] = functools.partial(
       losses.cumulants_from_preds,
       use_target=config.target_phi,
@@ -195,11 +192,10 @@ def msf(
     )
   assert predict_cumulants, 'never implemented otherwise'
 
-  NetworkCls=nets.msf
+  NetworkCls = NetworkCls or nets.msf
   NetKwargs=dict(
     config=config,
     env_spec=env_spec,
-    use_separate_eval=True,
     predict_cumulants=predict_cumulants,
     learn_model=learn_model,
     **kwargs)
