@@ -34,6 +34,7 @@ class KitchenComboLevel(KitchenLevel):
     kitchen=None,
     objects=None,
     infinite=True,
+    task_reset_behavior: str='remove',
     task2arguments=None,
     # pickup_required=True,
     **kwargs):
@@ -96,6 +97,7 @@ class KitchenComboLevel(KitchenLevel):
         verbosity=verbosity,
         objects=objects,
         kitchen=kitchen,
+        task_reset_behavior=task_reset_behavior,
         **kwargs)
     # -----------------------
     # backwards compatibility
@@ -140,9 +142,11 @@ class KitchenComboLevel(KitchenLevel):
         kwargs=dict()
         if self.task2arguments:
           kwargs['argument_options']=self.task2arguments.get(task_kind, {})
-        checker = self.rand_task(task_kind,
+        checker = self.rand_task(
+          task_kinds=task_kind,
           reward=self.task2reward[task_kind],
           # init=False,
+          only_composite=True,
           **kwargs)
         self.task2checkers[task_kind].append(checker)
 
@@ -181,35 +185,36 @@ class KitchenComboLevel(KitchenLevel):
 
     return obs
 
-  def on_task_complete(self, checker):
-    # get reward
-    # object = self.grid.get(*fwd_pos)
+  # def on_task_complete(self, checker):
+  #   # get reward
+  #   # object = self.grid.get(*fwd_pos)
 
-    objects = checker.task_objects
+  #   objects = checker.task_objects
 
-    for object in objects:
+  #   for object in objects:
 
-      # reset position
-      pos = object.cur_pos
-      if (pos >= 0).all():
-        self.grid.set(*pos, None)
+  #     # reset position
+  #     pos = object.cur_pos
+  #     if (pos >= 0).all():
+  #       self.grid.set(*pos, None)
 
-      if self.infinite:
-        object.reset()
-        # move object
-        room = self.get_room(0, 0)
-        pos = self.place_obj(
-            object,
-            room.top,
-            room.size,
-            reject_fn=reject_next_to,
-            max_tries=1000
-          )
+  #     if self.infinite:
+  #       raise NotImplementedError("check")
+  #       # object.reset()
+  #       # # move object
+  #       # room = self.get_room(0, 0)
+  #       # pos = self.place_obj(
+  #       #     object,
+  #       #     room.top,
+  #       #     room.size,
+  #       #     reject_fn=reject_next_to,
+  #       #     max_tries=1000
+  #       #   )
 
-    if self.infinite:
-      checker.reset_task()
-    self.carrying = None
-    self.kitchen.update_carrying(None)
+  #   if self.infinite:
+  #     checker.reset_task()
+  #   self.carrying = None
+  #   self.kitchen.update_carrying(None)
 
   def step(self, action):
     obs, total_reward, done, info = super().step(action)
@@ -217,7 +222,6 @@ class KitchenComboLevel(KitchenLevel):
     for idx, (task_kind, checkers) in enumerate(self.task2checkers.items()):
       for ck_idx, checker in enumerate(checkers):
         reward, task_done = checker.check_and_update_status()
-        # _, task_done = checker.get_reward_done()
         total_reward += float(reward)
 
         # if task_done:
@@ -227,13 +231,13 @@ class KitchenComboLevel(KitchenLevel):
 
         # wait 1 time-step to observe eff
         if task_done:
-          self.on_task_complete(checker)
+        #   self.on_task_complete(checker)
           self.completed[idx, ck_idx] = 1
 
     # -----------------------
     # if finished each, done
     # -----------------------
-    if not self.infinite:
+    if self.task_reset_behavior in ['none', 'remove', 'remove_all']:
       _done = self.completed[self.rewarding_tasks].sum(-1) == self.ntasks
       done = done or _done.all()
 
@@ -260,29 +264,36 @@ if __name__ == '__main__':
 
     tile_size=14
     optimal=False
-    size='test_noreset'
+    verbosity=1
+    size='test_remove'
     sizes = dict(
-      test=dict(room_size=5, ntasks=1),
-      test_noreset=dict(room_size=5, ntasks=1, infinite=False),
-      small=dict(room_size=7, ntasks=1),
-      small_noreset=dict(room_size=7, ntasks=1, infinite=False),
-      medium=dict(room_size=9, ntasks=2),
-      large=dict(room_size=12, ntasks=3),
-      # xl=dict(room_size=10, ntasks=5),
-      )
+      test_remove=dict(room_size=5, ntasks=1, task_reset_behavior='remove_all'),
+      test_respawn=dict(room_size=5, ntasks=1, task_reset_behavior='respawn'),
+      small_remove=dict(room_size=7, ntasks=1, task_reset_behavior='remove_all'),
+      small_respawn=dict(room_size=7, ntasks=1, task_reset_behavior='respawn')
+        )
+    task2arguments=dict(
+      toggle=dict(x=['microwave', 'stove']),
+      pickup=dict(x=['knife', 'fork']),
+      slice_putdown=dict(x=['potato', 'apple', 'orange']),
+      clean=dict(x=['pot', 'pan', 'plates']), # also uses stove
+      chill=dict(x=['lettuce', 'onion', 'tomato']),
+  )
     task2reward={
           "slice" : 1,
           "chill" : 0,
           "clean" : 1,
           }
     if 'test' in size:
-      task2reward={"pickup" : 1}
+      task2reward={"pickup" : 1, "toggle": 2}
 
     env = KitchenComboLevel(
         agent_view_size=5,
         task2reward=task2reward,
+        task2arguments=task2arguments,
         use_time_limit=False,
         tile_size=tile_size,
+        verbosity=verbosity,
         **sizes[size],
         )
     env = RGBImgPartialObsWrapper(env, tile_size=tile_size)

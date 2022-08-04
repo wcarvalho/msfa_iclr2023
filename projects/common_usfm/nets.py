@@ -158,6 +158,8 @@ def build_task_embedder(task_embedding, config, task_shape=None):
     embedder = LinearTaskEmbedding(
       num_tasks=num_tasks,
       hidden_dim=config.embed_hidden_dim,
+      stddev=config.embed_stddev,
+      activation=config.task_activation,
       out_dim=config.embed_task_dim,
       structured=structured)
     assert len(task_shape) == 1, "don't know how to handle"
