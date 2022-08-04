@@ -2,10 +2,10 @@ step?=0
 port?=4442
 check?=25
 missions?=50
-roomsize?=7
+roomsize?=9
 dists?=0
 train?=1
-verb?=2
+verb?=0
 tasks?="cook"
 mtasks?="test"
 

@@ -79,7 +79,7 @@ def main():
       if int(args.check):
         import ipdb; ipdb.set_trace()
       else:
-        time.sleep(.2)
+        time.sleep(.05)
 
     all_rewards = []
     for mission_indx in range(int(args.missions)):
