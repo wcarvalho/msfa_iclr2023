@@ -135,7 +135,7 @@ class KitchenTask(Instr):
     """
     return False, False
 
-  def update_status(self, goals_achieved: bool=False, done: bool = False):
+  def update_status(self, goals_achieved: bool=False):
     """If goals_achieved, set task to "finished". Return done after the 
     required number of delay steps before returning done.
     
@@ -146,12 +146,14 @@ class KitchenTask(Instr):
         TYPE: Description
     """
     reward = 0.0
+    done = False
     if self.finished:
       self._time_complete += 1
     else:
       if goals_achieved:
         self.finished = True
         reward = self._reward
+
     if self._time_complete >= self.done_delay:
       done = True
 
@@ -161,7 +163,8 @@ class KitchenTask(Instr):
     """Summary
     """
     goals_achieved, task_done = self.check_status()
-    reward, done = self.update_status(goals_achieved, task_done)
+    reward, done = self.update_status(goals_achieved)
+
     return reward, done
 
   @property
@@ -1247,6 +1250,57 @@ class CookSlicedWithCleanedTask(CookTask):
         goto=self.object_to_cook_on, actions=['place', 'toggle'])
     ]
 
+class SliceAndCleanKnifeTask(KitchenTask):
+  """docstring for SliceTask"""
+  def __init__(self, *args, **kwargs):
+
+    self.clean_task = CleanTask(*args, init=False, **kwargs)
+    self.slice_task = SliceTask(*args, init=False, **kwargs)
+    super(SliceAndCleanKnifeTask, self).__init__(*args, **kwargs)
+
+  @property
+  def task_name(self): return 'slice_and_clean_knife'
+  @property
+  def default_task_rep(self):
+    part1 = self.slice_task.default_task_rep.replace("x", "y")
+    part2 = self.clean_task.default_task_rep
+    return f"{part1} and {part2}"
+
+  def generate(self, exclude=[], argops=None):
+    if argops:
+      raise NotImplementedError
+    slice_instr = self.slice_task.generate(
+      argops=self.argument_options.get('y', None))
+    clean_instr = self.clean_task.generate(argops=['knife'])
+
+    self._task_objects = self.slice_task.task_objects + [self.clean_task.sink]
+
+    self.slice_task.knife.set_prop('dirty', False)
+
+    instr =  self.task_rep.replace(
+      'x', self.clean_task.task_objects[0].name).replace(
+      'y', self.slice_task.task_objects[0].name)
+
+    return instr
+
+  @property
+  def num_navs(self): return 2
+
+  def check_status(self):
+    _, clean = self.clean_task.check_status()
+    _, sliced = self.slice_task.check_status()
+
+    if self.use_subtasks:
+      reward = float(clean) + float(sliced)
+      done = clean and sliced
+    else:
+      reward = done = clean and sliced
+
+    return reward, done
+
+  def subgoals(self):
+    subgoals = self.slice_task.subgoals() + self.clean_task.subgoals()
+    return subgoals
 
 # ======================================================
 # Compositions
@@ -1316,13 +1370,13 @@ class CompositionClass(KitchenTask):
         reject_fn=reject_next_to,
         max_tries=1000)
 
-  def remove_object(self, object):
+  def remove_object(self, _object):
     # reset position
-    pos = object.cur_pos
+    pos = _object.cur_pos
     if (pos >= 0).all():
       self.env.grid.set(*pos, None)
 
-    if object == self.env.carrying:
+    if _object == self.env.carrying:
       self.env.carrying = None
       self.kitchen.update_carrying(None)
 
@@ -1334,6 +1388,8 @@ class CompositionClass(KitchenTask):
         subtask (TYPE): Description
     """
     subtask_objects = set(subtask.task_objects)
+
+
     if self.reset_behavior == 'none':
       pass
     elif self.reset_behavior == 'remove':
@@ -1350,20 +1406,27 @@ class CompositionClass(KitchenTask):
       # unique = (knife, orange) - apple - knife = orange
       unique = subtask_objects - nontask - shared
 
-      # remove orange
-      for object in unique:
-        self.remove_object(object)
 
-      for object in shared:
-        object.contains = None
+      # remove orange
+      for _object in unique:
+        self.remove_object(_object)
+      for _object in shared:
+        _object.contains = None
+
+    elif self.reset_behavior == 'remove_all':
+      # remove orange
+      for _object in subtask_objects:
+        _object.contains = None
+      for _object in subtask_objects:
+        self.remove_object(_object)
 
     elif self.reset_behavior == 'respawn':
       subtask.reset_task()
       # all task objects
 
-      for object in subtask_objects:
-        self.remove_object(object)
-        self.place_object(object)
+      for _object in subtask_objects:
+        self.remove_object(_object)
+        self.place_object(_object)
 
   def check_and_update_status(self):
     if self.use_subtasks:
@@ -1384,7 +1447,13 @@ class CompositionClass(KitchenTask):
         if sub_done:
           self.reset_on_subtask_end(c)
         goals_achieved = goals_achieved and c.finished
+
       reward, done = self.update_status(goals_achieved)
+
+    if self.verbosity:
+      print(f"{self.task_name}: reward={reward}, done={done}")
+      print(f"\ttime_complete={c._time_complete}, goals_achieved={goals_achieved}")
+      print(f"\tsub_done={sub_done}, finished={c.finished}")
 
     return reward, done
 
@@ -1413,57 +1482,6 @@ CleanAndSliceAndToggleTask = functools.partial(CompositionClass, classes=[SliceT
 CookAndSliceTask = functools.partial(CompositionClass, classes=[CookTask, SliceTask])
 
 
-class SliceAndCleanKnifeTask(KitchenTask):
-  """docstring for SliceTask"""
-  def __init__(self, *args, **kwargs):
-
-    self.clean_task = CleanTask(*args, init=False, **kwargs)
-    self.slice_task = SliceTask(*args, init=False, **kwargs)
-    super(SliceAndCleanKnifeTask, self).__init__(*args, **kwargs)
-
-  @property
-  def task_name(self): return 'slice_and_clean_knife'
-  @property
-  def default_task_rep(self):
-    part1 = self.slice_task.default_task_rep.replace("x", "y")
-    part2 = self.clean_task.default_task_rep
-    return f"{part1} and {part2}"
-
-  def generate(self, exclude=[], argops=None):
-    if argops:
-      raise NotImplementedError
-    slice_instr = self.slice_task.generate(
-      argops=self.argument_options.get('y', None))
-    clean_instr = self.clean_task.generate(argops=['knife'])
-
-    self._task_objects = self.slice_task.task_objects + [self.clean_task.sink]
-
-    self.slice_task.knife.set_prop('dirty', False)
-
-    instr =  self.task_rep.replace(
-      'x', self.clean_task.task_objects[0].name).replace(
-      'y', self.slice_task.task_objects[0].name)
-
-    return instr
-
-  @property
-  def num_navs(self): return 2
-
-  def check_status(self):
-    _, clean = self.clean_task.check_status()
-    _, sliced = self.slice_task.check_status()
-
-    if self.use_subtasks:
-      reward = float(clean) + float(sliced)
-      done = clean and sliced
-    else:
-      reward = done = clean and sliced
-
-    return reward, done
-
-  def subgoals(self):
-    subgoals = self.slice_task.subgoals() + self.clean_task.subgoals()
-    return subgoals
 
 
 def get_class_name(name: str):
@@ -1502,10 +1520,11 @@ def make_composite(name: str):
 
   return functools.partial(CompositionClass, classes=classes)
 
-def get_task_class(name):
-  defaults = all_tasks()
-  if name in defaults:
-    return defaults[name]
+def get_task_class(name, only_composite=False):
+  if not only_composite:
+    defaults = all_tasks()
+    if name in defaults:
+      return defaults[name]
 
   if 'and' in name:
     return make_composite(name)

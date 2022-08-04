@@ -54,18 +54,19 @@ def make_environment(evaluation: bool = False,
   Returns:
       dm_env.Environment: Multitask GotoAvoid environment is returned.
   """
-  setting = setting or 'medium'
+  setting = setting or 'test_remove'
   settings = dict(
-    test=dict(room_size=5, ntasks=1),
-    test_noreset=dict(room_size=5, ntasks=1, infinite=False),
-    small=dict(room_size=7, ntasks=1),
-    small_noreset=dict(room_size=7, ntasks=1, infinite=False),
-    medium=dict(room_size=9, ntasks=1),
-    medium_noreset=dict(room_size=9, ntasks=1, infinite=False),
+    test_remove=dict(room_size=5, ntasks=1, task_reset_behavior='remove_all'),
+    test_respawn=dict(room_size=5, ntasks=1, task_reset_behavior='respawn'),
+    small_remove=dict(room_size=7, ntasks=1, task_reset_behavior='remove_all'),
+    small_respawn=dict(room_size=7, ntasks=1, task_reset_behavior='respawn'),
+    medium_remove=dict(room_size=9, ntasks=1, task_reset_behavior='remove_all'),
+    medium_respawn=dict(room_size=9, ntasks=1, task_reset_behavior='respawn')
   )
   assert setting in settings.keys()
   task2arguments=dict(
       toggle=dict(x=['microwave', 'stove']),
+      pickup=dict(x=['knife', 'fork']),
       slice_putdown=dict(x=['potato', 'apple', 'orange']),
       clean=dict(x=['pot', 'pan', 'plates']), # also uses stove
       chill=dict(x=['lettuce', 'onion', 'tomato']),

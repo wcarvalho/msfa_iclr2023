@@ -271,11 +271,23 @@ class KitchenLevel(RoomGridLevel):
     task_kinds,
     instr_kinds=['action'],
     use_subtasks=False,
-    # depth=0,
-    **kwargs
-    ):
-
-
+    only_composite=False,
+    **kwargs):
+    """Summary
+    
+    Args:
+        task_kinds (TYPE): Description
+        instr_kinds (list, optional): Description
+        use_subtasks (bool, optional): Description
+        only_composite (bool, optional): only use `CompositionClass` which supports special reset behavior
+        **kwargs: Description
+    
+    Returns:
+        TYPE: Description
+    
+    Raises:
+        RuntimeError: Description
+    """
     instruction_kind = np.random.choice(instr_kinds)
 
     if instruction_kind == 'action':
@@ -290,7 +302,7 @@ class KitchenLevel(RoomGridLevel):
         else:
             # available_tasks = envs.babyai_kitchen.tasks.all_tasks()
             # task_class = available_tasks[task_kind]
-            task_class = envs.babyai_kitchen.tasks.get_task_class(task_kind)
+            task_class = envs.babyai_kitchen.tasks.get_task_class(task_kind, only_composite=only_composite)
             task = task_class(
                 env=self,
                 kitchen=self.kitchen,
