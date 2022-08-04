@@ -140,7 +140,65 @@ def get(search, agent):
   # ======================================================
   # Final
   # ======================================================
-  elif search == 'kitchen_combo_final':
+  elif search == 'test_final':
+    shared = {
+      "seed": tune.grid_search([1, 2, 3]),
+      'setting': tune.grid_search(['test_noreset']),
+      "group": tune.grid_search(['test-final-1']),
+      "max_number_of_steps": tune.grid_search([2_000_000]),
+      'task_embedding': tune.grid_search(['none']),
+    }
+    space = [
+        {
+          "agent": tune.grid_search(['r2d1']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['usfa_lstm']),
+          'eval_task_support': tune.grid_search(['train']),
+          **shared,
+        },
+        {
+         "agent": tune.grid_search(['msf']),
+          'eval_task_support': tune.grid_search(['train']),
+          **shared,
+        },
+        {
+         "agent": tune.grid_search(['msf']),
+          'eval_task_support': tune.grid_search(['eval']),
+          **shared,
+        },
+    ]
+  elif search == 'small_final':
+    shared = {
+      "seed": tune.grid_search([1, 2, 3]),
+      'setting': tune.grid_search(['small_noreset']),
+      "group": tune.grid_search(['small-final-1']),
+      "max_number_of_steps": tune.grid_search([5_000_000]),
+      'task_embedding': tune.grid_search(['none']),
+    }
+    space = [
+        {
+          "agent": tune.grid_search(['r2d1']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['usfa_lstm']),
+          'eval_task_support': tune.grid_search(['train']),
+          **shared,
+        },
+        {
+         "agent": tune.grid_search(['msf']),
+          'eval_task_support': tune.grid_search(['train']),
+          **shared,
+        },
+        {
+         "agent": tune.grid_search(['msf']),
+          'eval_task_support': tune.grid_search(['eval']),
+          **shared,
+        },
+    ]
+  elif search == 'medium_final':
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
       'setting': tune.grid_search(['medium_noreset']),

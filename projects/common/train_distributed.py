@@ -82,14 +82,14 @@ def build_common_program(
           label=loss_label,
           time_delta=log_every,
           wandb=use_wandb,
-          max_number_of_steps=config.max_number_of_steps,
+          # max_number_of_steps=config.max_number_of_steps,
           asynchronous=True)
 
     actor_logger_fn = lambda actor_id: make_logger(
                     log_dir=log_dir, label=actor_label,
                     time_delta=log_every,
                     wandb=use_wandb,
-                    max_number_of_steps=config.max_number_of_steps,
+                    # max_number_of_steps=config.max_number_of_steps,
                     save_data=actor_id == 0,
                     steps_key="actor_steps",
                     )
@@ -97,7 +97,7 @@ def build_common_program(
                     log_dir=log_dir, label=evaluator_label,
                     time_delta=log_every,
                     wandb=use_wandb,
-                    max_number_of_steps=config.max_number_of_steps,
+                    # max_number_of_steps=config.max_number_of_steps,
                     steps_key="evaluator_steps",
                     )
 

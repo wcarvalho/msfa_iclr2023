@@ -160,11 +160,11 @@ def make_environment(evaluation: bool = False,
     if evaluation:
       task2rew={
         **train,
-        '1.+|+':{"pickup" : 1, 'toggle': 1},
-        '2.+|-':{"pickup" : 1, 'toggle': -1},
-        '2.-|+':{"pickup" : -1, 'toggle': 1},
-        '3.-|0':{"pickup" : -1, 'toggle': 0},
-        '3.0|-':{"pickup" : 0, 'toggle': -1},
+        '1.|+|+|':{"pickup" : 1, 'toggle': 1},
+        '2.|+|-|':{"pickup" : 1, 'toggle': -1},
+        '2.|-|+|':{"pickup" : -1, 'toggle': 1},
+        '3.|-|0|':{"pickup" : -1, 'toggle': 0},
+        '3.|0|-|':{"pickup" : 0, 'toggle': -1},
       }
     else:
       task2rew=train
