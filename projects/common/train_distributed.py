@@ -82,14 +82,14 @@ def build_common_program(
           label=loss_label,
           time_delta=log_every,
           wandb=use_wandb,
-          # max_number_of_steps=config.max_number_of_steps,
+          max_number_of_steps=config.max_number_of_steps,
           asynchronous=True)
 
     actor_logger_fn = lambda actor_id: make_logger(
                     log_dir=log_dir, label=actor_label,
                     time_delta=log_every,
                     wandb=use_wandb,
-                    # max_number_of_steps=config.max_number_of_steps,
+                    max_number_of_steps=config.max_number_of_steps,
                     save_data=actor_id == 0,
                     steps_key="actor_steps",
                     )
@@ -97,7 +97,7 @@ def build_common_program(
                     log_dir=log_dir, label=evaluator_label,
                     time_delta=log_every,
                     wandb=use_wandb,
-                    # max_number_of_steps=config.max_number_of_steps,
+                    max_number_of_steps=config.max_number_of_steps,
                     steps_key="evaluator_steps",
                     )
 
@@ -114,14 +114,14 @@ def build_common_program(
       """This will start wandb inside each child process"""
       def make_logger(*args, **kwargs):
         import wandb
-        wandb.init(**wandb_init_kwargs)
+        wandb.init(reinit=True, **wandb_init_kwargs)
         return _logger_fn(*args, **kwargs)
       return make_logger
 
     wandb_obj=None
     if wandb_init_kwargs is not None:
       import wandb
-      wandb_obj = wandb.init(**wandb_init_kwargs)
+      wandb_obj = wandb.init(reinit=True, **wandb_init_kwargs)
 
       logger_fn = wandb_wrap_logger(logger_fn)
       actor_logger_fn = wandb_wrap_logger(actor_logger_fn)
