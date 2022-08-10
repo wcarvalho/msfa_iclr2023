@@ -530,14 +530,14 @@ def msf(
   # memory
   # -----------------------
   # ensure sizes are correct
-  if task_embedding == 'none' and config.nmodules is None:
+  if config.nmodules is None:
     assert config.module_task_dim != 0
     config.nmodules = int(task_dim//config.module_task_dim)
     if config.module_size is None:
       config.module_size = config.memory_size//config.nmodules
     config.memory_size = config.nmodules*config.module_size
 
-  elif task_embedding == 'none' and task_dim < config.nmodules:
+  elif task_dim < config.nmodules:
     # if not embedding and don't have enough modules, reduce
     module_size = config.module_size
     if config.module_size is None:
