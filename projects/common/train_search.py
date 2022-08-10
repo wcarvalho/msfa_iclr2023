@@ -153,8 +153,8 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
   controller.wait(return_on_first_completed=True)
   print("Controller finished")
   # time.sleep(60)
-  # controller._kill()
-  controller._stop()
+  controller._kill()
+  # controller._stop()
   if agent.wandb_obj:
     print("Finishing wandb for process")
     agent.wandb_obj.finish()
