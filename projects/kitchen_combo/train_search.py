@@ -61,7 +61,7 @@ def main(_):
   )
 
   if FLAGS.env == "kitchen_combo":
-    default_env_kwargs=dict(setting='medium')
+    default_env_kwargs=dict(setting='test_remove')
   elif FLAGS.env == "fruitbot":
     default_env_kwargs=dict(
       setting='easy',
