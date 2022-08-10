@@ -166,7 +166,6 @@ class WandbLogger(base.Logger):
 
     if step > int(1.05*self.max_number_of_steps):
       logging.warning("Exiting launchpad")
-      wandb.finish()
       import launchpad as lp  # pylint: disable=g-import-not-at-top
       lp.stop()
       import signal
