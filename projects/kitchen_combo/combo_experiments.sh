@@ -1,5 +1,7 @@
-make train_search search=test12_relate cuda=0,1 ray=1
-make train_search search=msf_reward2 cuda=0,1,2,3 terminal=current_terminal, ray=1
+make train_search_combo search=test_lp cuda=0 ray=1 terminal='current_terminal'
+
+make train_search_combo search=test12_relate cuda=0,1 ray=1
+make train_search_combo search=msf_reward2 cuda=0,1,2,3 terminal=current_terminal, ray=1
 
 
 make meta_search searches='r2d1_norest' cuda=0,1 # RLDL2

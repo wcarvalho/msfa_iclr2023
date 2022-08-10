@@ -36,11 +36,13 @@ def get(search, agent):
           "max_number_of_steps": tune.grid_search([10_000_000]),
           'setting': tune.grid_search(['room_large']),
           'num_train_seeds': tune.grid_search([1000]),
-          "group": tune.grid_search(['exp-3-reward']),
-          'reward_coeff': tune.grid_search([1.0]),
-          'task_embedding': tune.grid_search(['embedding']),
-          'embed_stddev': tune.grid_search([.01, 0.1]),
-          'task_activation': tune.grid_search(['tanh', 'sigmoid']),
+          "group": tune.grid_search(['hps-1']),
+          "trace_length": tune.grid_search([80, 40]),
+          "discount": tune.grid_search([.99, .999]),
+          # 'reward_coeff': tune.grid_search([1.0]),
+          # 'task_embedding': tune.grid_search(['embedding']),
+          # 'embed_stddev': tune.grid_search([.01, 0.1]),
+          # 'task_activation': tune.grid_search(['tanh', 'sigmoid']),
           # 'priority_use_aux': tune.grid_search([True, False]),
           # 'priority_weights_aux': tune.grid_search([True, False]),
           # 'max_episodes': tune.grid_search([1.0]),
@@ -55,7 +57,7 @@ def get(search, agent):
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
       'setting': tune.grid_search(['room_small']),
-      "group": tune.grid_search(['small_final-1']),
+      "group": tune.grid_search(['small_final-2']),
       "max_number_of_steps": tune.grid_search([3_000_000]),
     }
     space = [

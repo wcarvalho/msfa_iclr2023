@@ -24,7 +24,7 @@ class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig): # 1.4M
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):
-  module_size: int = None
+  module_size: int = 64
   nmodules: int = None
   module_attn_heads: float = .5
   module_task_dim: int = 1 # divide embed_task_dim by nmodules
