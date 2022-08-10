@@ -8,7 +8,7 @@ date?=False
 num_gpus?=1
 
 search?='baselines'
-terminal?='output_to_files'
+terminal?='current_terminal'
 group?=''
 notes?=''
 skip?=1

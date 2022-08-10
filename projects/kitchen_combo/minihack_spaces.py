@@ -1,30 +1,41 @@
 from ray import tune
 
 def get(search, agent):
-  if search == 'r2d1':
+  if search == 'test_lp':
+    space = [
+        {
+          "seed": tune.grid_search([1, 2]),
+          "agent": tune.grid_search(['r2d1']),
+          'setting': tune.grid_search(['room_small']),
+          'label': tune.grid_search(['v3']),
+          "max_number_of_steps": tune.grid_search([20_000]),
+          "trace_length": tune.grid_search([80, 40]),
+          "discount": tune.grid_search([.99, .999]),
+        }
+    ]
+  elif search == 'r2d1':
     space = [
         {
           "seed": tune.grid_search([1]),
           "agent": tune.grid_search(['r2d1']),
-          "group": tune.grid_search(['exp-1']),
-          "max_number_of_steps": tune.grid_search([10_000_000]),
-          'setting': tune.grid_search(['room_small', 'room_large']),
-          'num_train_seeds': tune.grid_search([200, 500]),
-          # 'importance_sampling_exponent': tune.grid_search([0.0, 0.6]),
-          # 'r2d1_loss': tune.grid_search(['n_step_q_learning']),
+          'setting': tune.grid_search(['room_large']),
+          'num_train_seeds': tune.grid_search([1000]),
+          "group": tune.grid_search(['hps-1']),
+          "trace_length": tune.grid_search([80, 40]),
+          "discount": tune.grid_search([.99, .999]),
         }
     ]
   elif search == 'usfa':
     space = [
         {
-          "seed": tune.grid_search([1, 2]),
+          "seed": tune.grid_search([1]),
           "agent": tune.grid_search(['usfa_lstm']),
           "max_number_of_steps": tune.grid_search([10_000_000]),
-          'setting': tune.grid_search(['room_small', 'room_large']),
-          'num_train_seeds': tune.grid_search([200]),
-          "group": tune.grid_search(['exp-2-reward']),
-          'reward_coeff': tune.grid_search([1.0, 10.0]),
-          'memory_size': tune.grid_search([600]),
+          'setting': tune.grid_search(['room_large']),
+          'num_train_seeds': tune.grid_search([1000]),
+          "group": tune.grid_search(['hps-1']),
+          "trace_length": tune.grid_search([80, 40]),
+          "discount": tune.grid_search([.99, .999]),
           'eval_task_support': tune.grid_search(['train']),
         }
     ]
@@ -39,13 +50,6 @@ def get(search, agent):
           "group": tune.grid_search(['hps-1']),
           "trace_length": tune.grid_search([80, 40]),
           "discount": tune.grid_search([.99, .999]),
-          # 'reward_coeff': tune.grid_search([1.0]),
-          # 'task_embedding': tune.grid_search(['embedding']),
-          # 'embed_stddev': tune.grid_search([.01, 0.1]),
-          # 'task_activation': tune.grid_search(['tanh', 'sigmoid']),
-          # 'priority_use_aux': tune.grid_search([True, False]),
-          # 'priority_weights_aux': tune.grid_search([True, False]),
-          # 'max_episodes': tune.grid_search([1.0]),
           'eval_task_support': tune.grid_search(['train']),
         },
     ]
