@@ -58,9 +58,9 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    config['struct_policy_input'] = False
+    # config['struct_policy_input'] = False
     config['eval_task_support'] = 'train_eval'
-    config['argmax_mod'] = True
+    # config['argmax_mod'] = True
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)

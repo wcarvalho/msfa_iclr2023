@@ -59,39 +59,39 @@ def get(search):
         }
     ]
 
-  elif search == 'msf_mask':
+  elif search == 'msf':
     space = [
         {
-          "group": tune.grid_search(['msf_mask6']),
-          "seed": tune.grid_search([1, 2, 3]),
+          "group": tune.grid_search(['msf-mask-2']),
+          "seed": tune.grid_search([1]),
           "agent": tune.grid_search(['msf']),
           "reward_coeff": tune.grid_search([1]),
-          "qaux_mask_loss": tune.grid_search([True]),
-          "sf_mask_loss": tune.grid_search([True]),
+          "struct_policy_input": tune.grid_search([True]),
+          "sf_share_output": tune.grid_search([True]),
         },
         {
-          "group": tune.grid_search(['msf_mask6']),
-          "seed": tune.grid_search([1, 2, 3]),
+          "group": tune.grid_search(['msf-mask-2']),
+          "seed": tune.grid_search([1]),
           "agent": tune.grid_search(['msf']),
           "reward_coeff": tune.grid_search([1]),
-          "qaux_mask_loss": tune.grid_search([False]),
-          "sf_mask_loss": tune.grid_search([False]),
+          "struct_policy_input": tune.grid_search([False]),
+          "sf_share_output": tune.grid_search([False]),
         },
         {
-          "group": tune.grid_search(['msf_mask6']),
-          "seed": tune.grid_search([1, 2, 3]),
+          "group": tune.grid_search(['msf-mask-2']),
+          "seed": tune.grid_search([1]),
           "agent": tune.grid_search(['msf']),
-          "reward_coeff": tune.grid_search([10]),
-          "qaux_mask_loss": tune.grid_search([True]),
-          "sf_mask_loss": tune.grid_search([True]),
+          "reward_coeff": tune.grid_search([1]),
+          "struct_policy_input": tune.grid_search([True]),
+          "sf_share_output": tune.grid_search([False]),
         },
         {
-          "group": tune.grid_search(['msf_mask6']),
-          "seed": tune.grid_search([1, 2, 3]),
+          "group": tune.grid_search(['msf-mask-2']),
+          "seed": tune.grid_search([1]),
           "agent": tune.grid_search(['msf']),
-          "reward_coeff": tune.grid_search([10]),
-          "qaux_mask_loss": tune.grid_search([False]),
-          "sf_mask_loss": tune.grid_search([False]),
+          "reward_coeff": tune.grid_search([1]),
+          "struct_policy_input": tune.grid_search([False]),
+          "sf_share_output": tune.grid_search([True]),
         }
     ]
 
@@ -134,7 +134,8 @@ def get(search):
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
       'setting': tune.grid_search(['large_respawn']),
-      "group": tune.grid_search(['borsa_final-1']),
+      "group": tune.grid_search(['borsa_final-2']),
+      "memory_size": tune.grid_search([512]),
       "max_number_of_steps": tune.grid_search([5_000_000]),
     }
     space = [

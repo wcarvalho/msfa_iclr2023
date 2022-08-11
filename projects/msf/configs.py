@@ -52,7 +52,7 @@ class R2D1Config(configs.R2D1Config):
 
 
   # Network hps
-  memory_size: int = 256
+  memory_size: int = 512
   out_hidden_size: int = 128
   out_q_layers: int = 1
   task_embedding: str='none'
@@ -75,7 +75,7 @@ class NoiseConfig(R2D1Config):
 class USFAConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
   npolicies: int = 10 # number of policies to sample
-  memory_size: int = 300
+  memory_size: int = 512
   variance: float = 0.5
   # Network hps
   policy_size: int = 32
@@ -136,7 +136,7 @@ class FarmConfig:
   """Extra configuration options for FARM module."""
 
   # Network hps
-  memory_size: int = 200
+  memory_size: int = 512
   module_size: int = None
   nmodules: int = 4
   out_layers: int = 0

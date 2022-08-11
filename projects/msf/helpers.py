@@ -178,34 +178,34 @@ def make_environment(evaluation: bool = False,
 
   return wrappers.wrap_all(env, wrapper_list)
 
-def q_aux_sf_loss(config):
-  """Create auxilliary Q-learning loss for SF
-  """
-  if config.q_aux == "single":
-    loss = usfa_losses.QLearningAuxLoss
-  elif config.q_aux == "ensemble":
-    loss = usfa_losses.QLearningEnsembleAuxLoss
-  else:
-    raise RuntimeError(config.q_aux)
+# def q_aux_sf_loss(config):
+#   """Create auxilliary Q-learning loss for SF
+#   """
+#   if config.q_aux == "single":
+#     loss = usfa_losses.QLearningAuxLoss
+#   elif config.q_aux == "ensemble":
+#     loss = usfa_losses.QLearningEnsembleAuxLoss
+#   else:
+#     raise RuntimeError(config.q_aux)
 
-  if config.sf_loss == 'n_step_q_learning':
-    tx_pair = rlax.IDENTITY_PAIR
-  elif config.sf_loss == 'transformed_n_step_q_learning':
-    tx_pair = rlax.SIGNED_HYPERBOLIC_PAIR
-  else:
-    raise NotImplementedError(config.sf_loss)
+#   if config.sf_loss == 'n_step_q_learning':
+#     tx_pair = rlax.IDENTITY_PAIR
+#   elif config.sf_loss == 'transformed_n_step_q_learning':
+#     tx_pair = rlax.SIGNED_HYPERBOLIC_PAIR
+#   else:
+#     raise NotImplementedError(config.sf_loss)
 
-  add_bias = getattr(config, "step_penalty", 0) > 0
-  return loss(
-          coeff=config.value_coeff,
-          discount=config.discount,
-          sched_end=config.q_aux_anneal,
-          sched_end_val=config.q_aux_end_val,
-          tx_pair=tx_pair,
-          add_bias=add_bias,
-          mask_loss=config.qaux_mask_loss,
-          target_w=config.target_phi,
-          stop_w_grad=getattr(config, 'stop_w_grad', False))
+#   add_bias = getattr(config, "step_penalty", 0) > 0
+#   return loss(
+#           coeff=config.value_coeff,
+#           discount=config.discount,
+#           sched_end=config.q_aux_anneal,
+#           sched_end_val=config.q_aux_end_val,
+#           tx_pair=tx_pair,
+#           add_bias=add_bias,
+#           mask_loss=config.qaux_mask_loss,
+#           target_w=config.target_phi,
+#           stop_w_grad=getattr(config, 'stop_w_grad', False))
 
 # def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, learn_model=False):
 #   config = data_utils.merge_configs(
@@ -343,7 +343,6 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
     #   dataclass_configs=[configs.USFAConfig()],
     #   dict_configs=default_config
     #   )
-
     NetworkCls=nets.usfa # default: 2M params
     # NetKwargs=dict(
     #   config=config,

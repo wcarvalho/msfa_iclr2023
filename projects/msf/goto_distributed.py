@@ -55,6 +55,7 @@ FLAGS = flags.FLAGS
 def build_program(
   agent: str,
   num_actors : int,
+  save_config_dict: dict=None,
   wandb_init_kwargs=None,
   update_wandb_name=True, # use path from logdir to populate wandb name
   env_kwargs=None,
@@ -99,7 +100,8 @@ def build_program(
   # -----------------------
   # define dict to save. add some extra stuff here
   # -----------------------
-  save_config_dict = config.__dict__
+  save_config_dict = save_config_dict or dict()
+  save_config_dict.update(config.__dict__)
   save_config_dict.update(
     agent=agent,
     setting=setting,

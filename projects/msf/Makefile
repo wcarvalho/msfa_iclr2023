@@ -13,7 +13,7 @@ skip?=1
 spaces?='msf_search'
 ray?=0
 debug?=0
-
+terminal?='current_terminal'
 
 export PYTHONPATH:=$(PYTHONPATH):.
 export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
@@ -65,6 +65,27 @@ meta_search:
 	--ray $(ray) \
 	--debug_search $(debug) \
 	--agent $(agent)
+
+
+final_msf:
+	cd ../..; \
+	echo "${searches}"; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--python_file="projects/msf/goto_search_lp.py" \
+	--wandb_project 'msf2' \
+	--group $(group) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--spaces msf_search \
+	--folder 'results/msf2' \
+	--terminal $(terminal) \
+	--searches="${searches}" \
+	--agent $(agent) \
+	--debug_search $(debug)
 
 evaluate_sync:
 	cd ../..; \
