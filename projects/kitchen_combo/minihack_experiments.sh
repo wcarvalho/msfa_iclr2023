@@ -14,4 +14,5 @@ make train_search_minihack project=minihack search=msf cuda=0,1,2,3 ray=1
 ########################
 make final_minihack searches='large_final-1' cuda=0,1
 make final_minihack searches='large_final-2' cuda=0,1
+make final_minihack searches='large_final_all' cuda=0,1,2,3 skip=1
 make final_minihack searches='small_final' cuda=0,1,2,3 skip=0
