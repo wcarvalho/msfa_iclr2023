@@ -1,7 +1,8 @@
 agent?=msf
 cuda?=2,3
-folder?='results/msf/final'
+folder?='results/msf2'
 wandb?=True
+wandb_test?=False
 custom_loggers?=True
 date?=False
 num_gpus?=1
@@ -10,16 +11,20 @@ search?='baselines'
 group?=''
 notes?=''
 skip?=1
+eval?=0
 spaces?='msf_search'
 ray?=0
+cpus?=4
 debug?=0
 terminal?='current_terminal'
+nojit?=0
 
 export PYTHONPATH:=$(PYTHONPATH):.
 export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
 
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export TF_FORCE_GPU_ALLOW_GROWTH=true
+export JAX_DISABLE_JIT=$(nojit)
 
 killall:
 	kill -9 $(pgrep ray); kill -9 $(pgrep process_entry); kill -9 $(pgrep python); kill -9 $(pgrep wandb); kill -9 $(pgrep goto)
@@ -28,7 +33,9 @@ test_sync:
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python -m ipdb -c continue projects/msf/goto.py \
 	--agent $(agent) \
-	--test=True
+	--test=True \
+	--evaluate=$(eval) \
+	--wandb=$(wandb_test)
 
 test_async:
 	cd ../..; \
@@ -44,8 +51,12 @@ goto_search:
 	--wandb=$(wandb) \
 	--date=$(date) \
 	--wandb_project $(project) \
+	--spaces $(spaces) \
 	--group $(group) \
 	--search $(search) \
+	--ray $(ray) \
+	--num_cpus $(cpus) \
+	--skip $(skip) \
 	--notes $(notes)
 
 meta_search:
@@ -63,6 +74,7 @@ meta_search:
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
+	--num_cpus $(cpus) \
 	--debug_search $(debug) \
 	--agent $(agent)
 
@@ -80,6 +92,7 @@ final_msf:
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
+	--num_cpus $(cpus) \
 	--spaces msf_search \
 	--folder 'results/msf2' \
 	--terminal $(terminal) \

@@ -64,61 +64,79 @@ def make_environment(evaluation: bool = False,
   if obj2rew is None:
     if evaluation:
       obj2rew={
-          "1,0,0,0":{
+          "A.Train|1,0,0,0|":{
               "pan" : 1,
               "plates" : 0,
               "tomato" : 0,
               "knife" : 0,
               },
-          "0,1,0,0":{
+          "A.Train|0,1,0,0|":{
               "pan" : 0,
               "plates" : 1,
               "tomato" : 0,
               "knife" : 0,
               },
-          "0,0,1,0":{
+          "A.Train|0,0,1,0|":{
               "pan" : 0,
               "plates" : 0,
               "tomato" : 1,
               "knife" : 0,
               },
-          "0,0,0,1":{
+          "A.Train|0,0,0,1|":{
               "pan" : 0,
               "plates" : 0,
               "tomato" : 0,
               "knife" : 1,
               },
-          '1,1,0,0':{
+          'B.Test|1,1,0,0|':{
               "pan" : 1,
               "plates" :1,
               "tomato" : 0,
               "knife" : 0,
               },
-          '1,1,1,1':{
+          'B.Test|1,1,.5,.5|':{
+              "pan" : 1,
+              "plates" : 1,
+              "tomato" : .5,
+              "knife" : .5,
+              },
+          'B.Test|1,1,1,1|':{
               "pan" : 1,
               "plates" : 1,
               "tomato" : 1,
               "knife" : 1,
               },
-          '-1,1,0,1':{
+          'B.Test|-1,1,0,1|':{
               "pan" : -1,
               "plates" : 1,
               "tomato" : 0,
               "knife" : 1,
               },
-          '-1,1,-1,1':{
+          'B.Test|-1,1,-1,.5|':{
+              "pan" : -1,
+              "plates" : 1,
+              "tomato" : -1,
+              "knife" : .5,
+              },
+          'B.Test|-1,1,-1,1|':{
               "pan" : -1,
               "plates" : 1,
               "tomato" : -1,
               "knife" : 1,
               },
-          '-1,1,-1,-1':{
+          'B.Test|-1,1,-1,-1|':{
               "pan" : -1,
               "plates" : 1,
               "tomato" : -1,
               "knife" : -1,
               },
-          '-1,-1,-1,-1':{
+          'B.Test|-.5,1,-.5,-.5|':{
+              "pan" : -.5,
+              "plates" : 1,
+              "tomato" : -.5,
+              "knife" : -.5,
+              },
+          'B.Test|-1,-1,-1,-1|':{
               "pan" : -1,
               "plates" : -1,
               "tomato" : -1,
@@ -178,34 +196,34 @@ def make_environment(evaluation: bool = False,
 
   return wrappers.wrap_all(env, wrapper_list)
 
-# def q_aux_sf_loss(config):
-#   """Create auxilliary Q-learning loss for SF
-#   """
-#   if config.q_aux == "single":
-#     loss = usfa_losses.QLearningAuxLoss
-#   elif config.q_aux == "ensemble":
-#     loss = usfa_losses.QLearningEnsembleAuxLoss
-#   else:
-#     raise RuntimeError(config.q_aux)
+def q_aux_sf_loss(config):
+  """Create auxilliary Q-learning loss for SF
+  """
+  if config.q_aux == "single":
+    loss = usfa_losses.QLearningAuxLoss
+  elif config.q_aux == "ensemble":
+    loss = usfa_losses.QLearningEnsembleAuxLoss
+  else:
+    raise RuntimeError(config.q_aux)
 
-#   if config.sf_loss == 'n_step_q_learning':
-#     tx_pair = rlax.IDENTITY_PAIR
-#   elif config.sf_loss == 'transformed_n_step_q_learning':
-#     tx_pair = rlax.SIGNED_HYPERBOLIC_PAIR
-#   else:
-#     raise NotImplementedError(config.sf_loss)
+  if config.sf_loss == 'n_step_q_learning':
+    tx_pair = rlax.IDENTITY_PAIR
+  elif config.sf_loss == 'transformed_n_step_q_learning':
+    tx_pair = rlax.SIGNED_HYPERBOLIC_PAIR
+  else:
+    raise NotImplementedError(config.sf_loss)
 
-#   add_bias = getattr(config, "step_penalty", 0) > 0
-#   return loss(
-#           coeff=config.value_coeff,
-#           discount=config.discount,
-#           sched_end=config.q_aux_anneal,
-#           sched_end_val=config.q_aux_end_val,
-#           tx_pair=tx_pair,
-#           add_bias=add_bias,
-#           mask_loss=config.qaux_mask_loss,
-#           target_w=config.target_phi,
-#           stop_w_grad=getattr(config, 'stop_w_grad', False))
+  add_bias = getattr(config, "step_penalty", 0) > 0
+  return loss(
+          coeff=config.value_coeff,
+          discount=config.discount,
+          sched_end=config.q_aux_anneal,
+          sched_end_val=config.q_aux_end_val,
+          tx_pair=tx_pair,
+          add_bias=add_bias,
+          mask_loss=config.qaux_mask_loss,
+          target_w=config.target_phi,
+          stop_w_grad=getattr(config, 'stop_w_grad', False))
 
 # def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, learn_model=False):
 #   config = data_utils.merge_configs(

@@ -109,7 +109,7 @@ class Gate(hk.Module):
   """docstring for Gate"""
   def __init__(self,
     w_init=2.0,
-    init_bias=0.0,
+    init_bias=2.0,
     residual='sigtanh',
     relu_gate=False,
     layernorm=False):

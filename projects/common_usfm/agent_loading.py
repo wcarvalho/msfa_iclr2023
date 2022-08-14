@@ -51,6 +51,7 @@ def q_aux_sf_loss(config):
           tx_pair=tx_pair,
           mask_loss=config.qaux_mask_loss,
           target_w=config.target_phi,
+          elementwise=config.elemwise_qaux_loss,
           stop_w_grad=config.stop_w_grad)
 
 def r2d1(
@@ -139,6 +140,7 @@ def usfa_lstm(
       loss=config.sf_loss,
       mask_loss=config.sf_mask_loss)
 
+
   if predict_cumulants:
     LossFnKwargs['aux_tasks']=[
         q_aux_sf_loss(config),
@@ -150,6 +152,7 @@ def usfa_lstm(
           l1_coeff=config.phi_l1_coeff,
           wl1_coeff=config.w_l1_coeff,
           balance=config.balance_reward,
+          elementwise=config.elemwise_phi_loss,
           )
     ]
     LossFnKwargs['shorten_data_for_cumulant']=True
@@ -241,10 +244,9 @@ def msf(
     shorten_data_for_cumulant=True,
     aux_tasks=aux_tasks)
 
-  if predict_cumulants:
-    LossFnKwargs['extract_cumulants'] = functools.partial(
-      losses.cumulants_from_preds,
-      use_target=config.target_phi,
-      stop_grad=True)
+  LossFnKwargs['extract_cumulants'] = functools.partial(
+    losses.cumulants_from_preds,
+    use_target=config.target_phi,
+    stop_grad=True)
 
   return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs

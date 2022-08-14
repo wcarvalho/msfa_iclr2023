@@ -142,7 +142,9 @@ def run(env,
       LossFn=LossFn,
       LossFnKwargs=LossFnKwargs,
       logger_fn=logger_fn,
-      learner_kwargs=dict(clear_sgd_cache_period=config.clear_sgd_cache_period)
+      learner_kwargs=dict(
+        clear_sgd_cache_period=config.clear_sgd_cache_period,
+        grad_period=config.grad_period)
       )
 
   kwargs=kwargs or {}

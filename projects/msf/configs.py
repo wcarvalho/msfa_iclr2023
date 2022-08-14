@@ -14,6 +14,7 @@ class R2D1Config(configs.R2D1Config):
   evaluation_epsilon: float = 0.00
   num_epsilons: int = 256
   variable_update_period: int = 400 # how often to update actor
+  grad_period: int = 0 # how often to display gradients
 
   # Learner options
   burn_in_length: int = 0  # burn in during learning
@@ -28,6 +29,8 @@ class R2D1Config(configs.R2D1Config):
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
   loss_coeff: float = 1.0
+  schedule_end: int = None
+  final_lr_scale: float = 1e-1
 
   # How many gradient updates to perform per learner step.
   num_sgd_steps_per_step: int = 4
@@ -107,6 +110,7 @@ class USFAConfig(R2D1Config):
   stop_w_grad: bool=False
   stop_z_grad: bool=False
   target_phi: bool=False
+  elemwise_qaux_loss: bool=False
 
 
 @dataclasses.dataclass
@@ -122,7 +126,7 @@ class QAuxConfig:
 @dataclasses.dataclass
 class RewardConfig:
   """Extra configuration options for USFA agent."""
-  reward_coeff: float = 1 # coefficient for reward loss
+  reward_coeff: float = 1.0 # coefficient for reward loss
   value_coeff: float = 0.5 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
   balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
@@ -130,6 +134,7 @@ class RewardConfig:
   normalize_cumulants: bool = False # whether to normalize cumulants
   cumulant_act: str = 'identity' # activation on cumulants
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
+  elemwise_phi_loss: bool=False
 
 @dataclasses.dataclass
 class FarmConfig:
@@ -200,7 +205,7 @@ class FarmModelConfig(FarmConfig):
 
   # Network hps
   temperature: float = 0.01
-  reward_coeff: float = 1 # coefficient for reward loss
+  reward_coeff: float = 1.0 # coefficient for reward loss
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'
