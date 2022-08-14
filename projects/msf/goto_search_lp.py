@@ -87,6 +87,7 @@ def main(_):
     terminal=FLAGS.terminal,
     skip=FLAGS.skip,
     use_ray=FLAGS.ray,
+    num_cpus=FLAGS.num_cpus,
     debug=FLAGS.debug_search)
 
 

@@ -38,7 +38,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
   clip_rewards : bool = False
   max_abs_reward: float = 1.
   loss_coeff: float = 1.
-  mask_loss: bool = False
+  mask_loss: bool = True
 
   # auxilliary tasks
   aux_tasks: Union[Callable, Sequence[Callable]]=None
@@ -151,6 +151,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
     total_aux_scalar_loss = 0.0
     total_aux_batch_loss = jnp.zeros(batch_loss.shape, dtype=batch_loss.dtype)
     total_aux_elem_error = jnp.zeros(elemwise_error.shape, dtype=elemwise_error.dtype)
+
     if self.aux_tasks:
       for aux_task in self.aux_tasks:
         # does this aux task need a random key?
@@ -194,7 +195,7 @@ class RecurrentTDLearning(learning_lib.LossFn):
       mean_loss += importance_weights.mean()*total_aux_scalar_loss # []
     else:
       mean_loss = jnp.mean(importance_weights * batch_loss) # []
-      mean_loss += total_aux_batch_loss.mean() # []
+      mean_loss += total_aux_batch_loss.mean() + total_aux_scalar_loss # []
 
     metrics[Cls(self)]['loss_w_aux'] = mean_loss
 
@@ -370,7 +371,6 @@ class USFALearning(RecurrentTDLearning):
       raise RuntimeError("This should never happen?")
     else:
       raise NotImplementedError
-
 
 
     # ======================================================

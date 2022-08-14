@@ -169,6 +169,7 @@ class FarmUsfaHead(UsfaHead):
     # [B, N, A, D_w]
     sf, q_values_prod = compute_sf(inputs.memory_out, z, w)
 
+
     if self.argmax_mod and setting=='eval':
       M = memory_out.shape[1]
       # [B, N, A, M, D_w/M]

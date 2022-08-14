@@ -65,7 +65,10 @@ def build_common_program(
   builder=functools.partial(td_agent.TDBuilder,
       LossFn=LossFn,
       LossFnKwargs=LossFnKwargs,
-      learner_kwargs=dict(clear_sgd_cache_period=config.clear_sgd_cache_period),
+      learner_kwargs=dict(
+        clear_sgd_cache_period=config.clear_sgd_cache_period,
+        grad_period=config.grad_period,
+      ),
     )
 
   # -----------------------

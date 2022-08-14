@@ -59,8 +59,10 @@ def main(_):
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
     # config['struct_policy_input'] = False
-    config['eval_task_support'] = 'train_eval'
-    # config['argmax_mod'] = True
+    # config['eval_task_support'] = 'train_eval'
+    config['grad_period'] = 0
+    config['schedule_end'] = 40e3
+    config['final_lr_scale'] = 1e-1
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)

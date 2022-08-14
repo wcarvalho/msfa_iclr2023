@@ -32,7 +32,7 @@ from utils import data as data_utils
 
 from projects.msf import helpers
 from projects.common.train_distributed import build_common_program
-from projects.common.observers import LevelReturnObserver
+from projects.common.observers import LevelReturnObserver, LevelAvgReturnObserver
 
 # -----------------------
 # flags
@@ -66,6 +66,7 @@ def build_program(
   path='.', # path that's being run from
   log_dir=None, # where to save everything
   debug: bool=False,
+  return_avg_steps=100,
   **kwargs,
   ):
   env_kwargs = env_kwargs or dict()
@@ -124,7 +125,7 @@ def build_program(
     if wandb_init_kwargs and update_wandb_name:
       wandb_init_kwargs['name'] = config_path_str
 
-  observers = [LevelReturnObserver()]
+  observers = [LevelAvgReturnObserver(reset=return_avg_steps)]
   # -----------------------
   # wandb settup
   # -----------------------

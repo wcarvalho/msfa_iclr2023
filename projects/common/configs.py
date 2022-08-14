@@ -61,7 +61,7 @@ class R2D1Config(configs.R2D1Config):
 @dataclasses.dataclass
 class USFAConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
-  npolicies: int = 5 # number of policies to sample
+  npolicies: int = 10 # number of policies to sample
   variance: float = 0.5
   # Network hps
   policy_size = 32

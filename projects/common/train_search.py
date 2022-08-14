@@ -29,6 +29,7 @@ flags.DEFINE_string('terminal', 'current_terminal', 'terminal for launchpad.')
 flags.DEFINE_integer('idx', None, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('skip', 1, 'skip run jobs.')
 flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
+flags.DEFINE_integer('num_cpus', 4, 'whether to use ray tune.')
 flags.DEFINE_integer('debug_search', 0, 'whether to use ray tune.')
 
 DEFAULT_NUM_ACTORS=3
@@ -229,7 +230,7 @@ def run_experiments(
   default_env_kwargs=None,
   use_wandb=True,
   terminal='current_terminal',
-  num_cpus=3,
+  num_cpus=4,
   num_gpus=1,
   skip=True,
   wait_time=0,
