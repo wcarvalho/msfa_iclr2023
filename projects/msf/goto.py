@@ -26,6 +26,7 @@ from agents import td_agent
 from projects.msf import helpers
 from projects.common.train import run
 from utils import make_logger, gen_log_dir
+from projects.common.observers import LevelReturnObserver, LevelAvgReturnObserver
 
 # -----------------------
 # flags
@@ -57,12 +58,12 @@ def main(_):
   config = dict()
   if FLAGS.test:
     config['max_replay_size'] = 10_000
-    config['min_replay_size'] = 10
+    config['min_replay_size'] = 1_000
     # config['struct_policy_input'] = False
     # config['eval_task_support'] = 'train_eval'
-    config['grad_period'] = 0
-    config['schedule_end'] = 40e3
-    config['final_lr_scale'] = 1e-1
+    # config['grad_period'] = 0
+    # config['schedule_end'] = 40e3
+    # config['final_lr_scale'] = 1e-1
     print("="*50)
     print("="*20, "testing", "="*20)
     print("="*50)
@@ -94,6 +95,8 @@ def main(_):
     LossFnKwargs=LossFnKwargs,
     loss_label=loss_label,
     log_dir=log_dir,
+    observers = [LevelAvgReturnObserver(reset=100)],
+    log_with_key='log_data',
     evaluate=FLAGS.evaluate,
     seed=FLAGS.seed,
     num_episodes=FLAGS.num_episodes,

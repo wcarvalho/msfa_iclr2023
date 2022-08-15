@@ -79,6 +79,7 @@ def make_logger(
   wandb=False,
   max_number_of_steps: int=None,
   time_delta: float=10.0,
+  log_with_key: str=None,
   steps_key: str=None) -> loggers.Logger:
   """Creates ACME loggers as we wish.
   Features:
@@ -111,8 +112,11 @@ def make_logger(
   if asynchronous:
     logger = async_logger.AsyncLogger(logger)
 
+  if log_with_key is not None:
+    logger = HasKeyFilter(logger, key=log_with_key)
+
   # filter by time: Print logs almost every 10 seconds.
-  if time_delta:
+  elif time_delta:
     logger = loggers.TimeFilter(logger, time_delta=time_delta)
 
 
@@ -221,3 +225,29 @@ class WandbLogger(base.Logger):
     except Exception as e:
       pass
 
+
+
+class HasKeyFilter(base.Logger):
+  """Logger which writes to another logger at a given time interval."""
+
+  def __init__(self, to: base.Logger, key: str):
+    """Initializes the logger.
+
+    Args:
+      to: A `Logger` object to which the current object will forward its results
+        when `write` is called.
+      time_delta: How often to write values out in seconds.
+        Note that writes within `time_delta` are dropped.
+    """
+    self._to = to
+    self._key = key
+    import ipdb; ipdb.set_trace()
+    assert key is not None
+
+  def write(self, values: base.LoggingData):
+    hasdata = values.pop(self._key, None)
+    if hasdata:
+      self._to.write(values)
+
+  def close(self):
+    self._to.close()

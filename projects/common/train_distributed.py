@@ -37,6 +37,7 @@ def build_common_program(
   LossFnKwargs,
   wandb_init_kwargs=None,
   log_every=30.0, # how often to log
+  log_with_key:str=None,
   max_ckpts_to_keep=24,
   colocate_learner_replay=False,
   observers=None,
@@ -91,6 +92,7 @@ def build_common_program(
     actor_logger_fn = lambda actor_id: make_logger(
                     log_dir=log_dir, label=actor_label,
                     time_delta=log_every,
+                    log_with_key=log_with_key,
                     wandb=use_wandb,
                     max_number_of_steps=config.max_number_of_steps,
                     save_data=actor_id == 0,
@@ -99,6 +101,7 @@ def build_common_program(
     evaluator_logger_fn = lambda label, steps_key: make_logger(
                     log_dir=log_dir, label=evaluator_label,
                     time_delta=log_every,
+                    log_with_key=log_with_key,
                     wandb=use_wandb,
                     max_number_of_steps=config.max_number_of_steps,
                     steps_key="evaluator_steps",

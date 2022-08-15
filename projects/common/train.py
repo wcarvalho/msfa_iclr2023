@@ -100,6 +100,7 @@ def run(env,
     seed: int=1,
     num_episodes: int=1_000,
     log_every=30.0,
+    log_with_key:str=None,
     observers=None,
     actor_label='actor',
     wandb_init_kwargs=None,
@@ -118,6 +119,7 @@ def run(env,
             log_dir=log_dir,
             label=loss_label,
             time_delta=log_every,
+            log_with_key=log_with_key,
             wandb=use_wandb,
             max_number_of_steps=config.max_number_of_steps,
             asynchronous=True)
@@ -128,6 +130,7 @@ def run(env,
         wandb=use_wandb,
         max_number_of_steps=config.max_number_of_steps,
         time_delta=log_every,
+        log_with_key=log_with_key,
         steps_key="steps")
 
       if wandb_init_kwargs is not None:

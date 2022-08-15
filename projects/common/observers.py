@@ -100,6 +100,8 @@ class LevelAvgReturnObserver(EnvLoopObserver):
         result[f'0.task/{key}/avg_return'] = float(avg)
         self.returns[key] = []
 
+      result['log_data'] = True
+
     return result
 
 

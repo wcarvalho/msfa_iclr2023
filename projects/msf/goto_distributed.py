@@ -66,7 +66,7 @@ def build_program(
   path='.', # path that's being run from
   log_dir=None, # where to save everything
   debug: bool=False,
-  return_avg_steps=100,
+  return_avg_steps=400,
   **kwargs,
   ):
   env_kwargs = env_kwargs or dict()
@@ -143,7 +143,8 @@ def build_program(
     loss_label='Loss',
     num_actors=num_actors,
     save_config_dict=save_config_dict,
-    log_every=log_every,
+    # log_every=log_every,
+    log_with_key='log_data',
     observers=observers,
     **kwargs,
     )
@@ -167,7 +168,7 @@ def main(_):
     config_kwargs=config_kwargs,
     wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
     debug=FLAGS.debug,
-    custom_loggers=FLAGS.custom_loggers,
+    # custom_loggers=FLAGS.custom_loggers,
     )
 
   # Launch experiment.

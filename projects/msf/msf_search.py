@@ -64,8 +64,8 @@ def get(search):
           "group": tune.grid_search(['msf-lr-3']),
           "seed": tune.grid_search([1, 2, 3]),
           "agent": tune.grid_search(['msf']),
-          "schedule_end": tune.grid_search([40e3, 80e3]),
-          "final_lr_scale": tune.grid_search([1e-1, 1e-2]),
+          "schedule_end": tune.grid_search([40e3]),
+          "final_lr_scale": tune.grid_search([1, 1e-2, 1e-3, 1e-4]),
           # "variable_update_period": tune.grid_search([600, 800, 1000, 1200]),
           # "learning_rate": tune.grid_search([1e-3, 5e-4, 1e-4, 5e-4]),
           # "struct_policy_input": tune.grid_search([False]),
@@ -116,6 +116,8 @@ def get(search):
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
       'setting': tune.grid_search(['large_respawn']),
+      "schedule_end": tune.grid_search([80e3]),
+      "final_lr_scale": tune.grid_search([1e-2]),
       "group": tune.grid_search(['borsa_final-3']),
       "memory_size": tune.grid_search([512]),
       "max_number_of_steps": tune.grid_search([5_000_000]),
@@ -146,6 +148,8 @@ def get(search):
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
       'setting': tune.grid_search(['large_respawn']),
+      "schedule_end": tune.grid_search([80e3]),
+      "final_lr_scale": tune.grid_search([1e-2]),
       "group": tune.grid_search(['ablate_modularity-1']),
       "max_number_of_steps": tune.grid_search([5_000_000]),
     }
@@ -183,6 +187,8 @@ def get(search):
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
       'setting': tune.grid_search(['large_respawn']),
+      "schedule_end": tune.grid_search([80e3]),
+      "final_lr_scale": tune.grid_search([1e-2]),
       "group": tune.grid_search(['ablate_shared-1']),
       "max_number_of_steps": tune.grid_search([5_000_000]),
     }
@@ -220,6 +226,8 @@ def get(search):
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
       'setting': tune.grid_search(['large_respawn']),
+      "schedule_end": tune.grid_search([80e3]),
+      "final_lr_scale": tune.grid_search([1e-2]),
       "group": tune.grid_search(['ablate_share_attention-1']),
       "max_number_of_steps": tune.grid_search([5_000_000]),
     }
@@ -243,6 +251,8 @@ def get(search):
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
       'setting': tune.grid_search(['large_respawn']),
+      "schedule_end": tune.grid_search([80e3]),
+      "final_lr_scale": tune.grid_search([1e-2]),
       "group": tune.grid_search(['ablate_share_attention-1']),
       "max_number_of_steps": tune.grid_search([5_000_000]),
     }

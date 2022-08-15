@@ -64,30 +64,30 @@ def make_environment(evaluation: bool = False,
   if obj2rew is None:
     if evaluation:
       obj2rew={
-          "A.Train|1,0,0,0|":{
-              "pan" : 1,
-              "plates" : 0,
-              "tomato" : 0,
-              "knife" : 0,
-              },
-          "A.Train|0,1,0,0|":{
-              "pan" : 0,
-              "plates" : 1,
-              "tomato" : 0,
-              "knife" : 0,
-              },
-          "A.Train|0,0,1,0|":{
-              "pan" : 0,
-              "plates" : 0,
-              "tomato" : 1,
-              "knife" : 0,
-              },
-          "A.Train|0,0,0,1|":{
-              "pan" : 0,
-              "plates" : 0,
-              "tomato" : 0,
-              "knife" : 1,
-              },
+          # "A.Train|1,0,0,0|":{
+          #     "pan" : 1,
+          #     "plates" : 0,
+          #     "tomato" : 0,
+          #     "knife" : 0,
+          #     },
+          # "A.Train|0,1,0,0|":{
+          #     "pan" : 0,
+          #     "plates" : 1,
+          #     "tomato" : 0,
+          #     "knife" : 0,
+          #     },
+          # "A.Train|0,0,1,0|":{
+          #     "pan" : 0,
+          #     "plates" : 0,
+          #     "tomato" : 1,
+          #     "knife" : 0,
+          #     },
+          # "A.Train|0,0,0,1|":{
+          #     "pan" : 0,
+          #     "plates" : 0,
+          #     "tomato" : 0,
+          #     "knife" : 1,
+          #     },
           'B.Test|1,1,0,0|':{
               "pan" : 1,
               "plates" :1,
@@ -136,13 +136,12 @@ def make_environment(evaluation: bool = False,
               "tomato" : -.5,
               "knife" : -.5,
               },
-          'B.Test|-1,-1,-1,-1|':{
-              "pan" : -1,
-              "plates" : -1,
-              "tomato" : -1,
-              "knife" : -1,
-              },
-
+          # 'B.Test|-1,-1,-1,-1|':{
+          #     "pan" : -1,
+          #     "plates" : -1,
+          #     "tomato" : -1,
+          #     "knife" : -1,
+          #     },
       }
     else:
       obj2rew={
