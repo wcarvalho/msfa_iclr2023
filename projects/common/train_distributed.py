@@ -120,14 +120,18 @@ def build_common_program(
       """This will start wandb inside each child process"""
       def make_logger(*args, **kwargs):
         import wandb
-        wandb.init(reinit=True, **wandb_init_kwargs)
+        wandb.init(
+          settings=wandb.Settings(start_method="fork"),
+          reinit=True, **wandb_init_kwargs)
         return _logger_fn(*args, **kwargs)
       return make_logger
 
     wandb_obj=None
     if wandb_init_kwargs is not None:
       import wandb
-      wandb_obj = wandb.init(reinit=True, **wandb_init_kwargs)
+      wandb_obj = wandb.init(
+        settings=wandb.Settings(start_method="fork"),
+        reinit=True, **wandb_init_kwargs)
 
       logger_fn = wandb_wrap_logger(logger_fn)
       actor_logger_fn = wandb_wrap_logger(actor_logger_fn)
