@@ -241,7 +241,6 @@ class HasKeyFilter(base.Logger):
     """
     self._to = to
     self._key = key
-    import ipdb; ipdb.set_trace()
     assert key is not None
 
   def write(self, values: base.LoggingData):

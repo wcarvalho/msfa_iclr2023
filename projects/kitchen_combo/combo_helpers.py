@@ -30,6 +30,7 @@ from projects.kitchen_gridworld import helpers as kitchen_helpers
 from projects.msf import helpers as msf_helpers
 from projects.kitchen_combo import combo_configs
 from projects.common_usfm import agent_loading
+from projects.common_usfm import nets as common_nets
 
 class ComboObsTuple(NamedTuple):
   """Container for (Observation, Action, Reward) tuples."""
@@ -201,47 +202,9 @@ def make_environment(evaluation: bool = False,
 
 
 
-def load_agent_settings(agent, env_spec, config_kwargs=None):
-  default_config = dict()
-  default_config.update(config_kwargs or {})
-  agent = agent.lower()
-
-  if agent == "r2d1":
-  # Recurrent DQN/UVFA
-    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.r2d1(
-      env_spec=env_spec,
-      default_config=default_config,
-      dataclass_configs=[
-        combo_configs.R2D1Config(),
-      ])
-
-  elif agent == "usfa_lstm":
-  # USFA + cumulants from LSTM + Q-learning
-    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.usfa_lstm(
-        env_spec=env_spec,
-        default_config=default_config,
-        dataclass_configs=[
-          combo_configs.QAuxConfig(),
-          combo_configs.RewardConfig(),
-          combo_configs.USFAConfig(),
-          ],
-      )
-
-  elif agent == "msf":
-# USFA + cumulants from FARM + Q-learning
-    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.msf(
-        env_spec=env_spec,
-        default_config=default_config,
-        dataclass_configs=[
-          combo_configs.QAuxConfig(),
-          combo_configs.RewardConfig(),
-          combo_configs.ModularUSFAConfig(),
-          combo_configs.FarmConfig(),
-        ],
-      )
-  else:
-    raise NotImplementedError(agent)
-
-  loss_label=None
-  eval_network=False
-  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
+def load_agent_settings(agent, env_spec, config_kwargs=None, env_kwargs=None):
+  return agent_loading.default_agent_settings(agent=agent,
+    env_spec=env_spec,
+    configs=combo_configs,
+    config_kwargs=config_kwargs,
+    env_kwargs=env_kwargs)

@@ -45,21 +45,40 @@ def make_environment(evaluation: bool = False,
   """
   setting = setting or 'small'
   settings = dict(
+    # -----------------------
+    # small
+    # -----------------------
     small=dict(room_size=5, nobjects=1),
     small_nopickup=dict(
       room_size=5, nobjects=1,
       pickup_required=False),
+    # -----------------------
+    # medium
+    # -----------------------
     medium=dict(room_size=8, nobjects=2),
     medium_nopickup=dict(
       room_size=8, nobjects=2,
       pickup_required=False),
+    # -----------------------
+    # large
+    # -----------------------
     large=dict(room_size=8, nobjects=3),
     large_nopickup=dict(
-      room_size=8, nobjects=3,
+      room_size=9, nobjects=3,
       pickup_required=False),
     large_respawn=dict(
       room_size=9, nobjects=3,
       respawn=True),
+    xl_respawn=dict(
+      room_size=10, nobjects=3,
+      respawn=True),
+    xxl_nopickup=dict(
+      room_size=11, nobjects=3,
+      pickup_required=False),
+    xxl_nopickup_respawn=dict(
+      room_size=11, nobjects=3,
+      respawn=True,
+      pickup_required=False),
     )
   if obj2rew is None:
     if evaluation:
@@ -224,77 +243,6 @@ def q_aux_sf_loss(config):
           target_w=config.target_phi,
           stop_w_grad=getattr(config, 'stop_w_grad', False))
 
-# def usfa_farm(default_config, env_spec, net='flat', predict_cumulants=True, learn_model=False):
-#   config = data_utils.merge_configs(
-#     dataclass_configs=[
-#       configs.QAuxConfig(),
-#       configs.ModularUSFAConfig(),
-#       configs.RewardConfig(),
-#       configs.FarmModelConfig() if learn_model else configs.FarmConfig(),
-#     ],
-#     dict_configs=default_config)
-
-#   if net == "flat":
-#     NetworkCls =  nets.usfa_farmflat_model
-#   elif net == "independent":
-#     NetworkCls =  nets.usfa_farm_model
-#   elif net == "msf":
-#     NetworkCls =  nets.msf
-#   else:
-#     raise NotImplementedError
-
-#   NetKwargs=dict(
-#     config=config,
-#     env_spec=env_spec,
-#     predict_cumulants=predict_cumulants,
-#     learn_model=learn_model)
-
-#   LossFn = td_agent.USFALearning
-
-#   aux_tasks=[q_aux_sf_loss(config)]
-
-#   if predict_cumulants:
-#     aux_tasks.append(
-#       cumulants.CumulantRewardLoss(
-#         shorten_data_for_cumulant=True,
-#         coeff=config.reward_coeff,
-#         loss=config.reward_loss,
-#         balance=config.balance_reward))
-
-#   if learn_model:
-#     if config.contrast_module_coeff > 0:
-#       aux_tasks.append(
-#           ModuleContrastLoss(
-#             coeff=config.contrast_module_coeff,
-#             extra_negatives=config.extra_module_negatives,
-#             temperature=config.temperature,
-#             prediction=config.contrast_module_pred)
-#           )
-#     if config.contrast_time_coeff > 0:
-#       aux_tasks.append(
-#           TimeContrastLoss(
-#             coeff=config.contrast_time_coeff,
-#             extra_negatives=config.extra_time_negatives,
-#             temperature=config.temperature,
-#             normalize_step=config.normalize_step)
-#           )
-#   LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-#   LossFnKwargs.update(
-#     loss=config.sf_loss,
-#     mask_loss=config.sf_mask_loss,
-#     shorten_data_for_cumulant=True, # needed since using delta for cumulant
-#     extract_cumulants=functools.partial(
-#         losses.cumulants_from_preds,
-#         use_target=config.target_phi,
-#         stop_grad=True,
-#       ),
-#     aux_tasks=aux_tasks)
-
-#   loss_label = 'usfa'
-#   eval_network = config.eval_network
-
-#   return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
-
 
 def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
   default_config = dict()
@@ -342,8 +290,15 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
 
   elif agent == "r2d1_farm":
   # UVFA + FARM
-    raise NotImplementedError("Not implemented with common nets")
-
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.r2d1(
+      env_spec=env_spec,
+      default_config=default_config,
+      dataclass_configs=[
+        configs.R2D1Config(),
+        configs.FarmConfig(),
+      ],
+    )
+    NetworkCls=nets.r2d1_farm # default: 2M params
 
   elif agent == "usfa":
   # USFA
@@ -355,27 +310,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
           ],
         predict_cumulants=False,
       )
-
-    # config = data_utils.merge_configs(
-    #   dataclass_configs=[configs.USFAConfig()],
-    #   dict_configs=default_config
-    #   )
     NetworkCls=nets.usfa # default: 2M params
-    # NetKwargs=dict(
-    #   config=config,
-    #   env_spec=env_spec,
-    #   use_seperate_eval=True)
-
-    # LossFn = td_agent.USFALearning
-    # LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    # LossFnKwargs.update(
-    #   loss=config.sf_loss,
-    #   mask_loss=config.sf_mask_loss,
-    #   lambda_=config.lambda_,
-    #   )
-
-    # loss_label = 'usfa'
-    # eval_network = config.eval_network
 
   elif agent == "usfa_lstm":
   # USFA + cumulants from LSTM + Q-learning
@@ -390,45 +325,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
           ],
       )
 
-    # config = data_utils.merge_configs(
-    #   dataclass_configs=[
-    #     configs.QAuxConfig(),
-    #     configs.RewardConfig(),
-    #     configs.USFAConfig(),
-    #   ],
-    #   dict_configs=default_config
-    #   )
-
     NetworkCls=nets.usfa # default: 2M params
-    # NetKwargs=dict(
-    #   config=config,
-    #   env_spec=env_spec,
-    #   use_seperate_eval=True,
-    #   predict_cumulants=True)
-
-    # LossFn = td_agent.USFALearning
-    # LossFnKwargs = td_agent.r2d2_loss_kwargs(config)
-    # LossFnKwargs.update(
-    #   loss=config.sf_loss,
-    #   mask_loss=config.sf_mask_loss,
-    #   shorten_data_for_cumulant=True,
-    #   extract_cumulants=functools.partial(
-    #     losses.cumulants_from_preds,
-    #     use_target=config.target_phi,
-    #     stop_grad=True,
-    #   ),
-    #   aux_tasks=[
-    #     q_aux_sf_loss(config),
-    #     cumulants.CumulantRewardLoss(
-    #       shorten_data_for_cumulant=True,
-    #       coeff=config.reward_coeff,
-    #       loss=config.reward_loss,
-    #       balance=config.balance_reward,
-    #       ),
-    #   ])
-
-    # loss_label = 'usfa'
-    # eval_network = config.eval_network
 
   elif agent == "msf":
   # USFA + cumulants from FARM + Q-learning
@@ -438,38 +335,13 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
       dataclass_configs=[
         configs.QAuxConfig(),
         configs.RewardConfig(),
-        configs.ModularUSFAConfig(),
         configs.FarmConfig(),
+        configs.ModularUSFAConfig(),
       ],
     )
-    NetworkCls=nets.msf # default: 2M params
-    # print('need to check')
-    # import ipdb; ipdb.set_trace()
 
-    # return usfa_farm(default_config, env_spec,
-    #   net='msf',
-    #   predict_cumulants=True,
-    #   learn_model=True)
-  # elif agent == "msf_delta_model":
-  # # USFA + cumulants from FARM + Q-learning
-  #   default_config['contrast_module_pred'] = 'delta'
-  #   return usfa_farm(default_config, env_spec,
-  #     net='msf',
-  #     predict_cumulants=True,
-  #     learn_model=True)
-  # elif agent == "msf_time_model":
-  # # USFA + cumulants from FARM + Q-learning
-  #   return usfa_farm(default_config, env_spec,
-  #     net='msf',
-  #     predict_cumulants=True,
-  #     learn_model=True)
-  # elif agent == "msf_state_model":
-  # # USFA + cumulants from FARM + Q-learning
-  #   default_config['contrast_module_pred'] = 'state'
-  #   return usfa_farm(default_config, env_spec,
-  #     net='msf',
-  #     predict_cumulants=True,
-  #     learn_model=True)
+    NetworkCls=nets.msf # default: 2M params
+
   else:
     raise NotImplementedError(agent)
 

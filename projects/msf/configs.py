@@ -30,7 +30,7 @@ class R2D1Config(configs.R2D1Config):
   max_gradient_norm: float = 80.0  # For gradient clipping.
   loss_coeff: float = 1.0
   schedule_end: int = None
-  final_lr_scale: float = 1e-1
+  final_lr_scale: float = 1.0
 
   # How many gradient updates to perform per learner step.
   num_sgd_steps_per_step: int = 4
@@ -71,7 +71,7 @@ class R2D1Config(configs.R2D1Config):
 @dataclasses.dataclass
 class NoiseConfig(R2D1Config):
   """Extra configuration options for R2D1 + noise agent."""
-  variance: float = 0.5
+  variance: float = 0.1
 
 
 @dataclasses.dataclass
@@ -79,7 +79,7 @@ class USFAConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
   npolicies: int = 10 # number of policies to sample
   memory_size: int = 512
-  variance: float = 0.5
+  variance: float = 0.1
   # Network hps
   policy_size: int = 32
   policy_layers: int = 0
@@ -129,7 +129,7 @@ class RewardConfig:
   reward_coeff: float = 1.0 # coefficient for reward loss
   value_coeff: float = 0.5 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
-  balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
+  balance_reward: float = 1.0 # whether to balance dataset and what percent of nonzero to keep
   q_aux: str="single"
   normalize_cumulants: bool = False # whether to normalize cumulants
   cumulant_act: str = 'identity' # activation on cumulants
@@ -145,6 +145,13 @@ class FarmConfig:
   module_size: int = None
   nmodules: int = 4
   out_layers: int = 0
+  
+  # Feature Attention
+
+
+  # Sharing between modules
+  share_residual: str = 'sigtanh'
+  share_init_bias: float = 1.0
   module_attn_size: int = None
   module_attn_heads: int = 2  # how many attention heads between modules
   shared_module_attn: bool = True # share params for module attention
@@ -152,7 +159,7 @@ class FarmConfig:
   farm_vmap: str = "lift"  # vmap over different parameter sets 
   image_attn: bool = True # whether to use feature attention on image
   farm_task_input: bool = False # give task as input to FARM
-  farm_policy_task_input: bool = False # give task as input to FARM policy
+  farm_policy_task_input: bool = True # give task as input to FARM policy
 
   recurrent_conv: bool = False # whether to use feature attention on image
   normalize_attn: bool = False # whether to use feature attention on image
@@ -161,6 +168,7 @@ class FarmConfig:
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
+  memory_size: int = 512
   normalize_delta: bool = True # whether to normalize delta between states
   normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 0 # whether to add position embeddings to modules
@@ -199,6 +207,9 @@ class ModularUSFAConfig(USFAConfig):
   phi_conv_size: int = 0 # size of conv for cumulants
   module_l1: bool = False # apply L1 per module or for all phi
 
+  share_residual: str = 'sigtanh'
+
+
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):
   """Extra configuration options for FARM module."""
@@ -216,3 +227,4 @@ class FarmModelConfig(FarmConfig):
   contrast_time_coeff: float = 0.0
   extra_module_negatives: int = 4
   extra_time_negatives: int = 0
+

@@ -38,6 +38,7 @@ class CumulantRewardLoss(BaseLoss):
     assert self.loss in ['l2', 'binary']
     self.shorten_data_for_cumulant = shorten_data_for_cumulant
     self.balance = balance
+    assert balance >= 0.0 and balance <= 1.0, 'bound reward balancing prob'
     self.l1_coeff = l1_coeff
     self.nmodules = nmodules
     self.wl1_coeff = wl1_coeff

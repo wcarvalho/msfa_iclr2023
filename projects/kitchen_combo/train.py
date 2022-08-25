@@ -30,8 +30,9 @@ def main(_):
     # config['batch_size'] = 32
     # config['priority_use_aux'] = True
     # config['priority_weights_aux'] = True
-    config['task_embedding'] = 'embedding'
-    config['task_activation'] = 'tanh'
+    config['npolicies'] = 1
+    config['farm_policy_task_input'] = False
+    config['farm_task_input'] = True
     # config['task_embedding'] = 'embedding'
     # config['task_embedding'] = 'struct_embed' 
     # # config['stop_w_grad'] = True
@@ -43,13 +44,23 @@ def main(_):
     print("="*20, "testing", "="*20)
     print("="*50)
 
-  if FLAGS.env == "kitchen_combo":
+  if FLAGS.env == "goto":
+    from projects.kitchen_combo import borsa_helpers
+    env = borsa_helpers.make_environment(
+      setting=FLAGS.env_setting,
+      evaluation=FLAGS.evaluate)
+    env_spec = acme.make_environment_spec(env)
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = borsa_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
+
+  elif FLAGS.env == "kitchen_combo":
     from projects.kitchen_combo import combo_helpers
     env = combo_helpers.make_environment(
       setting=FLAGS.env_setting,
       evaluation=FLAGS.evaluate)
     env_spec = acme.make_environment_spec(env)
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = combo_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
+
+
   elif FLAGS.env == "fruitbot":
     from projects.kitchen_combo import fruitbot_helpers
     setting = FLAGS.env_setting or 'taskgen_long_easy'
@@ -74,6 +85,7 @@ def main(_):
           raise RuntimeError(setting)
     except AttributeError as e:
       print(e)
+
   elif FLAGS.env == "minihack":
     from projects.kitchen_combo import minihack_helpers
     setting = FLAGS.env_setting or ''

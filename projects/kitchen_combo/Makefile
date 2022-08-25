@@ -13,7 +13,7 @@ group?=''
 notes?=''
 skip?=1
 spaces?='spaces'
-ray?=0
+ray?=1
 debug?=0
 
 
@@ -54,6 +54,23 @@ test_async:
 	--agent $(agent) \
 	--env $(env)
 
+train_search_goto:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/kitchen_combo/train_search.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project 'msf2' \
+	--group $(group) \
+	--search $(search) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--spaces borsa_spaces \
+	--env goto \
+	--terminal $(terminal) \
+	--agent $(agent) \
+	--debug_search $(debug)
 
 
 train_search_combo:
@@ -74,14 +91,13 @@ train_search_combo:
 	--agent $(agent) \
 	--debug_search $(debug)
 
-
 train_search_fruitbot:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/kitchen_combo/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project 'fruitbot' \
+	--wandb_project $(project) \
 	--group $(group) \
 	--search $(search) \
 	--notes $(notes) \
@@ -93,7 +109,6 @@ train_search_fruitbot:
 	--folder 'results/fruitbot' \
 	--agent $(agent) \
 	--debug_search $(debug)
-
 
 train_search_minihack:
 	cd ../..; \
@@ -195,26 +210,26 @@ final_minihack:
 	--agent $(agent) \
 	--debug_search $(debug)
 
-
-final_msf:
+final_goto:
 	cd ../..; \
-	echo "${searches}"; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/common/train_search_meta.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--python_file="projects/msf/goto_search_lp.py" \
+	--python_file="projects/kitchen_combo/train_search.py" \
 	--wandb_project 'msf2' \
 	--group $(group) \
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
-	--spaces msf_search \
-	--folder 'results/msf2' \
 	--terminal $(terminal) \
-	--searches="${searches}" \
+	--searches "${searches}" \
+	--spaces borsa_spaces \
+	--env goto \
+	--folder 'results/msf2' \
 	--agent $(agent) \
 	--debug_search $(debug)
+
 
 meta_search:
 	cd ../..; \

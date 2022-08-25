@@ -60,7 +60,10 @@ def main(_):
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 1_000
     # config['struct_policy_input'] = False
-    # config['eval_task_support'] = 'train_eval'
+    # config['share_residual'] = 'concat'
+    # config['share_init_bias'] = 1.0
+    # config['memory_size'] = 460
+    # config['module_attn_heads'] = 2
     # config['grad_period'] = 0
     # config['schedule_end'] = 40e3
     # config['final_lr_scale'] = 1e-1

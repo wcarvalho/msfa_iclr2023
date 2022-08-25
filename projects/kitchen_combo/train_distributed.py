@@ -58,7 +58,7 @@ def build_program(
   if env == "kitchen_combo":
     from projects.kitchen_combo import combo_helpers
 
-    setting = env_kwargs.get('setting', 'medium')
+    setting = env_kwargs.get('setting', '')
     # -----------------------
     # load env stuff
     # -----------------------

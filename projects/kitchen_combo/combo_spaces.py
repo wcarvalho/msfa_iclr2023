@@ -25,7 +25,7 @@ def get(search, agent):
         {
           "seed": tune.grid_search(list(range(1,1+4*5))),
           "agent": tune.grid_search(['r2d1',]),
-          "label": tune.grid_search(['v11',]),
+          "label": tune.grid_search(['v12',]),
           "max_number_of_steps": tune.grid_search([20_000]),
         },
 

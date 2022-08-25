@@ -74,7 +74,7 @@ def main(_):
     save_code=True,
   )
 
-  default_env_kwargs=dict(setting='large_respawn')
+  default_env_kwargs=dict(setting='xl_respawn')
   run_experiments(
     build_program_fn=build_program,
     space=space,

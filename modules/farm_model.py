@@ -168,6 +168,7 @@ class FarmIndependentCumulants(FarmCumulants):
     super(FarmIndependentCumulants, self).__init__(*args, **kwargs)
     self.seperate_params = seperate_params
     self.construction_options = ['timestep', 'delta', 'concat', 'delta_concat']
+    assert self.construction in self.construction_options
     self.normalize_state = normalize_state
     self.relational_net = relational_net
 
@@ -224,6 +225,8 @@ class FarmIndependentCumulants(FarmCumulants):
 
     elif self.construction == 'timestep':
       cumulants = inputs
+    else:
+      raise RuntimeError
 
     cumulants = hk.BatchApply(self.relational_net)(cumulants)
 

@@ -254,7 +254,6 @@ class UsfaHead(hk.Module):
     else:
       raise RuntimeError(self.eval_task_support)
 
-
     preds = self.sfgpi(
       inputs=inputs, z=z, w=w, key=key,
       setting='eval')

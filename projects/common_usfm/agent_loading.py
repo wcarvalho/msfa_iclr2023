@@ -209,7 +209,7 @@ def msf(
 
   aux_tasks=[
     q_aux_sf_loss(config),
-    msfa_stats.MsfaStats(),
+    # msfa_stats.MsfaStats(),
     cumulants.CumulantRewardLoss(
       shorten_data_for_cumulant=True,
       coeff=config.reward_coeff,
@@ -250,3 +250,71 @@ def msf(
     stop_grad=True)
 
   return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs
+
+
+def default_agent_settings(agent, env_spec, configs, config_kwargs=None, env_kwargs=None):
+  default_config = dict()
+  default_config.update(config_kwargs or {})
+
+  agent = agent.lower()
+  if agent == "r2d1":
+  # Recurrent DQN/UVFA
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = r2d1(
+      env_spec=env_spec,
+      default_config=default_config,
+      dataclass_configs=[configs.R2D1Config()],
+      )
+
+  elif agent == "r2d1_farm":
+  # UVFA + FARM
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = r2d1(
+      env_spec=env_spec,
+      default_config=default_config,
+      NetworkCls = nets.r2d1_farm,
+      dataclass_configs=[
+        configs.R2D1Config(),
+        configs.FarmConfig(),
+      ],
+    )
+
+  elif agent == "usfa":
+  # USFA + cumulants from LSTM + Q-learning
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = usfa_lstm(
+        env_spec=env_spec,
+        default_config=default_config,
+        dataclass_configs=[configs.USFAConfig()],
+        predict_cumulants=False,
+      )
+
+  elif agent == "usfa_lstm":
+  # USFA + cumulants from LSTM + Q-learning
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = usfa_lstm(
+        env_spec=env_spec,
+        default_config=default_config,
+        dataclass_configs=[
+          configs.QAuxConfig(),
+          configs.RewardConfig(),
+          configs.USFAConfig(),
+          ],
+      )
+
+
+  elif agent == "msf":
+  # USFA + cumulants from FARM + Q-learning (1.9M)
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = msf(
+        env_spec=env_spec,
+        default_config=default_config,
+        dataclass_configs=[
+          configs.QAuxConfig(),
+          configs.RewardConfig(),
+          configs.FarmConfig(),
+          configs.ModularUSFAConfig(),
+        ],
+      )
+
+  else:
+    raise NotImplementedError(agent)
+
+  loss_label=None
+  eval_network=False
+  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network

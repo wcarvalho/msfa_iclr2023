@@ -1,5 +1,6 @@
 from absl import app
 from absl import flags
+from absl import logging
 from pathlib import Path
 from hyperopt import hp
 import launchpad as lp
@@ -152,13 +153,13 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
   # use main program to send stop to all subprocesses
   # -----------------------
   controller.wait(return_on_first_completed=True)
-  print("Controller finished")
-  # time.sleep(60)
+  logging.warning("Search Process: Controller finished")
+  time.sleep(60)
   controller._kill()
   # controller._stop()
-  if agent.wandb_obj:
-    print("Finishing wandb for process")
-    agent.wandb_obj.finish()
+  # if agent.wandb_obj:
+  #   logging.warning("Search Process: Finishing wandb for process")
+  #   agent.wandb_obj.finish()
   # if ray:
     # time.sleep(60*5) # sleep for 5 minutes to avoid collisions
   # time.sleep(120) # sleep for 60 seconds to avoid collisions

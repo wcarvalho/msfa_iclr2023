@@ -61,15 +61,22 @@ def build_program(
   env_kwargs=None,
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
-  log_every=5.0, # how often to log
+  log_every=30.0, # how often to log
   config_kwargs=None, # config
   path='.', # path that's being run from
   log_dir=None, # where to save everything
   debug: bool=False,
-  return_avg_steps=400,
+  return_avg_episodes=200,
   **kwargs,
   ):
   env_kwargs = env_kwargs or dict()
+  config_kwargs = config_kwargs or dict()
+  if debug:
+    config_kwargs['eval_task_support'] = 'eval'
+    print("="*50)
+    print("DEBUG")
+    print("="*50)
+
   setting = env_kwargs.get('setting', 'large_respawn')
   # -----------------------
   # load env stuff
@@ -83,7 +90,7 @@ def build_program(
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
 
   if debug:
       config.batch_size = 32
@@ -125,7 +132,7 @@ def build_program(
     if wandb_init_kwargs and update_wandb_name:
       wandb_init_kwargs['name'] = config_path_str
 
-  observers = [LevelAvgReturnObserver(reset=return_avg_steps)]
+  observers = [LevelAvgReturnObserver(reset=return_avg_episodes)]
   # -----------------------
   # wandb settup
   # -----------------------
@@ -143,7 +150,7 @@ def build_program(
     loss_label='Loss',
     num_actors=num_actors,
     save_config_dict=save_config_dict,
-    # log_every=log_every,
+    log_every=log_every,
     log_with_key='log_data',
     observers=observers,
     **kwargs,

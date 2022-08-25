@@ -12,8 +12,8 @@ group?=''
 notes?=''
 skip?=1
 eval?=0
-spaces?='msf_search'
-ray?=0
+spaces?='borsa_spaces'
+ray?=1
 cpus?=4
 debug?=0
 terminal?='current_terminal'
@@ -41,7 +41,9 @@ test_async:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python -m ipdb -c continue projects/msf/goto_distributed.py \
-	--agent $(agent)
+	--agent $(agent) \
+	--debug=True \
+	--wandb=$(wandb_test)
 
 goto_search:
 	cd ../..; \
@@ -93,7 +95,7 @@ final_msf:
 	--skip $(skip) \
 	--ray $(ray) \
 	--num_cpus $(cpus) \
-	--spaces msf_search \
+	--spaces borsa_spaces \
 	--folder 'results/msf2' \
 	--terminal $(terminal) \
 	--searches="${searches}" \

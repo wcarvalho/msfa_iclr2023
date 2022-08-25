@@ -34,6 +34,7 @@ class GotoAvoidEnv(KitchenLevel):
     kitchen=None,
     objects=None,
     pickup_required=True,
+    train_tasks_obs=False,
     **kwargs):
     """Summary
     
@@ -56,6 +57,9 @@ class GotoAvoidEnv(KitchenLevel):
         list(self.object2reward.values()),
         dtype=np.int32,
         )
+    self.train_tasks_obs = train_tasks_obs
+    if self.train_tasks_obs:
+      self.train_tasks = np.identity(len(self.mission_arr), dtype=np.int32,)
     self.object_names = list(object2reward.keys())
     if objects:
       assert objects == self.object_names
@@ -106,6 +110,13 @@ class GotoAvoidEnv(KitchenLevel):
         shape=(len(self.object2reward),),
         dtype='int32'
     )
+    if self.train_tasks_obs:
+      self.observation_space.spaces['train_tasks'] = spaces.Box(
+          low=0,
+          high=255,
+          shape=(len(self.mission_arr), len(self.mission_arr)),
+          dtype='int32'
+      )
 
   @property
   def task_objects(self):
@@ -151,7 +162,8 @@ class GotoAvoidEnv(KitchenLevel):
     assert self.carrying is None
     obs['pickup'] = np.zeros(len(self.object2reward), dtype=np.int32)
     obs['mission'] = self.mission_arr
-
+    if self.train_tasks_obs:
+      obs['train_tasks'] = self.train_tasks
 
     return obs
 
@@ -250,6 +262,8 @@ class GotoAvoidEnv(KitchenLevel):
 
     obs['mission'] = self.mission_arr
     obs['pickup'] = pickup
+    if self.train_tasks_obs:
+      obs['train_tasks'] = self.train_tasks
 
     return obs, reward, done, info
 
