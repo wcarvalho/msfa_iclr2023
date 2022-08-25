@@ -11,49 +11,49 @@ def get(search, agent):
           "max_number_of_steps": tune.grid_search([20_000]),
           "trace_length": tune.grid_search([80, 40]),
           "discount": tune.grid_search([.99]),
-          "batch_size": tune.grid_search([32, 64]),
+          "batch_size": tune.grid_search([128]),
         }
     ]
   elif search == 'r2d1':
     space = [
         {
-          "seed": tune.grid_search([1]),
+          "seed": tune.grid_search([1, 2, 3]),
           "agent": tune.grid_search(['r2d1']),
           'setting': tune.grid_search(['room_large']),
           'num_train_seeds': tune.grid_search([1000]),
-          "group": tune.grid_search(['hps-2']),
-          "trace_length": tune.grid_search([80, 40]),
+          "group": tune.grid_search(['hps-3']),
+          "trace_length": tune.grid_search([80, 120]),
           "discount": tune.grid_search([.99]),
-          "batch_size": tune.grid_search([32, 64]),
+          "batch_size": tune.grid_search([128]),
         }
     ]
   elif search == 'usfa':
     space = [
         {
-          "seed": tune.grid_search([1]),
+          "seed": tune.grid_search([1, ]),
           "agent": tune.grid_search(['usfa_lstm']),
           "max_number_of_steps": tune.grid_search([10_000_000]),
           'setting': tune.grid_search(['room_large']),
           'num_train_seeds': tune.grid_search([1000]),
-          "group": tune.grid_search(['hps-2']),
-          "trace_length": tune.grid_search([80, 40]),
+          "group": tune.grid_search(['hps-3']),
+          "trace_length": tune.grid_search([80, 120]),
           "discount": tune.grid_search([.99]),
-          "batch_size": tune.grid_search([32, 64]),
+          "batch_size": tune.grid_search([64]),
           'eval_task_support': tune.grid_search(['train']),
         }
     ]
   elif search == 'msf':
     space = [
         {
-          "seed": tune.grid_search([2]),
+          "seed": tune.grid_search([1, 2, 3]),
           "agent": tune.grid_search(['msf']),
           "max_number_of_steps": tune.grid_search([10_000_000]),
           'setting': tune.grid_search(['room_large']),
           'num_train_seeds': tune.grid_search([1000]),
-          "group": tune.grid_search(['hps-2']),
-          "trace_length": tune.grid_search([80, 40]),
+          "group": tune.grid_search(['hps-3']),
+          "trace_length": tune.grid_search([80, 120]),
           "discount": tune.grid_search([.99]),
-          "batch_size": tune.grid_search([32, 64]),
+          "batch_size": tune.grid_search([64]),
           'eval_task_support': tune.grid_search(['train']),
         },
     ]
@@ -97,25 +97,25 @@ def get(search, agent):
       "group": tune.grid_search(['large_final-3']),
       'num_train_seeds': tune.grid_search([1000]),
       "max_number_of_steps": tune.grid_search([10_000_000]),
-      "batch_size": tune.grid_search([128]),
-
+      "trace_length": tune.grid_search([80]),
     }
     space = [
         {
           "agent": tune.grid_search(['r2d1']),
-          "memory_size": tune.grid_search([512]),
+          # "memory_size": tune.grid_search([512]),
+          "batch_size": tune.grid_search([64]),
           **shared,
         },
         {
           "agent": tune.grid_search(['usfa_lstm']),
           'eval_task_support': tune.grid_search(['train']),
-          "memory_size": tune.grid_search([600]), # 3.66M
+          # "memory_size": tune.grid_search([600]), # 3.66M
           **shared,
         },
         {
          "agent": tune.grid_search(['msf']),
           'eval_task_support': tune.grid_search(['train']),
-          "memory_size": tune.grid_search([480]), # 3.64M
+          # "memory_size": tune.grid_search([480]), # 3.64M
           **shared,
         },
         # {

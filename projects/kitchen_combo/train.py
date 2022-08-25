@@ -27,11 +27,11 @@ def main(_):
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
     # config['trace_length'] = 4
-    # config['batch_size'] = 32
+    config['batch_size'] = 64
     # config['priority_use_aux'] = True
     # config['priority_weights_aux'] = True
-    config['task_embedding'] = 'embedding'
-    config['task_activation'] = 'tanh'
+    # config['task_embedding'] = 'embedding'
+    config['trace_length'] = 120
     # config['task_embedding'] = 'embedding'
     # config['task_embedding'] = 'struct_embed' 
     # # config['stop_w_grad'] = True
