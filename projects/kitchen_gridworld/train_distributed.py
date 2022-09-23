@@ -75,6 +75,7 @@ def build_program(
   actor_label=None,
   evaluator_label=None,
   save_config_dict=None,
+  return_avg_episodes=200,
   **kwargs,
   ):
   config = config_kwargs or dict()
@@ -151,7 +152,7 @@ def build_program(
       wandb_init_kwargs['name'] = config_path_str
 
   # observers = [LevelAvgReturnObserver()]
-  observers = [LevelReturnObserver()]
+  observers = [LevelAvgReturnObserver(reset=return_avg_episodes)]
   # -----------------------
   # wandb settup
   # -----------------------
@@ -176,6 +177,7 @@ def build_program(
     num_actors=num_actors,
     save_config_dict=save_config_dict,
     log_every=log_every,
+    log_with_key='log_data',
     observers=observers,
     loss_label='Loss',
     actor_label=actor_label,

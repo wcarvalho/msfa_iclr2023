@@ -16,7 +16,7 @@ import functools
 from agents import td_agent
 from projects.common.train import run
 from utils import make_logger, gen_log_dir
-
+from projects.common.observers import LevelReturnObserver, LevelAvgReturnObserver
 
 FLAGS = flags.FLAGS
 
@@ -26,15 +26,19 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    # config['trace_length'] = 4
-    config['batch_size'] = 64
+    # config['seperate_value_params'] = True
+    # config['seperate_cumulant_params'] = False
+    config['share_add_zeros'] = False
+    # config['clip_rewards'] = True
+
+    # config['module_attn_heads'] = 2 # 2=1,974,900, 0=1,932,704
     # config['priority_use_aux'] = True
     # config['priority_weights_aux'] = True
-    config['npolicies'] = 1
-    config['farm_policy_task_input'] = False
-    config['farm_task_input'] = True
+    # config['npolicies'] = 1
+    # config['farm_policy_task_input'] = False
+    # config['farm_task_input'] = True
     # config['task_embedding'] = 'embedding'
-    config['trace_length'] = 120
+    # config['trace_length'] = 120
     # config['task_embedding'] = 'embedding'
     # config['task_embedding'] = 'struct_embed' 
     # # config['stop_w_grad'] = True
@@ -42,8 +46,11 @@ def main(_):
     # config['relate_residual'] = 'concat'
 
     # config['argmax_mod'] = True
+
+    from pprint import pprint
     print("="*50)
     print("="*20, "testing", "="*20)
+    pprint(config)
     print("="*50)
 
   if FLAGS.env == "goto":
@@ -51,8 +58,21 @@ def main(_):
     env = borsa_helpers.make_environment(
       setting=FLAGS.env_setting,
       evaluation=FLAGS.evaluate)
+
     env_spec = acme.make_environment_spec(env)
-    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = borsa_helpers.load_agent_settings(FLAGS.agent, env_spec, config_kwargs=config)
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = borsa_helpers.load_agent_settings(FLAGS.agent, env_spec,
+      config_kwargs=config)
+
+  elif FLAGS.env == "kitchen":
+    from projects.kitchen_combo import kitchen_helpers
+    env = kitchen_helpers.make_environment(
+      setting=FLAGS.env_setting,
+      evaluation=FLAGS.evaluate)
+    max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
+    env_spec = acme.make_environment_spec(env)
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = kitchen_helpers.load_agent_settings(FLAGS.agent, env_spec,
+      max_vocab_size=max_vocab_size,
+      config_kwargs=config)
 
   elif FLAGS.env == "kitchen_combo":
     from projects.kitchen_combo import combo_helpers
@@ -70,6 +90,8 @@ def main(_):
       setting=setting,
       max_episodes=4,
       completion_bonus=0.0,
+      env_reward_coeff=10.0,
+      env_task_dim=4,
     )
     env = fruitbot_helpers.make_environment(
       **env_kwargs,
@@ -120,6 +142,7 @@ def main(_):
     notes=FLAGS.notes,
   )
 
+  observers = [LevelAvgReturnObserver(reset=200)]
   run(
     env=env,
     env_spec=env_spec,
@@ -131,8 +154,10 @@ def main(_):
     log_dir=log_dir,
     evaluate=FLAGS.evaluate,
     seed=FLAGS.seed,
+    observers=observers,
     num_episodes=FLAGS.num_episodes,
     wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
+    init_only=FLAGS.init_only,
     )
 
 

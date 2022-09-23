@@ -2,6 +2,7 @@ import logging
 import numpy as np
 import collections
 from gym import spaces
+from gym.utils import seeding
 from pprint import pprint
 
 from gym_minigrid.minigrid import Grid, WorldObj
@@ -63,10 +64,12 @@ class KitchenLevel(RoomGridLevel):
     extra_timesteps=1,
     seed=None,
     verbosity=0,
+    nseeds=500,
     **kwargs,
       ):
     self.num_dists = num_dists
     self.debug = debug
+    self.nseeds = nseeds
     # self.locked_room_prob = locked_room_prob
     self.use_time_limit = use_time_limit
     self.unblocking = unblocking
@@ -417,6 +420,8 @@ class KitchenLevel(RoomGridLevel):
   # reset, step used by gym
   # ======================================================
   def reset(self, **kwargs):
+    if self.nseeds:
+      seeding.np_random(self.nseeds)
     """Copied from: 
     - gym_minigrid.minigrid:MiniGridEnv.reset
     - babyai.levels.levelgen:RoomGridLevel.reset

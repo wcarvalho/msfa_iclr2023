@@ -175,6 +175,7 @@ class RelationalLayer(base.Module):
     residual='sigtanh',
     layernorm=False,
     relu_gate=False,
+    add_zeros=False,
     pos_mlp=False,
     # add_zeros=False,
     shared_parameters=True, name='relational'):
@@ -190,6 +191,7 @@ class RelationalLayer(base.Module):
     self.init_bias = init_bias
     self.relu_gate = relu_gate
     self.pos_mlp = pos_mlp
+    self.add_zeros = add_zeros
     # self.w_init = hk.initializers.VarianceScaling(w_init_scale)
     # self.res_w_init = hk.initializers.VarianceScaling(res_w_init_scale)
     # self.b_init = hk.initializers.Constant(init_bias)
@@ -278,10 +280,11 @@ class RelationalLayer(base.Module):
       factors = jax.vmap(concat, in_axes=(0, None), out_axes=0)(
         factors, embeddings)
 
-    D = factors.shape[2]
-    # add zeros for no attention
-    zeros = jnp.zeros((B, 1, D))
-    factors = jnp.concatenate((factors, zeros), axis=1) # [B, N+1, D]
+    if self.add_zeros:
+      D = factors.shape[2]
+      # add zeros for no attention
+      zeros = jnp.zeros((B, 1, D))
+      factors = jnp.concatenate((factors, zeros), axis=1) # [B, N+1, D]
 
     return queries, factors
 

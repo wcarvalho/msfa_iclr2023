@@ -64,6 +64,9 @@ class TFSummaryLogger(base.Logger):
     step = values[
         self._steps_key] if self._steps_key is not None else self._iter
 
+    label = f'{self.label}/step'
+    tf.summary.scalar(label, data=step, step=step)
+
     with self.summary.as_default():
       # TODO(b/159065169): Remove this suppression once the bug is resolved.
       # pytype: disable=unsupported-operands

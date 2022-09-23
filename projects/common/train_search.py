@@ -234,7 +234,7 @@ def run_experiments(
   num_cpus=4,
   num_gpus=1,
   skip=True,
-  wait_time=0,
+  wait_time=30.0,
   use_ray=False,
   build_kwargs=None,
   debug=False):

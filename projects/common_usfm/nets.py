@@ -58,6 +58,7 @@ def make_farm_prep_fn(num_actions, task_input=False, symbolic=False):
     num_actions=num_actions,
     observation=False,
     concat=False,
+    reward=False,
     symbolic=symbolic)
 
   def prep(inputs, obs):
@@ -127,6 +128,7 @@ def build_farm(config, **kwargs):
     projection_dim=config.projection_dim,
     share_residual=config.share_residual,
     share_init_bias=config.share_init_bias,
+    share_add_zeros=config.share_add_zeros,
     vmap=config.farm_vmap,
     out_layers=config.out_layers,
     **kwargs)
@@ -245,6 +247,8 @@ def r2d1(config, env_spec,
   if task_input == 'none':
     prediction_prep_fn = None # just use memory_out
     memory_prep_fn=None
+    prediction = DuellingMLP(num_actions,
+        hidden_sizes=[config.out_hidden_size]*config.out_q_layers)
   else:
     if config.task_embedding: task_embedding = config.task_embedding
     task_embedder, embed_fn = build_task_embedder(
@@ -324,6 +328,7 @@ def r2d1_noise(config, env_spec,
   else:
     # seperate eval network that doesn't use noise
     evaluation_prep_fn = r2d1_prediction_prep_fn # don't add noise
+
 
   return BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,

@@ -132,7 +132,7 @@ def make_environment(
       all_level_kwargs={
         'b.eval|1,1,1|': dict(
           env=f'MiniHack-Room-Ultimate-{size}-v0', task=[1,1,1]),
-        **train_level_kwargs
+        # **train_level_kwargs
       }
       num_seeds=0
     else:

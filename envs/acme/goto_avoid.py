@@ -50,6 +50,7 @@ class GoToAvoid(dm_env.Environment):
     wrappers=None,
     nobjects=10,
     respawn=False,
+    keys=None,
     ObsCls=GotoObs,
     **kwargs):
     """Initializes a new Goto/Avoid environment.
@@ -83,7 +84,7 @@ class GoToAvoid(dm_env.Environment):
     else:
       self.default_env = GymWrapper(self.env)
 
-    self.keys = ['image', 'pickup', 'mission']
+    self.keys = keys or self.ObsCls._fields
 
 
   def reset(self) -> dm_env.TimeStep:

@@ -58,9 +58,167 @@ def get(search, agent):
         },
     ]
 
+  elif search == 'uvfa_small':
+    shared = {
+      "seed": tune.grid_search([1, 2, 3, 4]),
+      'setting': tune.grid_search(['room_small']),
+      "group": tune.grid_search(['small_final-5']),
+      "max_number_of_steps": tune.grid_search([3_000_000]),
+    }
+    space = [
+        # {
+        #   "agent": tune.grid_search(['r2d1']),
+        #   **shared,
+        # },
+        {
+          "agent": tune.grid_search(['r2d1_no_task']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['r2d1_noise']),
+          **shared,
+        },
+        # {
+        #   "agent": tune.grid_search(['r2d1_farm']),
+        #   **shared,
+        # },
+
+    ]
+
+  elif search == 'sfa_small':
+    shared = {
+      "seed": tune.grid_search([1, 2, 3, 4]),
+      'setting': tune.grid_search(['room_small']),
+      "group": tune.grid_search(['small_final-5']),
+      "max_number_of_steps": tune.grid_search([3_000_000]),
+    }
+    space = [
+        {
+          "agent": tune.grid_search(['usfa_lstm']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['usfa_lstm']),
+          'eval_task_support': tune.grid_search(['eval']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['msf']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['msf']),
+          'eval_task_support': tune.grid_search(['eval']),
+          **shared,
+        },
+
+    ]
+
+  elif search == 'uvfa_large':
+    shared = {
+      "seed": tune.grid_search([1, 2, 3, 4]),
+      'setting': tune.grid_search(['room_large']),
+      "group": tune.grid_search(['large_final-uvfa-5']),
+      "max_number_of_steps": tune.grid_search([10_000_000]),
+      'setting': tune.grid_search(['room_large']),
+      'num_train_seeds': tune.grid_search([1000]),
+      "batch_size": tune.grid_search([32]),
+    }
+    space = [
+        {
+          "agent": tune.grid_search(['r2d1']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['r2d1_no_task']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['r2d1_noise']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['r2d1_farm']),
+          **shared,
+        },
+
+    ]
+
+  elif search == 'sfa_large':
+    shared = {
+      "seed": tune.grid_search([1, 2, 3, 4]),
+      'setting': tune.grid_search(['room_large']),
+      "group": tune.grid_search(['large_final-5']),
+      "max_number_of_steps": tune.grid_search([10_000_000]),
+      'setting': tune.grid_search(['room_large']),
+      'num_train_seeds': tune.grid_search([1000]),
+      "batch_size": tune.grid_search([128]),
+    }
+    space = [
+        {
+          "agent": tune.grid_search(['usfa_lstm']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['usfa_lstm']),
+          'eval_task_support': tune.grid_search(['eval']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['msf']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['msf']),
+          'eval_task_support': tune.grid_search(['eval']),
+          **shared,
+        },
+
+    ]
+
   # ======================================================
   # Final
   # ======================================================
+
+
+  elif search == 'random':
+    shared = {
+      "seed": tune.grid_search([1, 2, 3, 4]),
+    }
+    space = [
+        # {
+        #   "agent": tune.grid_search(['msf']),
+        #   'setting': tune.grid_search(['room_small']),
+        #   "group": tune.grid_search(['small_final-5']),
+        #   **shared,
+        # },
+        {
+          "agent": tune.grid_search(['msf']),
+          'setting': tune.grid_search(['room_large']),
+          "group": tune.grid_search(['large_final-5']),
+          'num_train_seeds': tune.grid_search([1000]),
+          "batch_size": tune.grid_search([64]),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['r2d1_farm']),
+          'setting': tune.grid_search(['room_large']),
+          "group": tune.grid_search(['large_final-uvfa-5']),
+          'num_train_seeds': tune.grid_search([1000]),
+          "batch_size": tune.grid_search([32]),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['r2d1']),
+          'setting': tune.grid_search(['room_large']),
+          "group": tune.grid_search(['large_final-uvfa-5']),
+          'num_train_seeds': tune.grid_search([1000]),
+          "batch_size": tune.grid_search([32]),
+          **shared,
+        },
+    ]
+
+
   elif search == 'small_final':
     shared = {
       "seed": tune.grid_search([1, 2, 3, 4]),
@@ -96,8 +254,9 @@ def get(search, agent):
       'setting': tune.grid_search(['room_large']),
       "group": tune.grid_search(['large_final-3']),
       'num_train_seeds': tune.grid_search([1000]),
-      "max_number_of_steps": tune.grid_search([10_000_000]),
+      "batch_size": tune.grid_search([64]),
       "trace_length": tune.grid_search([80]),
+      "max_number_of_steps": tune.grid_search([10_000_000]),
     }
     space = [
         {

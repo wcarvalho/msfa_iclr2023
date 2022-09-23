@@ -79,6 +79,9 @@ class RecurrentTDLearning(learning_lib.LossFn):
 
     # Convert sample data to sequence-major format [T, B, ...].
     data = jax_utils.batch_to_sequence(batch.data)
+    if self.clip_rewards:
+      data = data._replace(reward=jnp.clip(data.reward, -self.max_abs_reward, self.max_abs_reward))
+
 
     # Get core state & warm it up on observations for a burn-in period.
     if self.store_lstm_state:
@@ -250,8 +253,6 @@ class R2D2Learning(RecurrentTDLearning):
     # Preprocess discounts & rewards.
     discounts = (data.discount * self.discount).astype(online_preds.q.dtype)
     rewards = data.reward
-    if self.clip_rewards:
-      rewards = jnp.clip(rewards, -max_abs_reward, max_abs_reward)
     rewards = rewards.astype(online_preds.q.dtype)
 
     # Get N-step transformed TD error and loss.

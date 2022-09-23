@@ -59,8 +59,12 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 1_000
-    # config['struct_policy_input'] = False
-    # config['share_residual'] = 'concat'
+    config['seperate_cumulant_params'] = False
+    config['seperate_value_params'] = False
+    # config['sf_net'] = 'flat'
+    # config['phi_net'] = 'flat'
+    config['module_size'] = 160
+    config['memory_size'] = None
     # config['share_init_bias'] = 1.0
     # config['memory_size'] = 460
     # config['module_attn_heads'] = 2

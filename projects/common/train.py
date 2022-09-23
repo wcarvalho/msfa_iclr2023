@@ -24,6 +24,7 @@ flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('test', True, 'whether testing.')
 flags.DEFINE_bool('evaluate', True, 'whether to use evaluation policy.')
+flags.DEFINE_bool('init_only', False, 'whether to only init arch.')
 
 # -----------------------
 # wandb

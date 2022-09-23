@@ -24,7 +24,7 @@ class R2D1Config(configs.R2D1Config):
   bootstrap_n: int = 5
   step_penalty: float = 0.0
   seed: int = 3
-  max_number_of_steps: int = 3_000_000
+  max_number_of_steps: int = 5_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
@@ -152,6 +152,7 @@ class FarmConfig:
   # Sharing between modules
   share_residual: str = 'sigtanh'
   share_init_bias: float = 1.0
+  share_add_zeros: bool = True
   module_attn_size: int = None
   module_attn_heads: int = 2  # how many attention heads between modules
   shared_module_attn: bool = True # share params for module attention
@@ -169,19 +170,20 @@ class FarmConfig:
 class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
   memory_size: int = 512
+  npolicies: int = 1
   normalize_delta: bool = True # whether to normalize delta between states
   normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
 
   module_task_dim: int=0
-  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
+  seperate_cumulant_params: bool=False # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
   struct_policy_input: bool=True
 
   sf_net: str = 'independent'
   sf_net_heads: int = 2
-  sf_share_output: bool=False # whether SF heads should share output dims
+  sf_share_output: bool=True # whether SF heads should share output dims
   sf_net_layers: int=1
   sf_net_attn_size: int = 256
 

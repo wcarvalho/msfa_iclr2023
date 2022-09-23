@@ -60,13 +60,27 @@ def main(_):
     save_code=True,
   )
 
-  if FLAGS.env == "kitchen_combo":
+  if FLAGS.env == "goto":
+    default_env_kwargs=dict(setting='xl_respawn')
+  elif FLAGS.env == "kitchen":
+    default_env_kwargs = {
+      'setting' : 'gen_long_seeds',
+      'task_reps' : 'object_verbose',
+      'room_size' : 8,
+      'num_dists' : 0,
+      'symbolic' : False,
+      'struct_and': False,
+      'task_reset_behavior': 'none',
+  }
+  elif FLAGS.env == "kitchen_combo":
     default_env_kwargs=dict(setting='test_remove')
   elif FLAGS.env == "fruitbot":
     default_env_kwargs=dict(
       setting='easy',
       max_episodes=4,
-      completion_bonus=0.0)
+      completion_bonus=0.0,
+      env_reward_coeff=1.0,
+      env_task_dim=2)
   elif FLAGS.env == "minihack":
     default_env_kwargs=dict(
       setting='room',

@@ -58,6 +58,7 @@ class GotoAvoidEnv(KitchenLevel):
         dtype=np.int32,
         )
     self.train_tasks_obs = train_tasks_obs
+
     if self.train_tasks_obs:
       self.train_tasks = np.identity(len(self.mission_arr), dtype=np.int32,)
     self.object_names = list(object2reward.keys())

@@ -68,7 +68,7 @@ class LevelAvgReturnObserver(EnvLoopObserver):
 
   def observe_first(self, env: dm_env.Environment, timestep: dm_env.TimeStep
                     ) -> None:
-    """Observes the initial state."""
+    """Observes the initial state __after__ reset."""
     self.idx += 1
     if self.level is not None:
       self.returns[self.level].append(self._episode_return)

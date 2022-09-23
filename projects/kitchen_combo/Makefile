@@ -13,7 +13,7 @@ group?=''
 notes?=''
 skip?=1
 spaces?='spaces'
-ray?=1
+ray?=0
 debug?=0
 
 
@@ -45,6 +45,7 @@ test_sync:
 	--env_setting=$(setting) \
 	--evaluate=$(eval) \
 	--test=True \
+	--init_only=$(init) \
 	--wandb=$(wandb_test)
 
 test_async:
@@ -227,6 +228,26 @@ final_goto:
 	--spaces borsa_spaces \
 	--env goto \
 	--folder 'results/msf2' \
+	--agent $(agent) \
+	--debug_search $(debug)
+
+final_kitchen:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--python_file="projects/kitchen_combo/train_search.py" \
+	--wandb_project 'kitchen_grid3' \
+	--group $(group) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--terminal $(terminal) \
+	--searches "${searches}" \
+	--spaces kitchen_spaces \
+	--env kitchen \
+	--folder 'results/kitchen_grid3' \
 	--agent $(agent) \
 	--debug_search $(debug)
 

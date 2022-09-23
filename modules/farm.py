@@ -182,6 +182,7 @@ class FARM(hk.RNNCore):
     vmap: str = 'switch',
     share_residual: str = 'sigtanh',
     share_init_bias: float = 1.0,
+    share_add_zeros: bool=True,
     name: Optional[str] = None):
     """
     Args:
@@ -227,6 +228,7 @@ class FARM(hk.RNNCore):
         attn_size=attn_size,
         residual=share_residual,
         init_bias=share_init_bias,
+        add_zeros=share_add_zeros,
         )
 
     self.module_size = module_size

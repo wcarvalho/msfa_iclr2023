@@ -83,6 +83,10 @@ class SGDLearner(learning_lib.SGDLearner):
       updates, new_opt_state = optimizer.update(grads, state.opt_state)
       new_params = optax.apply_updates(state.params, updates)
 
+      extra.metrics.update({
+        'grad_norm': optax.global_norm(grads),
+        'update_norm': optax.global_norm(updates)
+      })
       # Periodically update target networks.
       steps = state.steps + 1
       target_params = rlax.periodic_update(

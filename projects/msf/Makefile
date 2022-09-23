@@ -108,6 +108,11 @@ evaluate_sync:
 	python -m ipdb -c continue projects/msf/evaluate.py \
 	--distributed=True
 
+oracle:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python -m ipdb -c continue projects/msf/oracle_performance.py
+
 
 mprof_goto_search:
 	cd ../..; \

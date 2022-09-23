@@ -10,7 +10,7 @@ class R2D1Config(configs.R2D1Config):
   embed_task_dim: int = 12
   out_q_layers: int = 2
   r2d1_loss: str = 'transformed_n_step_q_learning'
-  max_number_of_steps: int = 10_000_000
+  max_number_of_steps: int = 3_000_000
   max_replay_size: int = 70_000
   # min_replay_size: int = 10_000
   samples_per_insert: 4.0 # resize is expensive, so lower is better.
@@ -27,7 +27,7 @@ class USFAConfig(R2D1Config, configs.USFAConfig):
 class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
   reward_coeff: float = 10.0
   value_coeff: float = 0.5
-  sf_share_output: bool=False
+  sf_share_output: bool=True
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):

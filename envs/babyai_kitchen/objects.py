@@ -126,8 +126,9 @@ class KitchenObject(WorldObj):
     self.idx2state = idx2state
     self.state2idx = state2idx
     self.states = states
+    self.state = self.default_state = default_state
     if default_state:
-        self.state = self.default_state = default_state
+      pass
     else:
         if properties:
             all_false = {prop: False for prop in properties}
@@ -197,7 +198,7 @@ class KitchenObject(WorldObj):
   def set_verbosity(self, v): self.verbosity = v
 
   def __repr__(self):
-    state = copy.deepcopy(self.state)
+    state = self.state
     string = f"{self.name}: {str(state)}, since_decay: {self.steps_since_decay}, contains: ({str(self.contains)})"
     return string
 
