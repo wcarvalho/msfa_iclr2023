@@ -51,7 +51,7 @@ from projects.kitchen_gridworld import video_utils
 # -----------------------
 # flags.DEFINE_string('agent', 'r2d1', 'which agent.')
 # flags.DEFINE_string('env_setting', 'large_respawn', 'which environment setting.')
-flags.DEFINE_integer('num_episodes', int(5), 'Number of episodes to evaluate agents for.')
+# flags.DEFINE_integer('num_episodes', int(5), 'Number of episodes to evaluate agents for.')
 flags.DEFINE_integer('ckpts', -1, '-1: latest. 0: all. {interger}: that corresponding checkpoint')
 flags.DEFINE_string('video_path', None, '')
 flags.DEFINE_bool('overwrite', True, 'whether to use evaluation policy.')
@@ -122,6 +122,8 @@ def load_agent_ckpt(
   ckpt_dir,
   results_path=None,
   overwrite=True,
+  video_observer=True,
+  predict_cumulants=True,
   observer_episodes=1):
   """
   Changes:
@@ -153,12 +155,14 @@ def load_agent_ckpt(
   # -----------------------
   # data utils
   # -----------------------
-  observer = video_utils.DataStorer(
-    results_path=results_path,
-    agent=agent_name,
-    seed=config.seed,
-    episodes=observer_episodes,
-    exit=True)
+  observer = None 
+  if video_observer:
+    observer = video_utils.DataStorer(
+      results_path=results_path,
+      agent=agent_name,
+      seed=config.seed,
+      episodes=observer_episodes,
+      exit=True)
 
   behavior_policy_constructor = functools.partial(video_utils.make_behavior_policy, evaluation=True)
 
@@ -167,6 +171,7 @@ def load_agent_ckpt(
       agent=actor,
       networks=networks,
       observer=observer,
+      predict_cumulants=predict_cumulants,
       epsilon=config.evaluation_epsilon,
       seed=config.seed)
 
@@ -201,7 +206,7 @@ def collect_data(env, agent: acme_agent, observers, total_episodes: int):
   loop.run(total_episodes+1)
 
 
-def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath='.', overwrite=True, ckpt=-1, total_episodes=20, seed=None, make_videos_every=1, video_path=None):
+def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath='.', overwrite=True, ckpt=-1, total_episodes=5, seed=None, frame_rate=10, make_videos_every=1, video_path=None):
   """Steps:
     1. load_env_agent_settings
     2. load_agent_ckpt (creates observer for making videos & storing stats)
@@ -269,9 +274,11 @@ def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath
   def make_video_path(seed_path):
     short_seed_path = seed_path.split(basepath)[1]
     if video_path:
-      return os.path.join(video_path, short_seed_path)
+      path = os.path.join(video_path, short_seed_path)
     else:
-      return os.path.join(basepath,'videos', short_seed_path)
+      path = os.path.join(basepath,'videos', short_seed_path)
+
+    return path
 
   if ckpt == -1:
     # latest
@@ -281,6 +288,7 @@ def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath
     if make_videos_every:
       env = OARVideoWrapper(
         environment=env,
+        frame_rate=frame_rate,
         path=make_video_path(data_path),
         record_every=make_videos_every,
         filename='vid')
@@ -288,7 +296,7 @@ def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath
     collect_data(
       env=env,
       agent=agent,
-      observer=video_observer,
+      observers=[video_observer],
       total_episodes=total_episodes)
 
   elif ckpt == 0:
@@ -308,7 +316,7 @@ def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath
       collect_data(
         env=env,
         agent=agent,
-        observer=video_observer,
+        observers=[video_observer],
         total_episodes=total_episodes)
 
   else:
@@ -316,5 +324,5 @@ def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath
     collect_data(
       env=env,
       agent=agent,
-      observer=video_observer,
+      observers=[video_observer],
       total_episodes=total_episodes)

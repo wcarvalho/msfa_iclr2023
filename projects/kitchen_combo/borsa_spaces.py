@@ -17,13 +17,22 @@ def get(search, agent):
         "group": tune.grid_search(['baselines5'])
     }
   elif search == 'r2d1_farm':
-    space = {
-        "seed": tune.grid_search([1, 2, 3, 4]),
-        "agent": tune.grid_search(['r2d1_farm']),
-        "group": tune.grid_search(['borsa_final-4']),
-        "farm_policy_task_input": tune.grid_search([False]),
-        "farm_task_input": tune.grid_search([True])
-    }
+    space = [
+        {
+            "seed": tune.grid_search([1, 2, 3, 4]),
+            "agent": tune.grid_search(['r2d1_farm']),
+            "group": tune.grid_search(['xl_respawn-farm-4']),
+            "farm_policy_task_input": tune.grid_search([False]),
+            "farm_task_input": tune.grid_search([True])
+        },
+        {
+            "seed": tune.grid_search([1, 2, 3, 4]),
+            "agent": tune.grid_search(['r2d1_farm']),
+            "group": tune.grid_search(['xl_respawn-farm-4']),
+            "farm_policy_task_input": tune.grid_search([True]),
+            "farm_task_input": tune.grid_search([False])
+        }
+      ]
 
   elif search == 'usfa_lstm':
     space = [

@@ -19,13 +19,16 @@ class R2D1Config(configs.R2D1Config):
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config, configs.USFAConfig):
-  reward_coeff: float = 10.0
+  reward_coeff: float = 1.0
   value_coeff: float = 0.5
   memory_size: int = 300
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
-  reward_coeff: float = 10.0
+  module_size: int = None
+  nmodules: int = 3
+  memory_size: int = 240 # based on fruitbot
+  reward_coeff: float = 1.0
   value_coeff: float = 0.5
   sf_share_output: bool=True
 

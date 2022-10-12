@@ -1,14 +1,19 @@
 """
 """
 import os
+import logging
 from absl import app
 from absl import flags
 import acme
-
+from glob import glob
+import os.path
+import json
+from absl import flags
 
 FLAGS = flags.FLAGS
 
 from projects.common.create_analysis_data import OARVideoWrapper, first_path, load_agent_ckpt, collect_data
+from projects.common.observers import EvalCountObserver
 
 from projects.kitchen_combo import borsa_helpers
 
@@ -22,7 +27,8 @@ def load_env_agent_settings(config : dict, setting=None, evaluate=True):
 
   env_spec = acme.make_environment_spec(env)
 
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = fruitbot_helpers.load_agent_settings(config['agent'], env_spec, config_kwargs=config)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = borsa_helpers.load_agent_settings(
+    config['agent'], env_spec, config_kwargs=config)
 
   settings=dict(
       config=config,
@@ -35,7 +41,7 @@ def load_env_agent_settings(config : dict, setting=None, evaluate=True):
 
   return env, settings
 
-def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath='.', overwrite=True, ckpt=-1, total_episodes=1000, seed=None, make_videos_every=0, video_path=None):
+def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath='.', overwrite=True, ckpt=-1, total_episodes=1000, seed=None, make_videos_every=0, predict_cumulants=True, video_path=None):
   """Steps:
     1. load_env_agent_settings
     2. load_agent_ckpt (creates observer for making videos & storing stats)
@@ -69,25 +75,27 @@ def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath
   # seed_path = seed_paths[0]
 
 
-  # -----------------------
-  # load env
-  # -----------------------
-  env, settings = load_env_agent_settings(config=config)
 
   for seed_path in seed_paths:
-
     # -----------------------
-    # load agent
+    # load env + settings
     # -----------------------
     config = first_path(os.path.join(seed_path, "config.json"))
     with open(config, 'r') as f:
       config = json.load(f)
+    env, settings = load_env_agent_settings(config=config)
+
+    # -----------------------
+    # load agent
+    # -----------------------
     dirs = glob(os.path.join(seed_path, "2022*")); dirs.sort()
     agent, video_observer, checkpointer = load_agent_ckpt(
       settings=settings,
       agent_name=agent_name,
       ckpt_dir=dirs[-1],
       observer_episodes=total_episodes,
+      predict_cumulants=predict_cumulants,
+      video_observer=make_videos_every>0,
       overwrite=overwrite)
 
     ckpts = checkpointer._checkpointer._checkpoint_manager.checkpoints
@@ -115,9 +123,10 @@ def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath
 
     # latest
     results_path = os.path.join(seed_path, 'episode_data/latest')
-    video_observer.set_results_path(results_path)
+    if video_observer:
+      video_observer.set_results_path(results_path)
 
-    if make_videos_every:
+    if make_videos_every and video_observer:
       env = OARVideoWrapper(
         environment=env,
         path=make_video_path(data_path),
@@ -143,8 +152,11 @@ def generate_data(agent_name, agent_data_path, load_env_agent_settings, basepath
 def main(_):
   basepath = './results/msf2/'
   searches = dict(
-      msf='msf_taskgen_easy-5/agen=msf,sett=taskgen_long_easy,valu=0.5,eval=train',
-      uvfa='r2d1_taskgen_easy-5/*', #
+      # msf='ablate_shared-4/agen=msf,memo=None,modu=150,sepe=False,sepe=False',
+      # usfa='xl_respawn-grad-3/agen=usfa',
+      # uvfa='xl_respawn-grad-3/agen=r2d1',
+      # usfa_lstm='xl_respawn-grad-3/agen=usfa_lstm',
+      uvfa_farm='xl_respawn-farm-4/agen=r2d1_farm*True*False',
     )
 
   for agent, agent_search in searches.items():
@@ -152,6 +164,7 @@ def main(_):
       agent_name=agent,
       basepath=basepath,
       agent_data_path=agent_search,
+      predict_cumulants=agent in ['usfa_lstm', 'msf'],
       load_env_agent_settings=load_env_agent_settings,
       overwrite=FLAGS.overwrite,
       ckpt=FLAGS.ckpts,

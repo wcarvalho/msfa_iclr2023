@@ -12,3 +12,10 @@ class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
   memory_size: int = None
   module_size: int = 150
   nmodules: int = 4
+
+
+@dataclasses.dataclass
+class FarmConfig(configs.FarmConfig):
+  module_size: int = 150
+  nmodules: int = 4
+  memory_size: int = None

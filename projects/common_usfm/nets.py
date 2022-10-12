@@ -58,7 +58,7 @@ def make_farm_prep_fn(num_actions, task_input=False, symbolic=False):
     num_actions=num_actions,
     observation=False,
     concat=False,
-    reward=False,
+    reward=True,
     symbolic=symbolic)
 
   def prep(inputs, obs):

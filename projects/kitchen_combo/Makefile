@@ -270,10 +270,20 @@ meta_search:
 	--debug_search $(debug) \
 	--agent $(agent)
 
+overwrite?=1
+ckpts?=-1
+generate_borsa_object_counts:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python -m ipdb -c continue projects/kitchen_combo/borsa_object_counts.py \
+	--overwrite=$(overwrite)
+
 
 overwrite?=1
 ckpts?=-1
 eps?=5
+video_path?='./results/fruitbot/videos'
+video_folder?='fruitbot'
 generate_fruitbot_data:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
@@ -281,4 +291,5 @@ generate_fruitbot_data:
 	--overwrite=$(overwrite) \
 	--ckpts=$(ckpts) \
 	--num_episodes=$(eps) \
-	--video_path='./results/fruitbot/videos'
+	--video_path=$(video_path) \
+	--folder=$(video_folder)

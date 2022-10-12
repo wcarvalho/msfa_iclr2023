@@ -14,7 +14,7 @@
   make final_goto searches='xl_respawn' cuda=0,1,2,3
 
 
-  make final_goto searches='random' cuda=0,1,2,3
+  make final_goto searches='r2d1_farm' cuda=0,1,2,3
   make final_goto searches='one_policy_gpi_n' cuda=0,1,2,3
   make final_goto searches='ablate_modularity' cuda=0,1,2,3
 

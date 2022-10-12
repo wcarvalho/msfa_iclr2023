@@ -942,7 +942,9 @@ def finish_plotting_ax(
       length = ylim[1]-ylim[0]
       step = length/ysteps
       ax.set_yticks(np.arange(ylim[0], ylim[1]+step, step))
-
+    else:
+      ax.yaxis.set_major_locator(plt.MaxNLocator(ysteps))
+    
     # -----------------------
     # setup legend
     # -----------------------
