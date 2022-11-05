@@ -5,7 +5,6 @@ ACME based experiments
 # Installation 
 
 ```bash
-git clone https://github.com/wcarvalho/rljax.git
 bash setup.sh gpu_procgen_minihack # gpu based machine
 ```
 
