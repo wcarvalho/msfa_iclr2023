@@ -4,7 +4,7 @@ from acme.jax.networks import base
 import haiku as hk
 import jax
 import jax.numpy as jnp
-
+from utils import vmap
 
 Images = jnp.ndarray
 
@@ -50,6 +50,83 @@ class AtariVisionTorso(base.Module):
 
     return self.out_net(flat)
 
+class ResidualBlock(hk.Module):
+  """Residual block."""
+
+  def __init__(self, num_channels, name=None):
+    super().__init__(name=name)
+    self._num_channels = num_channels
+
+  def __call__(self, x):
+    main_branch = hk.Sequential([
+        jax.nn.relu,
+        hk.Conv2D(
+            self._num_channels,
+            kernel_shape=[3, 3],
+            stride=[1, 1],
+            padding='SAME'),
+        jax.nn.relu,
+        hk.Conv2D(
+            self._num_channels,
+            kernel_shape=[3, 3],
+            stride=[1, 1],
+            padding='SAME'),
+    ])
+    return main_branch(x) + x
+
+class AtariImpalaTorso(hk.Module):
+  """Deep torso for Atari, from the IMPALA paper.
+  Note: for 64 x 64 --> 8 x 8
+  """
+
+  def __init__(self, flatten=True, conv_dim = 16, out_dim=256, name=None):
+    super().__init__(name=name)
+    self.flatten = flatten
+    self.conv_dim = conv_dim
+    self.out_dim = out_dim
+
+  def __call__(self, inputs: jnp.ndarray):
+    """Summary
+    
+    Args:
+        inputs (jnp.ndarray): B x H x W x C
+    
+    Returns:
+        TYPE: Description
+    
+    Raises:
+        ValueError: Description
+    """
+    inputs_rank = jnp.ndim(inputs)
+    batched_inputs = inputs_rank == 4
+    if inputs_rank < 3 or inputs_rank > 4:
+      raise ValueError('Expected input BHWC or HWC. Got rank %d' % inputs_rank)
+
+    torso_out = inputs
+    for i, (num_channels, num_blocks) in enumerate([(16, 2), (32, 2), (32, 2)]):
+      conv = hk.Conv2D(
+          num_channels, kernel_shape=[3, 3], stride=[1, 1], padding='SAME')
+      torso_out = conv(torso_out)
+      torso_out = hk.max_pool(
+          torso_out,
+          window_shape=[1, 3, 3, 1],
+          strides=[1, 2, 2, 1],
+          padding='SAME',
+      )
+      for j in range(num_blocks):
+        block = ResidualBlock(num_channels, name='residual_{}_{}'.format(i, j))
+        torso_out = block(torso_out)
+
+
+    torso_out = jax.nn.relu(torso_out)
+    if self.flatten:
+      torso_out = hk.Flatten()(torso_out)
+      if self.out_dim:
+        torso_out = hk.Linear(self.out_dim)(torso_out)
+        torso_out = jax.nn.relu(torso_out)
+
+    return torso_out
+
 
 class BabyAIVisionTorso(base.Module):
   """Convolutional stack used in BabyAI codebase."""
@@ -89,3 +166,46 @@ class BabyAIVisionTorso(base.Module):
       flat = jnp.reshape(outputs, [-1])  # [D]
 
     return self.out_net(flat)
+
+
+class BabyAIymbolicVisionTorso(base.Module):
+  """Simple convolutional stack commonly used for Atari."""
+
+  def __init__(self, num_symbols, flatten=True, conv_dim = 16, out_dim=0):
+    super().__init__(name='atari_torso')
+
+    self.embedder_fn = lambda: hk.Embed(vocab_size=num_symbols, embed_dim=conv_dim)
+    self.flatten = flatten
+    self.conv_dim = conv_dim
+
+  def __call__(self, inputs) -> jnp.ndarray:
+    inputs_rank = jnp.ndim(inputs.image)
+    batched_inputs = inputs_rank == 4
+    if inputs_rank < 3 or inputs_rank > 4:
+      raise ValueError('Expected input BHWC or HWC. Got rank %d' % inputs_rank)
+
+
+    embedded = vmap.batch_multihead(
+      fn=self.embedder_fn,
+      x=inputs.image.astype(jnp.int32),
+      wrap_vmap=lambda fn: hk.BatchApply(fn, num_dims=3),
+      vmap='lift',
+    )
+
+    # flatten channels together
+    embedded = embedded.reshape(*embedded.shape[:inputs_rank-1], -1)
+
+    # linear over them
+    embedded = hk.Conv2D(self.conv_dim, [1, 1], stride=1)(embedded)
+    embedded = jax.nn.relu(embedded)
+
+    if not self.flatten:
+      return embedded
+
+    if batched_inputs:
+      flat = jnp.reshape(embedded, [embedded.shape[0], -1])  # [B, D]
+    else:
+      flat = jnp.reshape(embedded, [-1])  # [D]
+
+    return flat
+

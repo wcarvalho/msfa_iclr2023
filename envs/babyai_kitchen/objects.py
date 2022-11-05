@@ -126,8 +126,9 @@ class KitchenObject(WorldObj):
     self.idx2state = idx2state
     self.state2idx = state2idx
     self.states = states
+    self.state = self.default_state = default_state
     if default_state:
-        self.state = self.default_state = default_state
+      pass
     else:
         if properties:
             all_false = {prop: False for prop in properties}
@@ -153,8 +154,10 @@ class KitchenObject(WorldObj):
     self.state[prop] = val
 
   def render(self, screen):
+    """Used for producing image
+    """
     obj_img = self.state_image()
-    np.copyto(screen, obj_img[:, :, :3])
+    np.copyto(dst=screen, src=obj_img[:, :, :3])
     fill_coords(screen, point_in_rect(0, 0.031, 0, 1), (100, 100, 100))
     fill_coords(screen, point_in_rect(0, 1, 0, 0.031), (100, 100, 100))
 
@@ -184,7 +187,9 @@ class KitchenObject(WorldObj):
 
   def encode(self):
     """Encode the a description of this object as a 3-tuple of integers"""
-    return (self.object_id, 0, self.state_id())
+    raw_state_idx = self.state_id()
+    object_wise_state_idx = self.object_id + raw_state_idx
+    return (self.object_id, 0, object_wise_state_idx)
 
   @staticmethod
   def decode(type_idx, color_idx, state):
@@ -193,7 +198,7 @@ class KitchenObject(WorldObj):
   def set_verbosity(self, v): self.verbosity = v
 
   def __repr__(self):
-    state = copy.deepcopy(self.state)
+    state = self.state
     string = f"{self.name}: {str(state)}, since_decay: {self.steps_since_decay}, contains: ({str(self.contains)})"
     return string
 
@@ -235,6 +240,7 @@ class KitchenObject(WorldObj):
 
     if carrying.type == 'knife':
         self.set_prop("sliced", True)
+        # carrying.set_prop("dirty", True)
         return self.action_info(
             name='slice',
             )
@@ -250,26 +256,27 @@ class KitchenObject(WorldObj):
   def toggle(self):
     can_toggle = self.has_prop('on')
     # can't toggle, action fails
-    if not can_toggle: return self.action_info(
+    if not can_toggle:
+      return self.action_info(
         name='toggle',
         success=False,
         message='cannot toggle')
 
     # if on, toggle off
     if self.state['on']:
-        self.set_prop("on", False)
-        return self.action_info(
-            name='toggle',
-            success=True,
-            message='turned off')
+      self.set_prop("on", False)
+      return self.action_info(
+          name='toggle',
+          success=True,
+          message='turned off')
 
     # if off, toggle on
     else:
-        self.set_prop("on", True)
-        return self.action_info(
-            name='toggle',
-            success=True,
-            message='turned on')
+      self.set_prop("on", True)
+      return self.action_info(
+          name='toggle',
+          success=True,
+          message='turned on')
 
 
   def pickup_self(self):

@@ -3,6 +3,7 @@
 import functools
 import time
 from typing import Dict, Iterator, List, NamedTuple, Optional, Tuple
+from absl import logging
 
 import acme
 from acme.adders import reverb as adders
@@ -27,6 +28,13 @@ TrainingState = learning_lib.TrainingState
 ReverbUpdate = learning_lib.ReverbUpdate
 LossExtra = learning_lib.LossExtra
 
+import numpy as np
+def isbad(x):
+  if np.isnan(x):
+    raise RuntimeError(f"NaN")
+  elif np.isinf(x):
+    raise RuntimeError(f"Inf")
+
 class SGDLearner(learning_lib.SGDLearner):
   """An Acme learner based around SGD on batches.
 
@@ -46,11 +54,14 @@ class SGDLearner(learning_lib.SGDLearner):
                counter: Optional[counting.Counter] = None,
                logger: Optional[loggers.Logger] = None,
                num_sgd_steps_per_step: int = 1,
+               grad_period: int = 0,
                clear_sgd_cache_period: int = 0):
     """Initialize the SGD learner."""
     self.network = network
     self._clear_sgd_cache_period = clear_sgd_cache_period
-
+    self._grad_period = grad_period*num_sgd_steps_per_step
+    if self._grad_period > 0:
+      logging.warning(f'Logging gradients every {self._grad_period} steps')
     # Internalize the loss_fn with network.
     self._loss = jax.jit(functools.partial(loss_fn, self.network))
 
@@ -61,12 +72,21 @@ class SGDLearner(learning_lib.SGDLearner):
       # Implements one SGD step of the loss and updates training state
       (loss, extra), grads = jax.value_and_grad(self._loss, has_aux=True)(
           state.params, state.target_params, batch, rng_key, state.steps)
-      extra.metrics.update({'total_loss': loss})
+
+      mean_grad = jax.tree_map(lambda x: (x.mean()), grads)
+      extra.metrics.update(
+        {'total_loss': loss,
+        'mean_grad': mean_grad,
+        })
 
       # Apply the optimizer updates
       updates, new_opt_state = optimizer.update(grads, state.opt_state)
       new_params = optax.apply_updates(state.params, updates)
 
+      extra.metrics.update({
+        'grad_norm': optax.global_norm(grads),
+        'update_norm': optax.global_norm(updates)
+      })
       # Periodically update target networks.
       steps = state.steps + 1
       target_params = rlax.periodic_update(
@@ -133,6 +153,20 @@ class SGDLearner(learning_lib.SGDLearner):
                                           step_num=self._state.steps):
       batch = next(self._data_iterator)
       self._state, extra = self._sgd_step(self._state, batch)
+
+      try:
+        jax.tree_map(isbad, extra.metrics['mean_grad'])
+      except Exception as e:
+        from pprint import pprint
+        pprint(extra.metrics['mean_grad'])
+        pass
+
+      if self._grad_period and self._state.steps % self._grad_period == 0:
+        for k, v in extra.metrics['mean_grad'].items():
+          # first val
+          extra.metrics['mean_grad'][k] = next(iter(v.values())) 
+      else:
+        extra.metrics.pop('mean_grad')
 
       # Compute elapsed time.
       timestamp = time.time()

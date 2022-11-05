@@ -17,6 +17,9 @@
 
 import functools
 from typing import Callable, Optional
+import logging
+import time
+
 
 from acme import core
 from acme import environment_loop
@@ -25,12 +28,15 @@ from acme import specs
 from acme.agents.jax import builders
 from acme.agents.jax.r2d2 import networks as r2d2_networks
 from acme.jax import networks as networks_lib
+from acme.jax import savers
 from acme.jax import types
 from acme.jax import utils
 from acme.jax.layouts import distributed_layout
 from acme.jax.layouts import local_layout
 from acme.utils import counting
 from acme.utils import loggers
+from acme.utils import signals
+
 import dm_env
 import haiku as hk
 import jax
@@ -44,6 +50,48 @@ from agents.td_agent.types import TDNetworkFns
 
 
 NetworkFactory = Callable[[specs.EnvironmentSpec], TDNetworkFns]
+
+
+
+class StepsLimiter:
+  """Process that terminates an experiment when `max_steps` is reached."""
+
+  def __init__(self,
+               counter: counting.Counter,
+               max_steps: int,
+               steps_key: str = 'actor_steps'):
+    self._counter = counter
+    self._max_steps = max_steps
+    self._steps_key = steps_key
+
+  def run(self):
+    """Run steps limiter to terminate an experiment when max_steps is reached.
+    """
+
+    logging.info('StepsLimiterNew: Starting with max_steps = %d (%s)',
+                 self._max_steps, self._steps_key)
+    with signals.runtime_terminator():
+      while True:
+        # Update the counts.
+        counts = self._counter.get_counts()
+        num_steps = counts.get(self._steps_key, 0)
+
+        logging.info('StepsLimiterNew: Reached %d recorded steps', num_steps)
+
+        if num_steps > self._max_steps:
+          logging.info('StepsLimiterNew: Max steps of %d was reached, terminating',
+                       self._max_steps)
+          # Avoid importing Launchpad until it is actually used.
+          import launchpad as lp  # pylint: disable=g-import-not-at-top
+          lp.stop()
+          import signal
+          signal.raise_signal( signal.SIGTERM )
+
+        # Don't spam the counter.
+        for _ in range(10):
+          # Do not sleep for a long period of time to avoid LaunchPad program
+          # termination hangs (time.sleep is not interruptible).
+          time.sleep(1)
 
 
 
@@ -67,12 +115,15 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       device_prefetch: bool = False,
       observers=None,
       log_to_bigtable: bool = True,
-      evaluator: bool = True,
+      evaluator_factories = None,
+      wandb_obj = None,
       log_every: float = 10.0,
+      num_evaluators: int = 2,
       multithreading_colocate_learner_and_reverb=False,
       **kwargs,
   ):
     observers = observers or ()
+    self.wandb_obj = wandb_obj
     # -----------------------
     # logger fns
     # -----------------------
@@ -98,8 +149,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
     policy_network_factory = (
         lambda n: behavior_policy_constructor(n, config))
 
-    evaluator_factories = []
-    if evaluator:
+    if evaluator_factories is None:
       evaluator_policy_network_factory = (
           lambda n: behavior_policy_constructor(n, config, True))
       eval_env_factory=lambda key: environment_factory(True)
@@ -111,6 +161,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
             observers=observers,
             log_to_bigtable=log_to_bigtable,
             logger_fn=evaluator_logger_fn)
+          for _ in range(num_evaluators)
               ]
     super().__init__(
         seed=seed,
@@ -131,6 +182,53 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
         multithreading_colocate_learner_and_reverb=multithreading_colocate_learner_and_reverb,
         **kwargs)
 
+  def learner(
+      self,
+      random_key: networks_lib.PRNGKey,
+      replay: reverb.Client,
+      counter: counting.Counter,
+    ):
+    """The Learning part of the agent."""
+
+    iterator = self._builder.make_dataset_iterator(replay)
+
+    dummy_seed = 1
+    environment_spec = (
+        self._environment_spec or
+        specs.make_environment_spec(self._environment_factory(dummy_seed)))
+
+    # Creates the networks to optimize (online) and target networks.
+    networks = self._network_factory(environment_spec)
+
+    if self._prefetch_size > 1:
+      # When working with single GPU we should prefetch to device for
+      # efficiency. If running on TPU this isn't necessary as the computation
+      # and input placement can be done automatically. For multi-gpu currently
+      # the best solution is to pre-fetch to host although this may change in
+      # the future.
+      device = jax.devices()[0] if self._device_prefetch else None
+      iterator = utils.prefetch(
+          iterator, buffer_size=self._prefetch_size, device=device)
+    else:
+      logging.info('Not prefetching the iterator.')
+
+    counter = counting.Counter(counter, 'learner')
+
+    learner = self._builder.make_learner(random_key, networks, iterator, replay,
+                                         counter)
+    kwargs = {}
+    if self._checkpointing_config:
+      kwargs = vars(self._checkpointing_config)
+    # Return the learning agent.
+    return savers.CheckpointingRunner(
+        learner,
+        key='learner',
+        subdirectory='learner',
+        time_delta_minutes=60,
+        **kwargs)
+
+  def coordinator(self, counter: counting.Counter, max_actor_steps: int):
+    return StepsLimiter(counter, max_actor_steps)
 
 class TDAgent(local_layout.LocalLayout):
   """Local TD-based learning agent.
@@ -146,6 +244,7 @@ class TDAgent(local_layout.LocalLayout):
       behavior_policy_constructor=make_behavior_policy,
       workdir: Optional[str] = '~/acme',
       counter: Optional[counting.Counter] = None,
+      debug=False,
   ):
     min_replay_size = config.min_replay_size
     # Local layout (actually agent.Agent) makes sure that we populate the
@@ -155,7 +254,7 @@ class TDAgent(local_layout.LocalLayout):
     # by the following two lines.
     config.samples_per_insert_tolerance_rate = float('inf')
     config.min_replay_size = 1
-
+    min_replay_size=32 * config.sequence_period if not debug else 200
     super().__init__(
         seed=seed,
         environment_spec=spec,
@@ -163,7 +262,7 @@ class TDAgent(local_layout.LocalLayout):
         networks=networks,
         policy_network=behavior_policy_constructor(networks, config),
         workdir=workdir,
-        min_replay_size=32 * config.sequence_period,
+        min_replay_size=min_replay_size,
         samples_per_insert=1.,
         batch_size=config.batch_size,
         num_sgd_steps_per_step=config.sequence_period,

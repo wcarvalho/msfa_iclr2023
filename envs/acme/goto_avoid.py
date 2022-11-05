@@ -50,6 +50,8 @@ class GoToAvoid(dm_env.Environment):
     wrappers=None,
     nobjects=10,
     respawn=False,
+    keys=None,
+    ObsCls=GotoObs,
     **kwargs):
     """Initializes a new Goto/Avoid environment.
     Args:
@@ -69,6 +71,7 @@ class GoToAvoid(dm_env.Environment):
             objects=list(o2r.keys()),
         )
 
+    self.ObsCls = ObsCls
     self.env = MultiLevel(
         LevelCls=GotoAvoidEnv,
         wrappers=wrappers,
@@ -81,13 +84,13 @@ class GoToAvoid(dm_env.Environment):
     else:
       self.default_env = GymWrapper(self.env)
 
-    self.keys = ['image', 'pickup', 'mission']
+    self.keys = keys or self.ObsCls._fields
 
 
   def reset(self) -> dm_env.TimeStep:
     """Returns the first `TimeStep` of a new episode."""
     obs = self.env.reset()
-    obs = GotoObs(**{k: obs[k] for k in self.keys})
+    obs = self.ObsCls(**{k: obs[k] for k in self.keys})
     timestep = dm_env.restart(obs)
 
     return timestep
@@ -95,7 +98,7 @@ class GoToAvoid(dm_env.Environment):
   def step(self, action: int) -> dm_env.TimeStep:
     """Updates the environment according to the action."""
     obs, reward, done, info = self.env.step(action)
-    obs = GotoObs(**{k: obs[k] for k in self.keys})
+    obs = self.ObsCls(**{k: obs[k] for k in self.keys})
 
     if done:
       timestep = dm_env.termination(reward=reward, observation=obs)
@@ -111,4 +114,4 @@ class GoToAvoid(dm_env.Environment):
 
   def observation_spec(self):
     default = self.default_env.observation_spec()
-    return GotoObs(**default)
+    return self.ObsCls(**default)

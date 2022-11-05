@@ -37,9 +37,12 @@ def save__init__args(values, underscore=False, overwrite=False, subclass_only=Fa
       if arg in values and (not hasattr(self, attr) or overwrite):
           setattr(self, attr, values[arg])
 
-def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
+def expt_plot(ax, all_x, all_y, all_steps, label, xmax=None, **kwargs):
   runs = []
-  for x, y in zip(all_x, all_y):
+  for x, y, steps in zip(all_x, all_y, all_steps):
+
+    # import ipdb; ipdb.set_trace()
+    # x_ = x[steps]
     if len(x) > len(y):
       x = x[:len(y)]
     elif len(y) > len(x):
@@ -49,6 +52,8 @@ def expt_plot(ax, all_x, all_y, label, xmax=None, **kwargs):
       keep = x < xmax
       y = y[keep]
       x = x[keep]
+
+
     # import ipdb; ipdb.set_trace()
     df = pd.DataFrame.from_dict(dict(x=x,y=y))
     runs.append(expt.Run(path='', df=df))
@@ -102,8 +107,9 @@ class VisDataObject:
         else:
             self.plot_mean_stderr(ax, key, **kwargs)
 
-    def plot_mean_stderr(self, ax, key, datapoint=0, xlabel_key=None, err_style='fill', settings_idx=-1, label_settings=[],**kwargs):
+    def plot_mean_stderr(self, ax, key, datapoint=0, xlabel_key=None, err_style='fill', settings_idx=-1, label_settings=[], y_coeff=1.0, **kwargs):
         df, all_data = self.tensorboard_data[key]
+        _, xdata_steps = self.tensorboard_data[f"{key}_steps"]
         settings = df['experiment_settings'].tolist()
 
         if settings_idx > -1:
@@ -114,14 +120,17 @@ class VisDataObject:
         for idx, setting in enumerate(settings):
             # this is a list of all the lines
             y = all_data[setting]
+            y = [y_*y_coeff for y_ in y]
+            steps = xdata_steps[setting]
             if xlabel_key is None:
                 x = [np.arange(len(_y)) for _y in y]
             else:
                 # use key as x-axis
+
                 _, xdata = self.tensorboard_data[xlabel_key]
+                
                 # all same, so pick 1st
                 x = xdata[setting]
-
 
             # -----------------------
             # compute plot/fill kwargs
@@ -136,7 +145,7 @@ class VisDataObject:
                 idx=settings_idx,
                 )
 
-            ax = expt_plot(ax=ax, all_x=x, all_y=y, err_style=err_style, **kwargs, **plot_kwargs)
+            ax = expt_plot(ax=ax, all_x=x, all_y=y, all_steps=steps, err_style=err_style, **kwargs, **plot_kwargs)
 
     def plot_individual_lines(self, ax, key, datapoint=0, xlabel_key=None, settings_idx=-1, label_settings=[], **kwargs):
         df, all_data = self.tensorboard_data[key]
@@ -397,6 +406,7 @@ class Vistool(object):
         filter_column='max',
         common_settings={},
         topk=1,
+        axis_sharey=False,
         filter_kwargs={},
         # ----------------
         # Arguments for displaying dataframe
@@ -407,6 +417,7 @@ class Vistool(object):
         # Arguments for Plot Keys
         # ----------------
         plot_settings=None,
+        plt_show=True,
         maxcols=4,
         key_with_legend=None,
         individual_lines=False,
@@ -414,6 +425,8 @@ class Vistool(object):
         plot_data_kwargs={},
         fig_kwargs={},
         legend_kwargs={},
+        axs=None,
+        fig=None,
         # ----------------
         # misc.
         # ----------------
@@ -481,6 +494,8 @@ class Vistool(object):
         # create plot for each top-k value
         # ======================================================
         plot_settings = plot_settings or self.plot_settings
+
+        assert topk == 1
         for k in range(topk):
             _plot_settings = copy.deepcopy(plot_settings)
             # -----------------------
@@ -493,7 +508,9 @@ class Vistool(object):
                 # indicate which settings to use
                 plot_data_kwargs['settings_idx'] = k
 
-            plot_keys(
+            return plot_keys(
+                axs=axs,
+                fig=fig,
                 vis_objects=vis_objects,
                 plot_settings=_plot_settings,
                 maxcols=maxcols,
@@ -502,6 +519,8 @@ class Vistool(object):
                 fig_kwargs=fig_kwargs,
                 legend_kwargs=legend_kwargs,
                 individual_lines=individual_lines,
+                axis_sharey=axis_sharey,
+                plt_show=plt_show,
                 key_with_legend=key_with_legend if key_with_legend else self.key_with_legend,
                 )
 
@@ -681,7 +700,8 @@ class PanelTool(Vistool):
                 legend_kwargs=legend_kwargs,
                 key_with_legend=None,
                 plot_legend=plot_legend,
-                plt_show=False
+                plt_show=False,
+                axis_sharey=axis_sharey,
                 )
         plt.show()
 
@@ -745,14 +765,17 @@ def display_metadata(vis_objects, settings=[], stats=[], data_key=None):
 
     settings_df = pd.concat([o.settings_df for o in vis_objects])
     columns = settings_df.columns
-    columns = [c for c in columns if not c in ['agent', 'path', 'fullpath', 'experiment_settings', 'experiment_settings_seed']]
+    columns = [c for c in columns if not c in ['path', 'fullpath', 'experiment_settings', 'experiment_settings_seed']]
     vals = {c: set([u for u in settings_df[c].unique() if u==u and u is not None]) - set([None, np.nan]) for c in columns}
+    # vals = {c: set([u for u in settings_df[c].unique()]) for c in columns}
     unique = {c:v for c,v in vals.items() if len(v) > 1}
 
-    settings = list(set(settings).union(set(unique.keys())))
+    settings = set(settings).union(set(unique.keys()))
 
     try:
-      settings_df = settings_df[settings]
+      # remaining = set(settings_df.columns) - settings
+      # new_order = list(settings) + list(remaining)
+      settings_df = settings_df[list(settings)]
     except Exception as e:
       pass
 
@@ -804,9 +827,11 @@ def plot_keys(
     legend_kwargs={},
     fig_kwargs={},
     axs=None,
+    fig=None,
+    axis_sharey=False,
     key_with_legend=None,
     plot_legend=True,
-    plt_show=True,
+    plt_show=False,
     individual_lines=False,
     ):
     if len(keys) > 0 and len(plot_settings) > 0:
@@ -830,7 +855,13 @@ def plot_keys(
 
     individual_lines = plot_data_kwargs.get("individual_lines", individual_lines)
 
-    for ax, plot_setting in zip(axs, plot_settings):
+    for ax_idx, (ax, plot_setting) in enumerate(zip(axs, plot_settings)):
+        if axis_sharey:
+            keep = ax_idx in np.arange(0, 100, maxcols)
+            if not keep:
+              #remove ylabel
+              plot_setting.pop('ylabel')
+
         key = plot_setting['key']
         for idx, vis_object in enumerate(vis_objects):
             vis_object.plot_data(ax, key=key,
@@ -852,6 +883,8 @@ def plot_keys(
 
     if plt_show:
         plt.show()
+
+    return axs
 
 def finish_plotting_ax(
     ax,
@@ -909,7 +942,9 @@ def finish_plotting_ax(
       length = ylim[1]-ylim[0]
       step = length/ysteps
       ax.set_yticks(np.arange(ylim[0], ylim[1]+step, step))
-
+    else:
+      ax.yaxis.set_major_locator(plt.MaxNLocator(ysteps))
+    
     # -----------------------
     # setup legend
     # -----------------------

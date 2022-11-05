@@ -73,12 +73,12 @@ class TDBuilder(r2d2.R2D2Builder):
       optax.adam(self._config.learning_rate, eps=1e-3),
     ]
 
-    if self._config.schedule_end is not None and self._config.schedule_end > 0:
+    if self._config.schedule_end is not None and self._config.schedule_end > 0 and abs(self._config.final_lr_scale - 1.0) > 1e-3:
       optimizer_chain.append(optax.scale_by_schedule(
               optax.linear_schedule(
                 init_value=1.0,
                 end_value=self._config.final_lr_scale,
-                transition_steps=self._config.schedule_end))
+                transition_steps=int(self._config.schedule_end)))
         )
 
     return learning_lib.SGDLearner(

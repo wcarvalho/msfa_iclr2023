@@ -4,7 +4,7 @@ from envs.babyai_kitchen.objects import KitchenObject, Food, KitchenContainer
 
 class Kitchen(object):
   """docstring for Kitchen"""
-  def __init__(self, objects=[], tile_size=32, rootdir='.', idx_offset=100, verbosity=0):
+  def __init__(self, objects=[], tile_size=32, rootdir='.', idx_offset=20, verbosity=0):
     super(Kitchen, self).__init__()
 
     self.carrying = None
@@ -16,20 +16,40 @@ class Kitchen(object):
     if objects:
         self._objects = [o for o in self._objects if o.type in objects]
 
-    self.object2idx = {}
-    self.name2object = {}
+    # get # of states for objects
+    max_obj_states = 0
+    for idx, object in enumerate(self._objects):
+      num_states = len(object.state2idx)
+      # print(object.name, num_states)
+      max_obj_states = max(max_obj_states, num_states)
+
+    # print(max_obj_states)
+    # self.object2idx = {}
+    # self.name2object = {}
     self.objectid2object = {}
     for idx, object in enumerate(self._objects):
+        start_idx = idx*max_obj_states
         object.set_verbosity(self.verbosity)
         # set id
-        self.object2idx[object.name] = idx + idx_offset
-        object.set_id(idx + idx_offset)
-        self.objectid2object[idx + idx_offset] = object
+        # self.object2idx[object.name] = idx + idx_offset
+        object.set_id(start_idx + idx_offset)
+        self.objectid2object[start_idx + idx_offset] = object
 
-        self.name2object[object.name] = object
+        # self.name2object[object.name] = object
 
+
+    self._max_states = object.object_id + max_obj_states
+    # for idx, object in enumerate(self._objects):
+    #   print(object.name, object.encode())
+    # import ipdb; ipdb.set_trace()
     self.reset()
 
+    self._active = self._objects
+
+  @property
+  def max_object_state(self):
+    return self._max_states
+  
 
   def objects_with_property(self, props):
     return [object for object in self.objects 
@@ -54,6 +74,9 @@ class Kitchen(object):
 
   def update_carrying(self, carrying):
     self.carrying = carrying
+
+  def set_active_objects(self, types):
+    self._active = [o for o in self._objects if o.type in types]
 
   def reset(self, randomize_states=False):
     self.last_action_information = {}
@@ -94,7 +117,6 @@ class Kitchen(object):
 
     else:
         raise RuntimeError(f"Unknown action: {action}")
-
   def step(self):
     for object in self.objects:
         object.step()
@@ -128,7 +150,7 @@ class Kitchen(object):
             action_info = object_infront.toggle()
         else:
             # backwards compatibility
-            action_info = object_infront.toggle(env, fwd_pos)
+            action_info['success'] = object_infront.toggle(env, fwd_pos)
 
     return action_info
 
@@ -251,6 +273,12 @@ class Kitchen(object):
             message=f"can't place inside {container.type}. not a container",
             )
 
+    # container is full
+    if container.contains is not None:
+        # try recursively placing. e.g. if stove, to put in pot
+        return self.place_inside(container.contains)
+        # return carrying
+
     # container doesn't accept the type being carried
     if not container.accepts(self.carrying): return dict(
             action='place_inside',
@@ -258,11 +286,6 @@ class Kitchen(object):
             message=f"can't place inside {container.type}. doesn't accept {self.carrying.type}",
             )
 
-    # container is full
-    if container.contains is not None:
-        # try recursively placing. e.g. if stove, to put in pot
-        return self.place_inside(container.contains)
-        # return carrying
 
 
     # place object inside container
@@ -307,17 +330,26 @@ class Kitchen(object):
                 toggle_prop={'temp': 'hot'},
             ),
             KitchenContainer(
+                name="microwave",
+                rendering_scale=rendering_scale,
+                rootdir=rootdir,
+                properties=['on'],
+                visible_properties=['on'],
+                can_contain=['plates'],
+                pickupable=False,
+                toggle_prop={'temp': 'hot'},
+            ),
+            KitchenContainer(
                 name="fridge",
                 rendering_scale=rendering_scale,
                 rootdir=rootdir,
                 properties=['on'],
                 visible_properties=[''],
-                can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                can_contain=['lettuce', 'potato', 'tomato', 'onion', 'apple', 'orange'],
                 pickupable=False,
                 toggle_prop={'temp': 'cold'},
 
             ),
-
             KitchenContainer(
                 name="pot",
                 rendering_scale=rendering_scale,
@@ -344,7 +376,7 @@ class Kitchen(object):
                 name="plates",
                 rendering_scale=rendering_scale,
                 rootdir=rootdir,
-                can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                can_contain=['lettuce', 'potato', 'tomato', 'onion', 'fork', 'knife'],
                 properties=['dirty'],
                 visible_properties=['dirty'],
             ),
@@ -352,7 +384,7 @@ class Kitchen(object):
                 name="bowl",
                 rendering_scale=rendering_scale,
                 rootdir=rootdir,
-                can_contain=['lettuce', 'potato', 'tomato', 'onion'],
+                can_contain=['lettuce', 'potato', 'tomato', 'onion', 'fork', 'knife'],
                 properties=['dirty'],
                 visible_properties=['dirty'],
             ),

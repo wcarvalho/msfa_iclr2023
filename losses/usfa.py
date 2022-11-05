@@ -8,24 +8,36 @@ from agents.td_agent import losses
 from utils import data as data_utils
 import optax
 from losses import nstep
-from losses.utils import episode_mean
+from losses.utils import episode_mean, make_episode_mask
 
 def compute_q(sf, w):
   return jnp.sum(sf*w, axis=-1)
 
-class QLearningAuxLoss(nstep.QLearning):
+from losses.base import BaseLoss
+
+class QLearningAuxLoss(BaseLoss):
   def __init__(self,
     coeff,
     *args,
     sched_end=None,
     sched_start_val=1.,
     sched_end_val=1e-4,
+    add_bias=False,
+    stop_w_grad=False,
+    target_w=False,
+    mask_loss=False,
+    elementwise=False,
     **kwargs):
-    super().__init__(*args, **kwargs)
+    super().__init__(elementwise=elementwise)
     self.coeff = coeff
     self.sched_end = sched_end
     self.sched_start_val = sched_start_val
     self.sched_end_val = sched_end_val
+    self.add_bias = add_bias
+    self.stop_w_grad = stop_w_grad
+    self.target_w = target_w
+    self.mask_loss = mask_loss
+    self.loss_fn = nstep.QLearning(*args, **kwargs)
     if sched_end:
       self.schedule = optax.linear_schedule(
                   init_value=sched_start_val,
@@ -34,16 +46,29 @@ class QLearningAuxLoss(nstep.QLearning):
 
   def __call__(self, data, online_preds, target_preds, steps, **kwargs):
 
-    w = online_preds.w  # [T, B, C]
+    online_w = online_preds.w  # [T, B, C]
+    target_w = target_preds.w  # [T, B, C]
     online_sf = online_preds.sf[:,:,0]  # [T, B, A, C]
     target_sf = target_preds.sf[:,:,0]  # [T, B, A, C]
     compute_q_jax = jax.vmap(compute_q, in_axes=(2, None), out_axes=2)  # over A
 
-    # output is [T, B, A]
-    online_q = compute_q_jax(online_sf, w)
-    target_q = compute_q_jax(target_sf, w)
+    if self.stop_w_grad:
+      online_w = jax.lax.stop_gradient(online_w)
+      target_w = jax.lax.stop_gradient(target_w)
 
-    batch_td_error = super().__call__(
+    if self.target_w:
+      online_w = target_w
+
+    # output is [T, B, A]
+    online_q = compute_q_jax(online_sf, online_w)
+    target_q = compute_q_jax(target_sf, target_w)
+
+    if self.add_bias:
+      online_q = online_q + online_preds.qbias
+      target_q = target_q + target_preds.qbias
+
+
+    batch_td_error = self.loss_fn(
       online_q=online_q,  # [T, B, A]
       target_q=target_q,  # [T, B, A]
       discount=data.discount,  # [T, B]
@@ -52,28 +77,36 @@ class QLearningAuxLoss(nstep.QLearning):
 
     # output is [B]
     batch_loss = 0.5 * jnp.square(batch_td_error)
-    batch_loss = episode_mean(
-      x=batch_loss,
-      done=data.discount[:-1])
-    batch_loss = batch_loss.mean()
+    if self.mask_loss:
+      batch_loss = episode_mean(
+        x=batch_loss,
+        mask=make_episode_mask(data)[:-1])
+
 
     coeff = self.coeff
     if self.sched_end is not None and self.sched_end > 0:
       coeff = self.schedule(steps)*coeff
 
-    loss = coeff*batch_loss
+    if self.elementwise:
+      cbatch_loss = coeff*batch_loss
+      cbatch_td_error = coeff*batch_td_error
+    else:
+      cbatch_loss = coeff*batch_loss.mean()
+      cbatch_td_error = 0.0
 
     metrics = {
-      'loss_qlearning_sf_raw': batch_loss,
-      'loss_qlearning_sf': loss,
+      'loss_qlearning_sf_raw': batch_loss.mean(),
+      'loss_qlearning_sf':  cbatch_loss.mean(),
       'z.q_sf_coeff': coeff,
       'z.q_sf_mean': online_q.mean(),
       'z.q_sf_var': online_q.var(),
       'z.q_sf_max': online_q.max(),
       'z.q_sf_min': online_q.min()}
 
-
-    return loss, metrics
+    if self.elementwise:
+      return cbatch_td_error, cbatch_loss, metrics
+    else:
+      return cbatch_loss, metrics
 
 
 class QLearningEnsembleAuxLoss(QLearningAuxLoss):
@@ -81,15 +114,20 @@ class QLearningEnsembleAuxLoss(QLearningAuxLoss):
   def __call__(self, data, online_preds, target_preds, steps, **kwargs):
 
     # [T, B, C]
-    w = online_preds.w
+    online_w = online_preds.w  # [T, B, C]
+    target_w = target_preds.w  # [T, B, C]
+    if self.stop_w_grad:
+      online_w = jax.lax.stop_gradient(online_w)
+      target_w = jax.lax.stop_gradient(target_w)
+
 
     # all data is [T, B, N, A, C]
     compute_q_jax = jax.vmap(compute_q, in_axes=(2, None), out_axes=2)  # over N
     compute_q_jax = jax.vmap(compute_q_jax, in_axes=(3, None), out_axes=3)  # over A
 
     # output will be [T, B, N, A]
-    online_q = compute_q_jax(online_preds.sf, w)
-    target_q = compute_q_jax(target_preds.sf, w)
+    online_q = compute_q_jax(online_preds.sf, online_w)
+    target_q = compute_q_jax(target_preds.sf, target_w)
 
     # VMAP over dimension = N
     q_learning = jax.vmap(
@@ -105,10 +143,13 @@ class QLearningEnsembleAuxLoss(QLearningAuxLoss):
 
     # output is [B]
     batch_loss = 0.5 * jnp.square(batch_td_error).mean(2)
-    batch_loss = episode_mean(
-      x=batch_loss,
-      done=data.discount[:-1])
-    batch_loss = batch_loss.mean()
+    if self.mask_loss:
+      batch_loss = episode_mean(
+        x=batch_loss,
+        mask=make_episode_mask(data)[:-1])
+      batch_loss = batch_loss.mean()
+    else:
+      batch_loss = batch_loss.mean()
 
     metrics = {
       'loss_qlearning_sf': batch_loss,

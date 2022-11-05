@@ -11,6 +11,7 @@ from acme.jax import utils as jax_utils
 import jax
 import numpy as np
 from utils.tf_summary import TFSummaryLogger
+from utils import data as data_utils
 
 import datetime
 from pathlib import Path
@@ -26,13 +27,13 @@ try:
 except ImportError:
   WANDB_AVAILABLE=False
 
-def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, return_kwpath=False, **kwargs):
+def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, return_kwpath=False, path_skip=[], **kwargs):
 
   strkey = '%Y.%m.%d'
   if hourminute:
     strkey += '-%H.%M'
   job_name = datetime.datetime.now().strftime(strkey)
-  kwpath = ','.join([f'{key}={value}' for key, value in kwargs.items()])
+  kwpath = ','.join([f'{key[:4]}={value}' for key, value in kwargs.items() if not key in path_skip])
 
   if date:
     path = Path(base_dir).joinpath(job_name).joinpath(kwpath)
@@ -50,6 +51,25 @@ def gen_log_dir(base_dir="results/", date=True, hourminute=True, seed=None, retu
 def copy_numpy(values):
   return jax.tree_map(np.array, values)
 
+class FlattenFilter(base.Logger):
+  """"""
+
+  def __init__(self, to: base.Logger):
+    """Initializes the logger.
+
+    Args:
+      to: A `Logger` object to which the current object will forward its results
+        when `write` is called.
+    """
+    self._to = to
+
+  def write(self, values: base.LoggingData):
+    values = data_utils.flatten_dict(values, sep='/')
+    self._to.write(values)
+
+  def close(self):
+    self._to.close()
+
 def make_logger(
   log_dir: str,
   label: str,
@@ -57,7 +77,9 @@ def make_logger(
   asynchronous: bool = False,
   tensorboard=True,
   wandb=False,
+  max_number_of_steps: int=None,
   time_delta: float=10.0,
+  log_with_key: str=None,
   steps_key: str=None) -> loggers.Logger:
   """Creates ACME loggers as we wish.
   Features:
@@ -80,17 +102,22 @@ def make_logger(
       TFSummaryLogger(log_dir, label=label, steps_key=steps_key))
 
   if wandb:
-    _loggers.append(WandbLogger(label=label, steps_key=steps_key))
+    _loggers.append(WandbLogger(label=label, steps_key=steps_key, max_number_of_steps=max_number_of_steps))
 
   # Dispatch to all writers and filter Nones.
   logger = loggers.Dispatcher(_loggers, copy_numpy)  # type: ignore
   logger = loggers.NoneFilter(logger)
+  logger = FlattenFilter(logger)
 
   if asynchronous:
     logger = async_logger.AsyncLogger(logger)
 
+  if log_with_key is not None:
+    logger = HasKeyFilter(logger, key=log_with_key)
+
   # filter by time: Print logs almost every 10 seconds.
-  logger = loggers.TimeFilter(logger, time_delta=time_delta)
+  elif time_delta:
+    logger = loggers.TimeFilter(logger, time_delta=time_delta)
 
 
   return logger
@@ -98,8 +125,15 @@ def make_logger(
 
 def _format_key(key: str) -> str:
   """Internal function for formatting keys in Tensorboard format."""
-  new = key.title().replace('_', '').replace("/", "-")
+  new = key.title().replace("_", "").replace("/", "-")
   return new
+
+def _format_loss(key: str) -> str:
+  """Internal function for formatting keys in Tensorboard format."""
+  new = key.title().replace("_", "")
+  return new
+
+
 
 class WandbLogger(base.Logger):
   """Logs to a tf.summary created in a given logdir.
@@ -111,7 +145,9 @@ class WandbLogger(base.Logger):
   def __init__(
       self,
       label: str = 'Logs',
-      steps_key: Optional[str] = None
+      labels_skip=('Loss'),
+      steps_key: Optional[str] = None,
+      max_number_of_steps: int = None,
   ):
     """Initializes the logger.
 
@@ -122,25 +158,95 @@ class WandbLogger(base.Logger):
     """
     self._time = time.time()
     self.label = label
+    self.labels_skip =labels_skip
     self._iter = 0
     # self.summary = tf.summary.create_file_writer(logdir)
     self._steps_key = steps_key
+    self.max_number_of_steps = max_number_of_steps
+    if max_number_of_steps is not None:
+      logging.warning(f"Will exit after {max_number_of_steps} steps")
+
+  def try_terminate(self, step: int):
+
+    if step > int(1.05*self.max_number_of_steps):
+      logging.warning("Exiting launchpad")
+      import launchpad as lp  # pylint: disable=g-import-not-at-top
+      lp.stop()
+      import signal
+      signal.raise_signal( signal.SIGTERM )
+
+
 
   def write(self, values: base.LoggingData):
     if self._steps_key is not None and self._steps_key not in values:
-      logging.warn('steps key "%s" not found. Skip logging.', self._steps_key)
-      logging.warn('Available keys:', str(values.keys()))
+      logging.warning('steps key "%s" not found. Skip logging.', self._steps_key)
+      logging.warning('Available keys:', str(values.keys()))
       return
 
     step = values[self._steps_key] if self._steps_key is not None else self._iter
-    to_log = {f'{self.label}/step' : step}
+
+
+    to_log={}
     for key in values.keys() - [self._steps_key]:
-      name = f'{self.label}/{_format_key(key)}'
+
+      if self.label in self.labels_skip: # e.g. [Loss]
+        key_pieces = key.split("/")
+        if len(key_pieces) == 1: # e.g. [step]
+          name = f'{self.label}/{_format_key(key)}'
+        else: 
+          if 'grad' in key.lower():
+          # e.g. [MeanGrad/FarmSharedOutput/~/FeatureAttention/Conv2D1] --> [Loss/MeanGrad-FarmSharedOutput-~-FeatureAttention-Conv2D1]
+            name = f'grads/{_format_key(key)}'
+          else: # e.g. [r2d1/xyz] --> [Loss_r2d1/xyz]
+            name = f'{self.label}_{_format_loss(key)}'
+      else: # e.g. [actor_SmallL2NoDist]
+        name = f'{self.label}/{_format_key(key)}'
+
       to_log[name] = values[key]
 
+    to_log[f'{self.label}/step']  = step
+
     wandb.log(to_log)
+
     self._iter += 1
+    if self.max_number_of_steps is not None:
+      if self._steps_key == 'actor_steps':
+        self.try_terminate(step)
+      else:
+        try:
+          self.try_terminate(values['actor_steps'])
+        except Exception as e:
+          pass
+
 
   def close(self):
-    pass
+    try:
+      wandb.finish()
+    except Exception as e:
+      pass
 
+
+
+class HasKeyFilter(base.Logger):
+  """Logger which writes to another logger at a given time interval."""
+
+  def __init__(self, to: base.Logger, key: str):
+    """Initializes the logger.
+
+    Args:
+      to: A `Logger` object to which the current object will forward its results
+        when `write` is called.
+      time_delta: How often to write values out in seconds.
+        Note that writes within `time_delta` are dropped.
+    """
+    self._to = to
+    self._key = key
+    assert key is not None
+
+  def write(self, values: base.LoggingData):
+    hasdata = values.pop(self._key, None)
+    if hasdata:
+      self._to.write(values)
+
+  def close(self):
+    self._to.close()
