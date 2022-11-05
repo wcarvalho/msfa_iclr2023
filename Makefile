@@ -1,44 +1,86 @@
-step?=0
-port?=4442
-check?=25
-missions?=50
-roomsize?=9
-dists?=0
-train?=1
-verb?=0
-tasks?="cook"
-mtasks?="test"
-
-cuda?=3
-
-export PYTHONPATH:=$(PYTHONPATH):.
-
-export XLA_PYTHON_CLIENT_PREALLOCATE=false
-export TF_FORCE_GPU_ALLOW_GROWTH=true
+agent?=msf
 
 
-sample_kitchen:
-	python envs/babyai_kitchen/sample_kitchen_episodes.py \
-	--check $(step) \
-	--check-end $(check) \
-	--missions $(missions) \
-	--room-size $(roomsize) \
-	--verbosity $(verb) \
-	--num-distractors $(dists) \
-	--task-kinds $(tasks) \
+cuda?=2,3
 
-sample_mkitchen:
-	python envs/babyai_kitchen/sample_multilevel_kitchen_episodes.py \
-	--check $(step) \
-	--check-end $(check) \
-	--missions $(missions) \
-	--room-size $(roomsize) \
-	--verbosity $(verb) \
-	--train $(train) \
-	--tasks "envs/babyai_kitchen/tasks/v1/$(mtasks).yaml" \
+date?=False
+
+terminal?='current_terminal'
+group?=''
+notes?=''
+skip?=1
+spaces?='spaces'
+ray?=0
+debug?=0
+
+wandb?=False
+wandb_project?=''
+wandb_entity?=''
+
 
 jupyter_lab:
 	LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/ \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	DISPLAY=$(cuda) \
 	jupyter lab --port $(port) --no-browser --ip 0.0.0.0
+
+
+final_babyai:
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--python_file="projects/kitchen_combo/train_search.py" \
+	--wandb_project ${wandb_project} \
+	--group $(group) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--terminal $(terminal) \
+	--searches "${searches}" \
+	--spaces borsa_spaces \
+	--env goto \
+	--folder 'results/${wandb_project}' \
+	--agent $(agent) \
+	--debug_search $(debug)
+
+
+final_procgen:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--python_file="projects/kitchen_combo/train_search.py" \
+	--wandb_project ${wandb_project} \
+	--group $(group) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--terminal $(terminal) \
+	--searches "${searches}" \
+	--spaces fruitbot_spaces \
+	--env fruitbot \
+	--folder 'results/${wandb_project}' \
+	--agent $(agent) \
+	--debug_search $(debug)
+
+
+final_minihack:
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--python_file="projects/kitchen_combo/train_search.py" \
+	--wandb_project ${wandb_project} \
+	--group $(group) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--terminal $(terminal) \
+	--searches "${searches}" \
+	--spaces minihack_spaces \
+	--env minihack \
+	--folder 'results/${wandb_project}' \
+	--agent $(agent) \
+	--debug_search $(debug)

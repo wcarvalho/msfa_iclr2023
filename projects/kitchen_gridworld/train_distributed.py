@@ -34,28 +34,6 @@ from projects.kitchen_gridworld import helpers
 from projects.common.train_distributed import build_common_program
 from projects.common.observers import LevelAvgReturnObserver, LevelReturnObserver
 
-# # -----------------------
-# # flags
-# # -----------------------
-# flags.DEFINE_string('agent', 'r2d1', 'which agent.')
-# flags.DEFINE_integer('seed', 1, 'Random seed.')
-# flags.DEFINE_integer('num_actors', 4, 'Number of actors.')
-# flags.DEFINE_integer('max_number_of_steps', None, 'Maximum number of steps.')
-# flags.DEFINE_string('env_setting', 'EasyPickup', 'which environment setting.')
-# flags.DEFINE_string('task_reps', 'object_verbose', 'which task reps to use.')
-
-
-# # -----------------------
-# # WANDB
-# # -----------------------
-# flags.DEFINE_bool('debug', False, 'whether to debug.')
-# flags.DEFINE_bool('custom_loggers', True, 'whether to use custom loggers.')
-# flags.DEFINE_bool('wandb', False, 'whether to log.')
-# flags.DEFINE_string('wandb_project', 'kitchen_grid_dist', 'wand project.')
-# flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
-# flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
-# flags.DEFINE_string('name', '', 'same as wandb name. way to identify runs in a group.')
-# flags.DEFINE_string('notes', '', 'notes for wandb.')
 
 FLAGS = flags.FLAGS
 

@@ -241,11 +241,6 @@ def get(search, agent):
           'eval_task_support': tune.grid_search(['train']),
           **shared,
         },
-        {
-         "agent": tune.grid_search(['msf']),
-          'eval_task_support': tune.grid_search(['eval']),
-          **shared,
-        },
     ]
 
   elif search == 'large_final_all':

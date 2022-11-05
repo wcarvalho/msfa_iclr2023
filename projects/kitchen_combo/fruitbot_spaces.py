@@ -174,25 +174,20 @@ def get(search, agent):
       "max_number_of_steps": tune.grid_search([10_000_000]),
     }
     space = [
-        # {
-        #   "agent": tune.grid_search(['r2d1_farm']),
-        #   **shared,
-        # },
-        # {
-        #   "agent": tune.grid_search(['usfa_lstm']),
-        #   'eval_task_support': tune.grid_search(['train']),
-        #   **shared,
-        # },
+        {
+          "agent": tune.grid_search(['r2d1_farm']),
+          **shared,
+        },
+        {
+          "agent": tune.grid_search(['usfa_lstm']),
+          'eval_task_support': tune.grid_search(['train']),
+          **shared,
+        },
         {
          "agent": tune.grid_search(['msf']),
           # 'eval_task_support': tune.grid_search(['train']),
           **shared,
         },
-        # {
-        #  "agent": tune.grid_search(['msf']),
-        #   'eval_task_support': tune.grid_search(['eval']),
-        #   **shared,
-        # },
     ]
 
   elif search == 'procgen_final':
