@@ -33,7 +33,7 @@ from projects.kitchen_gridworld import helpers as kitchen_helpers
 from projects.msf import helpers as msf_helpers
 from projects.kitchen_combo import minihack_configs
 from projects.common_usfm import agent_loading
-# from projects.common_usfm import nets
+from projects.common_usfm import nets as common_nets
 
 from envs.gym_multitask import GymTask, MultitaskGym, MultiLevelEnv
 
@@ -132,7 +132,7 @@ def make_environment(
       all_level_kwargs={
         'b.eval|1,1,1|': dict(
           env=f'MiniHack-Room-Ultimate-{size}-v0', task=[1,1,1]),
-        **train_level_kwargs
+        # **train_level_kwargs
       }
       num_seeds=0
     else:
@@ -155,48 +155,10 @@ def make_environment(
 
 
 def load_agent_settings(agent, env_spec, config_kwargs=None, env_kwargs=None):
-  default_config = dict()
-  default_config.update(config_kwargs or {})
 
-  agent = agent.lower()
-  if agent == "r2d1":
-  # Recurrent DQN/UVFA
-    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.r2d1(
-      env_spec=env_spec,
-      default_config=default_config,
-      dataclass_configs=[minihack_configs.R2D1Config()],
-      )
+  return agent_loading.default_agent_settings(agent=agent,
+    env_spec=env_spec,
+    configs=minihack_configs,
+    config_kwargs=config_kwargs,
+    env_kwargs=env_kwargs)
 
-  elif agent == "usfa_lstm":
-  # USFA + cumulants from LSTM + Q-learning
-
-    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.usfa_lstm(
-        env_spec=env_spec,
-        default_config=default_config,
-        dataclass_configs=[
-          minihack_configs.QAuxConfig(),
-          minihack_configs.RewardConfig(),
-          minihack_configs.USFAConfig(),
-          ],
-      )
-
-
-  elif agent == "msf":
-  # USFA + cumulants from FARM + Q-learning (1.9M)
-    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.msf(
-        env_spec=env_spec,
-        default_config=default_config,
-        dataclass_configs=[
-          minihack_configs.QAuxConfig(),
-          minihack_configs.RewardConfig(),
-          minihack_configs.ModularUSFAConfig(),
-          minihack_configs.FarmConfig(),
-        ],
-      )
-
-  else:
-    raise NotImplementedError(agent)
-
-  loss_label=None
-  eval_network=False
-  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network

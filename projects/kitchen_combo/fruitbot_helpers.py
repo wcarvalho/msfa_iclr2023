@@ -28,6 +28,8 @@ from projects.kitchen_gridworld import helpers as kitchen_helpers
 from projects.msf import helpers as msf_helpers
 from projects.kitchen_combo import fruitbot_configs
 from projects.common_usfm import agent_loading
+from projects.common_usfm import nets as common_nets
+
 
 from envs.procgen_gym_task import ProcgenGymTask, ProcGenMultitask
 
@@ -37,6 +39,8 @@ def make_environment(
   train_in_eval=False,
   max_episodes=3,
   completion_bonus=0.0,
+  env_reward_coeff=1.0,
+  env_task_dim=2,
   **kwargs) -> dm_env.Environment:
   """Loads environments.
   
@@ -62,7 +66,6 @@ def make_environment(
   # environments
   # -----------------------
   if 'taskgen_short' in setting:
-    reward_coeff=1.0
     if evaluation:
       all_level_kwargs={
         'b.eval|-1,-1|': dict(
@@ -91,7 +94,6 @@ def make_environment(
       num_levels=500
 
   elif 'taskgen_long' in setting:
-    reward_coeff=1.0
     train_level_kwargs={
         'a.train|1,0,0,0|': dict(
           env='wilkabotpzzz', task=[1,0,0,0]),
@@ -137,11 +139,10 @@ def make_environment(
   elif 'procgen' in setting:
     all_level_kwargs={
         '1,-1': dict(
-          env='fruitbot', task=[1, 1]), # ignore it
+          env='fruitbot', task=[1]*env_task_dim), # ignore it
       }
     max_episodes = 1
     completion_bonus = 0.0
-    reward_coeff=0.1 # max reward = 10.0
     if setting == 'procgen_easy':
       setting = 'easy'
       num_levels=200
@@ -169,7 +170,7 @@ def make_environment(
     num_levels=num_levels,
     max_episodes=max_episodes,
     completion_bonus=completion_bonus,
-    reward_coeff=reward_coeff,
+    reward_coeff=env_reward_coeff,
     )
 
   wrapper_list = [
@@ -181,48 +182,66 @@ def make_environment(
 
 
 def load_agent_settings(agent, env_spec, config_kwargs=None, env_kwargs=None):
-  default_config = dict()
-  default_config.update(config_kwargs or {})
 
-  agent = agent.lower()
-  if agent == "r2d1":
-  # Recurrent DQN/UVFA
-    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.r2d1(
-      env_spec=env_spec,
-      default_config=default_config,
-      dataclass_configs=[fruitbot_configs.R2D1Config()],
-      )
+  return agent_loading.default_agent_settings(agent=agent,
+    env_spec=env_spec,
+    configs=fruitbot_configs,
+    config_kwargs=config_kwargs,
+    env_kwargs=env_kwargs)
 
-  elif agent == "usfa_lstm":
-  # USFA + cumulants from LSTM + Q-learning
+  # default_config = dict()
+  # default_config.update(config_kwargs or {})
 
-    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.usfa_lstm(
-        env_spec=env_spec,
-        default_config=default_config,
-        dataclass_configs=[
-          fruitbot_configs.QAuxConfig(),
-          fruitbot_configs.RewardConfig(),
-          fruitbot_configs.USFAConfig(),
-          ],
-      )
+  # agent = agent.lower()
+  # if agent == "r2d1":
+  # # Recurrent DQN/UVFA (1.96M)
+  #   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.r2d1(
+  #     env_spec=env_spec,
+  #     default_config=default_config,
+  #     dataclass_configs=[fruitbot_configs.R2D1Config()],
+  #     )
+
+  # elif agent == "r2d1_farm":
+  # # UVFA + FARM (2.1M)
+  #   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.r2d1(
+  #     env_spec=env_spec,
+  #     NetworkCls=common_nets.r2d1_farm,
+  #     default_config=default_config,
+  #     dataclass_configs=[
+  #       fruitbot_configs.R2D1Config(),
+  #       fruitbot_configs.FarmConfig(),
+  #     ],
+  #   )
+  # elif agent == "usfa_lstm":
+  # # USFA + cumulants from LSTM + Q-learning
+
+  #   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.usfa_lstm(
+  #       env_spec=env_spec,
+  #       default_config=default_config,
+  #       dataclass_configs=[
+  #         fruitbot_configs.QAuxConfig(),
+  #         fruitbot_configs.RewardConfig(),
+  #         fruitbot_configs.USFAConfig(),
+  #         ],
+  #     )
 
 
-  elif agent == "msf":
-  # USFA + cumulants from FARM + Q-learning (1.9M)
-    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.msf(
-        env_spec=env_spec,
-        default_config=default_config,
-        dataclass_configs=[
-          fruitbot_configs.QAuxConfig(),
-          fruitbot_configs.RewardConfig(),
-          fruitbot_configs.ModularUSFAConfig(),
-          fruitbot_configs.FarmConfig(),
-        ],
-      )
+  # elif agent == "msf":
+  # # USFA + cumulants from FARM + Q-learning (1.9M)
+  #   config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.msf(
+  #       env_spec=env_spec,
+  #       default_config=default_config,
+  #       dataclass_configs=[
+  #         fruitbot_configs.QAuxConfig(),
+  #         fruitbot_configs.RewardConfig(),
+  #         fruitbot_configs.ModularUSFAConfig(),
+  #         fruitbot_configs.FarmConfig(),
+  #       ],
+  #     )
 
-  else:
-    raise NotImplementedError(agent)
+  # else:
+  #   raise NotImplementedError(agent)
 
-  loss_label=None
-  eval_network=False
-  return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network
+  # loss_label=None
+  # eval_network=False
+  # return config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network

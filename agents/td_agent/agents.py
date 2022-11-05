@@ -18,6 +18,8 @@
 import functools
 from typing import Callable, Optional
 import logging
+import time
+
 
 from acme import core
 from acme import environment_loop
@@ -33,6 +35,8 @@ from acme.jax.layouts import distributed_layout
 from acme.jax.layouts import local_layout
 from acme.utils import counting
 from acme.utils import loggers
+from acme.utils import signals
+
 import dm_env
 import haiku as hk
 import jax
@@ -46,6 +50,48 @@ from agents.td_agent.types import TDNetworkFns
 
 
 NetworkFactory = Callable[[specs.EnvironmentSpec], TDNetworkFns]
+
+
+
+class StepsLimiter:
+  """Process that terminates an experiment when `max_steps` is reached."""
+
+  def __init__(self,
+               counter: counting.Counter,
+               max_steps: int,
+               steps_key: str = 'actor_steps'):
+    self._counter = counter
+    self._max_steps = max_steps
+    self._steps_key = steps_key
+
+  def run(self):
+    """Run steps limiter to terminate an experiment when max_steps is reached.
+    """
+
+    logging.info('StepsLimiterNew: Starting with max_steps = %d (%s)',
+                 self._max_steps, self._steps_key)
+    with signals.runtime_terminator():
+      while True:
+        # Update the counts.
+        counts = self._counter.get_counts()
+        num_steps = counts.get(self._steps_key, 0)
+
+        logging.info('StepsLimiterNew: Reached %d recorded steps', num_steps)
+
+        if num_steps > self._max_steps:
+          logging.info('StepsLimiterNew: Max steps of %d was reached, terminating',
+                       self._max_steps)
+          # Avoid importing Launchpad until it is actually used.
+          import launchpad as lp  # pylint: disable=g-import-not-at-top
+          lp.stop()
+          import signal
+          signal.raise_signal( signal.SIGTERM )
+
+        # Don't spam the counter.
+        for _ in range(10):
+          # Do not sleep for a long period of time to avoid LaunchPad program
+          # termination hangs (time.sleep is not interruptible).
+          time.sleep(1)
 
 
 
@@ -141,7 +187,7 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
       random_key: networks_lib.PRNGKey,
       replay: reverb.Client,
       counter: counting.Counter,
-  ):
+    ):
     """The Learning part of the agent."""
 
     iterator = self._builder.make_dataset_iterator(replay)
@@ -180,6 +226,9 @@ class DistributedTDAgent(distributed_layout.DistributedLayout):
         subdirectory='learner',
         time_delta_minutes=60,
         **kwargs)
+
+  def coordinator(self, counter: counting.Counter, max_actor_steps: int):
+    return StepsLimiter(counter, max_actor_steps)
 
 class TDAgent(local_layout.LocalLayout):
   """Local TD-based learning agent.

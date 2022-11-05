@@ -332,10 +332,46 @@ def r2d1_noise(config, env_spec,
     memory=hk.LSTM(config.memory_size),
     prediction_prep_fn=add_noise_concat, # add noise
     evaluation_prep_fn=evaluation_prep_fn, # (maybe) don't add noise
-    prediction=DuellingMLP(num_actions, hidden_sizes=[config.out_hidden_size]),
+    prediction=DuellingMLP(num_actions,
+        hidden_sizes=[config.out_hidden_size]*config.out_q_layers),
     **net_kwargs
   )
 
+
+def r2d1_farm(config, env_spec,
+  eval_noise=True,
+  task_embedding: str='none',
+  **net_kwargs):
+
+  assert config.farm_policy_task_input, 'only support task as input to q-fn'
+
+  # config.embed_task_dim = 0 # use GRU output
+  num_actions = env_spec.actions.num_values
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
+  task_embedder, embed_fn = build_task_embedder(task_embedding=task_embedding, config=config, task_shape=task_shape)
+  if task_embedding != 'none':
+    inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+  else:
+    inputs_prep_fn = convert_floats
+
+  def prediction_prep_fn(inputs, memory_out, **kwargs):
+      farm_memory_out = flatten_structured_memory(memory_out.hidden)
+      return r2d1_prediction_prep_fn(
+        inputs=inputs, memory_out=farm_memory_out)
+
+  return BasicRecurrent(
+    inputs_prep_fn=inputs_prep_fn,
+    vision_prep_fn=build_vision_prep_fn(config),
+    vision=build_vision_net(config, env_spec, flatten=True),
+    memory_prep_fn=make_farm_prep_fn(num_actions,
+      task_input=config.farm_task_input),
+    memory=build_farm(config, return_attn=True),
+    prediction_prep_fn=prediction_prep_fn, # add noise
+    prediction=DuellingMLP(num_actions,
+        hidden_sizes=[config.out_hidden_size]*config.out_q_layers),
+    **net_kwargs
+  )
 # ======================================================
 # Modular R2D1
 # ======================================================

@@ -15,11 +15,12 @@ import distrax
 class OAREmbedding(hk.Module):
   """Module for embedding (observation, action, reward, task) inputs together."""
 
-  def __init__(self, num_actions, concat=True, observation=True, **kwargs):
+  def __init__(self, num_actions, concat=True, observation=True, reward=True, **kwargs):
     super(OAREmbedding, self).__init__()
     self.num_actions = num_actions
     self.concat = concat
     self.observation = observation
+    self.reward = reward
 
   def __call__(self,
     inputs: observation_action_reward.OAR, obs: jnp.array=None, extras=None) -> jnp.ndarray:
@@ -30,14 +31,18 @@ class OAREmbedding(hk.Module):
         inputs.action, num_classes=self.num_actions)  # [T?, B, A]
 
     # Map rewards -> [-1, 1].
-    reward = jnp.tanh(inputs.reward)
+    if self.reward:
+      reward = jnp.tanh(inputs.reward)
 
-    # Add dummy trailing dimensions to rewards if necessary.
-    while reward.ndim < action.ndim:
-      reward = jnp.expand_dims(reward, axis=-1)
+      # Add dummy trailing dimensions to rewards if necessary.
+      while reward.ndim < action.ndim:
+        reward = jnp.expand_dims(reward, axis=-1)
 
-    # Concatenate on final dimension.
-    items = [action, reward]
+      # Concatenate on final dimension.
+      items = [action, reward]
+    else:
+      items = [action]
+
     if extras:
       items = items + extras
 

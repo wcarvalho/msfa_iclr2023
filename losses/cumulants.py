@@ -8,19 +8,37 @@ from losses.base import BaseLoss
 
 class CumulantRewardLoss(BaseLoss):
   """"""
-  def __init__(self, coeff: float, loss: str = 'l2', shorten_data_for_cumulant: bool = False,
+  def __init__(self,
+    coeff: float,
+    loss: str = 'l2',
+    shorten_data_for_cumulant: bool = False,
     balance: float = 0,
     nmodules: int = 1,
     mask_loss: bool = True,
     l1_coeff=None,
     wl1_coeff=None,
+    elementwise=False,
     **kwargs):
-    super().__init__(elementwise=True, random=True, **kwargs)
+    """Summary
+    
+    Args:
+        coeff (float): Description
+        loss (str, optional): Description
+        shorten_data_for_cumulant (bool, optional): Description
+        balance (float, optional): Description
+        nmodules (int, optional): Description
+        mask_loss (bool, optional): Description
+        l1_coeff (None, optional): Description
+        wl1_coeff (None, optional): Description
+        **kwargs: Description
+    """
+    super().__init__(elementwise=elementwise, random=True, **kwargs)
     self.coeff = coeff
     self.loss = loss.lower()
     assert self.loss in ['l2', 'binary']
     self.shorten_data_for_cumulant = shorten_data_for_cumulant
     self.balance = balance
+    assert balance >= 0.0 and balance <= 1.0, 'bound reward balancing prob'
     self.l1_coeff = l1_coeff
     self.nmodules = nmodules
     self.wl1_coeff = wl1_coeff
@@ -75,12 +93,16 @@ class CumulantRewardLoss(BaseLoss):
         elem_error = elem_error*mask
         all_keep = all_keep*mask
 
-      # [B]
-      batch_loss = (elem_error*all_keep).sum(0)/(1e-5+all_keep.sum(0))
-
+      if self.elementwise:
+        # [B]
+        batch_loss = (elem_error*all_keep).sum(0)/(1e-5+all_keep.sum(0))
+        celem_error = self.coeff*elem_error
+      else:
+        # []
+        batch_loss = (elem_error*all_keep).sum()/(1e-5+all_keep.sum())
+        celem_error = 0.0
 
       cbatch_loss = self.coeff*batch_loss
-      celem_error = self.coeff*elem_error
 
       # [T, B, D] --> [T, B]
       phi_l1 = jnp.linalg.norm(cumulants, ord=1, axis=-1)
@@ -136,7 +158,10 @@ class CumulantRewardLoss(BaseLoss):
 
       final_error = final_error + w_l1
 
-    return celem_error, cbatch_loss, metrics
+    if self.elementwise:
+      return celem_error, cbatch_loss, metrics
+    else:
+      return cbatch_loss, metrics
 
 
 

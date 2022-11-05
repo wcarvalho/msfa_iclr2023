@@ -58,7 +58,7 @@ class LevelReturnObserver(EnvLoopObserver):
 
 class LevelAvgReturnObserver(EnvLoopObserver):
   """Metric: Average return over many episodes"""
-  def __init__(self, reset=200):
+  def __init__(self, reset=100):
     super(LevelAvgReturnObserver, self).__init__()
     self.returns = collections.defaultdict(list)
     self.level = None
@@ -68,7 +68,7 @@ class LevelAvgReturnObserver(EnvLoopObserver):
 
   def observe_first(self, env: dm_env.Environment, timestep: dm_env.TimeStep
                     ) -> None:
-    """Observes the initial state."""
+    """Observes the initial state __after__ reset."""
     self.idx += 1
     if self.level is not None:
       self.returns[self.level].append(self._episode_return)
@@ -99,6 +99,8 @@ class LevelAvgReturnObserver(EnvLoopObserver):
         avg = np.array(returns).mean()
         result[f'0.task/{key}/avg_return'] = float(avg)
         self.returns[key] = []
+
+      result['log_data'] = True
 
     return result
 

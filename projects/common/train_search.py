@@ -1,5 +1,6 @@
 from absl import app
 from absl import flags
+from absl import logging
 from pathlib import Path
 from hyperopt import hp
 import launchpad as lp
@@ -25,10 +26,11 @@ flags.DEFINE_string('root', None, 'root folder.')
 flags.DEFINE_bool('date', True, 'use date.')
 flags.DEFINE_string('search', '', 'which search to use.')
 flags.DEFINE_string('spaces', 'spaces', 'which search to use.')
-flags.DEFINE_string('terminal', 'output_to_files', 'terminal for launchpad.')
+flags.DEFINE_string('terminal', 'current_terminal', 'terminal for launchpad.')
 flags.DEFINE_integer('idx', None, 'number of gpus per job. accepts fractions.')
 flags.DEFINE_integer('skip', 1, 'skip run jobs.')
 flags.DEFINE_integer('ray', 0, 'whether to use ray tune.')
+flags.DEFINE_integer('num_cpus', 4, 'whether to use ray tune.')
 flags.DEFINE_integer('debug_search', 0, 'whether to use ray tune.')
 
 DEFAULT_NUM_ACTORS=3
@@ -83,7 +85,6 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     **log_path_config
     )
 
-  # os.environ['LAUNCHPAD_LOGGING_DIR']=log_dir
   print("="*50)
   if os.path.exists(log_dir) and skip:
     print(f"SKIPPING\n{log_dir}")
@@ -134,7 +135,6 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     local_resources['learner'] = PythonProcess(
       env={"CUDA_VISIBLE_DEVICES": str(cuda)})
 
-  print('debug', debug)
   if debug:
     print("="*50)
     print("LOCAL RESOURCES")
@@ -147,11 +147,19 @@ def create_and_run_program(config, build_program_fn, root_path, folder, group, w
     terminal=terminal, 
     local_resources=local_resources
     )
-  controller.wait()
-  print("Controller finished")
+  # -----------------------
+  # blow is HUGE hack to cancel "cleanly"
+  # get 1st process that exits to return to main program
+  # use main program to send stop to all subprocesses
+  # -----------------------
+  controller.wait(return_on_first_completed=True)
+  logging.warning("Search Process: Controller finished")
+  time.sleep(60)
+  controller._kill()
+  # controller._stop()
   # if agent.wandb_obj:
+  #   logging.warning("Search Process: Finishing wandb for process")
   #   agent.wandb_obj.finish()
-  #   print("Wandb Finished")
   # if ray:
     # time.sleep(60*5) # sleep for 5 minutes to avoid collisions
   # time.sleep(120) # sleep for 60 seconds to avoid collisions
@@ -223,10 +231,10 @@ def run_experiments(
   default_env_kwargs=None,
   use_wandb=True,
   terminal='current_terminal',
-  num_cpus=3,
+  num_cpus=4,
   num_gpus=1,
   skip=True,
-  wait_time=0,
+  wait_time=30.0,
   use_ray=False,
   build_kwargs=None,
   debug=False):

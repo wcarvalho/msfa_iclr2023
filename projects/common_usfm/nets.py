@@ -50,7 +50,7 @@ def get_image_from_inputs(inputs : observation_action_reward.OAR):
 def get_obs_from_inputs(inputs : observation_action_reward.OAR):
   return inputs.observation
 
-def make_farm_prep_fn(num_actions, task_input=False, embed_task=None, symbolic=False):
+def make_farm_prep_fn(num_actions, task_input=False, symbolic=False):
   """
   Return farm inputs, (1) obs features (2) [action, reward] vector
   """
@@ -58,17 +58,13 @@ def make_farm_prep_fn(num_actions, task_input=False, embed_task=None, symbolic=F
     num_actions=num_actions,
     observation=False,
     concat=False,
+    reward=True,
     symbolic=symbolic)
 
   def prep(inputs, obs):
     vector = embedder(inputs)
     if task_input:
-      if embed_task is not None:
-        raise NotImplementedError("have not checked yet")
-      else:
-        embed_task = lambda x:x
-      task = embed_task(inputs.observation.task)
-      vector.append(task)
+      vector.append(inputs.observation.task)
     vector = jnp.concatenate(vector, axis=-1)
     return farm.FarmInputs(
       image=obs, vector=vector)
@@ -130,6 +126,9 @@ def build_farm(config, **kwargs):
     module_attn_size=config.module_attn_size,
     shared_module_attn=config.shared_module_attn,
     projection_dim=config.projection_dim,
+    share_residual=config.share_residual,
+    share_init_bias=config.share_init_bias,
+    share_add_zeros=config.share_add_zeros,
     vmap=config.farm_vmap,
     out_layers=config.out_layers,
     **kwargs)
@@ -248,6 +247,8 @@ def r2d1(config, env_spec,
   if task_input == 'none':
     prediction_prep_fn = None # just use memory_out
     memory_prep_fn=None
+    prediction = DuellingMLP(num_actions,
+        hidden_sizes=[config.out_hidden_size]*config.out_q_layers)
   else:
     if config.task_embedding: task_embedding = config.task_embedding
     task_embedder, embed_fn = build_task_embedder(
@@ -328,6 +329,7 @@ def r2d1_noise(config, env_spec,
     # seperate eval network that doesn't use noise
     evaluation_prep_fn = r2d1_prediction_prep_fn # don't add noise
 
+
   return BasicRecurrent(
     inputs_prep_fn=inputs_prep_fn,
     vision_prep_fn=build_vision_prep_fn(config),
@@ -340,6 +342,47 @@ def r2d1_noise(config, env_spec,
     **net_kwargs
   )
 
+def r2d1_farm(config, env_spec,
+  eval_noise=True,
+  task_embedding: str='none',
+  **net_kwargs):
+
+
+  num_actions = env_spec.actions.num_values
+  task_shape = env_spec.observations.observation.task.shape
+  task_dim = task_shape[-1]
+
+  if config.task_embedding: task_embedding = config.task_embedding
+
+  task_embedder, embed_fn = build_task_embedder(task_embedding=task_embedding, config=config, task_shape=task_shape)
+
+  if task_embedding != 'none':
+    inputs_prep_fn = make__convert_floats_embed_task(embed_fn)
+  else:
+    inputs_prep_fn = convert_floats
+
+  if config.farm_policy_task_input:
+    def prediction_prep_fn(inputs, memory_out, **kwargs):
+      farm_memory_out = flatten_structured_memory(memory_out.hidden)
+      return r2d1_prediction_prep_fn(
+        inputs=inputs, memory_out=farm_memory_out)
+  else:
+    # only give hidden-state as input
+    def prediction_prep_fn(inputs, memory_out, **kwargs):
+      return flatten_structured_memory(memory_out.hidden)
+
+  return BasicRecurrent(
+    inputs_prep_fn=inputs_prep_fn,
+    vision_prep_fn=build_vision_prep_fn(config),
+    vision=build_vision_net(config, env_spec, flatten=False),
+    memory_prep_fn=make_farm_prep_fn(num_actions,
+      task_input=config.farm_task_input),
+    memory=build_farm(config, return_attn=True),
+    prediction_prep_fn=prediction_prep_fn, # add noise
+    prediction=DuellingMLP(num_actions,
+        hidden_sizes=[config.out_hidden_size]*config.out_q_layers),
+    **net_kwargs
+  )
 # ======================================================
 # Modular R2D1
 # ======================================================
@@ -530,14 +573,14 @@ def msf(
   # memory
   # -----------------------
   # ensure sizes are correct
-  if task_embedding == 'none' and config.nmodules is None:
+  if config.nmodules is None:
     assert config.module_task_dim != 0
     config.nmodules = int(task_dim//config.module_task_dim)
     if config.module_size is None:
       config.module_size = config.memory_size//config.nmodules
     config.memory_size = config.nmodules*config.module_size
 
-  elif task_embedding == 'none' and task_dim < config.nmodules:
+  elif task_dim < config.nmodules:
     # if not embedding and don't have enough modules, reduce
     module_size = config.module_size
     if config.module_size is None:

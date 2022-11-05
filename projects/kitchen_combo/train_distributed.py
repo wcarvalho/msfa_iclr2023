@@ -32,7 +32,7 @@ from utils import make_logger, gen_log_dir
 from utils import data as data_utils
 
 from projects.common.train_distributed import build_common_program
-from projects.common.observers import LevelReturnObserver
+from projects.common.observers import LevelReturnObserver, LevelAvgReturnObserver
 
 
 FLAGS = flags.FLAGS
@@ -47,18 +47,73 @@ def build_program(
   env_kwargs=None,
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
-  log_every=5.0, # how often to log
+  log_every=30.0, # how often to log
   config_kwargs=None, # config
   path='.', # path that's being run from
   log_dir=None, # where to save everything
   debug: bool=False,
+  return_avg_episodes=200,
   **kwargs,
   ):
   env_kwargs = env_kwargs or dict()
-  if env == "kitchen_combo":
+  if env == "goto":
+    from projects.kitchen_combo import borsa_helpers
+
+    setting = env_kwargs.get('setting', '')
+    # -----------------------
+    # load env stuff
+    # -----------------------
+    environment_factory = lambda is_eval: borsa_helpers.make_environment(
+        evaluation=is_eval, path=path, setting=setting)
+    env = environment_factory(False)
+    env_spec = acme.make_environment_spec(env)
+    del env
+    # -----------------------
+    # load agent/network stuff
+    # -----------------------
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = borsa_helpers.load_agent_settings(agent, env_spec, config_kwargs)
+
+    observers = [LevelAvgReturnObserver(reset=return_avg_episodes)]
+    kwargs['log_with_key']='log_data'
+
+  elif env == "kitchen":
+    from projects.kitchen_combo import kitchen_helpers
+
+    setting = env_kwargs.get('setting', 'gen_long_seeds')
+    # -----------------------
+    # load env stuff
+    # -----------------------
+    environment_factory = lambda is_eval: kitchen_helpers.make_environment(
+        evaluation=is_eval, path=path, setting=setting)
+    env = environment_factory(False)
+    max_vocab_size = max(env.env.instr_preproc.vocab.values())+1 # HACK
+    tasks_file = env.tasks_file # HACK
+
+    env_spec = acme.make_environment_spec(env)
+    del env
+    # -----------------------
+    # load agent/network stuff
+    # -----------------------
+    config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = kitchen_helpers.load_agent_settings(agent, env_spec, config_kwargs=config_kwargs,
+      max_vocab_size=max_vocab_size,)
+
+    # -----------------------
+    # logging settings
+    # -----------------------
+    # observers = [LevelReturnObserver()]
+    observers = [LevelAvgReturnObserver(reset=return_avg_episodes)]
+    kwargs['log_with_key']='log_data'
+
+
+    def get(label, default):
+      return tasks_file.get(label, default)
+    kwargs['actor_label'] = get("actor_label", f"actor_{setting}")
+    kwargs['evaluator_label'] = get("evaluator_label", f"evaluator_{setting}")
+
+  elif env == "kitchen_combo":
     from projects.kitchen_combo import combo_helpers
 
-    setting = env_kwargs.get('setting', 'medium')
+    setting = env_kwargs.get('setting', '')
     # -----------------------
     # load env stuff
     # -----------------------
@@ -71,6 +126,10 @@ def build_program(
     # load agent/network stuff
     # -----------------------
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = combo_helpers.load_agent_settings(agent, env_spec, config_kwargs)
+
+    # observers = [LevelReturnObserver()]
+    observers = [LevelAvgReturnObserver(reset=return_avg_episodes)]
+    kwargs['log_with_key']='log_data'
 
   elif env == "fruitbot":
     from projects.kitchen_combo import fruitbot_helpers
@@ -99,6 +158,9 @@ def build_program(
     except AttributeError as e:
       pass
 
+    observers = [LevelAvgReturnObserver(reset=return_avg_episodes)]
+    kwargs['log_with_key']='log_data'
+
   elif env == "minihack":
     from projects.kitchen_combo import minihack_helpers
     print("="*20,'env kwargs', "="*20)
@@ -117,6 +179,10 @@ def build_program(
     # load agent/network stuff
     # -----------------------
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = minihack_helpers.load_agent_settings(agent, env_spec, config_kwargs)
+
+    observers = [LevelAvgReturnObserver(reset=return_avg_episodes)]
+    kwargs['log_with_key']='log_data'
+
   else:
     raise NotImplementedError(FLAGS.env)
 
@@ -163,7 +229,6 @@ def build_program(
     if wandb_init_kwargs and update_wandb_name:
       wandb_init_kwargs['name'] = config_path_str
 
-  observers = [LevelReturnObserver()]
   # -----------------------
   # wandb settup
   # -----------------------
@@ -177,8 +242,8 @@ def build_program(
     NetworkCls=NetworkCls,
     NetKwargs=NetKwargs,
     LossFn=LossFn,
-    num_evaluators=2,
     LossFnKwargs=LossFnKwargs,
+    num_evaluators=2,
     num_actors=num_actors,
     save_config_dict=save_config_dict,
     log_every=log_every,

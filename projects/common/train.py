@@ -24,6 +24,7 @@ flags.DEFINE_integer('num_episodes', int(1e5), 'Number of episodes to train for.
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_bool('test', True, 'whether testing.')
 flags.DEFINE_bool('evaluate', True, 'whether to use evaluation policy.')
+flags.DEFINE_bool('init_only', False, 'whether to only init arch.')
 
 # -----------------------
 # wandb
@@ -100,6 +101,7 @@ def run(env,
     seed: int=1,
     num_episodes: int=1_000,
     log_every=30.0,
+    log_with_key:str=None,
     observers=None,
     actor_label='actor',
     wandb_init_kwargs=None,
@@ -118,6 +120,7 @@ def run(env,
             log_dir=log_dir,
             label=loss_label,
             time_delta=log_every,
+            log_with_key=log_with_key,
             wandb=use_wandb,
             max_number_of_steps=config.max_number_of_steps,
             asynchronous=True)
@@ -128,6 +131,7 @@ def run(env,
         wandb=use_wandb,
         max_number_of_steps=config.max_number_of_steps,
         time_delta=log_every,
+        log_with_key=log_with_key,
         steps_key="steps")
 
       if wandb_init_kwargs is not None:
@@ -142,7 +146,9 @@ def run(env,
       LossFn=LossFn,
       LossFnKwargs=LossFnKwargs,
       logger_fn=logger_fn,
-      learner_kwargs=dict(clear_sgd_cache_period=config.clear_sgd_cache_period)
+      learner_kwargs=dict(
+        clear_sgd_cache_period=config.clear_sgd_cache_period,
+        grad_period=config.grad_period)
       )
 
   kwargs=kwargs or {}

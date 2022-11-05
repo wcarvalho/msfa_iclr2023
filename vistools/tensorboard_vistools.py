@@ -107,7 +107,7 @@ class VisDataObject:
         else:
             self.plot_mean_stderr(ax, key, **kwargs)
 
-    def plot_mean_stderr(self, ax, key, datapoint=0, xlabel_key=None, err_style='fill', settings_idx=-1, label_settings=[],**kwargs):
+    def plot_mean_stderr(self, ax, key, datapoint=0, xlabel_key=None, err_style='fill', settings_idx=-1, label_settings=[], y_coeff=1.0, **kwargs):
         df, all_data = self.tensorboard_data[key]
         _, xdata_steps = self.tensorboard_data[f"{key}_steps"]
         settings = df['experiment_settings'].tolist()
@@ -120,11 +120,13 @@ class VisDataObject:
         for idx, setting in enumerate(settings):
             # this is a list of all the lines
             y = all_data[setting]
+            y = [y_*y_coeff for y_ in y]
             steps = xdata_steps[setting]
             if xlabel_key is None:
                 x = [np.arange(len(_y)) for _y in y]
             else:
                 # use key as x-axis
+
                 _, xdata = self.tensorboard_data[xlabel_key]
                 
                 # all same, so pick 1st
@@ -404,6 +406,7 @@ class Vistool(object):
         filter_column='max',
         common_settings={},
         topk=1,
+        axis_sharey=False,
         filter_kwargs={},
         # ----------------
         # Arguments for displaying dataframe
@@ -414,6 +417,7 @@ class Vistool(object):
         # Arguments for Plot Keys
         # ----------------
         plot_settings=None,
+        plt_show=True,
         maxcols=4,
         key_with_legend=None,
         individual_lines=False,
@@ -421,6 +425,8 @@ class Vistool(object):
         plot_data_kwargs={},
         fig_kwargs={},
         legend_kwargs={},
+        axs=None,
+        fig=None,
         # ----------------
         # misc.
         # ----------------
@@ -488,6 +494,8 @@ class Vistool(object):
         # create plot for each top-k value
         # ======================================================
         plot_settings = plot_settings or self.plot_settings
+
+        assert topk == 1
         for k in range(topk):
             _plot_settings = copy.deepcopy(plot_settings)
             # -----------------------
@@ -500,7 +508,9 @@ class Vistool(object):
                 # indicate which settings to use
                 plot_data_kwargs['settings_idx'] = k
 
-            plot_keys(
+            return plot_keys(
+                axs=axs,
+                fig=fig,
                 vis_objects=vis_objects,
                 plot_settings=_plot_settings,
                 maxcols=maxcols,
@@ -509,6 +519,8 @@ class Vistool(object):
                 fig_kwargs=fig_kwargs,
                 legend_kwargs=legend_kwargs,
                 individual_lines=individual_lines,
+                axis_sharey=axis_sharey,
+                plt_show=plt_show,
                 key_with_legend=key_with_legend if key_with_legend else self.key_with_legend,
                 )
 
@@ -688,7 +700,8 @@ class PanelTool(Vistool):
                 legend_kwargs=legend_kwargs,
                 key_with_legend=None,
                 plot_legend=plot_legend,
-                plt_show=False
+                plt_show=False,
+                axis_sharey=axis_sharey,
                 )
         plt.show()
 
@@ -814,9 +827,11 @@ def plot_keys(
     legend_kwargs={},
     fig_kwargs={},
     axs=None,
+    fig=None,
+    axis_sharey=False,
     key_with_legend=None,
     plot_legend=True,
-    plt_show=True,
+    plt_show=False,
     individual_lines=False,
     ):
     if len(keys) > 0 and len(plot_settings) > 0:
@@ -840,7 +855,13 @@ def plot_keys(
 
     individual_lines = plot_data_kwargs.get("individual_lines", individual_lines)
 
-    for ax, plot_setting in zip(axs, plot_settings):
+    for ax_idx, (ax, plot_setting) in enumerate(zip(axs, plot_settings)):
+        if axis_sharey:
+            keep = ax_idx in np.arange(0, 100, maxcols)
+            if not keep:
+              #remove ylabel
+              plot_setting.pop('ylabel')
+
         key = plot_setting['key']
         for idx, vis_object in enumerate(vis_objects):
             vis_object.plot_data(ax, key=key,
@@ -862,6 +883,8 @@ def plot_keys(
 
     if plt_show:
         plt.show()
+
+    return axs
 
 def finish_plotting_ax(
     ax,
@@ -919,7 +942,9 @@ def finish_plotting_ax(
       length = ylim[1]-ylim[0]
       step = length/ysteps
       ax.set_yticks(np.arange(ylim[0], ylim[1]+step, step))
-
+    else:
+      ax.yaxis.set_major_locator(plt.MaxNLocator(ysteps))
+    
     # -----------------------
     # setup legend
     # -----------------------

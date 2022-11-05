@@ -8,7 +8,7 @@ date?=False
 num_gpus?=1
 
 search?='baselines'
-terminal?='output_to_files'
+terminal?='current_terminal'
 group?=''
 notes?=''
 skip?=1
@@ -45,6 +45,7 @@ test_sync:
 	--env_setting=$(setting) \
 	--evaluate=$(eval) \
 	--test=True \
+	--init_only=$(init) \
 	--wandb=$(wandb_test)
 
 test_async:
@@ -54,6 +55,23 @@ test_async:
 	--agent $(agent) \
 	--env $(env)
 
+train_search_goto:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/kitchen_combo/train_search.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--wandb_project 'msf2' \
+	--group $(group) \
+	--search $(search) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--spaces borsa_spaces \
+	--env goto \
+	--terminal $(terminal) \
+	--agent $(agent) \
+	--debug_search $(debug)
 
 
 train_search_combo:
@@ -74,14 +92,13 @@ train_search_combo:
 	--agent $(agent) \
 	--debug_search $(debug)
 
-
 train_search_fruitbot:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/kitchen_combo/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--wandb_project 'fruitbot' \
+	--wandb_project $(project) \
 	--group $(group) \
 	--search $(search) \
 	--notes $(notes) \
@@ -93,7 +110,6 @@ train_search_fruitbot:
 	--folder 'results/fruitbot' \
 	--agent $(agent) \
 	--debug_search $(debug)
-
 
 train_search_minihack:
 	cd ../..; \
@@ -195,26 +211,46 @@ final_minihack:
 	--agent $(agent) \
 	--debug_search $(debug)
 
-
-final_msf:
+final_goto:
 	cd ../..; \
-	echo "${searches}"; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	python projects/common/train_search_meta.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--python_file="projects/msf/goto_search_lp.py" \
+	--python_file="projects/kitchen_combo/train_search.py" \
 	--wandb_project 'msf2' \
 	--group $(group) \
 	--notes $(notes) \
 	--skip $(skip) \
 	--ray $(ray) \
-	--spaces msf_search \
-	--folder 'results/msf2' \
 	--terminal $(terminal) \
-	--searches="${searches}" \
+	--searches "${searches}" \
+	--spaces borsa_spaces \
+	--env goto \
+	--folder 'results/msf2' \
 	--agent $(agent) \
 	--debug_search $(debug)
+
+final_kitchen:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python projects/common/train_search_meta.py \
+	--wandb=$(wandb) \
+	--date=$(date) \
+	--python_file="projects/kitchen_combo/train_search.py" \
+	--wandb_project 'kitchen_grid3' \
+	--group $(group) \
+	--notes $(notes) \
+	--skip $(skip) \
+	--ray $(ray) \
+	--terminal $(terminal) \
+	--searches "${searches}" \
+	--spaces kitchen_spaces \
+	--env kitchen \
+	--folder 'results/kitchen_grid3' \
+	--agent $(agent) \
+	--debug_search $(debug)
+
 
 meta_search:
 	cd ../..; \
@@ -234,10 +270,20 @@ meta_search:
 	--debug_search $(debug) \
 	--agent $(agent)
 
+overwrite?=1
+ckpts?=-1
+generate_borsa_object_counts:
+	cd ../..; \
+	CUDA_VISIBLE_DEVICES=$(cuda) \
+	python -m ipdb -c continue projects/kitchen_combo/borsa_object_counts.py \
+	--overwrite=$(overwrite)
+
 
 overwrite?=1
 ckpts?=-1
 eps?=5
+video_path?='./results/fruitbot/videos'
+video_folder?='fruitbot'
 generate_fruitbot_data:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
@@ -245,4 +291,5 @@ generate_fruitbot_data:
 	--overwrite=$(overwrite) \
 	--ckpts=$(ckpts) \
 	--num_episodes=$(eps) \
-	--video_path='./results/fruitbot/videos'
+	--video_path=$(video_path) \
+	--folder=$(video_folder)

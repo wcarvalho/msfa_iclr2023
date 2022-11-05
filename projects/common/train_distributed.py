@@ -37,6 +37,7 @@ def build_common_program(
   LossFnKwargs,
   wandb_init_kwargs=None,
   log_every=30.0, # how often to log
+  log_with_key:str=None,
   max_ckpts_to_keep=24,
   colocate_learner_replay=False,
   observers=None,
@@ -65,7 +66,10 @@ def build_common_program(
   builder=functools.partial(td_agent.TDBuilder,
       LossFn=LossFn,
       LossFnKwargs=LossFnKwargs,
-      learner_kwargs=dict(clear_sgd_cache_period=config.clear_sgd_cache_period),
+      learner_kwargs=dict(
+        clear_sgd_cache_period=config.clear_sgd_cache_period,
+        grad_period=config.grad_period,
+      ),
     )
 
   # -----------------------
@@ -88,6 +92,7 @@ def build_common_program(
     actor_logger_fn = lambda actor_id: make_logger(
                     log_dir=log_dir, label=actor_label,
                     time_delta=log_every,
+                    log_with_key=log_with_key,
                     wandb=use_wandb,
                     max_number_of_steps=config.max_number_of_steps,
                     save_data=actor_id == 0,
@@ -96,6 +101,7 @@ def build_common_program(
     evaluator_logger_fn = lambda label, steps_key: make_logger(
                     log_dir=log_dir, label=evaluator_label,
                     time_delta=log_every,
+                    log_with_key=log_with_key,
                     wandb=use_wandb,
                     max_number_of_steps=config.max_number_of_steps,
                     steps_key="evaluator_steps",
@@ -114,14 +120,18 @@ def build_common_program(
       """This will start wandb inside each child process"""
       def make_logger(*args, **kwargs):
         import wandb
-        wandb.init(**wandb_init_kwargs)
+        wandb.init(
+          settings=wandb.Settings(start_method="fork"),
+          reinit=True, **wandb_init_kwargs)
         return _logger_fn(*args, **kwargs)
       return make_logger
 
     wandb_obj=None
     if wandb_init_kwargs is not None:
       import wandb
-      wandb_obj = wandb.init(**wandb_init_kwargs)
+      wandb_obj = wandb.init(
+        settings=wandb.Settings(start_method="fork"),
+        reinit=True, **wandb_init_kwargs)
 
       logger_fn = wandb_wrap_logger(logger_fn)
       actor_logger_fn = wandb_wrap_logger(actor_logger_fn)

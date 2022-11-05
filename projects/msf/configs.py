@@ -14,6 +14,7 @@ class R2D1Config(configs.R2D1Config):
   evaluation_epsilon: float = 0.00
   num_epsilons: int = 256
   variable_update_period: int = 400 # how often to update actor
+  grad_period: int = 0 # how often to display gradients
 
   # Learner options
   burn_in_length: int = 0  # burn in during learning
@@ -23,11 +24,13 @@ class R2D1Config(configs.R2D1Config):
   bootstrap_n: int = 5
   step_penalty: float = 0.0
   seed: int = 3
-  max_number_of_steps: int = 3_000_000
+  max_number_of_steps: int = 5_000_000
   clip_rewards: bool = False
   tx_pair: rlax.TxPair = rlax.SIGNED_HYPERBOLIC_PAIR
   max_gradient_norm: float = 80.0  # For gradient clipping.
   loss_coeff: float = 1.0
+  schedule_end: int = None
+  final_lr_scale: float = 1.0
 
   # How many gradient updates to perform per learner step.
   num_sgd_steps_per_step: int = 4
@@ -52,7 +55,7 @@ class R2D1Config(configs.R2D1Config):
 
 
   # Network hps
-  memory_size: int = 256
+  memory_size: int = 512
   out_hidden_size: int = 128
   out_q_layers: int = 1
   task_embedding: str='none'
@@ -68,15 +71,15 @@ class R2D1Config(configs.R2D1Config):
 @dataclasses.dataclass
 class NoiseConfig(R2D1Config):
   """Extra configuration options for R2D1 + noise agent."""
-  variance: float = 0.5
+  variance: float = 0.1
 
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config):
   """Extra configuration options for USFA agent."""
   npolicies: int = 10 # number of policies to sample
-  memory_size: int = 300
-  variance: float = 0.5
+  memory_size: int = 512
+  variance: float = 0.1
   # Network hps
   policy_size: int = 32
   policy_layers: int = 0
@@ -107,6 +110,7 @@ class USFAConfig(R2D1Config):
   stop_w_grad: bool=False
   stop_z_grad: bool=False
   target_phi: bool=False
+  elemwise_qaux_loss: bool=False
 
 
 @dataclasses.dataclass
@@ -122,24 +126,33 @@ class QAuxConfig:
 @dataclasses.dataclass
 class RewardConfig:
   """Extra configuration options for USFA agent."""
-  reward_coeff: float = 1 # coefficient for reward loss
+  reward_coeff: float = 1.0 # coefficient for reward loss
   value_coeff: float = 0.5 # coefficient for value loss
   reward_loss: str = 'l2' # type of regression. L2 vs. binary cross entropy
-  balance_reward: float = .25 # whether to balance dataset and what percent of nonzero to keep
+  balance_reward: float = 1.0 # whether to balance dataset and what percent of nonzero to keep
   q_aux: str="single"
   normalize_cumulants: bool = False # whether to normalize cumulants
   cumulant_act: str = 'identity' # activation on cumulants
   cumulant_const: str='concat'  # whether to use delta between states as cumulant
+  elemwise_phi_loss: bool=False
 
 @dataclasses.dataclass
 class FarmConfig:
   """Extra configuration options for FARM module."""
 
   # Network hps
-  memory_size: int = 200
+  memory_size: int = 512
   module_size: int = None
   nmodules: int = 4
   out_layers: int = 0
+  
+  # Feature Attention
+
+
+  # Sharing between modules
+  share_residual: str = 'sigtanh'
+  share_init_bias: float = 1.0
+  share_add_zeros: bool = True
   module_attn_size: int = None
   module_attn_heads: int = 2  # how many attention heads between modules
   shared_module_attn: bool = True # share params for module attention
@@ -147,7 +160,7 @@ class FarmConfig:
   farm_vmap: str = "lift"  # vmap over different parameter sets 
   image_attn: bool = True # whether to use feature attention on image
   farm_task_input: bool = False # give task as input to FARM
-  farm_policy_task_input: bool = False # give task as input to FARM policy
+  farm_policy_task_input: bool = True # give task as input to FARM policy
 
   recurrent_conv: bool = False # whether to use feature attention on image
   normalize_attn: bool = False # whether to use feature attention on image
@@ -156,19 +169,21 @@ class FarmConfig:
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig):
   """Extra configuration options for USFA agent."""
+  memory_size: int = 512
+  npolicies: int = 1
   normalize_delta: bool = True # whether to normalize delta between states
   normalize_state: bool = True # whether to normalize delta between states
   embed_position: int = 0 # whether to add position embeddings to modules
   position_hidden: bool = False # whether to add position embeddings to modules
 
   module_task_dim: int=0
-  seperate_cumulant_params: bool=True # seperate parameters per cumulant set
+  seperate_cumulant_params: bool=False # seperate parameters per cumulant set
   seperate_value_params: bool=False # seperate parameters per SF set
   struct_policy_input: bool=True
 
   sf_net: str = 'independent'
   sf_net_heads: int = 2
-  sf_share_output: bool=False # whether SF heads should share output dims
+  sf_share_output: bool=True # whether SF heads should share output dims
   sf_net_layers: int=1
   sf_net_attn_size: int = 256
 
@@ -194,13 +209,16 @@ class ModularUSFAConfig(USFAConfig):
   phi_conv_size: int = 0 # size of conv for cumulants
   module_l1: bool = False # apply L1 per module or for all phi
 
+  share_residual: str = 'sigtanh'
+
+
 @dataclasses.dataclass
 class FarmModelConfig(FarmConfig):
   """Extra configuration options for FARM module."""
 
   # Network hps
   temperature: float = 0.01
-  reward_coeff: float = 1 # coefficient for reward loss
+  reward_coeff: float = 1.0 # coefficient for reward loss
   out_layers: int = 0
   model_layers: int = 2
   activation: str='relu'
@@ -211,3 +229,4 @@ class FarmModelConfig(FarmConfig):
   contrast_time_coeff: float = 0.0
   extra_module_negatives: int = 4
   extra_time_negatives: int = 0
+

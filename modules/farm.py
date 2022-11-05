@@ -180,6 +180,9 @@ class FARM(hk.RNNCore):
     recurrent_features: bool=False,
     input_shape: Tuple = (5, 5),
     vmap: str = 'switch',
+    share_residual: str = 'sigtanh',
+    share_init_bias: float = 1.0,
+    share_add_zeros: bool=True,
     name: Optional[str] = None):
     """
     Args:
@@ -204,8 +207,7 @@ class FARM(hk.RNNCore):
 
     self.recurrent_features = recurrent_features
     self.input_shape = input_shape
-    self.conv_memory = hk.Conv2DLSTM(self.input_shape, 16, [3,3])
-
+    self.conv_memory = hk.Conv2DLSTM(self.input_shape, 32, [3,3])
 
 
     self._feature_attention = FeatureAttention(
@@ -219,10 +221,14 @@ class FARM(hk.RNNCore):
         attn_size=module_attn_size*module_attn_heads
       else:
         attn_size=module_size*module_attn_heads
+
       self._module_attention = RelationalLayer(
         num_heads=module_attn_heads, 
         shared_parameters=shared_module_attn,
-        attn_size=attn_size
+        attn_size=attn_size,
+        residual=share_residual,
+        init_bias=share_init_bias,
+        add_zeros=share_add_zeros,
         )
 
     self.module_size = module_size

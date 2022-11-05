@@ -29,42 +29,54 @@ def main():
       #     "tomato" : 1,
       #     "knife" : 0,
       #     },
-      "0,0,0,1":{
-          "pan" : 0,
-          "plates" : 0,
-          "tomato" : 0,
-          "knife" : 1,
-          },
-      '1,1,0,0':{
+      # "0,0,0,1":{
+      #     "pan" : 0,
+      #     "plates" : 0,
+      #     "tomato" : 0,
+      #     "knife" : 1,
+      #     },
+      # '1,1,0,0':{
+      #     "pan" : 1,
+      #     "plates" :1,
+      #     "tomato" : 0,
+      #     "knife" : 0,
+      #     },
+      '1,1,5,5':{
           "pan" : 1,
           "plates" :1,
-          "tomato" : 0,
-          "knife" : 0,
+          "tomato" : .5,
+          "knife" : .5,
           },
-      '1,1,1,1':{
-          "pan" : 1,
-          "plates" : 1,
-          "tomato" : 1,
-          "knife" : 1,
+      '-.5,1,-.5,-.5':{
+          "pan" : -.5,
+          "plates" :1,
+          "tomato" : -.5,
+          "knife" : -.5,
           },
-      '-1,1,0,1':{
-          "pan" : -1,
-          "plates" : 1,
-          "tomato" : 0,
-          "knife" : 1,
-          },
-      '-1,1,-1,1':{
-          "pan" : -1,
-          "plates" : 1,
-          "tomato" : -1,
-          "knife" : 1,
-          },
-      '-1,1,-1,-1':{
-          "pan" : -1,
-          "plates" : 1,
-          "tomato" : -1,
-          "knife" : -1,
-          }
+      # '1,1,1,1':{
+      #     "pan" : 1,
+      #     "plates" : 1,
+      #     "tomato" : 1,
+      #     "knife" : 1,
+      #     },
+      # '-1,1,0,1':{
+      #     "pan" : -1,
+      #     "plates" : 1,
+      #     "tomato" : 0,
+      #     "knife" : 1,
+      #     },
+      # '-1,1,-1,1':{
+      #     "pan" : -1,
+      #     "plates" : 1,
+      #     "tomato" : -1,
+      #     "knife" : 1,
+      #     },
+      # '-1,1,-1,-1':{
+      #     "pan" : -1,
+      #     "plates" : 1,
+      #     "tomato" : -1,
+      #     "knife" : -1,
+      #     }
   }
 
   tile_size=8
@@ -92,7 +104,7 @@ def main():
         respawn=True,
         pickup_required=True,
         tile_size=tile_size,
-        room_size=8,
+        room_size=10,
         nobjects=3
         )
     env = RGBImgPartialObsWrapper(env, tile_size=tile_size)

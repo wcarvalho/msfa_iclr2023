@@ -3,6 +3,7 @@
 import functools
 import time
 from typing import Dict, Iterator, List, NamedTuple, Optional, Tuple
+from absl import logging
 
 import acme
 from acme.adders import reverb as adders
@@ -59,7 +60,8 @@ class SGDLearner(learning_lib.SGDLearner):
     self.network = network
     self._clear_sgd_cache_period = clear_sgd_cache_period
     self._grad_period = grad_period*num_sgd_steps_per_step
-
+    if self._grad_period > 0:
+      logging.warning(f'Logging gradients every {self._grad_period} steps')
     # Internalize the loss_fn with network.
     self._loss = jax.jit(functools.partial(loss_fn, self.network))
 
@@ -81,6 +83,10 @@ class SGDLearner(learning_lib.SGDLearner):
       updates, new_opt_state = optimizer.update(grads, state.opt_state)
       new_params = optax.apply_updates(state.params, updates)
 
+      extra.metrics.update({
+        'grad_norm': optax.global_norm(grads),
+        'update_norm': optax.global_norm(updates)
+      })
       # Periodically update target networks.
       steps = state.steps + 1
       target_params = rlax.periodic_update(

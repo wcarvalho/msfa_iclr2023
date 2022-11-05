@@ -32,7 +32,7 @@ from utils import data as data_utils
 
 from projects.msf import helpers
 from projects.common.train_distributed import build_common_program
-from projects.common.observers import LevelReturnObserver
+from projects.common.observers import LevelReturnObserver, LevelAvgReturnObserver
 
 # -----------------------
 # flags
@@ -55,19 +55,28 @@ FLAGS = flags.FLAGS
 def build_program(
   agent: str,
   num_actors : int,
+  save_config_dict: dict=None,
   wandb_init_kwargs=None,
   update_wandb_name=True, # use path from logdir to populate wandb name
   env_kwargs=None,
   group='experiments', # subdirectory that specifies experiment group
   hourminute=True, # whether to append hour-minute to logger path
-  log_every=5.0, # how often to log
+  log_every=30.0, # how often to log
   config_kwargs=None, # config
   path='.', # path that's being run from
   log_dir=None, # where to save everything
   debug: bool=False,
+  return_avg_episodes=200,
   **kwargs,
   ):
   env_kwargs = env_kwargs or dict()
+  config_kwargs = config_kwargs or dict()
+  if debug:
+    config_kwargs['eval_task_support'] = 'eval'
+    print("="*50)
+    print("DEBUG")
+    print("="*50)
+
   setting = env_kwargs.get('setting', 'large_respawn')
   # -----------------------
   # load env stuff
@@ -81,7 +90,7 @@ def build_program(
   # -----------------------
   # load agent/network stuff
   # -----------------------
-  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, loss_label, eval_network = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
+  config, NetworkCls, NetKwargs, LossFn, LossFnKwargs, _, _ = helpers.load_agent_settings(agent, env_spec, config_kwargs, setting=setting)
 
   if debug:
       config.batch_size = 32
@@ -99,7 +108,8 @@ def build_program(
   # -----------------------
   # define dict to save. add some extra stuff here
   # -----------------------
-  save_config_dict = config.__dict__
+  save_config_dict = save_config_dict or dict()
+  save_config_dict.update(config.__dict__)
   save_config_dict.update(
     agent=agent,
     setting=setting,
@@ -122,7 +132,7 @@ def build_program(
     if wandb_init_kwargs and update_wandb_name:
       wandb_init_kwargs['name'] = config_path_str
 
-  observers = [LevelReturnObserver()]
+  observers = [LevelAvgReturnObserver(reset=return_avg_episodes)]
   # -----------------------
   # wandb settup
   # -----------------------
@@ -141,6 +151,7 @@ def build_program(
     num_actors=num_actors,
     save_config_dict=save_config_dict,
     log_every=log_every,
+    log_with_key='log_data',
     observers=observers,
     **kwargs,
     )
@@ -164,7 +175,7 @@ def main(_):
     config_kwargs=config_kwargs,
     wandb_init_kwargs=wandb_init_kwargs if FLAGS.wandb else None,
     debug=FLAGS.debug,
-    custom_loggers=FLAGS.custom_loggers,
+    # custom_loggers=FLAGS.custom_loggers,
     )
 
   # Launch experiment.

@@ -14,6 +14,7 @@ def make_episode_mask(data, include_final=False, **kwargs):
       TYPE: Description
   """
   T, B = data.discount.shape
+  # for data [x1, x2, x3, 0, 0]
   if include_final:
     # return [1,1,1,0,0]
     return jnp.concatenate((jnp.ones((2, B)), data.discount[:-2]), axis=0)

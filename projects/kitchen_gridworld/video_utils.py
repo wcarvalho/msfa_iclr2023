@@ -212,13 +212,17 @@ def get_cumulants(unroll_fn, params, prior_observation, observation, state, rng)
   # jax.tree_map(lambda x:x.shape, both_obs)
   # jax.tree_map(lambda x:x.shape, state)
   preds, unroll_state = unroll_fn.apply(params, rng, both_obs, state.recurrent_state, key_rng)
-  return preds.cumulants[0,0]
+
+  try:
+    return preds.cumulants[0,0]
+  except Exception as e:
+    return 0
 
 
 
 class ActorStorageWrapper(object):
   """docstring for ActorStorageWrapper"""
-  def __init__(self, agent , observer : DataStorer, epsilon : float, seed : int, networks=None):
+  def __init__(self, agent , observer : DataStorer, epsilon : float, seed : int, predict_cumulants=True, networks=None):
     """Summary
     
     Args:
@@ -232,6 +236,7 @@ class ActorStorageWrapper(object):
     self.observer = observer
     self.epsilon = epsilon
     self.networks = networks
+    self.predict_cumulants = predict_cumulants
     self.rng = jax.random.PRNGKey(seed)
 
   def __getattr__(self, name):
@@ -258,7 +263,7 @@ class ActorStorageWrapper(object):
           action=action,
           preds=preds,
           lstm_state=self.agent._state.recurrent_state)
-    if self.networks is not None:
+    if self.networks is not None and self.predict_cumulants:
       computed['cumulants'] = get_cumulants(
         unroll_fn=self.networks.unroll,
         params=self._params,
@@ -270,7 +275,8 @@ class ActorStorageWrapper(object):
     # -----------------------
     # store
     # -----------------------
-    self.observer.store(computed)
+    if self.observer:
+      self.observer.store(computed)
     self.prior_obs = observation
 
     return utils.to_numpy(action)

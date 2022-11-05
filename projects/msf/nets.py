@@ -77,17 +77,33 @@ def build_vision_net(config, **kwargs):
   return vision
 
 def build_farm(config, **kwargs):
-  return farm.FarmSharedOutput(
+  farm_memory = farm.FarmSharedOutput(
     module_size=config.module_size,
     nmodules=config.nmodules,
+    memory_size=config.memory_size,
     image_attn=config.image_attn,
     module_attn_heads=config.module_attn_heads,
     module_attn_size=config.module_attn_size,
     shared_module_attn=config.shared_module_attn,
     projection_dim=config.projection_dim,
+    share_residual=config.share_residual,
+    share_init_bias=config.share_init_bias,
     vmap=config.farm_vmap,
     out_layers=config.out_layers,
     **kwargs)
+
+  config.nmodules = farm_memory.nmodules
+  config.memory_size = farm_memory.memory_size
+  config.module_size = farm_memory.module_size
+
+  # -----------------------
+  # task related
+  # -----------------------
+  if getattr(config, 'module_task_dim', 0) > 0:
+    config.embed_task_dim=config.module_task_dim*config.nmodules
+
+  return farm_memory
+
 # ======================================================
 # R2D1
 # ======================================================
@@ -153,16 +169,15 @@ def r2d1_noise(config, env_spec, eval_noise=True, **net_kwargs):
 def r2d1_farm(config, env_spec, **net_kwargs):
   num_actions = env_spec.actions.num_values
 
-  def r2d1_farm_prediction_prep_fn(inputs, memory_out, **kwargs):
-    farm_memory_out = flatten_structured_memory(memory_out)
-    return r2d1_prediction_prep_fn(
-      inputs=inputs, memory_out=farm_memory_out)
-
   if config.farm_policy_task_input:
-    prediction_prep_fn = r2d1_farm_prediction_prep_fn
+    def prediction_prep_fn(inputs, memory_out, **kwargs):
+      farm_memory_out = flatten_structured_memory(memory_out.hidden)
+      return r2d1_prediction_prep_fn(
+        inputs=inputs, memory_out=farm_memory_out)
   else:
     # only give hidden-state as input
-    prediction_prep_fn = flatten_structured_memory
+    def prediction_prep_fn(inputs, memory_out, **kwargs):
+      return flatten_structured_memory(memory_out.hidden)
 
   return BasicRecurrent(
     inputs_prep_fn=convert_floats,
@@ -504,7 +519,7 @@ def build_msf_phi_net(config, module_cumulants):
     return phi_net
   raise RuntimeError
 
-def msf(config, env_spec, predict_cumulants=True, learn_model=True, **net_kwargs):
+def msf(config, env_spec, predict_cumulants=True, learn_model=False, **net_kwargs):
   num_actions = env_spec.actions.num_values
   state_dim = env_spec.observations.observation.task.shape[0]
 

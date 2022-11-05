@@ -17,22 +17,27 @@ class R2D1Config(configs.R2D1Config):
 
 @dataclasses.dataclass
 class USFAConfig(R2D1Config, configs.USFAConfig):
-  reward_coeff: float = 10.0
+  reward_coeff: float = 1.0
   value_coeff: float = 0.5
+  npolicies: int = 1 # number of policies to sample
   eval_task_support: str=None
   memory_size: int = 300
 
 @dataclasses.dataclass
 class ModularUSFAConfig(USFAConfig, configs.ModularUSFAConfig):
-  reward_coeff: float = 10.0 # > 1.0 fails in this domain 
+  reward_coeff: float = 1.0 # > 1.0 fails in this domain 
   value_coeff: float = 0.5
+  npolicies: int = 1 # number of policies to sample
   eval_task_support: str=None
-  sf_share_output: bool=False
+  sf_share_output: bool=True
+  nmodules: int = None
+  module_task_dim: int = 1
+  memory_size: int = 240
 
 @dataclasses.dataclass
 class FarmConfig(configs.FarmConfig):
   module_size: int = None
-  nmodules: int = None
-  memory_size: int = 240
+  nmodules: int = 4
+  memory_size: int = 256
   module_attn_heads: float = .5
   module_task_dim: int = 1 # divide embed_task_dim by nmodules
