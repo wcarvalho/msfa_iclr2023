@@ -267,14 +267,14 @@ if __name__ == '__main__':
     import cv2
     import tqdm
 
-    tile_size=26
+    tile_size=35
     optimal=True
-    size='large'
+    size='xl'
     sizes = dict(
       small=dict(room_size=5, nobjects=1),
       medium=dict(room_size=7, nobjects=2),
       large=dict(room_size=8, nobjects=3),
-      xl=dict(room_size=10, nobjects=5),
+      xl=dict(room_size=10, nobjects=3),
       )
 
     env = GotoAvoidEnv(

@@ -74,14 +74,14 @@ def make_environment(evaluation: bool = False,
   if task2rew is None:
     train = {
           "a.Train.1.toggle":{
-              "slice_putdown" : 1,
-              "toggle" : 0,
+              "toggle" : 1,
+              "slice_putdown" : 0,
               "clean" : 0,
               "chill" : 0,
               },
           "a.Train.2.slice":{
-              "slice_putdown" : 0,
-              "toggle" : 1,
+              "toggle" : 0,
+              "slice_putdown" : 1,
               "clean" : 0,
               "chill" : 0,
               },

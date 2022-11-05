@@ -265,7 +265,7 @@ if __name__ == '__main__':
     tile_size=14
     optimal=False
     verbosity=1
-    size='test_remove'
+    size='small_remove'
     sizes = dict(
       test_remove=dict(room_size=5, ntasks=1, task_reset_behavior='remove_all'),
       test_respawn=dict(room_size=5, ntasks=1, task_reset_behavior='respawn'),
