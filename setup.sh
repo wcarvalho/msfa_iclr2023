@@ -9,7 +9,7 @@ else
   exit
 fi
 
-conda create -n msfa python=3.9 -y
+conda create -n msfa python=3.9.0 -y
 
 eval "$(conda shell.bash hook)"
 conda activate msfa
