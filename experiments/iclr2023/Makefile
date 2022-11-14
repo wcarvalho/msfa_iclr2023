@@ -39,7 +39,7 @@ init?=0
 test_sync:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python -m ipdb -c continue projects/iclr2023/train.py \
+	python -m ipdb -c continue experiments/iclr2023/train.py \
 	--agent=$(agent) \
 	--env=$(env) \
 	--env_setting=$(setting) \
@@ -51,14 +51,14 @@ test_sync:
 test_async:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python -m ipdb -c continue projects/iclr2023/train_distributed.py \
+	python -m ipdb -c continue experiments/iclr2023/train_distributed.py \
 	--agent $(agent) \
 	--env $(env)
 
 train_search_goto:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/iclr2023/train_search.py \
+	python experiments/iclr2023/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
 	--wandb_project 'msf2' \
@@ -77,7 +77,7 @@ train_search_goto:
 train_search_combo:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/iclr2023/train_search.py \
+	python experiments/iclr2023/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
 	--wandb_project 'iclr2023' \
@@ -95,7 +95,7 @@ train_search_combo:
 train_search_fruitbot:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/iclr2023/train_search.py \
+	python experiments/iclr2023/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
 	--wandb_project $(project) \
@@ -114,7 +114,7 @@ train_search_fruitbot:
 train_search_minihack:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/iclr2023/train_search.py \
+	python experiments/iclr2023/train_search.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
 	--wandb_project 'minihack' \
@@ -134,10 +134,10 @@ train_search_minihack:
 final_fruitbot_taskgen:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/common/train_search_meta.py \
+	python experiments/common/train_search_meta.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--python_file="projects/iclr2023/train_search.py" \
+	--python_file="experiments/iclr2023/train_search.py" \
 	--wandb_project 'fruitbot-taskgen' \
 	--group $(group) \
 	--notes $(notes) \
@@ -154,10 +154,10 @@ final_fruitbot_taskgen:
 final_minihack:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/common/train_search_meta.py \
+	python experiments/common/train_search_meta.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--python_file="projects/iclr2023/train_search.py" \
+	--python_file="experiments/iclr2023/train_search.py" \
 	--wandb_project 'minihack' \
 	--group $(group) \
 	--notes $(notes) \
@@ -174,10 +174,10 @@ final_minihack:
 final_goto:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/common/train_search_meta.py \
+	python experiments/common/train_search_meta.py \
 	--wandb=$(wandb) \
 	--date=$(date) \
-	--python_file="projects/iclr2023/train_search.py" \
+	--python_file="experiments/iclr2023/train_search.py" \
 	--wandb_project 'borsa' \
 	--group $(group) \
 	--notes $(notes) \
@@ -196,9 +196,9 @@ meta_search:
 	cd ../..; \
 	echo ${searches}; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/common/train_search_meta.py \
+	python experiments/common/train_search_meta.py \
 	--wandb=$(wandb) \
-	--python_file="projects/iclr2023/train_search.py" \
+	--python_file="experiments/iclr2023/train_search.py" \
 	--date=$(date) \
 	--wandb_project $(project) \
 	--group $(group) \
@@ -215,7 +215,7 @@ ckpts?=-1
 generate_borsa_object_counts:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python -m ipdb -c continue projects/iclr2023/borsa_object_counts.py \
+	python -m ipdb -c continue experiments/iclr2023/borsa_object_counts.py \
 	--overwrite=$(overwrite)
 
 
@@ -227,7 +227,7 @@ video_folder?='fruitbot'
 generate_fruitbot_data:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python -m ipdb -c continue projects/iclr2023/create_analysis_data.py \
+	python -m ipdb -c continue experiments/iclr2023/create_analysis_data.py \
 	--overwrite=$(overwrite) \
 	--ckpts=$(ckpts) \
 	--num_episodes=$(eps) \
