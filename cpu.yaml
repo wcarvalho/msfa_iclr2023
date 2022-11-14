@@ -1,4 +1,4 @@
-name: acmejax
+name: msfa
 channels:
   - defaults
   - conda-forge
@@ -33,4 +33,4 @@ dependencies:
 
 # conda env create -f cpu.yaml
 # conda env update --file cpu.yaml --prune
-# conda remove --name acmejax --all
+# conda remove --name msfa --all

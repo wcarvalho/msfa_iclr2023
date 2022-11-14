@@ -38,7 +38,7 @@ sample_mkitchen:
 	--tasks "envs/babyai_kitchen/tasks/v1/$(mtasks).yaml" \
 
 jupyter_lab:
-	LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/ \
+	LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/msfa/lib/ \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
 	DISPLAY=$(cuda) \
 	jupyter lab --port $(port) --no-browser --ip 0.0.0.0

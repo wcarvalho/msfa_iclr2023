@@ -35,7 +35,7 @@ spaces?='brain_search'
 
 export WANDB_START_METHOD=thread
 export PYTHONPATH:=$(PYTHONPATH):.
-export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/acmejax/lib/
+export LD_LIBRARY_PATH:=$(LD_LIBRARY_PATH):$(HOME)/miniconda3/envs/msfa/lib/
 
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 export TF_FORCE_GPU_ALLOW_GROWTH=true

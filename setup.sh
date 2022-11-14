@@ -18,8 +18,8 @@ conda activate msfa
 # For Minihack
 ##############################################
 # missing: libbz2-dev build-essential ninja-build software-properties-common
-conda install -c anaconda -y cmake
-conda install -c conda-forge -y bison
+conda install -c anaconda -y cmake==3.21.3
+conda install -c conda-forge -y bison==3.8
 
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${HOME}/miniconda3/envs/msfa/lib/
 ##############################################
