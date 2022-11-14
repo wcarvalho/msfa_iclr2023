@@ -4,6 +4,9 @@ First, install `miniconda`
 
 ```bash
 bash setup.sh gpu # gpu based machine
+# EXPECTED ERRORS for jax>=0.2.26
+# 1. rlax 0.1.1 requires <=0.2.21
+# 2. distrax 0.1.0 requires jax<=0.2.21
 ```
 Note: ACME only supports GPU based machines :(
 
