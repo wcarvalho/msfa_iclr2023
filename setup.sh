@@ -1,18 +1,18 @@
 #!/bin/bash
 
 if [[ $1 = gpu ]]; then
-  arch=gpu_procgen_minihack
+  arch=gpu
 elif [[ $1 = cpu ]]; then
-  arch=cpu_procgen_minihack
+  arch=cpu
 else
   echo 'incorrect arg'
   exit
 fi
 
-conda create -n acmejax python=3.9 -y
+conda create -n msfa python=3.9 -y
 
 eval "$(conda shell.bash hook)"
-conda activate acmejax
+conda activate msfa
 
 ##############################################
 # For Minihack
@@ -21,11 +21,11 @@ conda activate acmejax
 conda install -c anaconda -y cmake
 conda install -c conda-forge -y bison
 
-export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${HOME}/miniconda3/envs/acmejax/lib/
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${HOME}/miniconda3/envs/msfa/lib/
 ##############################################
 # Main installation
 ##############################################
-conda env update --name acmejax --file $arch.yaml
+conda env update --name msfa --file $arch.yaml
 
 if [[ $1 = gpu ]]; then
   conda install -c anaconda -y cudnn==8.2.1

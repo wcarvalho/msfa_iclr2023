@@ -1,5 +1,7 @@
 # Installation 
 
+First, install `miniconda`
+
 ```bash
 bash setup.sh gpu # gpu based machine
 ```
@@ -12,6 +14,7 @@ Note: ACME only supports GPU based machines :(
 For go to the directory for ICLR, 2023 experiments:
 ```
 cd experiments/iclr2023
+conda activate msfa
 ```
 Below are commands for different sets of experiments. 
 
@@ -24,6 +27,7 @@ Notes:
 Results directory: `${root}/results/borsa`
 
 **main results**
+
 ```bash
 # experiments defined in `experiments/iclr2023/borsa_spaces.py`
 make final_goto searches='main1' cuda=0,1,2,3 #[uvfa, usfa, usfa-learnerd, msfa]
