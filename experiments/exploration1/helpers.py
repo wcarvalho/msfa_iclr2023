@@ -318,7 +318,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, setting='small'):
 
     NetworkCls=nets.usfa # default: 2M params
 
-  elif agent == "exploration1":
+  elif agent == 'msf':
   # USFA + cumulants from FARM + Q-learning
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.msf(
       env_spec=env_spec,

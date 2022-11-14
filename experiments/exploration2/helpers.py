@@ -401,7 +401,7 @@ def load_agent_settings(agent, env_spec, config_kwargs=None, max_vocab_size=30):
     # loss_label = 'usfa'
     # eval_network = config.eval_network
 
-  elif agent == "exploration1":
+  elif agent == 'msf':
   # USFA + cumulants from FARM + Q-learning
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = agent_loading.msf(
         env_spec=env_spec,

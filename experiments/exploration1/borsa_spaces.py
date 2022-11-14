@@ -36,12 +36,12 @@ def get(search):
           "balance_reward": tune.grid_search([.05, .50, .75, 1.0]),
         },
     ]
-  elif search == 'exploration1':
+  elif search == 'msf':
     space = [
         {
           "group": tune.grid_search(['value-1']),
           "seed": tune.grid_search([1]),
-          "agent": tune.grid_search(['exploration1']),
+          "agent": tune.grid_search(['msf']),
           "eval_task_support": tune.grid_search(['eval']),
           "value_coeff": tune.grid_search([.1, .05]),
           "max_number_of_steps": tune.grid_search([5_000_000]),
@@ -64,7 +64,7 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
           **shared,
         },
         {
@@ -88,7 +88,7 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
           **shared,
         },
         {
@@ -110,7 +110,7 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
           **shared,
         },
         {
@@ -133,7 +133,7 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
           **shared,
         },
         {
@@ -156,7 +156,7 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
           **shared,
         },
         {
@@ -182,7 +182,7 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
           **shared,
         },
         {
@@ -208,7 +208,7 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
           **shared,
         },
         {
@@ -221,31 +221,31 @@ def get(search):
     shared = {
       "group": tune.grid_search(['gate_search-4']),
       "seed": tune.grid_search([1, 2, 3, 4]),
-      "agent": tune.grid_search(['exploration1']),
+      "agent": tune.grid_search(['msf']),
     }
     space = [
         {
-          "agent": tune.grid_search(['exploration1']),
+          "agent": tune.grid_search(['msf']),
           "share_residual": tune.grid_search(['concat']),
           "memory_size": tune.grid_search([460]),
           'setting': tune.grid_search(['xxl_nopickup']),
           **shared,
         },
         {
-          "agent": tune.grid_search(['exploration1']),
+          "agent": tune.grid_search(['msf']),
           "share_residual": tune.grid_search(['concat']),
           "memory_size": tune.grid_search([460]),
           'setting': tune.grid_search(['xl_respawn']),
           **shared,
         },
         {
-          "agent": tune.grid_search(['exploration1']),
+          "agent": tune.grid_search(['msf']),
           "share_residual": tune.grid_search(['sigtanh']),
           'setting': tune.grid_search(['xxl_nopickup']),
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "share_residual": tune.grid_search(['sigtanh']),
           'setting': tune.grid_search(['xl_respawn']),
           **shared,
@@ -290,7 +290,7 @@ def get(search):
           **shared,
         },
         {
-          "agent": tune.grid_search(['exploration1']),
+          "agent": tune.grid_search(['msf']),
           "share_residual": tune.grid_search(['sigtanh']),
           "memory_size": tune.grid_search([512]),
           "eval_task_support": tune.grid_search(['eval']),
@@ -317,7 +317,7 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
           **shared,
         },
         {
@@ -343,7 +343,7 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "eval_task_support": tune.grid_search(['eval']),
           **shared,
         },
@@ -364,7 +364,7 @@ def get(search):
     }
     space = [
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "sf_net": tune.grid_search(['flat']),
          "phi_net": tune.grid_search(['flat']),
          "memory_size": tune.grid_search([None]),
@@ -372,13 +372,13 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "sf_net": tune.grid_search(['flat']),
          "phi_net": tune.grid_search(['independent']),
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "sf_net": tune.grid_search(['independent']),
          "phi_net": tune.grid_search(['flat']),
          "memory_size": tune.grid_search([None]),
@@ -386,7 +386,7 @@ def get(search):
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "sf_net": tune.grid_search(['independent']),
          "phi_net": tune.grid_search(['independent']),
           **shared,
@@ -404,25 +404,25 @@ def get(search):
     }
     space = [
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "seperate_cumulant_params": tune.grid_search([True]),
          "seperate_value_params": tune.grid_search([True]),
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "seperate_cumulant_params": tune.grid_search([True]),
          "seperate_value_params": tune.grid_search([False]),
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "seperate_cumulant_params": tune.grid_search([False]),
          "seperate_value_params": tune.grid_search([True]),
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "seperate_cumulant_params": tune.grid_search([False]),
          "seperate_value_params": tune.grid_search([False]),
           **shared,
@@ -442,12 +442,12 @@ def get(search):
     }
     space = [
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "seperate_value_params": tune.grid_search([True]),
           **shared,
         },
         {
-         "agent": tune.grid_search(['exploration1']),
+         "agent": tune.grid_search(['msf']),
          "image_attn": tune.grid_search([False]),
           **shared,
         },

@@ -164,7 +164,7 @@ def main(_):
       agent_name=agent,
       basepath=basepath,
       agent_data_path=agent_search,
-      predict_cumulants=agent in ['usfa_lstm', 'exploration1'],
+      predict_cumulants=agent in ['usfa_lstm', 'msf'],
       load_env_agent_settings=load_env_agent_settings,
       overwrite=FLAGS.overwrite,
       ckpt=FLAGS.ckpts,

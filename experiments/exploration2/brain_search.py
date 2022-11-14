@@ -114,7 +114,7 @@ def get(search, agent=''):
       {
         "seed": tune.grid_search([3]),
         "group": tune.grid_search(['long_baselines']),
-        "agent": tune.grid_search(['exploration1']),
+        "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['long']),
         "samples_per_insert": tune.grid_search([6.0]),
         "reward_coeff": tune.grid_search([10.0]),
@@ -124,7 +124,7 @@ def get(search, agent=''):
       {
         "seed": tune.grid_search([4]),
         "group": tune.grid_search(['long_baselines']),
-        "agent": tune.grid_search(['exploration1']),
+        "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['long']),
         "samples_per_insert": tune.grid_search([6.0]),
         "reward_coeff": tune.grid_search([10.0]),
@@ -134,7 +134,7 @@ def get(search, agent=''):
       {
         "seed": tune.grid_search([1, 2]),
         "group": tune.grid_search(['long_baselines']),
-        "agent": tune.grid_search(['exploration1']),
+        "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['long']),
         "samples_per_insert": tune.grid_search([6.0]),
         "reward_coeff": tune.grid_search([10.0]),
@@ -145,7 +145,7 @@ def get(search, agent=''):
       {
         "seed": tune.grid_search([3, 2]),
         "group": tune.grid_search(['long_baselines']),
-        "agent": tune.grid_search(['exploration1']),
+        "agent": tune.grid_search(['msf']),
         "setting": tune.grid_search(['long']),
         "samples_per_insert": tune.grid_search([6.0]),
         "reward_coeff": tune.grid_search([10.0]),

@@ -331,7 +331,7 @@ def default_agent_settings(agent, env_spec, configs, config_kwargs=None, env_kwa
       )
 
 
-  elif agent == "exploration1":
+  elif agent == "msf":
   # USFA + cumulants from FARM + Q-learning (1.9M)
     config, NetworkCls, NetKwargs, LossFn, LossFnKwargs = msf(
         env_spec=env_spec,
