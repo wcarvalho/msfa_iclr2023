@@ -1,13 +1,6 @@
 ################################################
 # Borsa
 ################################################
-  make train_search_goto search=r2d1 cuda=0,1,2,3
-  make train_search_goto search=r2d1_farm cuda=0,1,2,3
-  make train_search_goto search=usfa cuda=0,1,2,3
-  make train_search_goto search=usfa_lstm cuda=0,1,2,3
-  make train_search_goto search=msf cuda=0,1,2,3
-
-
   # ablations
   make final_goto searches='ablate_modularity' cuda=0,1,2,3 skip=0
   make final_goto searches='ablate_shared' cuda=0,1,2,3 skip=0

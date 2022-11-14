@@ -44,7 +44,7 @@ from utils import make_logger, gen_log_dir
 # flags.DEFINE_bool('wandb', False, 'whether to log.')
 # flags.DEFINE_bool('init_only', False, 'whether to end after network initialization.')
 # flags.DEFINE_string('wandb_project', 'kitchen_grid_local', 'wand project.')
-# flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
+# flags.DEFINE_string('wandb_entity', None, 'wandb entity')
 # flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
 # flags.DEFINE_string('notes', '', 'notes for wandb.')
 

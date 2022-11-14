@@ -2,7 +2,7 @@ agent?=msf
 
 
 cuda?=2,3
-wandb?=True
+wandb?=False
 custom_loggers?=True
 date?=False
 num_gpus?=1
@@ -131,26 +131,6 @@ train_search_minihack:
 	--debug_search $(debug)
 
 
-final_combo:
-	cd ../..; \
-	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/common/train_search_meta.py \
-	--wandb=$(wandb) \
-	--date=$(date) \
-	--python_file="projects/kitchen_combo/train_search.py" \
-	--wandb_project 'kitchen_combo' \
-	--group $(group) \
-	--notes $(notes) \
-	--skip $(skip) \
-	--ray $(ray) \
-	--spaces combo_spaces \
-	--env kitchen_combo \
-	--folder 'results/kitchen_combo' \
-	--terminal $(terminal) \
-	--searches "${searches}" \
-	--agent $(agent) \
-	--debug_search $(debug)
-
 final_fruitbot_taskgen:
 	cd ../..; \
 	CUDA_VISIBLE_DEVICES=$(cuda) \
@@ -159,26 +139,6 @@ final_fruitbot_taskgen:
 	--date=$(date) \
 	--python_file="projects/kitchen_combo/train_search.py" \
 	--wandb_project 'fruitbot-taskgen' \
-	--group $(group) \
-	--notes $(notes) \
-	--skip $(skip) \
-	--ray $(ray) \
-	--terminal $(terminal) \
-	--searches "${searches}" \
-	--spaces fruitbot_spaces \
-	--env fruitbot \
-	--folder 'results/fruitbot' \
-	--agent $(agent) \
-	--debug_search $(debug)
-
-final_fruitbot_procgen:
-	cd ../..; \
-	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/common/train_search_meta.py \
-	--wandb=$(wandb) \
-	--date=$(date) \
-	--python_file="projects/kitchen_combo/train_search.py" \
-	--wandb_project 'fruitbot' \
 	--group $(group) \
 	--notes $(notes) \
 	--skip $(skip) \
@@ -218,7 +178,7 @@ final_goto:
 	--wandb=$(wandb) \
 	--date=$(date) \
 	--python_file="projects/kitchen_combo/train_search.py" \
-	--wandb_project 'msf2' \
+	--wandb_project 'borsa' \
 	--group $(group) \
 	--notes $(notes) \
 	--skip $(skip) \
@@ -227,27 +187,7 @@ final_goto:
 	--searches "${searches}" \
 	--spaces borsa_spaces \
 	--env goto \
-	--folder 'results/msf2' \
-	--agent $(agent) \
-	--debug_search $(debug)
-
-final_kitchen:
-	cd ../..; \
-	CUDA_VISIBLE_DEVICES=$(cuda) \
-	python projects/common/train_search_meta.py \
-	--wandb=$(wandb) \
-	--date=$(date) \
-	--python_file="projects/kitchen_combo/train_search.py" \
-	--wandb_project 'kitchen_grid3' \
-	--group $(group) \
-	--notes $(notes) \
-	--skip $(skip) \
-	--ray $(ray) \
-	--terminal $(terminal) \
-	--searches "${searches}" \
-	--spaces kitchen_spaces \
-	--env kitchen \
-	--folder 'results/kitchen_grid3' \
+	--folder 'results/borsa' \
 	--agent $(agent) \
 	--debug_search $(debug)
 

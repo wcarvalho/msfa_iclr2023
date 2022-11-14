@@ -46,7 +46,7 @@ from experiments.common.observers import LevelReturnObserver, LevelAvgReturnObse
 # flags.DEFINE_bool('custom_loggers', True, 'whether to use custom loggers.')
 # flags.DEFINE_bool('wandb', False, 'whether to log.')
 # flags.DEFINE_string('wandb_project', 'msf2', 'wand project.')
-# flags.DEFINE_string('wandb_entity', 'wcarvalho92', 'wandb entity')
+# flags.DEFINE_string('wandb_entity', None, 'wandb entity')
 # flags.DEFINE_string('group', '', 'same as wandb group. way to group runs.')
 # flags.DEFINE_string('notes', '', 'notes for wandb.')
 
