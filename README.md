@@ -28,13 +28,11 @@ Notes:
 
 #### Test install
 
-To test the install, we can run a non-distributed agent on the baby experiments.
+To test the install, we can run a non-distributed agent on the baby experiments. This is not fast enough as everything is serial. It's **only** for debugging.
 
+```bash
+make test_sync env=goto agent=usfa
 ```
-make test_sync env=goto agent=msf
-```
-
-
 
 
 
