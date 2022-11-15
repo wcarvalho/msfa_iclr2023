@@ -22,8 +22,14 @@ Below are commands for different sets of experiments.
 
 Notes:
 
+* All experiments run a *distributed* setting with actors/evaluators/learner all running fully in parallel (thanks to ACME!).
 * All results will be under `${root}/results/`
 * All results can be viewed with `tensorboard` in their corresponding directory
+
+#### Test install
+
+To test the install, we can run an
+
 
 
 
