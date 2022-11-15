@@ -48,13 +48,14 @@ fi
 ##############################################
 git clone https://github.com/maximecb/gym-minigrid.git _gym-minigrid
 cd _gym-minigrid
-# git checkout 03cf21f61bce58ab13a1de450f6269edd636183a
+git checkout 03cf21f61bce58ab13a1de450f6269edd636183a
 cp ../install/minigrid_setup.py setup.py
 pip install --editable .
 cd ..
 
 git clone https://github.com/mila-iqia/babyai.git _babyai
 cd _babyai
+git checkout 863f3529371ba45ef0148a48b48f5ae6e61e06cc
 cp ../install/babyai_setup.py setup.py
 pip install --editable .
 cd ..

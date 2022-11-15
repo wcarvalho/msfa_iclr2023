@@ -28,7 +28,13 @@ Notes:
 
 #### Test install
 
-To test the install, we can run an
+To test the install, we can run a non-distributed agent on the baby experiments.
+
+```
+self.nseeds
+```
+
+
 
 
 
