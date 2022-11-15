@@ -26,26 +26,6 @@ def main(_):
   if FLAGS.test:
     config['max_replay_size'] = 10_000
     config['min_replay_size'] = 10
-    # config['seperate_value_params'] = True
-    # config['seperate_cumulant_params'] = False
-    config['share_add_zeros'] = False
-    # config['clip_rewards'] = True
-
-    # config['module_attn_heads'] = 2 # 2=1,974,900, 0=1,932,704
-    # config['priority_use_aux'] = True
-    # config['priority_weights_aux'] = True
-    # config['npolicies'] = 1
-    # config['farm_policy_task_input'] = False
-    # config['farm_task_input'] = True
-    # config['task_embedding'] = 'embedding'
-    # config['trace_length'] = 120
-    # config['task_embedding'] = 'embedding'
-    # config['task_embedding'] = 'struct_embed' 
-    # # config['stop_w_grad'] = True
-    # config['sf_net'] = 'relational_action'
-    # config['relate_residual'] = 'concat'
-
-    # config['argmax_mod'] = True
 
     from pprint import pprint
     print("="*50)

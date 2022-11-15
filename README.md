@@ -31,7 +31,7 @@ Notes:
 To test the install, we can run a non-distributed agent on the baby experiments.
 
 ```
-self.nseeds
+make test_sync env=goto agent=msf
 ```
 
 

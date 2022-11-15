@@ -31,7 +31,7 @@ dependencies:
     #### copied from from procgen
     - gym3==0.3.3
     - numpy
-    - gym
+    - gym==0.23.0
     - filelock==3.0.10
 
     #### copied from acme
