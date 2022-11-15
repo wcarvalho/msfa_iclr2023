@@ -49,7 +49,7 @@ def main(_):
   num_gpus = float(FLAGS.num_gpus)
 
   assert FLAGS.search != '', 'set search!'
-  space, actor_label, evaluator_label = importlib.import_module(f'projects.exploration2.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
+  space, actor_label, evaluator_label = importlib.import_module(f'experiments.exploration2.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
   if FLAGS.idx is not None:
     listify_space(space)
     if FLAGS.idx < len(space):

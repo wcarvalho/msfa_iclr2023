@@ -36,7 +36,7 @@ def main(_):
   mp.set_start_method('spawn')
 
   assert FLAGS.search != '', 'set search!'
-  space = importlib.import_module(f'projects.iclr2023.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
+  space = importlib.import_module(f'experiments.iclr2023.{FLAGS.spaces}').get(FLAGS.search, FLAGS.agent)
 
   if FLAGS.idx is not None:
     listify_space(space)

@@ -49,7 +49,7 @@ def main(_):
   mp.set_start_method('spawn')
 
   assert FLAGS.search != '', 'set search!'
-  space = importlib.import_module(f'projects.exploration1.{FLAGS.spaces}').get(FLAGS.search)
+  space = importlib.import_module(f'experiments.exploration1.{FLAGS.spaces}').get(FLAGS.search)
 
   if FLAGS.idx is not None:
     listify_space(space)

@@ -25,7 +25,10 @@ Notes:
 * All results will be under `${root}/results/`
 * All results can be viewed with `tensorboard` in their corresponding directory
 
+
+
 ### BabyAI
+
 Results directory: `${root}/results/borsa`
 
 **main results**
@@ -38,13 +41,17 @@ make final_goto searches='main2' cuda=0 #[uvfa-farm]
 ```
 
 **ablations**
+
 ```bash
 conda activate msfa  # activate environment
 make final_goto searches='ablate_modularity' cuda=0,1,2
 make final_goto searches='ablate_gpi' cuda=0,1,2
 ```
 
+
+
 ### Procgen
+
 Results directory: `${root}/results/fruitbot`
 
 ```bash
@@ -54,7 +61,9 @@ make final_fruitbot_taskgen searches='main' cuda=0,1,2,3 #[uvfa, uvfa-farm, usfa
 ```
 
 
+
 ### Minihack
+
 Results directory: `${root}/results/minihack`
 
 ```bash

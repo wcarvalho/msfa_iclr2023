@@ -23,6 +23,7 @@ dependencies:
     - Pillow
     - matplotlib
     - wandb
+    - scikit-learn
     - tensorflow-probability==0.15.0
     #### minihack
     - minihack
