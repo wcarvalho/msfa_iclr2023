@@ -14,7 +14,7 @@ Note: ACME only supports GPU based machines :(
 
 # Running experiments
 
-For go to the directory for ICLR, 2023 experiments:
+Go to the directory for ICLR, 2023 experiments:
 ```
 cd experiments/iclr2023  # go to experiments directory
 ```
