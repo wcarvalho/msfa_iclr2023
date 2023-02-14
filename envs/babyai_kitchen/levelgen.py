@@ -420,8 +420,8 @@ class KitchenLevel(RoomGridLevel):
   # reset, step used by gym
   # ======================================================
   def reset(self, **kwargs):
-    if self.nseeds:
-      seeding.np_random(self.nseeds)
+    # if self.nseeds:
+    #   seeding.np_random(self.nseeds)
     """Copied from: 
     - gym_minigrid.minigrid:MiniGridEnv.reset
     - babyai.levels.levelgen:RoomGridLevel.reset

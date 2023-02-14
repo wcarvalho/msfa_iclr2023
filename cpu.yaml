@@ -1,11 +1,16 @@
-name: acmejax
+name: msfa
 channels:
   - defaults
   - conda-forge
 dependencies:
   - pip
-  - python==3.9
   - opencv
+  #### copied from from procgen
+  - python>=3.7.3
+  - c-compiler=1.3.0
+  - cmake=3.21.3
+  - qt=5.12.5  # conda-forge does not have 5.13.2 available
+
   - pip:
     - pip
     - gpustat
@@ -20,36 +25,12 @@ dependencies:
     - numpy
     - gym[atari]
 
-    - tensorflow-probability==0.15.0
+    #### minihack
+    - minihack
 
-    #### copied from acme
-    - chex
-    - jax==0.2.21
-    - trfl # new
-    # - tfp-nightly==0.14.0.dev20210818
-    - absl-py
-    - atari-py # new
-    - bsuite # new
-    - dm-env
-    - dm-haiku # new
-    - dm-sonnet # new
-    - dm-tree # new
-    - flax # new
-    - optax # new
-    - Pillow # new
-    - pytest-xdist # new
-    - rlax # new
-    # specific versions needed
-    - dm-control==0.0.364896371
-    - keras==2.7.0 # new
-    - pytype==2021.8.11
-    - tensorflow-datasets==4.4.0
-    - tensorflow-estimator==2.7.0 # new
-    - tensorflow==2.7.0 # new
-    # JAX: see README.md
 
 
 
 # conda env create -f cpu.yaml
 # conda env update --file cpu.yaml --prune
-# conda remove --name acmejax --all
+# conda remove --name msfa --all
